@@ -1,3 +1,5 @@
+import { useId, useState } from 'react';
+
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
@@ -14,10 +16,11 @@ import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-att
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
-import { Forward, Mail, Reply, Star } from 'lucide-react';
+import { ChevronUp, Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
+  singleMessage?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
   isSendingReply?: boolean;
@@ -30,6 +33,7 @@ interface EmailThreadMessageCardProps {
 
 export function EmailThreadMessageCard({
   message,
+  singleMessage = false,
   latest,
   replyOpen,
   isSendingReply = false,
@@ -39,25 +43,81 @@ export function EmailThreadMessageCard({
   onOpenAttachment,
   onLoadAttachment,
 }: EmailThreadMessageCardProps) {
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
   const attachments = message.attachments ?? [];
   const visibleAttachments = attachments.filter(
     (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
   );
+  const isAlwaysExpanded = singleMessage || visibleAttachments.length > 0;
+  const isExpanded = isAlwaysExpanded || Boolean(replyOpen) || isManuallyExpanded;
+  const canCollapse = !isAlwaysExpanded && !replyOpen;
   const hasBodyContent = hasVisibleEmailBodyContent(message.body);
   const isSingleAttachmentOnly =
     visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   const tags = message.keywords ?? [];
   const canReply = isReplyableEmailMessage(message);
+  const contentId = useId();
   const handleReply = () => {
     if (canReply) onReply(message.id);
   };
 
+  if (!isExpanded) {
+    return (
+      <article className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+        <button
+          type="button"
+          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+          aria-expanded="false"
+          aria-controls={contentId}
+          aria-label={`Expand message from ${message.senderName}`}
+          onClick={() => setIsManuallyExpanded(true)}
+        >
+          <SenderAvatar name={message.senderName} className="size-9" />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-baseline justify-between gap-3">
+              <span className="truncate text-sm font-semibold text-foreground">
+                {message.senderName}
+              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                {message.deliveryStatus && (
+                  <DeliveryStatus status={message.deliveryStatus} compact />
+                )}
+                <time
+                  className="whitespace-nowrap text-xs text-muted-foreground"
+                  dateTime={message.sentAt}
+                >
+                  {formatEmailDate(message.sentAt)}
+                </time>
+              </div>
+            </div>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {getMessagePreview(message.body)}
+            </p>
+          </div>
+        </button>
+        <div id={contentId} hidden />
+      </article>
+    );
+  }
+
   return (
-    <article className="rounded-md border border-border bg-background">
-      <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+    <article className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+      <div className="relative flex items-start gap-3 border-b border-border px-4 py-3">
+        {canCollapse && (
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+            aria-expanded="true"
+            aria-controls={contentId}
+            aria-label={`Collapse message from ${message.senderName}`}
+            onClick={() => setIsManuallyExpanded(false)}
+          />
+        )}
+
         <SenderProfileHoverCard message={message} />
 
-        <div className="min-w-0 flex-1">
+        <div className={cn('relative z-10 min-w-0 flex-1', canCollapse && 'pointer-events-none')}>
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -68,7 +128,9 @@ export function EmailThreadMessageCard({
                   {message.senderEmail}
                 </span>
               </div>
-              <EmailRecipientDetails message={message} />
+              <div className={cn(canCollapse && 'pointer-events-auto w-fit max-w-full')}>
+                <EmailRecipientDetails message={message} />
+              </div>
               {tags.length > 0 && (
                 <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                   {tags.map((tag) => (
@@ -83,15 +145,7 @@ export function EmailThreadMessageCard({
               )}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
-              {message.deliveryStatus && (
-                <span className="mr-2 rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  {message.deliveryStatus === 'sending'
-                    ? 'Sending'
-                    : message.deliveryStatus === 'failed'
-                      ? 'Failed'
-                      : 'Sent'}
-                </span>
-              )}
+              {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
               <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
                 {formatEmailDate(message.sentAt)}
               </time>
@@ -105,12 +159,13 @@ export function EmailThreadMessageCard({
                 label={`Forward message from ${message.senderName}`}
                 icon={Forward}
               />
+              {canCollapse && <ChevronUp aria-hidden="true" className="mx-2 size-3.5" />}
             </div>
           </div>
         </div>
       </div>
 
-      <div className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
+      <div id={contentId} className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
         {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
 
         {visibleAttachments.length > 0 && (
@@ -162,6 +217,16 @@ export function EmailThreadMessageCard({
   );
 }
 
+function SenderAvatar({ name, className }: { name: string; className?: string }) {
+  return (
+    <Avatar className={cn('shrink-0', className)}>
+      <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
+        {getInitials(name)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
 function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
   const initials = getInitials(message.senderName);
 
@@ -170,7 +235,7 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
       <HoverCardTrigger asChild>
         <button
           type="button"
-          className="mt-0.5 shrink-0 rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="pointer-events-auto relative z-10 mt-0.5 shrink-0 rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={`View ${message.senderName} profile`}
         >
           <Avatar className="size-9">
@@ -213,6 +278,25 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
   );
 }
 
+function DeliveryStatus({
+  status,
+  compact = false,
+}: {
+  status: NonNullable<EmailThreadMessage['deliveryStatus']>;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground',
+        !compact && 'mr-2'
+      )}
+    >
+      {status === 'sending' ? 'Sending' : status === 'failed' ? 'Failed' : 'Sent'}
+    </span>
+  );
+}
+
 function MessageIconAction({
   label,
   icon: Icon,
@@ -230,7 +314,7 @@ function MessageIconAction({
       variant="ghost"
       mode="icon"
       size="icon"
-      className="size-7"
+      className="pointer-events-auto size-7"
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
@@ -238,6 +322,24 @@ function MessageIconAction({
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
   );
+}
+
+function getMessagePreview(body: string[]) {
+  const preview = body
+    .join(' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return preview || 'No message content';
 }
 
 function getInitials(name: string) {

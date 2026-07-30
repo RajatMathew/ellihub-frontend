@@ -17,7 +17,14 @@ const freshness = {
   syncing: false,
 };
 
-async function setupMockApi(page: Page, options: { holdDraftSend?: boolean } = {}) {
+async function setupMockApi(
+  page: Page,
+  options: {
+    holdDraftSend?: boolean;
+    messageHasAttachment?: boolean;
+    includeSecondMessage?: boolean;
+  } = {}
+) {
   const replyMessageIds: string[] = [];
   let draftSaveRequests = 0;
   let draftSendRequests = 0;
@@ -144,7 +151,7 @@ async function setupMockApi(page: Page, options: { holdDraftSend?: boolean } = {
                     unread: false,
                     keywords: [],
                     attachmentCount: 0,
-                    threadMessageCount: 1,
+                    threadMessageCount: options.includeSecondMessage ? 2 : 1,
                   },
                 ],
             nextPageToken: null,
@@ -181,8 +188,39 @@ async function setupMockApi(page: Page, options: { holdDraftSend?: boolean } = {
               folderId: 'folder-inbox',
               keywords: [],
               body: ['Can you review this?'],
-              attachments: [],
+              attachments: options.messageHasAttachment
+                ? [
+                    {
+                      id: 'cached-attachment-1',
+                      providerId: 'provider-attachment-1',
+                      name: 'project-brief.pdf',
+                      size: '24 KB',
+                      sizeBytes: 24_576,
+                      mimeType: 'application/pdf',
+                    },
+                  ]
+                : [],
             },
+            ...(options.includeSecondMessage
+              ? [
+                  {
+                    id: 'cached-second-message',
+                    providerId: 'provider-second-message',
+                    senderName: 'Mailbox',
+                    senderEmail: 'mailbox@example.com',
+                    recipientName: 'Client',
+                    recipientEmail: 'client@example.com',
+                    to: [{ name: 'Client', address: 'client@example.com' }],
+                    cc: [],
+                    bcc: [],
+                    sentAt: '2026-07-25T10:01:00.000Z',
+                    folderId: 'folder-sent',
+                    keywords: [],
+                    body: ['Here is the follow-up.'],
+                    attachments: [],
+                  },
+                ]
+              : []),
           ],
         },
       });
@@ -334,14 +372,19 @@ test('an immediate second reply targets the first reply real cache id', async ({
   await page.goto('/app/email/accounts/mailbox');
   await expect(page.getByRole('heading', { name: 'Project update' })).toBeVisible();
 
-  await page.getByRole('article').getByRole('button', { name: 'Reply', exact: true }).click();
+  const originalMessage = page.getByRole('article').first();
+  await originalMessage.getByRole('button', { name: 'Reply', exact: true }).click();
   await page.getByPlaceholder('Write your reply...').fill('Reply 1');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect.poll(() => api.getReplyMessageIds()).toEqual([ORIGINAL_MESSAGE_ID]);
   await expect(page.getByText('Reply 1', { exact: true })).toBeVisible();
 
-  await page.getByRole('article').getByRole('button', { name: 'Reply', exact: true }).click();
+  const firstReply = page.getByRole('article').last();
+  await firstReply
+    .getByRole('button', { name: 'Expand message from Mailbox', exact: true })
+    .click();
+  await firstReply.getByRole('button', { name: 'Reply', exact: true }).click();
   await page.getByPlaceholder('Write your reply...').fill('Reply 2');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
@@ -369,6 +412,54 @@ test('shows Cc and Bcc recipients in the message header and recipient details', 
   await expect(page.getByText('accounts@example.com', { exact: true })).toBeVisible();
   await expect(page.getByText('archive@example.com', { exact: true })).toBeVisible();
   await expect(page.getByText('Hidden from other recipients', { exact: true })).toBeVisible();
+});
+
+test('collapses messages by default and opens them when selected', async ({ page }) => {
+  await setupMockApi(page, { includeSecondMessage: true });
+
+  await page.goto('/app/email/accounts/mailbox');
+
+  const message = page.getByRole('article').first();
+  const expandButton = message.getByRole('button', {
+    name: 'Expand message from Client',
+    exact: true,
+  });
+  await expect(expandButton).toBeVisible();
+  await expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+  await expect(message.getByRole('button', { name: 'Reply', exact: true })).toHaveCount(0);
+
+  await expandButton.click();
+  await expect(message.getByRole('button', { name: 'Reply to Client', exact: true })).toBeVisible();
+
+  await message.getByRole('button', { name: 'Collapse message from Client', exact: true }).click();
+  await expect(expandButton).toBeVisible();
+});
+
+test('keeps a single-message conversation open', async ({ page }) => {
+  await setupMockApi(page);
+
+  await page.goto('/app/email/accounts/mailbox');
+
+  const message = page.getByRole('article').first();
+  await expect(message.getByRole('button', { name: 'Reply', exact: true })).toBeVisible();
+  await expect(message.getByRole('button', { name: /Expand message from Client/ })).toHaveCount(0);
+  await expect(message.getByRole('button', { name: /Collapse message from Client/ })).toHaveCount(
+    0
+  );
+});
+
+test('keeps a message with an attachment open and does not offer collapse', async ({ page }) => {
+  await setupMockApi(page, { messageHasAttachment: true, includeSecondMessage: true });
+
+  await page.goto('/app/email/accounts/mailbox');
+
+  const message = page.getByRole('article').first();
+  await expect(message.getByText('project-brief.pdf', { exact: true })).toBeVisible();
+  await expect(message.getByRole('button', { name: 'Reply to Client', exact: true })).toBeVisible();
+  await expect(message.getByRole('button', { name: /Expand message from Client/ })).toHaveCount(0);
+  await expect(message.getByRole('button', { name: /Collapse message from Client/ })).toHaveCount(
+    0
+  );
 });
 
 test('does not autosave while composing and saves once when an unsent email is closed', async ({
