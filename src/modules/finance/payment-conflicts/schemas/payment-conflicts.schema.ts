@@ -39,6 +39,20 @@ export const paymentComparableLineSchema = z.object({
   categoryAccountId: z.string().nullable(),
 });
 
+export const paymentLineDetailSchema = z.object({
+  lineId: z.string().nullable(),
+  detailType: z.string().nullable(),
+  amount: z.string(),
+  categoryAccountId: z.string().nullable(),
+  categoryAccountName: z.string().nullable(),
+  itemId: z.string().nullable(),
+  itemName: z.string().nullable(),
+  description: z.string().nullable(),
+  billableStatus: z.string().nullable(),
+  customerId: z.string().nullable(),
+  customerName: z.string().nullable(),
+});
+
 export const paymentComparableSchema = z.object({
   entity: z.literal('Purchase'),
   realmId: z.string(),
@@ -53,6 +67,7 @@ export const paymentComparableSchema = z.object({
   exchangeRate: z.string().nullable(),
   totalAmount: z.string(),
   lines: z.array(paymentComparableLineSchema),
+  lineDetails: z.array(paymentLineDetailSchema).default([]),
   unsupportedReasons: z.array(z.string()),
 });
 
@@ -252,6 +267,7 @@ export const acceptQuickBooksPaymentResultSchema = z.object({
 
 export type PaymentConflictStatus = z.infer<typeof paymentConflictStatusSchema>;
 export type PaymentConflictSeverity = z.infer<typeof paymentConflictSeveritySchema>;
+export type PaymentLineDetail = z.infer<typeof paymentLineDetailSchema>;
 export type PaymentConflictDiff = z.infer<typeof paymentConflictDiffSchema>;
 export type PaymentConflict = z.infer<typeof paymentConflictSchema>;
 export type PaymentConflictItem = z.infer<typeof paymentConflictItemSchema>;

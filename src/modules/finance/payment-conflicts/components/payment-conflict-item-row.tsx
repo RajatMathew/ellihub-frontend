@@ -1,6 +1,14 @@
+import {
+  Alert,
+  AlertContent,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from '@/app/components/ui/alert';
 import { Badge, BadgeDot } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
+import { PaymentConflictLineItemsComparison } from '@/modules/finance/payment-conflicts/components/payment-conflict-line-items-comparison';
 import {
   formatConflictTimestamp,
   formatDiffValue,
@@ -10,7 +18,13 @@ import type {
   PaymentConflict,
   PaymentConflictItem,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
-import { CheckCircle2, Clock3, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock3, ExternalLink, Loader2, TriangleAlert } from 'lucide-react';
+
+const LINE_ITEM_FIELDS = new Set<PaymentConflictItem['field']>([
+  'CATEGORY',
+  'LINE_AMOUNT',
+  'LINE_STRUCTURE',
+]);
 
 interface PaymentConflictItemRowProps {
   conflict: PaymentConflict;
@@ -50,30 +64,15 @@ export function PaymentConflictItemRow({
         </Badge>
       </header>
 
-      <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-0">
-        <div className="min-w-0 sm:pr-4">
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Elli
-          </p>
-          <p
-            className={cn(
-              'mt-2 break-words text-sm',
-              isActive ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'
-            )}
-            title={elliValue}
-          >
-            {elliValue}
-          </p>
-        </div>
-        <div className="min-w-0 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            QuickBooks
-          </p>
-          <p className="mt-2 break-words text-sm font-medium text-primary" title={quickBooksValue}>
-            {quickBooksValue}
-          </p>
-        </div>
-      </div>
+      {LINE_ITEM_FIELDS.has(item.field) ? (
+        <PaymentConflictLineItemsComparison conflict={conflict} isActive={isActive} />
+      ) : (
+        <PaymentConflictValueComparison
+          elliValue={elliValue}
+          quickBooksValue={quickBooksValue}
+          isActive={isActive}
+        />
+      )}
 
       {isActive ? (
         <>
@@ -110,8 +109,22 @@ export function PaymentConflictItemRow({
             </Button>
           </div>
 
-          {blockedReason ? (
-            <p className="mt-3 text-xs text-warning-foreground">{blockedReason}</p>
+          {item.acceptBlockedReasons.length > 0 ? (
+            <Alert variant="warning" appearance="light" size="sm" className="mt-3">
+              <AlertIcon>
+                <TriangleAlert aria-hidden="true" />
+              </AlertIcon>
+              <AlertContent>
+                <AlertTitle>Cannot accept this QuickBooks change</AlertTitle>
+                <AlertDescription>
+                  <div className="space-y-1">
+                    {item.acceptBlockedReasons.map((reason) => (
+                      <p key={reason}>{reason}</p>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </AlertContent>
+            </Alert>
           ) : null}
         </>
       ) : (
@@ -129,5 +142,39 @@ export function PaymentConflictItemRow({
         </div>
       )}
     </article>
+  );
+}
+function PaymentConflictValueComparison({
+  elliValue,
+  quickBooksValue,
+  isActive,
+}: {
+  elliValue: string;
+  quickBooksValue: string;
+  isActive: boolean;
+}) {
+  return (
+    <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-0">
+      <div className="min-w-0 sm:pr-4">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Elli</p>
+        <p
+          className={cn(
+            'mt-2 break-words text-sm',
+            isActive ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'
+          )}
+          title={elliValue}
+        >
+          {elliValue}
+        </p>
+      </div>
+      <div className="min-w-0 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          QuickBooks
+        </p>
+        <p className="mt-2 break-words text-sm font-medium text-primary" title={quickBooksValue}>
+          {quickBooksValue}
+        </p>
+      </div>
+    </div>
   );
 }

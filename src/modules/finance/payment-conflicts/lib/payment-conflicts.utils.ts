@@ -92,8 +92,8 @@ export function formatDiffValue(
 
 export const resolutionActionLabels = {
   ACCEPTED_QUICKBOOKS: 'QuickBooks values accepted',
-  AUTO_MATCHED_ELLI: 'Matched Elli automatically',
-  RECHECK_MATCHED_ELLI: 'Matched Elli after recheck',
+  AUTO_MATCHED_ELLI: 'Resolved automatically: QuickBooks value now matches Elli.',
+  RECHECK_MATCHED_ELLI: 'Resolved after recheck: QuickBooks value now matches Elli.',
 } as const;
 
 export const detectionSourceLabels = {
