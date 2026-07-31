@@ -116,7 +116,7 @@ export function RecurringPayDialog({
           <DialogTitle>{rule ? getDialogTitle(rule) : 'Pay Recurring Bill'}</DialogTitle>
           <DialogDescription>
             {rule && isVariableAmountRule(rule)
-              ? 'Enter this period\'s actual amount, then create the QuickBooks payment.'
+              ? "Enter this period's actual amount, then create the QuickBooks payment."
               : 'Confirm the details, then create the QuickBooks payment.'}
           </DialogDescription>
         </DialogHeader>
@@ -139,6 +139,7 @@ export function RecurringPayDialog({
                           onValueChange={field.onChange}
                           decimalPlaces={2}
                           min={0}
+                          disabled={!isVariableAmountRule(rule)}
                           className="text-right text-base font-semibold"
                         />
                       </FormControl>
