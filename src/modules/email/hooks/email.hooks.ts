@@ -7,9 +7,10 @@ import {
   type EmailAccount,
   type EmailDraftMessagePayload,
   type EmailMessagePage,
-  type EmailProvider,
   type ReplyConnectedEmailPayload,
   type SendConnectedEmailPayload,
+  type StartEmailAuthInput,
+  type UpdateEmailAccountNicknameInput,
 } from '@/modules/email/api';
 import {
   EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
@@ -189,12 +190,30 @@ export const useEmailMessageQuery = (
 
 export const useStartEmailAuthMutation = () =>
   useMutation({
-    mutationFn: (provider: EmailProvider) => emailApi.startAuth(provider),
+    mutationFn: (input: StartEmailAuthInput) => emailApi.startAuth(input),
     onSuccess: ({ authorizationUrl }) => {
       window.location.assign(authorizationUrl);
     },
     onError: (error) => toastApiError(error, 'Unable to start email account connection.'),
   });
+
+export const useUpdateEmailAccountNicknameMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateEmailAccountNicknameInput) =>
+      emailApi.updateAccountNickname(input),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), (accounts) =>
+        accounts?.map((account) =>
+          account.id === updatedAccount.id ? updatedAccount : account
+        )
+      );
+      toast.success('Email name saved.');
+    },
+    onError: (error) => toastApiError(error, 'Unable to save this email name.'),
+  });
+};
 
 type DisconnectAccountSnapshot = {
   accounts: EmailAccount[] | undefined;
@@ -214,6 +233,7 @@ function writeConnectedAccountsStorage(accounts: EmailAccount[]) {
         email: account.email,
         mailboxAddress: account.mailboxAddress,
         displayName: account.displayName,
+        nickname: account.nickname,
         provider: account.provider,
       }))
     )

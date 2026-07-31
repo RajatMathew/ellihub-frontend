@@ -19,6 +19,8 @@ const emailAccountSchema = z.object({
   email: z.string(),
   mailboxAddress: z.string(),
   displayName: z.string(),
+  nickname: z.string(),
+  needsNickname: z.boolean(),
   provider: z.enum(['gmail', 'outlook']),
   status: z.string(),
   lastSyncedAt: z.string().nullable(),
@@ -144,6 +146,13 @@ export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
 export type EmailFreshness = z.infer<typeof emailFreshnessSchema>;
 export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
 export type EmailProvider = 'gmail' | 'outlook';
+export type StartEmailAuthInput = {
+  provider: EmailProvider;
+};
+export type UpdateEmailAccountNicknameInput = {
+  accountId: string;
+  nickname: string;
+};
 export type EmailMessagePage = {
   records: ConnectedEmailListItem[];
   nextPageToken: string | null;
@@ -213,10 +222,19 @@ export const emailApi = {
     await api.delete(`${BASE}/accounts/${accountId}`);
   },
 
-  async startAuth(provider: EmailProvider): Promise<{ authorizationUrl: string }> {
+  async updateAccountNickname(
+    input: UpdateEmailAccountNicknameInput
+  ): Promise<EmailAccount> {
+    const res = await api.patch(`${BASE}/accounts/${input.accountId}/nickname`, {
+      nickname: input.nickname,
+    });
+    return emailAccountSchema.parse(unwrapData(res.data));
+  },
+
+  async startAuth(input: StartEmailAuthInput): Promise<{ authorizationUrl: string }> {
     const res = await api.get(`${BASE}/auth/start`, {
       params: {
-        provider,
+        provider: input.provider,
         redirectTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
       },
     });

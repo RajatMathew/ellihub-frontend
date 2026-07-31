@@ -13,14 +13,13 @@ import { cn } from '@/app/lib/utils';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
-import emailData from '@/modules/email/data/emails.json';
 import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: string;
   folder: string;
   folderLabel?: string;
-  emails?: EmailListItem[];
+  emails: EmailListItem[];
   isLoading?: boolean;
   isError?: boolean;
   selectedEmailId?: string;
@@ -41,8 +40,6 @@ interface EmailListPaneProps {
 const DEFAULT_WIDTH = 320;
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 420;
-const fallbackEmails = emailData as EmailListItem[];
-
 export function EmailListPane({
   mailbox,
   folder,
@@ -73,12 +70,7 @@ export function EmailListPane({
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
 
-  const mailboxEmails = useMemo(
-    () =>
-      emails ??
-      fallbackEmails.filter((email) => email.mailbox === mailbox && email.folder === folder),
-    [emails, folder, mailbox]
-  );
+  const mailboxEmails = useMemo(() => emails, [emails]);
 
   const filteredEmails = useMemo(() => {
     const query = search.trim().toLowerCase();

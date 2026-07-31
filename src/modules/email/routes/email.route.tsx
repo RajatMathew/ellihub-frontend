@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
-import { EMAIL_SELECTED_ACCOUNT_STORAGE_KEY } from '@/modules/email/constants/email-account-storage';
-import { EMAIL_MAILBOXES } from '@/modules/email/constants/email-mailboxes';
+import { EmailAccountEmptyState } from '@/modules/email/components/email-account-empty-state';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,13 +12,7 @@ export default function EmailRoutes() {
       <EmailAuthResultToast />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
-        {EMAIL_MAILBOXES.map((mailbox) => (
-          <Route
-            key={mailbox.key}
-            path={mailbox.key}
-            element={<MailboxPage mailbox={mailbox.key} />}
-          />
-        ))}
+        <Route path="add-account" element={<EmailAccountEmptyState />} />
         <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -56,17 +49,7 @@ function EmailAuthResultToast() {
 }
 
 function EmailIndexRoute() {
-  const selectedAccountId =
-    typeof window === 'undefined'
-      ? null
-      : window.localStorage.getItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
-
-  return (
-    <Navigate
-      to={selectedAccountId ? `accounts/${selectedAccountId}` : EMAIL_MAILBOXES[0].key}
-      replace
-    />
-  );
+  return <Navigate to="add-account" replace />;
 }
 
 function ConnectedMailboxRoute() {
