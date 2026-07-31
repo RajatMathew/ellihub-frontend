@@ -72,19 +72,19 @@ export function formatDiffValue(
 ) {
   const value = side === 'elli' ? diff.elliValue : diff.quickBooksValue;
   const referenceFields = new Set(['VENDOR', 'BANK_ACCOUNT', 'CATEGORY']);
-  if (referenceFields.has(diff.field)) {
+  if (referenceFields.has(diff.fieldKey)) {
     return getReferenceLabel(conflict, value) ?? formatGenericValue(value);
   }
-  if (diff.field === 'PAYMENT_DATE')
+  if (diff.fieldKey === 'PAYMENT_DATE')
     return formatConflictDate(typeof value === 'string' ? value : null);
-  if (diff.field === 'TOTAL_AMOUNT' || diff.field === 'LINE_AMOUNT') {
+  if (diff.fieldKey === 'TOTAL_AMOUNT' || diff.fieldKey === 'LINE_AMOUNT') {
     const currency =
       (side === 'elli'
         ? conflict.baseline.currencyCode
         : conflict.latestQuickBooks?.currencyCode) ?? 'USD';
     return formatConflictMoney(typeof value === 'string' ? value : String(value ?? ''), currency);
   }
-  if (diff.field === 'TRANSACTION_MISSING') {
+  if (diff.fieldKey === 'TRANSACTION_MISSING') {
     return side === 'elli' ? 'Transaction exists' : 'Missing in QuickBooks';
   }
   return formatGenericValue(value);

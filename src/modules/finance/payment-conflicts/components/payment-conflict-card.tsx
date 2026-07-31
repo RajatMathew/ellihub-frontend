@@ -46,6 +46,7 @@ export function PaymentConflictCard({
   onAccept,
 }: PaymentConflictCardProps) {
   const [pendingItems, setPendingItems] = useState<PaymentConflictItem[] | null>(null);
+  const { payment, purchaseOrder } = conflict.subject;
   const visibleItems = conflict.items.filter((item) => item.status === itemStatus);
   const activeItems = visibleItems.filter((item) => item.status === 'ACTIVE');
   const isActive = itemStatus === 'ACTIVE';
@@ -53,17 +54,16 @@ export function PaymentConflictCard({
     activeItems.length > 0 && activeItems.every((item) => item.canAcceptQuickBooks);
   const currency =
     conflict.latestQuickBooks?.currencyCode ?? conflict.baseline.currencyCode ?? 'USD';
-  const displayedAmount = conflict.latestQuickBooks?.totalAmount ?? conflict.payment.amount;
-  const displayedDate = conflict.latestQuickBooks?.paymentDate ?? conflict.payment.txnDate;
+  const displayedAmount = conflict.latestQuickBooks?.totalAmount ?? payment.amount;
+  const displayedDate = conflict.latestQuickBooks?.paymentDate ?? payment.txnDate;
   const displayedVendor =
-    getReferenceLabel(conflict, conflict.latestQuickBooks?.vendorId) ??
-    conflict.purchaseOrder.vendor.name;
-  const poNumber = conflict.purchaseOrder.poNumber.startsWith('#')
-    ? conflict.purchaseOrder.poNumber
-    : `#${conflict.purchaseOrder.poNumber}`;
+    getReferenceLabel(conflict, conflict.latestQuickBooks?.vendorId) ?? purchaseOrder.vendor.name;
+  const poNumber = purchaseOrder.poNumber.startsWith('#')
+    ? purchaseOrder.poNumber
+    : `#${purchaseOrder.poNumber}`;
   const purchaseOrderPath = `/app/project/${encodeURIComponent(
-    conflict.purchaseOrder.project.id
-  )}/purchase-orders/${encodeURIComponent(conflict.purchaseOrder.id)}/edit`;
+    purchaseOrder.project.id
+  )}/purchase-orders/${encodeURIComponent(purchaseOrder.id)}/edit`;
 
   const confirmAcceptance = () => {
     if (!pendingItems) return;
@@ -85,7 +85,7 @@ export function PaymentConflictCard({
             <p className="text-sm font-medium text-foreground">{displayedVendor}</p>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-            <span>{conflict.purchaseOrder.project.name}</span>
+            <span>{purchaseOrder.project.name}</span>
             <span aria-hidden="true">&middot;</span>
             <Link
               to={purchaseOrderPath}
@@ -137,6 +137,7 @@ export function PaymentConflictCard({
           <PaymentConflictItemRow
             key={item.id}
             conflict={conflict}
+            quickBooksTransactionUrl={payment.transactionUrl}
             item={item}
             canResolve={canResolve}
             isAccepting={acceptingItemIds.includes(item.id)}

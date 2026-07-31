@@ -14,6 +14,7 @@ import { CheckCircle2, Clock3, ExternalLink, Loader2 } from 'lucide-react';
 
 interface PaymentConflictItemRowProps {
   conflict: PaymentConflict;
+  quickBooksTransactionUrl: string;
   item: PaymentConflictItem;
   canResolve: boolean;
   isAccepting: boolean;
@@ -22,6 +23,7 @@ interface PaymentConflictItemRowProps {
 
 export function PaymentConflictItemRow({
   conflict,
+  quickBooksTransactionUrl,
   item,
   canResolve,
   isAccepting,
@@ -98,7 +100,7 @@ export function PaymentConflictItemRow({
             </span>
             <Button variant="outline" size="md" className="w-full sm:w-auto" asChild>
               <a
-                href={conflict.payment.transactionUrl}
+                href={quickBooksTransactionUrl}
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Open ${item.label} in QuickBooks`}

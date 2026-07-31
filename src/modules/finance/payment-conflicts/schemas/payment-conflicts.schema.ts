@@ -58,6 +58,7 @@ export const paymentComparableSchema = z.object({
 
 export const paymentConflictDiffSchema = z.object({
   field: paymentConflictFieldSchema,
+  fieldKey: z.string().min(1),
   path: z.string(),
   label: z.string(),
   severity: paymentConflictSeveritySchema,
@@ -70,6 +71,7 @@ export const paymentConflictItemSchema = z.object({
   id: z.string(),
   diffKey: z.string(),
   field: paymentConflictFieldSchema,
+  fieldKey: z.string().min(1),
   path: z.string(),
   lineId: z.string().nullable(),
   label: z.string(),
@@ -93,6 +95,39 @@ export const paymentConflictItemSchema = z.object({
   canAcceptQuickBooks: z.boolean(),
   acceptBlockedReasons: z.array(z.string()),
 });
+
+const purchaseOrderConflictSubjectSchema = z.object({
+  id: z.string(),
+  poNumber: z.string(),
+  project: z.object({
+    id: z.string(),
+    name: z.string(),
+    jobNumber: z.string().nullable(),
+  }),
+  vendor: z.object({
+    id: z.string(),
+    name: z.string(),
+  }),
+});
+
+const poPaymentConflictSubjectPaymentSchema = z.object({
+  id: z.string(),
+  amount: z.string(),
+  checkNumber: z.string().nullable(),
+  txnDate: z.string(),
+  transactionId: z.string(),
+  transactionUrl: z.string(),
+  trackingStatus: paymentTrackingStatusSchema,
+});
+
+export const paymentConflictSubjectSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('PO_PAYMENT'),
+    purchaseOrder: purchaseOrderConflictSubjectSchema,
+    payment: poPaymentConflictSubjectPaymentSchema,
+  }),
+]);
+
 export const paymentConflictSchema = z.object({
   id: z.string(),
   status: paymentConflictStatusSchema,
@@ -112,28 +147,9 @@ export const paymentConflictSchema = z.object({
     .nullable(),
   canAcceptQuickBooks: z.boolean(),
   acceptBlockedReasons: z.array(z.string()),
-  purchaseOrder: z.object({
-    id: z.string(),
-    poNumber: z.string(),
-    project: z.object({
-      id: z.string(),
-      name: z.string(),
-      jobNumber: z.string().nullable(),
-    }),
-    vendor: z.object({
-      id: z.string(),
-      name: z.string(),
-    }),
-  }),
-  payment: z.object({
-    id: z.string(),
-    amount: z.string(),
-    checkNumber: z.string().nullable(),
-    txnDate: z.string(),
-    transactionId: z.string(),
-    transactionUrl: z.string(),
-    trackingStatus: paymentTrackingStatusSchema,
-  }),
+  subject: paymentConflictSubjectSchema,
+  purchaseOrder: purchaseOrderConflictSubjectSchema,
+  payment: poPaymentConflictSubjectPaymentSchema,
   baseline: paymentComparableSchema,
   latestQuickBooks: paymentComparableSchema.nullable(),
   items: z.array(paymentConflictItemSchema),
