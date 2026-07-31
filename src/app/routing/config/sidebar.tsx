@@ -1,6 +1,7 @@
 import type { MenuConfig } from '@/app/config/types';
 import { EmailSidebarMenu } from '@/modules/email/components/email-sidebar-menu';
 import { ProjectSidebarSwitcher } from '@/modules/project/components/project-sidebar-switcher';
+import { QuickShortcutsSidebarMenu } from '@/modules/quick-shortcuts/components/quick-shortcuts-sidebar-menu';
 import { ArrowLeft } from 'lucide-react';
 
 const isDev = import.meta.env.DEV;
@@ -13,6 +14,10 @@ export const mainSidebarMenu: MenuConfig = [
   {
     type: 'menu',
     children: [{ title: 'Projects', path: '../projects' }],
+  },
+  {
+    type: 'custom',
+    render: () => <QuickShortcutsSidebarMenu />,
   },
   { type: 'separator' },
   {
@@ -123,6 +128,10 @@ export const projectSidebarMenu: MenuConfig = [
     children: [{ title: 'Back to Projects', path: '../../projects', icon: ArrowLeft }],
   },
   { type: 'custom', render: () => <ProjectSidebarSwitcher /> },
+  {
+    type: 'custom',
+    render: () => <QuickShortcutsSidebarMenu />,
+  },
   {
     type: 'menu',
     children: [{ title: 'Overview', path: '../overview' }],

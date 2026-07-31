@@ -359,6 +359,25 @@
   color: var(--sidebar-nav-link-hover);
 }
 
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action'] {
+  color: var(--sidebar-nav-link);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action']:hover,
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action']:focus-visible {
+  background: color-mix(in srgb, var(--sidebar-paper) 5%, transparent);
+  color: var(--sidebar-nav-link-hover);
+}
+
 /* Non-color cue for the active route, since hover shares its colors. */
 .editorial
   [data-slot='app-sidebar']

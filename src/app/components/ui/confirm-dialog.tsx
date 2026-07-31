@@ -21,6 +21,7 @@ interface ConfirmDialogProps {
   variant?: 'default' | 'destructive' | 'primary';
   isPending?: boolean;
   confirmDisabled?: boolean;
+  keepOpenOnConfirm?: boolean;
 }
 
 export function ConfirmDialog({
@@ -33,6 +34,7 @@ export function ConfirmDialog({
   variant = 'default',
   isPending = false,
   confirmDisabled = false,
+  keepOpenOnConfirm = false,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -42,10 +44,13 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant={variant === 'destructive' ? 'destructive' : undefined}
-            onClick={onConfirm}
+            onClick={(event) => {
+              if (keepOpenOnConfirm) event.preventDefault();
+              onConfirm();
+            }}
             disabled={isPending || confirmDisabled}
           >
             {confirmLabel}
