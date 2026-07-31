@@ -3,30 +3,20 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { SidebarGroupMenu } from '@/app/components/sidebar/sidebar-menu-group';
 import type { MenuConfig } from '@/app/config/types';
 import type { EmailAccount } from '@/modules/email/api';
+import { EmailAliasLabel } from '@/modules/email/components/email-alias-label';
 import {
   EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
   EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
 } from '@/modules/email/constants/email-account-storage';
 import { useEmailAccountsQuery } from '@/modules/email/hooks';
+import { getEmailAccountNicknameLocalPart } from '@/modules/email/schemas/email-account.schema';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
+import { Mail, Plus } from 'lucide-react';
 
 type StoredEmailAccount = Pick<
   EmailAccount,
-  'id' | 'slug' | 'mailboxAddress' | 'displayName' | 'provider' | 'email'
+  'id' | 'slug' | 'mailboxAddress' | 'displayName' | 'nickname' | 'provider' | 'email'
 >;
-
-const staticEmailMenu: MenuConfig = [
-  {
-    type: 'group-collapsed',
-    title: 'Emails',
-    collapse: false,
-    children: [
-      { title: 'procurement@ellicorp.com', path: '../email/procurement' },
-      { title: 'requisitions@ellicorp.com', path: '../email/requisitions' },
-      { title: 'contracts@ellicorp.com', path: '../email/contracts' },
-    ],
-  },
-];
 
 export function EmailSidebarMenu() {
   const [storedAccounts] = useState<StoredEmailAccount[]>(readStoredAccounts);
@@ -41,31 +31,47 @@ export function EmailSidebarMenu() {
   }, [accountsQuery.data]);
 
   const connectedMenu = useMemo<MenuConfig>(() => {
-    if (!connectedAccounts.length) return [];
-
     return [
       {
         type: 'group-collapsed',
-        title: 'Connected Accounts',
+        title: 'Emails',
         collapse: false,
-        children: connectedAccounts.map((account) => ({
-          title: account.mailboxAddress,
-          path: `../email/accounts/${getEmailAccountSlug(account)}`,
-        })),
+        children: [
+          ...connectedAccounts.map((account) => {
+            const alias = getSidebarAccountName(account);
+            return {
+              title: alias,
+              path: `../email/accounts/${getEmailAccountSlug(account)}`,
+              icon: Mail,
+              render: () => <EmailAliasLabel value={alias} />,
+            };
+          }),
+          {
+            title: 'Add account',
+            path: '../email/add-account',
+            icon: Plus,
+          },
+        ],
       },
     ];
   }, [connectedAccounts]);
 
   return (
-    <>
-      <SidebarGroupMenu menu={staticEmailMenu} name="emails-static" />
-      {connectedMenu.length > 0 && (
-        <div onClickCapture={rememberSelectedAccountFromClick}>
-          <SidebarGroupMenu menu={connectedMenu} name="emails-connected" />
-        </div>
-      )}
-    </>
+    <div onClickCapture={rememberSelectedAccountFromClick}>
+      <SidebarGroupMenu menu={connectedMenu} name="emails" />
+    </div>
   );
+}
+
+function getSidebarAccountName(account: StoredEmailAccount) {
+  const preferredName = account.nickname || account.displayName;
+  const mailboxLocalPart = account.mailboxAddress.split('@')[0] || account.email.split('@')[0];
+  const localPart =
+    getEmailAccountNicknameLocalPart(preferredName || '') ||
+    getEmailAccountNicknameLocalPart(mailboxLocalPart || '') ||
+    'email';
+
+  return `${localPart}@ellicorp.com`;
 }
 
 function toStoredAccount(account: EmailAccount): StoredEmailAccount {
@@ -75,6 +81,7 @@ function toStoredAccount(account: EmailAccount): StoredEmailAccount {
     email: account.email,
     mailboxAddress: account.mailboxAddress,
     displayName: account.displayName,
+    nickname: account.nickname,
     provider: account.provider,
   };
 }

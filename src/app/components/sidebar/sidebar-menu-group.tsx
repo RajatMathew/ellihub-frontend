@@ -86,11 +86,13 @@ export function SidebarGroupMenu({
     () => ({
       item:
         classNames.item ||
-        "h-8 rounded-md px-3 text-[13px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&[data-selected=true]_svg]:opacity-100",
+        "h-8 w-full min-w-0 max-w-full overflow-hidden rounded-md px-2 text-[13px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&>a]:min-w-0 [&>a]:max-w-full [&>a]:overflow-hidden [&[data-selected=true]_svg]:opacity-100",
       subTrigger:
         classNames.subTrigger ||
         'h-7 rounded-md px-3 text-[11px] font-semibold uppercase text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground [&_[data-slot=accordion-menu-sub-indicator]]:text-sidebar-muted',
-      subContent: classNames.subContent || 'ps-2',
+      subContent:
+        classNames.subContent ||
+        'min-w-0 max-w-full overflow-hidden ps-0! [&_[data-slot=accordion-menu-sub-wrapper]]:min-w-0 [&_[data-slot=accordion-menu-sub-wrapper]]:max-w-full [&_[data-slot=accordion-menu-sub-wrapper]>div]:w-full [&_[data-slot=accordion-menu-sub-wrapper]>div]:min-w-0 [&_[data-slot=accordion-menu-sub-wrapper]>div]:max-w-full [&_[data-slot=accordion-menu-sub-wrapper]>div]:overflow-hidden',
     }),
     [classNames]
   );
@@ -142,7 +144,11 @@ export function SidebarGroupMenu({
                   {child.external ? (
                     <a href={child.path} target="_blank" rel="noopener noreferrer">
                       {child.icon && <child.icon />}
-                      <span>{child.title}</span>
+                      {child.render ? (
+                        child.render()
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate">{child.title}</span>
+                      )}
                       {child.badge && (
                         <Badge
                           size="sm"
@@ -162,7 +168,11 @@ export function SidebarGroupMenu({
                   ) : (
                     <Link to={to}>
                       {child.icon && <child.icon />}
-                      <span>{child.title}</span>
+                      {child.render ? (
+                        child.render()
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate">{child.title}</span>
+                      )}
                       {child.badge && (
                         <Badge
                           size="sm"

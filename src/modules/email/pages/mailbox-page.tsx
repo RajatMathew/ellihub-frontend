@@ -4,6 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import type { EmailDraftResult } from '@/modules/email/api';
+import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
 import {
   EmailAgentPanel,
   type EmailAgentLayout,
@@ -22,8 +23,6 @@ import {
   EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
 } from '@/modules/email/constants/email-account-storage';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
-import { EMAIL_MAILBOXES, type EmailMailboxKey } from '@/modules/email/constants/email-mailboxes';
-import emailData from '@/modules/email/data/emails.json';
 import {
   useArchiveEmailMessageMutation,
   useBoundedEmailSyncIndicator,
@@ -47,6 +46,7 @@ import {
   useSendEmailDraftMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
+  useUpdateEmailAccountNicknameMutation,
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
@@ -55,14 +55,12 @@ import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { PanelLeftOpen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 interface MailboxPageProps {
-  mailbox?: EmailMailboxKey;
   accountSlug?: string;
 }
 
-const emails = emailData as EmailListItem[];
 const CONNECTED_EMAIL_PAGE_SIZE = 100;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
@@ -79,8 +77,9 @@ const DEFAULT_AGENT_LAYOUT: EmailAgentLayout = {
   hidesEmailList: false,
 };
 
-export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
+export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedFolder, setSelectedFolder] = useState<string>('inbox');
   const [messageSearch, setMessageSearch] = useState('');
   const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), 300);
@@ -131,6 +130,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     canLoadConnectedMailbox
   );
   const startAuthMutation = useStartEmailAuthMutation();
+  const updateAccountNicknameMutation = useUpdateEmailAccountNicknameMutation();
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
   const disconnectAccountMutation = useDisconnectEmailAccountMutation();
   const openDraftMutation = useOpenEmailDraftMutation();
@@ -173,38 +173,19 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     }
     return Array.from(conversations.values());
   }, [connectedAccount?.id, loadedEmailPages, selectedFolder, selectedFolderQuery.key]);
-  const mailboxEmails = useMemo(
-    () =>
-      isConnected
-        ? connectedEmails
-        : emails.filter((email) => mailbox && email.mailbox === mailbox),
-    [connectedEmails, isConnected, mailbox]
-  );
-  const folderEmails = useMemo(
-    () =>
-      isConnected
-        ? mailboxEmails
-        : mailboxEmails.filter((email) => email.folder === selectedFolder),
-    [isConnected, mailboxEmails, selectedFolder]
-  );
+  const folderEmails = connectedEmails;
   const folderCounts = useMemo(
-    () =>
-      isConnected
-        ? getConnectedFolderCounts(foldersQuery.data ?? [])
-        : getFolderCounts(mailboxEmails),
-    [foldersQuery.data, isConnected, mailboxEmails]
+    () => getConnectedFolderCounts(foldersQuery.data ?? []),
+    [foldersQuery.data]
   );
   const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
-  const viewKey = connectedAccount
-    ? `account:${connectedAccount.id}`
-    : `mailbox:${mailbox ?? 'unknown'}`;
+  const viewKey = `account:${connectedAccount?.id ?? accountSlug ?? 'unknown'}`;
   const selectedEmailId =
     selectedTarget?.viewKey === viewKey && selectedTarget.folder === selectedFolder
       ? selectedTarget.emailId
       : defaultEmailId;
-  const mailboxConfig = EMAIL_MAILBOXES.find((item) => item.key === mailbox);
-  const address =
-    connectedAccount?.mailboxAddress ?? mailboxConfig?.address ?? 'email@ellicorp.com';
+  const address = connectedAccount?.mailboxAddress ?? connectedAccount?.email ?? 'email';
+  const accountLabel = connectedAccount?.nickname ?? connectedAccount?.displayName ?? address;
   const selectedEmail = folderEmails.find((email) => email.id === selectedEmailId) ?? null;
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
@@ -369,6 +350,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       email: account.email,
       mailboxAddress: account.mailboxAddress,
       displayName: account.displayName,
+      nickname: account.nickname,
       provider: account.provider,
     }));
 
@@ -393,7 +375,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     const nextAccount = remainingAccounts[0] ?? null;
     const nextPath = nextAccount
       ? `/app/email/accounts/${getEmailAccountSlug(nextAccount)}`
-      : `/app/email/${EMAIL_MAILBOXES[0].key}`;
+      : '/app/email';
 
     if (typeof window !== 'undefined') {
       if (nextAccount) {
@@ -412,31 +394,75 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
     disconnectAccountMutation.mutate({ accountId: connectedAccount.id });
   }, [accountsQuery.data, connectedAccount, disconnectAccountMutation, navigate]);
 
+  const closeNicknameDialog = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('setupNickname');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const openNicknameDialog = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('setupNickname', '1');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const nicknameSetupRequired = Boolean(connectedAccount?.needsNickname);
+
+  const nicknameDialog = connectedAccount ? (
+    <EmailAccountNicknameDialog
+      open={nicknameSetupRequired || searchParams.get('setupNickname') === '1'}
+      required={nicknameSetupRequired}
+      connectedAddress={connectedAccount.mailboxAddress ?? connectedAccount.email}
+      defaultNickname={connectedAccount.nickname}
+      isSaving={updateAccountNicknameMutation.isPending}
+      onOpenChange={(open) => {
+        if (!open && !nicknameSetupRequired) closeNicknameDialog();
+      }}
+      onSave={(nickname) =>
+        updateAccountNicknameMutation.mutate(
+          { accountId: connectedAccount.id, nickname },
+          { onSuccess: closeNicknameDialog }
+        )
+      }
+    />
+  ) : null;
+
+  if (!accountsQuery.isLoading && !accountsQuery.isError && !connectedAccount) {
+    return <Navigate to="/app/email/add-account" replace />;
+  }
+
   if (isReconnectRequired && connectedAccount) {
     return (
-      <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
-        <div className="flex h-full min-w-0">
-          <MailboxSidebar
-            mailboxAddress={address}
-            selectedFolder={selectedFolder}
-            folderCounts={{}}
-            collapsed={mailboxSidebarCollapsed}
-            isAddingAccount={startAuthMutation.isPending}
-            isDisconnectingAccount={disconnectAccountMutation.isPending}
-            onSelectFolder={setSelectedFolder}
-            onCompose={() => undefined}
-            onDisconnectAccount={handleDisconnectAccount}
-            onAddAccount={(provider) => startAuthMutation.mutate(provider)}
-            onCollapsedChange={setMailboxSidebarCollapsed}
-          />
-          <EmailReconnectRequiredState
-            provider={connectedAccount.provider}
-            email={connectedAccount.mailboxAddress ?? connectedAccount.email}
-            isReconnecting={startAuthMutation.isPending}
-            onReconnect={() => startAuthMutation.mutate(connectedAccount.provider)}
-          />
+      <>
+        <div className="relative h-[calc(100dvh-var(--header-height-mobile))] overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+          <div className="flex h-full min-w-0">
+            <MailboxSidebar
+              mailboxAddress={address}
+              mailboxLabel={accountLabel}
+              selectedFolder={selectedFolder}
+              folderCounts={{}}
+              collapsed={mailboxSidebarCollapsed}
+              isDisconnectingAccount={disconnectAccountMutation.isPending}
+              onSelectFolder={setSelectedFolder}
+              onCompose={() => undefined}
+              onEditNickname={openNicknameDialog}
+              onDisconnectAccount={handleDisconnectAccount}
+              onCollapsedChange={setMailboxSidebarCollapsed}
+            />
+            <EmailReconnectRequiredState
+              provider={connectedAccount.provider}
+              email={connectedAccount.mailboxAddress ?? connectedAccount.email}
+              isReconnecting={startAuthMutation.isPending}
+              onReconnect={() =>
+                startAuthMutation.mutate({
+                  provider: connectedAccount.provider,
+                })
+              }
+            />
+          </div>
         </div>
-      </div>
+        {nicknameDialog}
+      </>
     );
   }
 
@@ -453,11 +479,11 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
       >
         <MailboxSidebar
           mailboxAddress={address}
+          mailboxLabel={accountLabel}
           selectedFolder={selectedFolder}
           folderCounts={folderCounts}
           folders={isConnected ? foldersQuery.data : undefined}
           collapsed={mailboxSidebarCollapsed}
-          isAddingAccount={startAuthMutation.isPending}
           isCreatingFolder={createFolderMutation.isPending}
           isDisconnectingAccount={disconnectAccountMutation.isPending}
           onSelectFolder={setSelectedFolder}
@@ -477,15 +503,15 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
               : undefined
           }
           onDisconnectAccount={connectedAccount ? handleDisconnectAccount : undefined}
-          onAddAccount={(provider) => startAuthMutation.mutate(provider)}
+          onEditNickname={connectedAccount ? openNicknameDialog : undefined}
           onCollapsedChange={setMailboxSidebarCollapsed}
         />
         {showEmailList ? (
           <EmailListPane
-            mailbox={mailbox ?? connectedAccount?.id ?? 'connected'}
+            mailbox={connectedAccount?.id ?? 'connected'}
             folder={selectedFolder}
             folderLabel={selectedFolderLabel}
-            emails={isConnected ? folderEmails : undefined}
+            emails={folderEmails}
             isLoading={isMailboxLoading}
             isError={isMailboxError}
             selectedEmailId={selectedEmailId}
@@ -730,6 +756,7 @@ export function MailboxPage({ mailbox, accountSlug }: MailboxPageProps) {
             : undefined
         }
       />
+      {nicknameDialog}
     </div>
   );
 }
@@ -762,14 +789,6 @@ function htmlToPlainText(value: string) {
   document.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
   document.querySelectorAll('p,div,li').forEach((block) => block.append('\n'));
   return (document.body.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
-}
-
-function getFolderCounts(mailboxEmails: EmailListItem[]) {
-  return mailboxEmails.reduce<Partial<Record<string, number>>>((counts, email) => {
-    const folder = email.folder;
-    counts[folder] = (counts[folder] ?? 0) + 1;
-    return counts;
-  }, {});
 }
 
 function getConnectedFolderCounts(
