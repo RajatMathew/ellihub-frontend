@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
+import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
 import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
@@ -96,6 +97,9 @@ export function EmailThreadMessageCard({
             </p>
           </div>
         </button>
+        {message.meetingResponse && (
+          <EmailMeetingResponseStrip response={message.meetingResponse} collapsed />
+        )}
         <div id={contentId} hidden />
       </article>
     );
@@ -164,6 +168,8 @@ export function EmailThreadMessageCard({
           </div>
         </div>
       </div>
+
+      {message.meetingResponse && <EmailMeetingResponseStrip response={message.meetingResponse} />}
 
       <div id={contentId} className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
         {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}

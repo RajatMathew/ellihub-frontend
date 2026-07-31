@@ -1,4 +1,5 @@
 import { cn } from '@/app/lib/utils';
+import type { EmailMeetingEvent } from '@/modules/email/api';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { Paperclip } from 'lucide-react';
 
@@ -18,6 +19,8 @@ export type EmailListItem = {
   mailbox: string;
   unread: boolean;
   keywords?: string[];
+  meetingResponse?: EmailMeetingResponse;
+  meetingEvent?: EmailMeetingEvent;
   selected?: boolean;
   attachmentCount?: number;
   category?: string;
@@ -47,6 +50,15 @@ export type EmailAttachment = {
   contentUrl?: string;
 };
 
+export type EmailMeetingResponse = {
+  status: 'accepted' | 'tentative' | 'declined' | 'cancelled';
+  responderName: string;
+  responderEmail?: string;
+  startAt?: string;
+  endAt?: string;
+  eventType?: string;
+};
+
 export type EmailThreadMessage = {
   id: string;
   providerId?: string;
@@ -60,6 +72,8 @@ export type EmailThreadMessage = {
   sentAt: string;
   folderId?: string | null;
   keywords?: string[];
+  meetingResponse?: EmailMeetingResponse;
+  meetingEvent?: EmailMeetingEvent;
   deliveryStatus?: 'sending' | 'failed' | 'sent';
   body: string[];
   attachments?: EmailAttachment[];

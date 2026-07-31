@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ConnectedEmailFolder, ConnectedEmailTag } from '@/modules/email/api';
+import type {
+  ConnectedEmailFolder,
+  ConnectedEmailTag,
+  EmailMeetingEvent,
+  EmailMeetingResponseAction,
+} from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
 import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
+import { EmailMeetingEventCard } from '@/modules/email/components/email-meeting-event-card';
 import {
   EmailReadingPaneEmptyState,
   EmailReadingPaneErrorState,
@@ -54,6 +60,18 @@ interface EmailReadingPaneProps {
     messageId: string,
     body: string
   ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
+  isRespondingToMeeting?: boolean;
+  isUpdatingMeeting?: boolean;
+  isCancellingMeeting?: boolean;
+  onRespondToMeeting?: (
+    messageId: string,
+    response: EmailMeetingResponseAction
+  ) => Promise<EmailMeetingEvent>;
+  onUpdateMeeting?: (
+    messageId: string,
+    input: { subject: string; startAt: string; endAt: string; location: string }
+  ) => Promise<EmailMeetingEvent>;
+  onCancelMeeting?: (messageId: string, comment?: string) => Promise<EmailMeetingEvent>;
 }
 
 const MAX_CACHED_ATTACHMENT_PREVIEWS = 6;
@@ -81,6 +99,12 @@ export function EmailReadingPane({
   isUpdatingReadStatus = false,
   isSendingReply = false,
   onReply,
+  isRespondingToMeeting = false,
+  isUpdatingMeeting = false,
+  isCancellingMeeting = false,
+  onRespondToMeeting,
+  onUpdateMeeting,
+  onCancelMeeting,
 }: EmailReadingPaneProps) {
   const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
     null
@@ -150,6 +174,7 @@ export function EmailReadingPane({
   const latestMessage = messages[messages.length - 1] ?? null;
   const latestReplyableMessage =
     latestMessage && isReplyableEmailMessage(latestMessage) ? latestMessage : null;
+  const meetingMessage = [...messages].reverse().find((message) => message.meetingEvent);
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
   const totalAttachments = messages.reduce(
     (total, message) =>
@@ -225,6 +250,19 @@ export function EmailReadingPane({
 
       <div className="kt-scrollable-y-auto min-h-0 flex-1 px-5 py-5">
         <div className="mx-auto max-w-4xl space-y-4">
+          {meetingMessage?.meetingEvent && (
+            <EmailMeetingEventCard
+              key={meetingMessage.meetingEvent.id}
+              event={meetingMessage.meetingEvent}
+              messageId={meetingMessage.id}
+              isResponding={isRespondingToMeeting}
+              isUpdating={isUpdatingMeeting}
+              isCancelling={isCancellingMeeting}
+              onRespond={onRespondToMeeting}
+              onUpdate={onUpdateMeeting}
+              onCancel={onCancelMeeting}
+            />
+          )}
           {messages.map((message, index) => (
             <EmailThreadMessageCard
               key={message.id}
@@ -325,6 +363,8 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       cc: email.cc,
       bcc: email.bcc,
       sentAt: email.receivedAt,
+      meetingResponse: email.meetingResponse,
+      meetingEvent: email.meetingEvent,
       body: email.body?.length ? email.body : [email.preview],
       attachments: email.attachments ?? [],
       keywords: email.keywords ?? [],
