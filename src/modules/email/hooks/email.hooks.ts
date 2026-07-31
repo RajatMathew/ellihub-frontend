@@ -6,6 +6,7 @@ import {
   type ConnectedEmailTag,
   type EmailAccount,
   type EmailDraftMessagePayload,
+  type EmailMeetingResponseAction,
   type EmailMessagePage,
   type ReplyConnectedEmailPayload,
   type SendConnectedEmailPayload,
@@ -201,13 +202,10 @@ export const useUpdateEmailAccountNicknameMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateEmailAccountNicknameInput) =>
-      emailApi.updateAccountNickname(input),
+    mutationFn: (input: UpdateEmailAccountNicknameInput) => emailApi.updateAccountNickname(input),
     onSuccess: (updatedAccount) => {
       queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), (accounts) =>
-        accounts?.map((account) =>
-          account.id === updatedAccount.id ? updatedAccount : account
-        )
+        accounts?.map((account) => (account.id === updatedAccount.id ? updatedAccount : account))
       );
       toast.success('Email name saved.');
     },
@@ -1043,6 +1041,89 @@ export const useUpdateEmailMessageStatusMutation = () => {
           refetchType: isLastAccountStatusMutation ? 'active' : 'none',
         }),
       ]);
+    },
+  });
+};
+
+const invalidateMeetingQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string
+) =>
+  Promise.allSettled([
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.conversationRoot(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.messagesRoot(accountId),
+      refetchType: 'none',
+    }),
+  ]);
+
+export const useRespondToEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      accountId: string;
+      messageId: string;
+      response: EmailMeetingResponseAction;
+      comment?: string;
+      sendResponse?: boolean;
+    }) => emailApi.respondToMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success(
+        input.response === 'accepted'
+          ? 'Meeting accepted.'
+          : input.response === 'tentative'
+            ? 'Meeting marked tentative.'
+            : 'Meeting declined.'
+      );
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to update your meeting response.');
+    },
+  });
+};
+
+export const useUpdateEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      accountId: string;
+      messageId: string;
+      subject?: string;
+      startAt?: string;
+      endAt?: string;
+      location?: string;
+    }) => emailApi.updateMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success('Meeting updated.');
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to update this meeting.');
+    },
+  });
+};
+
+export const useCancelEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { accountId: string; messageId: string; comment?: string }) =>
+      emailApi.cancelMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success('Meeting cancelled.');
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to cancel this meeting.');
     },
   });
 };

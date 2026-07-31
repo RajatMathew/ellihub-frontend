@@ -5,6 +5,7 @@ import { Link2Off } from 'lucide-react';
 interface EmailReconnectRequiredStateProps {
   provider: EmailProvider;
   email: string;
+  reason?: 'authorization' | 'calendarPermission';
   isReconnecting: boolean;
   onReconnect: () => void;
 }
@@ -12,10 +13,12 @@ interface EmailReconnectRequiredStateProps {
 export function EmailReconnectRequiredState({
   provider,
   email,
+  reason = 'authorization',
   isReconnecting,
   onReconnect,
 }: EmailReconnectRequiredStateProps) {
   const providerLabel = provider === 'outlook' ? 'Outlook' : 'Gmail';
+  const needsCalendarPermission = reason === 'calendarPermission';
 
   return (
     <section
@@ -27,11 +30,14 @@ export function EmailReconnectRequiredState({
           <Link2Off aria-hidden="true" className="size-5 text-muted-foreground" strokeWidth={1.8} />
         </div>
         <h1 className="mt-5 text-lg font-semibold text-foreground">
-          Reconnect your {providerLabel} account
+          {needsCalendarPermission
+            ? 'Reconnect Outlook to manage meetings'
+            : `Reconnect your ${providerLabel} account`}
         </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          The authorization for {email} is no longer valid. Sign in to {providerLabel} again to
-          continue viewing and sending email. Your Elli session is still active.
+          {needsCalendarPermission
+            ? `${email} was connected before calendar actions were enabled. Sign in once more and approve calendar access to continue. Your email and Elli session remain intact.`
+            : `The authorization for ${email} is no longer valid. Sign in to ${providerLabel} again to continue viewing and sending email. Your Elli session is still active.`}
         </p>
         <Button
           type="button"

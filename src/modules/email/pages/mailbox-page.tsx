@@ -26,6 +26,7 @@ import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/em
 import {
   useArchiveEmailMessageMutation,
   useBoundedEmailSyncIndicator,
+  useCancelEmailMeetingMutation,
   useCreateEmailFolderMutation,
   useCreateEmailTagMutation,
   useDeleteEmailDraftMutation,
@@ -42,11 +43,13 @@ import {
   usePermanentlyDeleteEmailMessageMutation,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
+  useRespondToEmailMeetingMutation,
   useSaveEmailDraftMutation,
   useSendEmailDraftMutation,
   useStartEmailAuthMutation,
   useUnarchiveEmailMessageMutation,
   useUpdateEmailAccountNicknameMutation,
+  useUpdateEmailMeetingMutation,
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
@@ -106,9 +109,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const hasPersistedReconnectState =
     connectedAccount?.status.toUpperCase() === 'ERROR' ||
     connectedAccount?.freshness?.errorCode === 'EMAIL_RECONNECT_REQUIRED';
+  const needsCalendarReauthorization =
+    connectedAccount?.provider === 'outlook' &&
+    connectedAccount.calendarAccess === 'reauthorizationRequired';
   const canLoadConnectedMailbox =
     Boolean(connectedAccount) &&
     !hasPersistedReconnectState &&
+    !needsCalendarReauthorization &&
     reconnectRequiredAccountId !== connectedAccount?.id;
   const foldersQuery = useEmailFoldersQuery(connectedAccount?.id, canLoadConnectedMailbox);
   const tagsQuery = useEmailTagsQuery(connectedAccount?.id, canLoadConnectedMailbox);
@@ -147,6 +154,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const permanentlyDeleteMessageMutation = usePermanentlyDeleteEmailMessageMutation();
   const updateMessageStatusMutation = useUpdateEmailMessageStatusMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
+  const respondToMeetingMutation = useRespondToEmailMeetingMutation();
+  const updateMeetingMutation = useUpdateEmailMeetingMutation();
+  const cancelMeetingMutation = useCancelEmailMeetingMutation();
   const loadedEmailPages = useMemo(
     () => messagesQuery.data?.pages ?? [],
     [messagesQuery.data?.pages]
@@ -204,12 +214,16 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       messagesQuery.error,
       conversationQuery.error,
       messageDetailQuery.error,
+      respondToMeetingMutation.error,
+      updateMeetingMutation.error,
+      cancelMeetingMutation.error,
     ].some(isEmailReconnectRequiredError) ||
     (refreshMessagesMutation.variables?.accountId === connectedAccount?.id &&
       isEmailReconnectRequiredError(refreshMessagesMutation.error));
   const isReconnectRequired = Boolean(
     connectedAccount &&
     (hasPersistedReconnectState ||
+      needsCalendarReauthorization ||
       reconnectRequiredAccountId === connectedAccount.id ||
       hasReconnectRequiredResponse)
   );
@@ -452,10 +466,16 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             <EmailReconnectRequiredState
               provider={connectedAccount.provider}
               email={connectedAccount.mailboxAddress ?? connectedAccount.email}
+              reason={
+                needsCalendarReauthorization && !hasPersistedReconnectState
+                  ? 'calendarPermission'
+                  : 'authorization'
+              }
               isReconnecting={startAuthMutation.isPending}
               onReconnect={() =>
                 startAuthMutation.mutate({
                   provider: connectedAccount.provider,
+                  loginHint: connectedAccount.mailboxAddress ?? connectedAccount.email,
                 })
               }
             />
@@ -670,6 +690,40 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                     body: plainTextToEmailHtml(body),
                     bodyType: 'html',
                     subject: selectedEmail?.subject,
+                  })
+              : undefined
+          }
+          isRespondingToMeeting={respondToMeetingMutation.isPending}
+          isUpdatingMeeting={updateMeetingMutation.isPending}
+          isCancellingMeeting={cancelMeetingMutation.isPending}
+          onRespondToMeeting={
+            connectedAccount
+              ? (messageId, response) =>
+                  respondToMeetingMutation.mutateAsync({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    response,
+                    sendResponse: true,
+                  })
+              : undefined
+          }
+          onUpdateMeeting={
+            connectedAccount
+              ? (messageId, input) =>
+                  updateMeetingMutation.mutateAsync({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    ...input,
+                  })
+              : undefined
+          }
+          onCancelMeeting={
+            connectedAccount
+              ? (messageId, comment) =>
+                  cancelMeetingMutation.mutateAsync({
+                    accountId: connectedAccount.id,
+                    messageId,
+                    comment,
                   })
               : undefined
           }

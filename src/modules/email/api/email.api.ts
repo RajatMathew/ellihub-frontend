@@ -22,6 +22,7 @@ const emailAccountSchema = z.object({
   nickname: z.string(),
   needsNickname: z.boolean(),
   provider: z.enum(['gmail', 'outlook']),
+  calendarAccess: z.enum(['granted', 'reauthorizationRequired', 'notApplicable']),
   status: z.string(),
   lastSyncedAt: z.string().nullable(),
   connectedById: z.string().nullable(),
@@ -67,6 +68,51 @@ const emailAddressSchema = z.object({
   name: z.string().optional(),
 });
 
+const emailMeetingResponseSchema = z.object({
+  status: z.enum(['accepted', 'tentative', 'declined', 'cancelled']),
+  responderName: z.string(),
+  responderEmail: z.string().optional(),
+  startAt: z.string().optional(),
+  endAt: z.string().optional(),
+  eventType: z.string().optional(),
+});
+
+const emailMeetingEventResponseSchema = z.enum([
+  'none',
+  'organizer',
+  'tentative',
+  'accepted',
+  'declined',
+  'notResponded',
+]);
+
+const emailMeetingEventSchema = z.object({
+  id: z.string(),
+  iCalUId: z.string().optional(),
+  subject: z.string(),
+  isOrganizer: z.boolean(),
+  isCancelled: z.boolean(),
+  responseRequested: z.boolean(),
+  responseStatus: emailMeetingEventResponseSchema,
+  allowNewTimeProposals: z.boolean(),
+  startAt: z.string(),
+  endAt: z.string(),
+  location: z.string().optional(),
+  joinUrl: z.string().url().optional(),
+  webLink: z.string().url().optional(),
+  eventType: z.string().optional(),
+  organizerName: z.string().optional(),
+  organizerEmail: z.string().optional(),
+  attendees: z.array(
+    z.object({
+      name: z.string(),
+      email: z.string(),
+      type: z.string().optional(),
+      response: emailMeetingEventResponseSchema,
+    })
+  ),
+});
+
 const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
@@ -85,6 +131,8 @@ const emailListItemSchema = z.object({
   cc: z.array(emailAddressSchema).optional(),
   bcc: z.array(emailAddressSchema).optional(),
   keywords: z.array(z.string()).optional(),
+  meetingResponse: emailMeetingResponseSchema.optional(),
+  meetingEvent: emailMeetingEventSchema.optional(),
   attachmentCount: z.number().optional(),
   threadMessageCount: z.number().optional(),
   body: z.array(z.string()).optional(),
@@ -104,6 +152,8 @@ const emailThreadMessageSchema = z.object({
   sentAt: z.string(),
   folderId: z.string().nullable().optional(),
   keywords: z.array(z.string()).optional(),
+  meetingResponse: emailMeetingResponseSchema.optional(),
+  meetingEvent: emailMeetingEventSchema.optional(),
   body: z.array(z.string()),
   attachments: z.array(emailAttachmentSchema).optional(),
 });
@@ -148,7 +198,10 @@ export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
 export type EmailProvider = 'gmail' | 'outlook';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
+  loginHint?: string;
 };
+export type EmailMeetingEvent = z.infer<typeof emailMeetingEventSchema>;
+export type EmailMeetingResponseAction = 'accepted' | 'tentative' | 'declined';
 export type UpdateEmailAccountNicknameInput = {
   accountId: string;
   nickname: string;
@@ -222,9 +275,7 @@ export const emailApi = {
     await api.delete(`${BASE}/accounts/${accountId}`);
   },
 
-  async updateAccountNickname(
-    input: UpdateEmailAccountNicknameInput
-  ): Promise<EmailAccount> {
+  async updateAccountNickname(input: UpdateEmailAccountNicknameInput): Promise<EmailAccount> {
     const res = await api.patch(`${BASE}/accounts/${input.accountId}/nickname`, {
       nickname: input.nickname,
     });
@@ -235,6 +286,7 @@ export const emailApi = {
     const res = await api.get(`${BASE}/auth/start`, {
       params: {
         provider: input.provider,
+        loginHint: input.loginHint,
         redirectTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
       },
     });
@@ -407,5 +459,49 @@ export const emailApi = {
     payload: { unread?: boolean }
   ): Promise<void> {
     await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/status`, payload);
+  },
+
+  async respondToMeeting(input: {
+    accountId: string;
+    messageId: string;
+    response: EmailMeetingResponseAction;
+    comment?: string;
+    sendResponse?: boolean;
+  }): Promise<EmailMeetingEvent> {
+    const { accountId, messageId, ...payload } = input;
+    const res = await api.post(
+      `${BASE}/accounts/${accountId}/messages/${messageId}/meeting/respond`,
+      payload
+    );
+    return emailMeetingEventSchema.parse(unwrapData<{ event: unknown }>(res.data).event);
+  },
+
+  async updateMeeting(input: {
+    accountId: string;
+    messageId: string;
+    subject?: string;
+    startAt?: string;
+    endAt?: string;
+    location?: string;
+  }): Promise<EmailMeetingEvent> {
+    const { accountId, messageId, ...payload } = input;
+    const res = await api.patch(
+      `${BASE}/accounts/${accountId}/messages/${messageId}/meeting`,
+      payload
+    );
+    return emailMeetingEventSchema.parse(unwrapData<{ event: unknown }>(res.data).event);
+  },
+
+  async cancelMeeting(input: {
+    accountId: string;
+    messageId: string;
+    comment?: string;
+  }): Promise<EmailMeetingEvent> {
+    const { accountId, messageId, ...payload } = input;
+    const res = await api.post(
+      `${BASE}/accounts/${accountId}/messages/${messageId}/meeting/cancel`,
+      payload
+    );
+    return emailMeetingEventSchema.parse(unwrapData<{ event: unknown }>(res.data).event);
   },
 };
