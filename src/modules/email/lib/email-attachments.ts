@@ -105,3 +105,42 @@ export function resolveEmailAttachmentUrl(contentUrl: string, apiBaseUrl: string
   const path = contentUrl.startsWith('/') ? contentUrl : `/${contentUrl}`;
   return `${base}${path}`;
 }
+
+export function resolveZohoInlineImageUrl(
+  value: string | null | undefined,
+  inlineImageBaseUrl: string | null | undefined
+): string | null {
+  if (!value || !inlineImageBaseUrl) return null;
+
+  const source = value.trim().replaceAll('&amp;', '&');
+  if (!source.startsWith('/')) return null;
+
+  let parsedSource: URL;
+  let parsedBase: URL;
+  try {
+    parsedSource = new URL(source, 'https://elli.invalid');
+    parsedBase = new URL(inlineImageBaseUrl);
+  } catch {
+    return null;
+  }
+
+  if (!['/mail/ImageDisplay', '/zm/ImageDisplay'].includes(parsedSource.pathname)) return null;
+  if (
+    !/^zmdownload-accl\.(?:zoho\.(?:com|eu|in|com\.au|jp|com\.cn|ae|sa)|zohocloud\.ca)$/i.test(
+      parsedBase.hostname
+    )
+  ) {
+    return null;
+  }
+  if (
+    !parsedSource.searchParams.get('na') ||
+    !parsedSource.searchParams.get('nmsgId') ||
+    !parsedSource.searchParams.get('cid')
+  ) {
+    return null;
+  }
+
+  const target = new URL('/zm/ImageDisplay', parsedBase);
+  target.search = parsedSource.search;
+  return target.toString();
+}

@@ -38,6 +38,7 @@ interface EmailReadingPaneProps {
   email: EmailListItem | null;
   accountId?: string;
   mailboxAddress: string;
+  inlineImageBaseUrl?: string | null;
   isLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
@@ -80,6 +81,7 @@ export function EmailReadingPane({
   email,
   accountId,
   mailboxAddress,
+  inlineImageBaseUrl,
   isLoading = false,
   isError = false,
   onRetry,
@@ -267,6 +269,7 @@ export function EmailReadingPane({
             <EmailThreadMessageCard
               key={message.id}
               message={message}
+              inlineImageBaseUrl={inlineImageBaseUrl}
               singleMessage={messages.length === 1}
               latest={index === messages.length - 1}
               replyOpen={replyMessageId === message.id}

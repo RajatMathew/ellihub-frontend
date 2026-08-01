@@ -66,7 +66,7 @@ export function EmailListPane({
   const setSearch = onSearchChange ?? setLocalSearch;
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
 
@@ -91,11 +91,11 @@ export function EmailListPane({
   });
 
   useEffect(() => {
-    scrollContainerRef.current?.scrollTo({ top: 0 });
-  }, [folder, mailbox, search]);
+    scrollContainer?.scrollTo({ top: 0 });
+  }, [folder, mailbox, scrollContainer, search]);
 
   useEffect(() => {
-    const root = scrollContainerRef.current;
+    const root = scrollContainer;
     const sentinel = loadMoreSentinelRef.current;
     if (!root || !sentinel || !hasNextPage || isLoadingMore || loadMoreError || !onLoadMore) {
       return;
@@ -110,7 +110,7 @@ export function EmailListPane({
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore]);
+  }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore, scrollContainer]);
 
   const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const startX = event.clientX;
@@ -214,7 +214,7 @@ export function EmailListPane({
         </InputWrapper>
       </div>
 
-      <div ref={scrollContainerRef} className="kt-scrollable-y-auto min-h-0 flex-1">
+      <div ref={setScrollContainer} className="kt-scrollable-y-auto min-h-0 flex-1">
         {isLoading && <EmailListSkeleton />}
 
         {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
@@ -227,11 +227,11 @@ export function EmailListPane({
           />
         )}
 
-        {!isLoading && !isError && filteredEmails.length > 0 && (
+        {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
           <VirtualizedEmailList
             key={`${mailbox}:${folder}:${search}`}
             emails={filteredEmails}
-            scrollContainerRef={scrollContainerRef}
+            scrollElement={scrollContainer}
             selectedEmailId={selectedEmailId}
             groupByMonth={groupByMonth}
             onSelectEmail={onSelectEmail}

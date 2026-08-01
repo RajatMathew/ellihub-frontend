@@ -1,5 +1,6 @@
 import { Button } from '@/app/components/ui/button';
 import type { EmailProvider } from '@/modules/email/api';
+import { EMAIL_PROVIDER_DETAILS } from '@/modules/email/constants/email-providers';
 import { Link2Off } from 'lucide-react';
 
 interface EmailReconnectRequiredStateProps {
@@ -17,7 +18,7 @@ export function EmailReconnectRequiredState({
   isReconnecting,
   onReconnect,
 }: EmailReconnectRequiredStateProps) {
-  const providerLabel = provider === 'outlook' ? 'Outlook' : 'Gmail';
+  const providerLabel = EMAIL_PROVIDER_DETAILS[provider].reconnectLabel;
   const needsCalendarPermission = reason === 'calendarPermission';
 
   return (

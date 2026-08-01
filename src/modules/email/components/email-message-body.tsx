@@ -4,17 +4,23 @@ import type { EmailAttachment } from '@/modules/email/components/email-row-card'
 import {
   getEmailInlineImageCid,
   getInlineEmailImageSources,
+  resolveZohoInlineImageUrl,
 } from '@/modules/email/lib/email-attachments';
 
 type EmailMessageBodyProps = {
   body: string[];
   attachments?: EmailAttachment[];
+  inlineImageBaseUrl?: string | null;
 };
 
-export function EmailMessageBody({ body, attachments = [] }: EmailMessageBodyProps) {
+export function EmailMessageBody({
+  body,
+  attachments = [],
+  inlineImageBaseUrl,
+}: EmailMessageBodyProps) {
   const content = body.filter(Boolean);
   const html = content.some(looksLikeHtml) ? content.join('\n') : null;
-  const emailDocument = html ? sanitizeEmailDocument(html, attachments) : '';
+  const emailDocument = html ? sanitizeEmailDocument(html, attachments, inlineImageBaseUrl) : '';
 
   if (html) {
     return <EmailHtmlBody documentHtml={emailDocument} />;
@@ -288,7 +294,11 @@ function restoreStyleProperty(
   }
 }
 
-function sanitizeEmailDocument(value: string, attachments: EmailAttachment[]) {
+function sanitizeEmailDocument(
+  value: string,
+  attachments: EmailAttachment[],
+  inlineImageBaseUrl?: string | null
+) {
   if (typeof window === 'undefined') return value;
 
   const document = new DOMParser().parseFromString(value, 'text/html');
@@ -330,6 +340,26 @@ function sanitizeEmailDocument(value: string, attachments: EmailAttachment[]) {
   document.body
     .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img, source')
     .forEach((element) => {
+      const zohoSource = [
+        element.getAttribute('src'),
+        element.getAttribute('originalsrc'),
+        element.getAttribute('data-originalsrc'),
+        element.getAttribute('data-original-src'),
+      ]
+        .map((source) => resolveZohoInlineImageUrl(source, inlineImageBaseUrl))
+        .find(Boolean);
+      if (zohoSource) {
+        if (element instanceof HTMLSourceElement) {
+          element.setAttribute('srcset', zohoSource);
+          element.removeAttribute('src');
+        } else {
+          element.setAttribute('src', zohoSource);
+          element.removeAttribute('srcset');
+        }
+        element.setAttribute('referrerpolicy', 'no-referrer');
+        return;
+      }
+
       const cid = getEmailInlineImageCid({
         src: element.getAttribute('src'),
         srcset: element.getAttribute('srcset'),

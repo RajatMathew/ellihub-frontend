@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
 import { EmailAccountEmptyState } from '@/modules/email/components/email-account-empty-state';
+import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ export default function EmailRoutes() {
       <Routes>
         <Route index element={<EmailIndexRoute />} />
         <Route path="add-account" element={<EmailAccountEmptyState />} />
+        <Route path="accounts" element={<EmailAccountsPage />} />
         <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

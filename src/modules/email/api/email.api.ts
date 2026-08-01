@@ -1,5 +1,6 @@
 import api from '@/app/api';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
+import type { EmailProvider } from '@/modules/email/constants/email-providers';
 import { z } from 'zod';
 
 const BASE = '/email';
@@ -21,7 +22,8 @@ const emailAccountSchema = z.object({
   displayName: z.string(),
   nickname: z.string(),
   needsNickname: z.boolean(),
-  provider: z.enum(['gmail', 'outlook']),
+  provider: z.enum(['gmail', 'outlook', 'zoho']),
+  inlineImageBaseUrl: z.string().url().nullable().optional(),
   calendarAccess: z.enum(['granted', 'reauthorizationRequired', 'notApplicable']),
   status: z.string(),
   lastSyncedAt: z.string().nullable(),
@@ -195,7 +197,7 @@ export type ConnectedEmailThreadMessage = z.infer<typeof emailThreadMessageSchem
 export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
 export type EmailFreshness = z.infer<typeof emailFreshnessSchema>;
 export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
-export type EmailProvider = 'gmail' | 'outlook';
+export type { EmailProvider } from '@/modules/email/constants/email-providers';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
   loginHint?: string;

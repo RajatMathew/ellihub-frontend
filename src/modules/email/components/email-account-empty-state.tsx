@@ -1,12 +1,14 @@
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import {
+  EMAIL_PROVIDER_DETAILS,
+  type EmailProvider,
+} from '@/modules/email/constants/email-providers';
 import { useStartEmailAuthMutation } from '@/modules/email/hooks';
 import { LockKeyhole, MailPlus } from 'lucide-react';
 
-const GOOGLE_ICON_URL = 'https://developers.google.com/static/identity/images/g-logo.png';
-const MICROSOFT_ICON_URL =
-  'https://learn.microsoft.com/en-us/entra/identity-platform/media/howto-add-branding-in-apps/ms-symbollockup_mssymbol_19.svg';
+const EMAIL_PROVIDERS: EmailProvider[] = ['gmail', 'outlook', 'zoho'];
 
 export function EmailAccountEmptyState() {
   const startAuthMutation = useStartEmailAuthMutation();
@@ -29,38 +31,29 @@ export function EmailAccountEmptyState() {
           Add an email account
         </h1>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Connect Gmail or Outlook to read, reply, and manage your email from Elli.
+          Connect Gmail, Outlook, or Zoho Mail to read, reply, and manage your email from Elli.
         </p>
 
         <div className="mt-7 w-full max-w-sm space-y-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="h-12 w-full justify-start gap-3 bg-background px-4"
-            disabled={startAuthMutation.isPending}
-            aria-busy={connectingProvider === 'gmail'}
-            onClick={() => startAuthMutation.mutate({ provider: 'gmail' })}
-          >
-            <img src={GOOGLE_ICON_URL} alt="" className="size-5 object-contain" />
-            <span>{connectingProvider === 'gmail' ? 'Connecting...' : 'Continue with Google'}</span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="h-12 w-full justify-start gap-3 bg-background px-4"
-            disabled={startAuthMutation.isPending}
-            aria-busy={connectingProvider === 'outlook'}
-            onClick={() => startAuthMutation.mutate({ provider: 'outlook' })}
-          >
-            <img src={MICROSOFT_ICON_URL} alt="" className="size-5 object-contain" />
-            <span>
-              {connectingProvider === 'outlook'
-                ? 'Connecting...'
-                : 'Continue with Microsoft'}
-            </span>
-          </Button>
+          {EMAIL_PROVIDERS.map((provider) => {
+            const details = EMAIL_PROVIDER_DETAILS[provider];
+            const isConnecting = connectingProvider === provider;
+            return (
+              <Button
+                key={provider}
+                type="button"
+                variant="outline"
+                size="lg"
+                className="h-12 w-full justify-start gap-3 bg-background px-4"
+                disabled={startAuthMutation.isPending}
+                aria-busy={isConnecting}
+                onClick={() => startAuthMutation.mutate({ provider })}
+              >
+                <img src={details.iconUrl} alt="" className="size-5 object-contain" />
+                <span>{isConnecting ? 'Connecting...' : details.connectLabel}</span>
+              </Button>
+            );
+          })}
         </div>
 
         <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
