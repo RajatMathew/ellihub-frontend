@@ -41,6 +41,11 @@ export function PaymentConflictItemRow({
   const blockedReason = item.acceptBlockedReasons[0];
   const elliValue = formatDiffValue(conflict, item, 'elli');
   const quickBooksValue = formatDiffValue(conflict, item, 'quickbooks');
+  const quickBooksChangedAt = item.quickBooksChangedAt ?? item.lastDetectedAt;
+  const resolvedDisplayTimestamp =
+    item.resolutionAction === 'AUTO_MATCHED_ELLI'
+      ? (item.quickBooksChangedAt ?? item.resolvedAt ?? item.lastDetectedAt)
+      : (item.resolvedAt ?? item.lastDetectedAt);
   const blockedAlertTitle =
     item.lineComparisonKind === 'CATEGORY_DETAILS'
       ? 'Category Details cannot be accepted'
@@ -83,8 +88,8 @@ export function PaymentConflictItemRow({
           <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
             <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
             <span>Last changed in QB</span>
-            <time className="font-medium text-foreground" dateTime={item.lastDetectedAt}>
-              {formatConflictTimestamp(item.lastDetectedAt)}
+            <time className="font-medium text-foreground" dateTime={quickBooksChangedAt}>
+              {formatConflictTimestamp(quickBooksChangedAt)}
             </time>
           </div>
 
@@ -140,7 +145,7 @@ export function PaymentConflictItemRow({
             </p>
             <p>
               {item.resolvedBy ? `By ${item.resolvedBy.name} - ` : ''}
-              {formatConflictTimestamp(item.resolvedAt ?? item.lastDetectedAt)}
+              {formatConflictTimestamp(resolvedDisplayTimestamp)}
             </p>
           </div>
         </div>

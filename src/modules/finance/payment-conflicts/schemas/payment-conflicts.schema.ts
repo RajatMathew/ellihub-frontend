@@ -99,6 +99,7 @@ export const paymentConflictItemSchema = z.object({
   quickBooksValue: z.unknown().nullable(),
   firstDetectedAt: z.string(),
   lastDetectedAt: z.string(),
+  quickBooksChangedAt: z.string().nullable().default(null),
   resolvedAt: z.string().nullable(),
   resolutionAction: paymentConflictResolutionActionSchema.nullable(),
   resolutionNote: z.string().nullable(),
