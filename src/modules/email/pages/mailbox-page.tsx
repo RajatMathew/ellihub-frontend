@@ -579,6 +579,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
           email={visibleEmail}
           accountId={connectedAccount?.id}
           mailboxAddress={address}
+          inlineImageBaseUrl={connectedAccount?.inlineImageBaseUrl}
           isLoading={isReadingLoading}
           isError={isReadingError}
           onRetry={() => {

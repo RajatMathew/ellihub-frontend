@@ -1,4 +1,4 @@
-import { useMemo, useState, type RefObject } from 'react';
+import { useMemo, useState } from 'react';
 
 import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
@@ -8,7 +8,7 @@ import { ChevronRight } from 'lucide-react';
 
 interface VirtualizedEmailListProps {
   emails: EmailListItem[];
-  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  scrollElement: HTMLDivElement;
   selectedEmailId?: string;
   groupByMonth?: boolean;
   onSelectEmail?: (emailId: string) => void;
@@ -19,7 +19,7 @@ const ESTIMATED_MONTH_HEADER_HEIGHT = 48;
 
 export function VirtualizedEmailList({
   emails,
-  scrollContainerRef,
+  scrollElement,
   selectedEmailId,
   groupByMonth = false,
   onSelectEmail,
@@ -28,7 +28,7 @@ export function VirtualizedEmailList({
     return (
       <VirtualizedMonthGroups
         emails={emails}
-        scrollContainerRef={scrollContainerRef}
+        scrollElement={scrollElement}
         selectedEmailId={selectedEmailId}
         onSelectEmail={onSelectEmail}
       />
@@ -38,7 +38,7 @@ export function VirtualizedEmailList({
   return (
     <VirtualizedFlatEmailList
       emails={emails}
-      scrollContainerRef={scrollContainerRef}
+      scrollElement={scrollElement}
       selectedEmailId={selectedEmailId}
       onSelectEmail={onSelectEmail}
     />
@@ -47,7 +47,7 @@ export function VirtualizedEmailList({
 
 function VirtualizedFlatEmailList({
   emails,
-  scrollContainerRef,
+  scrollElement,
   selectedEmailId,
   onSelectEmail,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
@@ -55,7 +55,7 @@ function VirtualizedFlatEmailList({
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: emails.length,
-    getScrollElement: () => scrollContainerRef.current,
+    getScrollElement: () => scrollElement,
     estimateSize: () => ESTIMATED_EMAIL_ROW_HEIGHT,
     getItemKey: (index) => emails[index]?.id ?? index,
     overscan: 6,
@@ -96,7 +96,7 @@ function VirtualizedFlatEmailList({
 
 function VirtualizedMonthGroups({
   emails,
-  scrollContainerRef,
+  scrollElement,
   selectedEmailId,
   onSelectEmail,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
@@ -109,7 +109,7 @@ function VirtualizedMonthGroups({
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: monthGroups.length,
-    getScrollElement: () => scrollContainerRef.current,
+    getScrollElement: () => scrollElement,
     estimateSize: (index) => {
       const group = monthGroups[index];
       if (!group || collapsedMonthKeys.has(group.key)) return ESTIMATED_MONTH_HEADER_HEIGHT;

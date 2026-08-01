@@ -20,7 +20,7 @@ import { Input } from '@/app/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { ConnectedEmailFolder } from '@/modules/email/api';
-import { EmailAliasLabel } from '@/modules/email/components/email-alias-label';
+import { MailboxEmailAliasLabel } from '@/modules/email/components/email-alias-label';
 import {
   Archive,
   ChevronDown,
@@ -262,7 +262,7 @@ export function MailboxSidebar({
                     )}
                   />
                   {group.key === 'account' ? (
-                    <EmailAliasLabel value={group.label} />
+                    <MailboxEmailAliasLabel value={group.label} />
                   ) : (
                     <span className="truncate">{group.label}</span>
                   )}

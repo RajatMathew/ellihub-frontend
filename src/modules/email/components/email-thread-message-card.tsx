@@ -21,6 +21,7 @@ import { ChevronUp, Forward, Mail, Reply, Star } from 'lucide-react';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
+  inlineImageBaseUrl?: string | null;
   singleMessage?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
@@ -34,6 +35,7 @@ interface EmailThreadMessageCardProps {
 
 export function EmailThreadMessageCard({
   message,
+  inlineImageBaseUrl,
   singleMessage = false,
   latest,
   replyOpen,
@@ -172,7 +174,13 @@ export function EmailThreadMessageCard({
       {message.meetingResponse && <EmailMeetingResponseStrip response={message.meetingResponse} />}
 
       <div id={contentId} className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
-        {hasBodyContent && <EmailMessageBody body={message.body} attachments={attachments} />}
+        {hasBodyContent && (
+          <EmailMessageBody
+            body={message.body}
+            attachments={attachments}
+            inlineImageBaseUrl={inlineImageBaseUrl}
+          />
+        )}
 
         {visibleAttachments.length > 0 && (
           <div
