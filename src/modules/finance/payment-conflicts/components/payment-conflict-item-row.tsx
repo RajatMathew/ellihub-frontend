@@ -20,12 +20,6 @@ import type {
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
 import { CheckCircle2, Clock3, ExternalLink, Loader2, TriangleAlert } from 'lucide-react';
 
-const LINE_ITEM_FIELDS = new Set<PaymentConflictItem['field']>([
-  'CATEGORY',
-  'LINE_AMOUNT',
-  'LINE_STRUCTURE',
-]);
-
 interface PaymentConflictItemRowProps {
   conflict: PaymentConflict;
   quickBooksTransactionUrl: string;
@@ -47,6 +41,12 @@ export function PaymentConflictItemRow({
   const blockedReason = item.acceptBlockedReasons[0];
   const elliValue = formatDiffValue(conflict, item, 'elli');
   const quickBooksValue = formatDiffValue(conflict, item, 'quickbooks');
+  const blockedAlertTitle =
+    item.lineComparisonKind === 'CATEGORY_DETAILS'
+      ? 'Category Details cannot be accepted'
+      : item.lineComparisonKind === 'ITEM_DETAILS'
+        ? 'Item Details cannot be accepted'
+        : 'Cannot accept this QuickBooks change';
 
   return (
     <article className="rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
@@ -64,8 +64,12 @@ export function PaymentConflictItemRow({
         </Badge>
       </header>
 
-      {LINE_ITEM_FIELDS.has(item.field) ? (
-        <PaymentConflictLineItemsComparison conflict={conflict} isActive={isActive} />
+      {item.lineComparisonKind ? (
+        <PaymentConflictLineItemsComparison
+          conflict={conflict}
+          isActive={isActive}
+          kind={item.lineComparisonKind}
+        />
       ) : (
         <PaymentConflictValueComparison
           elliValue={elliValue}
@@ -115,7 +119,7 @@ export function PaymentConflictItemRow({
                 <TriangleAlert aria-hidden="true" />
               </AlertIcon>
               <AlertContent>
-                <AlertTitle>Cannot accept this QuickBooks change</AlertTitle>
+                <AlertTitle>{blockedAlertTitle}</AlertTitle>
                 <AlertDescription>
                   <div className="space-y-1">
                     {item.acceptBlockedReasons.map((reason) => (

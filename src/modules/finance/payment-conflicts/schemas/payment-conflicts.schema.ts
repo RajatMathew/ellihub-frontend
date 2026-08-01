@@ -2,6 +2,7 @@ import z from 'zod';
 
 export const paymentConflictStatusSchema = z.enum(['ACTIVE', 'RESOLVED']);
 export const paymentConflictSeveritySchema = z.enum(['HIGH', 'MEDIUM']);
+export const paymentConflictLineComparisonKindSchema = z.enum(['CATEGORY_DETAILS', 'ITEM_DETAILS']);
 export const paymentConflictDetectionSourceSchema = z.enum([
   'CDC',
   'FULL_RECONCILIATION',
@@ -47,6 +48,8 @@ export const paymentLineDetailSchema = z.object({
   categoryAccountName: z.string().nullable(),
   itemId: z.string().nullable(),
   itemName: z.string().nullable(),
+  quantity: z.string().nullable().default(null),
+  unitPrice: z.string().nullable().default(null),
   description: z.string().nullable(),
   billableStatus: z.string().nullable(),
   customerId: z.string().nullable(),
@@ -109,6 +112,7 @@ export const paymentConflictItemSchema = z.object({
   version: z.number().int().positive(),
   canAcceptQuickBooks: z.boolean(),
   acceptBlockedReasons: z.array(z.string()),
+  lineComparisonKind: paymentConflictLineComparisonKindSchema.nullable().default(null),
 });
 
 const purchaseOrderConflictSubjectSchema = z.object({
