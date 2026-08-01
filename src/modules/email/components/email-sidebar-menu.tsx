@@ -10,6 +10,7 @@ import {
 } from '@/modules/email/constants/email-account-storage';
 import { useEmailAccountsQuery } from '@/modules/email/hooks';
 import { getEmailAccountNicknameLocalPart } from '@/modules/email/schemas/email-account.schema';
+import { dedupeEmailAccounts } from '@/modules/email/utils/email-account-identity';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { Mail, Plus } from 'lucide-react';
 
@@ -93,14 +94,17 @@ function readStoredAccounts(): StoredEmailAccount[] {
     const value = window.localStorage.getItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY);
     if (!value) return [];
     const parsed = JSON.parse(value) as StoredEmailAccount[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? dedupeEmailAccounts(parsed) : [];
   } catch {
     return [];
   }
 }
 
 function writeStoredAccounts(accounts: StoredEmailAccount[]) {
-  window.localStorage.setItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  window.localStorage.setItem(
+    EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
+    JSON.stringify(dedupeEmailAccounts(accounts))
+  );
 }
 
 function rememberSelectedAccountFromClick(event: MouseEvent<HTMLDivElement>) {

@@ -1,6 +1,7 @@
 import api from '@/app/api';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import type { EmailProvider } from '@/modules/email/constants/email-providers';
+import { dedupeEmailAccounts } from '@/modules/email/utils/email-account-identity';
 import { z } from 'zod';
 
 const BASE = '/email';
@@ -270,7 +271,7 @@ function unwrapData<T>(data: unknown, key = 'data'): T {
 export const emailApi = {
   async listAccounts(): Promise<EmailAccount[]> {
     const res = await api.get(`${BASE}/accounts`);
-    return z.array(emailAccountSchema).parse(unwrapData(res.data));
+    return dedupeEmailAccounts(z.array(emailAccountSchema).parse(unwrapData(res.data)));
   },
 
   async disconnectAccount(accountId: string): Promise<void> {
