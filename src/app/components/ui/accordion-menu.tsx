@@ -207,7 +207,7 @@ function AccordionMenuSeparator({ className, ...props }: AccordionMenuSeparatorP
 }
 
 const itemVariants = cva(
-  'relative cursor-pointer select-none flex w-full text-start items-center text-foreground rounded-lg gap-2 px-2 py-1.5 text-sm outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground disabled:opacity-50 disabled:bg-transparent focus-visible:bg-accent focus-visible:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:opacity-60 [&_svg:not([class*=size-])]:size-4 [&_svg]:shrink-0 [&_a]:flex [&>a]:w-full [&>a]:items-center [&>a]:gap-2',
+  'relative flex w-full min-w-0 max-w-full cursor-pointer select-none items-center gap-2 overflow-hidden rounded-lg px-2 py-1.5 text-start text-sm text-foreground outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground disabled:bg-transparent disabled:opacity-50 focus-visible:bg-accent focus-visible:text-accent-foreground [&_a]:flex [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:opacity-60 [&_svg:not([class*=size-])]:size-4 [&>a]:min-w-0 [&>a]:max-w-full [&>a]:flex-1 [&>a]:items-center [&>a]:gap-2 [&>a]:overflow-hidden',
   {
     variants: {
       variant: {

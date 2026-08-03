@@ -29,6 +29,7 @@ const emailAccountSchema = z.object({
   status: z.string(),
   lastSyncedAt: z.string().nullable(),
   connectedById: z.string().nullable(),
+  sharedMailboxKey: z.enum(['procurement', 'requisitions', 'contracts']).nullable().optional(),
   freshness: emailFreshnessSchema.optional(),
 });
 
@@ -202,7 +203,9 @@ export type { EmailProvider } from '@/modules/email/constants/email-providers';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
   loginHint?: string;
+  sharedMailboxKey?: SharedMailboxKey;
 };
+export type SharedMailboxKey = 'procurement' | 'requisitions' | 'contracts';
 export type EmailMeetingEvent = z.infer<typeof emailMeetingEventSchema>;
 export type EmailMeetingResponseAction = 'accepted' | 'tentative' | 'declined';
 export type UpdateEmailAccountNicknameInput = {
@@ -290,6 +293,7 @@ export const emailApi = {
       params: {
         provider: input.provider,
         loginHint: input.loginHint,
+        sharedMailboxKey: input.sharedMailboxKey,
         redirectTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
       },
     });

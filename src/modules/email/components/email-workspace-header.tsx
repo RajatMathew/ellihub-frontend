@@ -34,9 +34,9 @@ export function EmailWorkspaceHeader({
   const hasAccountActions = Boolean(onEditNickname || onDisconnectAccount);
 
   return (
-    <header className="shrink-0 border-b border-border bg-muted/50 px-3 py-2 sm:px-4">
+    <header className="shrink-0 border-b border-border bg-white px-3 py-2 sm:px-4">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="min-w-0">
             <p className="font-mono text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Mailbox

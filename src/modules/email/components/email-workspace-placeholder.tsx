@@ -7,7 +7,7 @@ export function EmailWorkspacePlaceholder({ view }: { view: Exclude<EmailWorkspa
 
   return (
     <section
-      className="flex min-h-0 flex-1 items-center justify-center bg-muted/20 px-6 py-12"
+      className="flex min-h-0 flex-1 items-center justify-center bg-muted px-6 py-12"
       aria-labelledby={`${view}-placeholder-heading`}
     >
       <div className="max-w-sm text-center">

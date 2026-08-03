@@ -86,7 +86,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                 >
                   <Link to={to}>
                     {child.icon && <child.icon />}
-                    <span>{child.title}</span>
+                    <span className="min-w-0 flex-1 truncate">{child.title}</span>
                     {child.badge && (
                       <Badge
                         size="sm"

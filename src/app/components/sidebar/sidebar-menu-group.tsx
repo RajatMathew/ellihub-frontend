@@ -120,6 +120,16 @@ export function SidebarGroupMenu({
 
           <AccordionMenuSubContent type="single" collapsible parentValue={`${name}-trigger`}>
             {item.children?.map((child, index) => {
+              if (child.type === 'separator') {
+                return (
+                  <div
+                    key={index}
+                    role="separator"
+                    className="mx-2 my-1 h-px shrink-0 bg-sidebar-border"
+                  />
+                );
+              }
+
               const to = resolveSidebarMenuPath(child.path);
               const createTo = child.createPath
                 ? resolveSidebarMenuPath(
