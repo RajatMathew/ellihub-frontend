@@ -19,6 +19,7 @@ import {
   shouldRetryEmailRequest,
 } from '@/modules/email/lib/email-errors';
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -97,7 +98,7 @@ export const useEmailMessagesQuery = (
       pagination?.size,
       pagination?.search
     ),
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam, signal }) =>
       emailApi.listMessages({
         accountId: accountId!,
         folderKey: folder.key,
@@ -105,12 +106,14 @@ export const useEmailMessagesQuery = (
         pageToken: pageParam ?? undefined,
         size: pagination?.size,
         search: pagination?.search,
+        signal,
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    placeholderData: keepPreviousData,
     retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: true,
@@ -480,7 +483,7 @@ export const useCreateEmailTagMutation = () => {
 };
 
 type EmailActionSnapshot = {
-  messages: Array<[QueryKey, EmailMessagePage | undefined]>;
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
   folders: ConnectedEmailFolder[] | undefined;
 };
 
@@ -494,49 +497,81 @@ function getMessageQuerySnapshots(
   queryClient: ReturnType<typeof useQueryClient>,
   accountId: string
 ) {
-  return queryClient.getQueriesData<EmailMessagePage>({
+  return queryClient.getQueriesData<EmailMessagePages>({
     queryKey: emailKeys.messagesRoot(accountId),
   });
 }
 
 function findCachedMessage(
-  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
   messageId: string
 ) {
-  for (const [, page] of snapshots) {
-    const message = page?.records.find((item) => item.id === messageId);
-    if (message) return message;
+  for (const [, data] of snapshots) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => item.id === messageId);
+      if (message) return message;
+    }
   }
   return null;
 }
 
 function removeMessageFromCachedLists(
   queryClient: ReturnType<typeof useQueryClient>,
-  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
   messageId: string
 ) {
-  for (const [queryKey, page] of snapshots) {
-    if (!page) continue;
-    queryClient.setQueryData<EmailMessagePage>(queryKey, {
-      ...page,
-      records: page.records.filter((message) => message.id !== messageId),
+  for (const [queryKey] of snapshots) {
+    queryClient.setQueryData<EmailMessagePages>(queryKey, (current) => {
+      if (!current) return current;
+      const containsMessage = current.pages.some((page) =>
+        page.records.some((message) => message.id === messageId)
+      );
+      if (!containsMessage) return current;
+
+      return {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.filter((message) => message.id !== messageId),
+          totalCount:
+            page.totalCount === null || page.totalCount === undefined
+              ? page.totalCount
+              : Math.max(0, page.totalCount - 1),
+        })),
+      };
     });
   }
 }
 
 function putMessageInCachedFolder(
   queryClient: ReturnType<typeof useQueryClient>,
-  snapshots: Array<[QueryKey, EmailMessagePage | undefined]>,
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
   folderId: string | null | undefined,
   message: ConnectedEmailListItem | null
 ) {
   if (!folderId || !message) return;
-  const movedMessage = { ...message, folderId, folder: folderId };
-  for (const [queryKey, page] of snapshots) {
-    if (!page || queryKey[3] !== folderId) continue;
-    queryClient.setQueryData<EmailMessagePage>(queryKey, (current) => {
-      if (!current || current.records.some((item) => item.id === movedMessage.id)) return current;
-      return { ...current, records: [movedMessage, ...current.records] };
+  const movedMessage: ConnectedEmailListItem = { ...message, folderId, folder: folderId };
+  for (const [queryKey] of snapshots) {
+    if (queryKey[3] !== folderId) continue;
+    queryClient.setQueryData<EmailMessagePages>(queryKey, (current) => {
+      if (
+        !current ||
+        current.pages.some((page) => page.records.some((item) => item.id === movedMessage.id))
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        pages: current.pages.map((page, index) => ({
+          ...page,
+          records: index === 0 ? [movedMessage, ...page.records] : page.records,
+          totalCount:
+            page.totalCount === null || page.totalCount === undefined
+              ? page.totalCount
+              : page.totalCount + 1,
+        })),
+      };
     });
   }
 }

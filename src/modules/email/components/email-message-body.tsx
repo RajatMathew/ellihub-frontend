@@ -20,10 +20,15 @@ export function EmailMessageBody({
 }: EmailMessageBodyProps) {
   const content = body.filter(Boolean);
   const html = content.some(looksLikeHtml) ? content.join('\n') : null;
-  const emailDocument = html ? sanitizeEmailDocument(html, attachments, inlineImageBaseUrl) : '';
 
   if (html) {
-    return <EmailHtmlBody documentHtml={emailDocument} />;
+    return (
+      <EmailHtmlBody
+        sourceHtml={html}
+        attachments={attachments}
+        inlineImageBaseUrl={inlineImageBaseUrl}
+      />
+    );
   }
 
   return (
@@ -39,7 +44,15 @@ function looksLikeHtml(value: string) {
   return /<\/?[a-z][\s\S]*>/i.test(value);
 }
 
-function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
+function EmailHtmlBody({
+  sourceHtml,
+  attachments,
+  inlineImageBaseUrl,
+}: {
+  sourceHtml: string;
+  attachments: EmailAttachment[];
+  inlineImageBaseUrl?: string | null;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,10 +60,16 @@ function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
     if (!host) return;
 
     const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
-    const parsedDocument = new DOMParser().parseFromString(documentHtml, 'text/html');
-    const emailRoot = document.importNode(parsedDocument.documentElement, true);
-    const baseStyles = document.createElement('style');
-    baseStyles.textContent = `
+    let imageCleanups: Array<() => void> = [];
+    let themeObserver: MutationObserver | null = null;
+    let restoreReadableColors = () => undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const documentHtml = sanitizeEmailDocument(sourceHtml, attachments, inlineImageBaseUrl);
+      const parsedDocument = new DOMParser().parseFromString(documentHtml, 'text/html');
+      const emailRoot = document.importNode(parsedDocument.documentElement, true);
+      const baseStyles = document.createElement('style');
+      baseStyles.textContent = `
       :host {
         display: block;
         width: 100%;
@@ -81,47 +100,48 @@ function EmailHtmlBody({ documentHtml }: { documentHtml: string }) {
       }
     `;
 
-    shadowRoot.replaceChildren(baseStyles, emailRoot);
-    const images = Array.from(shadowRoot.querySelectorAll<HTMLImageElement>('img'));
-    const cleanups = images.map((image) => {
-      const showFallback = () => {
-        if (image.dataset.emailImageHidden === 'true') return;
-        image.dataset.emailImageHidden = 'true';
-        image.setAttribute('aria-hidden', 'true');
+      shadowRoot.replaceChildren(baseStyles, emailRoot);
+      const images = Array.from(shadowRoot.querySelectorAll<HTMLImageElement>('img'));
+      imageCleanups = images.map((image) => {
+        const showFallback = () => {
+          if (image.dataset.emailImageHidden === 'true') return;
+          image.dataset.emailImageHidden = 'true';
+          image.setAttribute('aria-hidden', 'true');
 
-        const label = image.alt.trim();
-        if (!label) return;
+          const label = image.alt.trim();
+          if (!label) return;
 
-        const fallback = document.createElement('span');
-        fallback.dataset.emailImageFallback = 'true';
-        fallback.textContent = `[Image unavailable: ${label}]`;
-        image.after(fallback);
-      };
+          const fallback = document.createElement('span');
+          fallback.dataset.emailImageFallback = 'true';
+          fallback.textContent = `[Image unavailable: ${label}]`;
+          image.after(fallback);
+        };
 
-      image.addEventListener('error', showFallback);
-      if (image.dataset.missingInlineImage || (image.complete && image.naturalWidth === 0)) {
-        showFallback();
-      }
-      return () => image.removeEventListener('error', showFallback);
-    });
+        image.addEventListener('error', showFallback);
+        if (image.dataset.missingInlineImage || (image.complete && image.naturalWidth === 0)) {
+          showFallback();
+        }
+        return () => image.removeEventListener('error', showFallback);
+      });
 
-    let restoreReadableColors = keepEmailTextReadable(shadowRoot, host);
-    const themeObserver = new MutationObserver(() => {
-      restoreReadableColors();
       restoreReadableColors = keepEmailTextReadable(shadowRoot, host);
-    });
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
+      themeObserver = new MutationObserver(() => {
+        restoreReadableColors();
+        restoreReadableColors = keepEmailTextReadable(shadowRoot, host);
+      });
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
     });
 
     return () => {
-      cleanups.forEach((cleanup) => cleanup());
-      themeObserver.disconnect();
-      restoreReadableColors();
+      window.cancelAnimationFrame(frameId);
+      imageCleanups.forEach((cleanup) => cleanup());
+      themeObserver?.disconnect();
       shadowRoot.replaceChildren();
     };
-  }, [documentHtml]);
+  }, [attachments, inlineImageBaseUrl, sourceHtml]);
 
   return <div ref={hostRef} className="w-full min-w-0 overflow-x-auto" />;
 }

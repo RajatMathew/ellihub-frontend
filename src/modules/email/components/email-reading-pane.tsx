@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 
+import { Button } from '@/app/components/ui/button';
 import type {
   ConnectedEmailFolder,
   ConnectedEmailTag,
@@ -7,7 +8,6 @@ import type {
   EmailMeetingResponseAction,
 } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
-import { EmailActionToolbar } from '@/modules/email/components/email-action-toolbar';
 import { EmailMeetingEventCard } from '@/modules/email/components/email-meeting-event-card';
 import {
   EmailReadingPaneEmptyState,
@@ -32,7 +32,7 @@ import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
-import { Paperclip } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react';
 
 interface EmailReadingPaneProps {
   email: EmailListItem | null;
@@ -64,6 +64,11 @@ interface EmailReadingPaneProps {
   isRespondingToMeeting?: boolean;
   isUpdatingMeeting?: boolean;
   isCancellingMeeting?: boolean;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  onBack?: () => void;
+  onOpenAgent?: () => void;
+  agentTriggerRef?: Ref<HTMLButtonElement>;
   onRespondToMeeting?: (
     messageId: string,
     response: EmailMeetingResponseAction
@@ -85,25 +90,18 @@ export function EmailReadingPane({
   isLoading = false,
   isError = false,
   onRetry,
-  folders,
-  tags,
-  isUpdatingTags = false,
-  isCreatingTag = false,
-  archiveActionLabel,
-  onMoveToFolder,
-  onToggleTag,
-  onCreateTag,
+  archiveActionLabel = 'Archive',
   onArchive,
-  onDelete,
-  onPermanentDelete,
-  isPermanentlyDeleting = false,
-  onMarkUnread,
-  isUpdatingReadStatus = false,
   isSendingReply = false,
   onReply,
   isRespondingToMeeting = false,
   isUpdatingMeeting = false,
   isCancellingMeeting = false,
+  onPrevious,
+  onNext,
+  onBack,
+  onOpenAgent,
+  agentTriggerRef,
   onRespondToMeeting,
   onUpdateMeeting,
   onCancelMeeting,
@@ -178,6 +176,7 @@ export function EmailReadingPane({
     latestMessage && isReplyableEmailMessage(latestMessage) ? latestMessage : null;
   const meetingMessage = [...messages].reverse().find((message) => message.meetingEvent);
   const replyMessageId = replyTarget?.emailId === email.id ? replyTarget.messageId : null;
+  const isUnarchiveAction = archiveActionLabel.toLowerCase() === 'unarchive';
   const totalAttachments = messages.reduce(
     (total, message) =>
       total +
@@ -188,57 +187,51 @@ export function EmailReadingPane({
   );
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/20" aria-label="Email">
-      <div className="flex h-28 shrink-0 items-center border-b border-border bg-background px-5">
-        <div className="flex min-w-0 flex-1 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0">
-            <div className="mb-2 flex min-w-0 flex-nowrap items-center gap-3 whitespace-nowrap text-xs text-muted-foreground">
-              {email.category && (
-                <span className="inline-flex h-6 shrink-0 items-center rounded-sm bg-primary/10 px-2 font-medium leading-none text-primary">
-                  {email.category}
-                </span>
-              )}
-              <span className="shrink-0 leading-none">
-                {messages.length} {messages.length === 1 ? 'message' : 'messages'}
-              </span>
-              {totalAttachments > 0 && (
-                <span className="inline-flex shrink-0 items-center gap-1 leading-none">
-                  <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-                  {totalAttachments}
-                </span>
-              )}
-            </div>
-            <h1 className="truncate text-lg font-semibold text-foreground">{email.subject}</h1>
-            <p className="mt-1 truncate text-sm text-muted-foreground">
-              {email.senderName} &lt;{email.senderEmail}&gt;
-            </p>
-          </div>
-
-          <EmailActionToolbar
-            folders={folders}
-            tags={tags}
-            keywords={email.keywords}
-            currentFolderId={email.folderId ?? null}
-            isUpdatingTags={isUpdatingTags}
-            isCreatingTag={isCreatingTag}
-            archiveActionLabel={archiveActionLabel}
-            onMoveToFolder={
-              onMoveToFolder ? (folderId) => onMoveToFolder(actionMessageId, folderId) : undefined
-            }
-            onToggleTag={
-              onToggleTag ? (tag, enabled) => onToggleTag(actionMessageId, tag, enabled) : undefined
-            }
-            onCreateTag={onCreateTag}
-            onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
-            onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
-            onPermanentDelete={
-              onPermanentDelete ? () => onPermanentDelete(actionMessageId) : undefined
-            }
-            isPermanentlyDeleting={isPermanentlyDeleting}
-            onMarkUnread={onMarkUnread ? () => onMarkUnread(actionMessageId) : undefined}
-            isUpdatingReadStatus={isUpdatingReadStatus}
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background" aria-label="Email">
+      <div className="flex min-h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3">
+        {onBack && (
+          <Button
+            type="button"
+            variant="ghost"
+            mode="icon"
+            size="icon"
+            className="size-10 lg:hidden"
+            aria-label="Back to email list"
+            onClick={onBack}
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          mode="icon"
+          size="icon"
+          className="size-10 sm:size-9"
+          disabled={!onPrevious}
+          aria-label="Previous email"
+          onClick={onPrevious}
+        >
+          <ChevronLeft aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          mode="icon"
+          size="icon"
+          className="size-10 sm:size-9"
+          disabled={!onNext}
+          aria-label="Next email"
+          onClick={onNext}
+        >
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <EmailReadingPaneShortcuts
+            mailboxActionKey={isUnarchiveAction ? 'u' : 'e'}
+            mailboxActionLabel={isUnarchiveAction ? 'unarchive' : 'archive'}
             onReply={
-              latestReplyableMessage
+              latestReplyableMessage && onReply
                 ? () =>
                     setReplyTarget({
                       emailId: email.id,
@@ -246,78 +239,131 @@ export function EmailReadingPane({
                     })
                 : undefined
             }
+            onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
           />
+          {onOpenAgent && (
+            <Button
+              type="button"
+              ref={agentTriggerRef}
+              variant="outline"
+              mode="icon"
+              size="icon"
+              className="size-10 bg-background p-1.5 sm:size-9"
+              aria-label="Open Elli agent"
+              title="Open Elli agent"
+              onClick={onOpenAgent}
+            >
+              <img
+                src="/favicon/apple-touch-icon.png"
+                alt=""
+                aria-hidden="true"
+                className="size-7 rounded-sm object-contain sm:size-6"
+              />
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="kt-scrollable-y-auto min-h-0 flex-1 px-5 py-5">
-        <div className="mx-auto max-w-4xl space-y-4">
-          {meetingMessage?.meetingEvent && (
-            <EmailMeetingEventCard
-              key={meetingMessage.meetingEvent.id}
-              event={meetingMessage.meetingEvent}
-              messageId={meetingMessage.id}
-              isResponding={isRespondingToMeeting}
-              isUpdating={isUpdatingMeeting}
-              isCancelling={isCancellingMeeting}
-              onRespond={onRespondToMeeting}
-              onUpdate={onUpdateMeeting}
-              onCancel={onCancelMeeting}
-            />
-          )}
-          {messages.map((message, index) => (
-            <EmailThreadMessageCard
-              key={message.id}
-              message={message}
-              inlineImageBaseUrl={inlineImageBaseUrl}
-              singleMessage={messages.length === 1}
-              latest={index === messages.length - 1}
-              replyOpen={replyMessageId === message.id}
-              isSendingReply={isSendingReply}
-              onReply={(messageId) => setReplyTarget({ emailId: email.id, messageId })}
-              onSendReply={(messageId, body) => {
-                if (!onReply) return;
-                const targetMessage = messages.find((message) => message.id === messageId);
-                const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
-                const optimisticMessage: EmailThreadMessage = {
-                  id: optimisticId,
-                  senderName: mailboxAddress,
-                  senderEmail: mailboxAddress,
-                  recipientName: targetMessage?.senderName ?? email.senderName,
-                  recipientEmail: targetMessage?.senderEmail ?? email.senderEmail,
-                  sentAt: 'Sending...',
-                  body: [body],
-                  deliveryStatus: 'sending',
-                };
+      <div className="kt-scrollable-y-auto min-h-0 flex-1 px-4 py-5 sm:px-6">
+        <div className="mx-auto max-w-4xl">
+          <header className="mb-5 border-b border-border pb-5">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">{email.senderName}</span>
+              <span className="truncate">&lt;{email.senderEmail}&gt;</span>
+              <span aria-hidden="true">·</span>
+              <span>
+                {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+              </span>
+              {totalAttachments > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
+                  {totalAttachments}
+                </span>
+              )}
+              {email.category && (
+                <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+                  {email.category}
+                </span>
+              )}
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-foreground">
+              {email.subject}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
+          </header>
 
-                setPendingReplies((current) => [
-                  ...current,
-                  {
-                    emailId: email.id,
-                    plainBody: body,
-                    message: optimisticMessage,
-                  },
-                ]);
-                setReplyTarget(null);
-                Promise.resolve(onReply(messageId, body))
-                  .then((sentMessage) => {
-                    setPendingReplies((current) =>
-                      markPendingReplySent(current, optimisticId, sentMessage ? sentMessage : null)
-                    );
-                  })
-                  .catch(() => {
-                    setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
-                  });
-              }}
-              onCancelReply={() => setReplyTarget(null)}
-              onOpenAttachment={
-                accountId
-                  ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
-                  : undefined
-              }
-              onLoadAttachment={accountId ? loadEmailAttachment : undefined}
-            />
-          ))}
+          <div className="space-y-4">
+            {meetingMessage?.meetingEvent && (
+              <EmailMeetingEventCard
+                key={meetingMessage.meetingEvent.id}
+                event={meetingMessage.meetingEvent}
+                messageId={meetingMessage.id}
+                isResponding={isRespondingToMeeting}
+                isUpdating={isUpdatingMeeting}
+                isCancelling={isCancellingMeeting}
+                onRespond={onRespondToMeeting}
+                onUpdate={onUpdateMeeting}
+                onCancel={onCancelMeeting}
+              />
+            )}
+            {messages.map((message, index) => (
+              <EmailThreadMessageCard
+                key={message.id}
+                message={message}
+                inlineImageBaseUrl={inlineImageBaseUrl}
+                singleMessage={messages.length === 1}
+                latest={index === messages.length - 1}
+                replyOpen={replyMessageId === message.id}
+                isSendingReply={isSendingReply}
+                onReply={(messageId) => setReplyTarget({ emailId: email.id, messageId })}
+                onSendReply={(messageId, body) => {
+                  if (!onReply) return;
+                  const targetMessage = messages.find((message) => message.id === messageId);
+                  const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
+                  const optimisticMessage: EmailThreadMessage = {
+                    id: optimisticId,
+                    senderName: mailboxAddress,
+                    senderEmail: mailboxAddress,
+                    recipientName: targetMessage?.senderName ?? email.senderName,
+                    recipientEmail: targetMessage?.senderEmail ?? email.senderEmail,
+                    sentAt: 'Sending...',
+                    body: [body],
+                    deliveryStatus: 'sending',
+                  };
+
+                  setPendingReplies((current) => [
+                    ...current,
+                    {
+                      emailId: email.id,
+                      plainBody: body,
+                      message: optimisticMessage,
+                    },
+                  ]);
+                  setReplyTarget(null);
+                  Promise.resolve(onReply(messageId, body))
+                    .then((sentMessage) => {
+                      setPendingReplies((current) =>
+                        markPendingReplySent(
+                          current,
+                          optimisticId,
+                          sentMessage ? sentMessage : null
+                        )
+                      );
+                    })
+                    .catch(() => {
+                      setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
+                    });
+                }}
+                onCancelReply={() => setReplyTarget(null)}
+                onOpenAttachment={
+                  accountId
+                    ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
+                    : undefined
+                }
+                onLoadAttachment={accountId ? loadEmailAttachment : undefined}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -341,6 +387,83 @@ export function EmailReadingPane({
         loadFile={loadPreviewAttachment}
       />
     </section>
+  );
+}
+
+function EmailReadingPaneShortcuts({
+  mailboxActionKey,
+  mailboxActionLabel,
+  onReply,
+  onArchive,
+}: {
+  mailboxActionKey: 'e' | 'u';
+  mailboxActionLabel: 'archive' | 'unarchive';
+  onReply?: () => void;
+  onArchive?: () => void;
+}) {
+  const onReplyRef = useRef(onReply);
+  const onArchiveRef = useRef(onArchive);
+  const mailboxActionKeyRef = useRef(mailboxActionKey);
+
+  useLayoutEffect(() => {
+    onReplyRef.current = onReply;
+    onArchiveRef.current = onArchive;
+    mailboxActionKeyRef.current = mailboxActionKey;
+  }, [mailboxActionKey, onArchive, onReply]);
+
+  useLayoutEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) {
+        return;
+      }
+      const menu = target?.closest<HTMLElement>('[role="menu"]');
+      if (
+        menu &&
+        (menu.dataset.state === 'open' || (!menu.dataset.state && menu.getClientRects().length > 0))
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'r' && onReplyRef.current) {
+        event.preventDefault();
+        onReplyRef.current();
+      }
+      if (key === mailboxActionKeyRef.current && onArchiveRef.current) {
+        event.preventDefault();
+        onArchiveRef.current();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, []);
+
+  return (
+    <span
+      className="hidden items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground lg:flex"
+      aria-label="Keyboard shortcuts"
+    >
+      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
+        ↑↓
+      </kbd>
+      <span>navigate</span>
+      <span aria-hidden="true">·</span>
+      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
+        R
+      </kbd>
+      <span>reply</span>
+      <span aria-hidden="true">·</span>
+      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
+        {mailboxActionKey.toUpperCase()}
+      </kbd>
+      <span>{mailboxActionLabel}</span>
+    </span>
   );
 }
 

@@ -1,7 +1,9 @@
+import { useEffect, useRef } from 'react';
+
 import { cn } from '@/app/lib/utils';
 import type { EmailMeetingEvent } from '@/modules/email/api';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { Paperclip } from 'lucide-react';
+import { Archive, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -83,40 +85,67 @@ interface EmailRowCardProps {
   email: EmailListItem;
   selected?: boolean;
   onSelect?: () => void;
+  onPrefetch?: () => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
 }
 
-export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
-  const initials = getInitials(email.senderName);
+export function EmailRowCard({
+  email,
+  selected,
+  onSelect,
+  onPrefetch,
+  onArchive,
+  onDelete,
+}: EmailRowCardProps) {
   const isSelected = selected ?? Boolean(email.selected);
-  const visibleTags = (email.keywords ?? []).slice(0, 3);
+  const cardRef = useRef<HTMLElement>(null);
+  const visibleTags = (email.keywords ?? []).slice(0, 2);
   const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
+  const hasQuickActions = Boolean(onArchive || onDelete);
+
+  useEffect(() => {
+    if (!isSelected) return;
+
+    cardRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [isSelected]);
 
   return (
-    <button
-      type="button"
+    <article
+      ref={cardRef}
       className={cn(
-        'flex w-full cursor-pointer gap-3 border-b border-border bg-background px-3 py-4 text-left',
-        'hover:bg-accent/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-        'motion-safe:transition-colors motion-safe:duration-150',
-        email.unread && 'bg-muted/35',
-        isSelected && 'border-l-2 border-l-primary bg-primary/10 hover:bg-primary/15'
+        'group relative mx-3 mt-2 overflow-hidden rounded-md border bg-background',
+        'motion-safe:transition-[border-color,box-shadow,background-color] motion-safe:duration-100',
+        email.unread && 'bg-muted/25',
+        isSelected
+          ? 'border-primary/80 bg-primary/10 shadow-sm ring-1 ring-primary/15'
+          : 'border-border hover:border-foreground/25 hover:shadow-xs'
       )}
-      aria-current={isSelected ? 'true' : undefined}
-      aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
-      onClick={onSelect}
     >
-      <span
-        className={cn(
-          'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground',
-          email.unread && 'bg-primary/10 text-primary'
-        )}
-        aria-hidden="true"
+      <button
+        type="button"
+        className="w-full cursor-pointer px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        aria-current={isSelected ? 'true' : undefined}
+        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
+        onPointerEnter={onPrefetch}
+        onPointerDown={(event) => {
+          if (event.pointerType === 'mouse' && event.button === 0) onSelect?.();
+        }}
+        onFocus={onPrefetch}
+        onClick={(event) => {
+          const pointerType = (event.nativeEvent as PointerEvent).pointerType;
+          if (pointerType === 'mouse' && event.detail > 0) return;
+          onSelect?.();
+        }}
       >
-        {initials}
-      </span>
-
-      <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-baseline gap-2">
+          <span
+            className={cn(
+              'size-2 shrink-0 rounded-full border border-border',
+              email.unread && 'border-primary bg-primary'
+            )}
+            aria-hidden="true"
+          />
           <span
             className={cn(
               'min-w-0 flex-1 truncate text-sm text-foreground',
@@ -135,7 +164,7 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
           )}
           <span
             className={cn(
-              'shrink-0 text-xs',
+              'shrink-0 font-mono text-xs tabular-nums',
               email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
             )}
             title={email.receivedAt}
@@ -163,7 +192,7 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
         </span>
 
         {(email.attachmentCount || email.category || visibleTags.length > 0) && (
-          <span className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+          <span className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 pr-16">
             {Boolean(email.attachmentCount) && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
                 <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
@@ -171,7 +200,7 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
               </span>
             )}
             {email.category && (
-              <span className="max-w-28 truncate rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              <span className="max-w-28 truncate rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
                 {email.category}
               </span>
             )}
@@ -188,16 +217,34 @@ export function EmailRowCard({ email, selected, onSelect }: EmailRowCardProps) {
             )}
           </span>
         )}
-      </span>
-    </button>
-  );
-}
+      </button>
 
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
+      {hasQuickActions && (
+        <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md border border-border bg-background p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+          {onArchive && (
+            <button
+              type="button"
+              className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
+              aria-label={`Archive ${email.subject}`}
+              title="Archive"
+              onClick={onArchive}
+            >
+              <Archive aria-hidden="true" className="size-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
+              aria-label={`Delete ${email.subject}`}
+              title="Delete"
+              onClick={onDelete}
+            >
+              <Trash2 aria-hidden="true" className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+    </article>
+  );
 }

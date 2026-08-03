@@ -378,7 +378,7 @@ export function EmailComposeDialog({
               {saveStatus === 'error' && (
                 <button
                   type="button"
-                  className="inline-flex min-h-10 items-center rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex min-h-10 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => {
                     if (attachmentsRef.current.length) {
                       startAttachmentPreparation(attachmentsRef.current);
@@ -451,7 +451,7 @@ export function EmailComposeDialog({
                 {!showCc && (
                   <button
                     type="button"
-                    className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
+                    className="cursor-pointer rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
                     onClick={() => setShowCc(true)}
                   >
                     Cc
@@ -460,7 +460,7 @@ export function EmailComposeDialog({
                 {!showBcc && (
                   <button
                     type="button"
-                    className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
+                    className="cursor-pointer rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-150"
                     onClick={() => setShowBcc(true)}
                   >
                     Bcc
@@ -667,7 +667,7 @@ function AttachmentDropzone({
               </p>
               <button
                 type="button"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                 disabled={disabled}
                 onClick={onClear}
               >
@@ -688,7 +688,7 @@ function AttachmentDropzone({
                   <span className="shrink-0 text-[11px] font-medium text-emerald-600">Ready</span>
                   <button
                     type="button"
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Remove ${attachment.name}`}
                     disabled={disabled}
                     onClick={() => onRemoveExisting(attachment)}
@@ -719,7 +719,7 @@ function AttachmentDropzone({
                   </span>
                   <button
                     type="button"
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Remove ${file.name}`}
                     disabled={disabled}
                     onClick={() => onRemove(file)}

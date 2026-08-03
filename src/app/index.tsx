@@ -12,13 +12,10 @@ import { UploadTransferTray } from '@/modules/files/uploads/upload-transfer-tray
 import { AppLayout } from './components/layouts';
 import { AppLoadingScreen } from './components/loader/app';
 import { AccessProvider } from './contexts/access';
-import DelayForDemo from './lib/delay';
 import { BreadcrumbLabelsProvider } from './providers/breadcrumbs';
 import { QueryProvider } from './providers/query';
 
-const isDev = import.meta.env.DEV;
-
-const AppRouting = lazy(() => DelayForDemo(import('./routing'), isDev ? 0 : 2000));
+const AppRouting = lazy(() => import('./routing'));
 
 const ReactQueryDevtoolsProduction = lazy(() =>
   import('@tanstack/react-query-devtools/build/modern/production.js').then((d) => ({

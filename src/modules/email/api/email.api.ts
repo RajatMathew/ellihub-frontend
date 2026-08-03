@@ -313,6 +313,7 @@ export const emailApi = {
     pageToken?: string;
     size?: number;
     search?: string;
+    signal?: AbortSignal;
   }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
       params: {
@@ -322,6 +323,7 @@ export const emailApi = {
         size: params.size ?? 100,
         search: params.search || undefined,
       },
+      signal: params.signal,
     });
     const parsed = emailListResponseSchema.parse(unwrapData(res.data));
     return {
