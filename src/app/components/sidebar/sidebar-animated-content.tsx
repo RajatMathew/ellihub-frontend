@@ -39,10 +39,11 @@ export function SidebarAnimatedContent({ menuConfig, mode }: SidebarAnimatedCont
   const direction = mode === 'project' ? 1 : -1;
 
   return (
-    <div className="min-h-full min-w-60 overflow-x-hidden">
+    <div className="min-h-full w-full min-w-0 overflow-x-hidden">
       <AnimatePresence mode="wait" initial={false} custom={direction}>
         <motion.div
           key={mode}
+          className="w-full min-w-0"
           custom={direction}
           variants={shouldReduceMotion ? reducedMotionVariants : sidebarVariants}
           initial="enter"

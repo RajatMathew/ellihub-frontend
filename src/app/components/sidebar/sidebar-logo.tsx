@@ -51,16 +51,16 @@ export const SidebarLogoold = ({ className }: { className?: string }) => {
 
 export const SidebarLogo = ({ className }: { className?: string }) => {
   return (
-    <div className={cn('flex min-w-0 items-center', className)}>
+    <div className={cn('flex w-full min-w-0 items-center', className)}>
       <svg
         width="172"
         height="24"
-        className="w-40"
+        className="w-40 max-w-full"
         viewBox="0 0 172 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <g clip-path="url(#clip0_1072_41)">
+        <g clipPath="url(#clip0_1072_41)">
           <mask
             id="mask0_1072_41"
             style={{ maskType: 'luminance' }}

@@ -51,10 +51,10 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
       selectedValue={pathname}
       matchPath={matchPath}
       type="multiple"
-      className="my-0 space-y-0.5 px-2.5"
+      className="my-0 w-full min-w-0 space-y-0.5 px-2.5"
       classNames={{
         label: 'text-xs font-normal text-sidebar-muted mb-1',
-        item: "h-8 rounded-md px-3 text-[13px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&[data-selected=true]_svg]:opacity-100",
+        item: "min-h-8 rounded-md px-3 text-[13px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-item-hover hover:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&[data-selected=true]_svg]:opacity-100",
         group: '',
       }}
     >
@@ -77,7 +77,7 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                   key={index}
                   value={child.path || '#'}
                   asChild
-                  className={child.createPath ? 'group/sidebar-menu-item pe-1' : undefined}
+                  className={child.createPath ? 'group/sidebar-menu-item gap-1! pe-1!' : undefined}
                   trailing={
                     createTo ? (
                       <SidebarMenuCreateAction item={child} createPath={createTo} />
@@ -86,7 +86,9 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                 >
                   <Link to={to}>
                     {child.icon && <child.icon />}
-                    <span className="min-w-0 flex-1 truncate">{child.title}</span>
+                    <span className="min-w-0 flex-1 break-words whitespace-normal">
+                      {child.title}
+                    </span>
                     {child.badge && (
                       <Badge
                         size="sm"

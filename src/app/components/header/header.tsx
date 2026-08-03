@@ -86,7 +86,7 @@ export function Header({
       {!isMobile && (
         <aside
           data-slot="app-sidebar"
-          className="fixed overflow-hidden top-(--page-margin) bottom-(--page-margin) start-0 z-20 transition-all duration-300 flex items-stretch shrink-0 w-(--sidebar-width) in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)"
+          className="fixed bottom-(--page-margin) start-0 top-(--page-margin) z-20 flex min-w-0 max-w-full shrink-0 items-stretch overflow-hidden w-(--sidebar-width) transition-all duration-300 in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)"
         >
           <Suspense fallback={null}>
             <Sidebar menuConfig={menuConfig} mode={sidebarMode} />

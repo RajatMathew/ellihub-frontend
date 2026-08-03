@@ -9,6 +9,7 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   SheetTrigger,
 } from '@app/components/ui/sheet';
 import type { MenuConfig } from '@app/config/types';
@@ -39,12 +40,14 @@ export function HeaderMenu({ menuConfig }: { menuConfig?: MenuConfig }) {
             </Button>
           </SheetTrigger>
           <SheetContent
-            className="h-dvh max-h-dvh w-60 gap-0 overflow-hidden border-sidebar-border bg-sidebar-bg p-0 text-sidebar-foreground lg:w-(--sidebar-width) [&_[data-slot=separator]]:bg-sidebar-border"
+            className="h-dvh max-h-dvh w-full max-w-72 gap-0 overflow-hidden border-sidebar-border bg-sidebar-bg p-0 text-sidebar-foreground lg:w-(--sidebar-width) [&_[data-slot=separator]]:bg-sidebar-border"
             side="left"
             close={false}
           >
-            <SheetHeader className="p-0 space-y-0" />
-            <SheetBody className="flex min-h-0 flex-1 p-0">
+            <SheetHeader className="p-0 space-y-0">
+              <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+            </SheetHeader>
+            <SheetBody className="flex min-h-0 min-w-0 flex-1 p-0">
               {menuConfig && <Sidebar menuConfig={menuConfig} />}
             </SheetBody>
           </SheetContent>

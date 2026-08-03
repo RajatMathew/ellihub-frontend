@@ -30,7 +30,7 @@ function ShortcutLinkContent({
   return (
     <>
       <Link2 aria-hidden="true" />
-      <span className="min-w-0 flex-1 truncate">{shortcut.name}</span>
+      <span className="min-w-0 flex-1 break-words whitespace-normal">{shortcut.name}</span>
       {showNewTabIndicator ? (
         <>
           <ArrowUpRight
@@ -51,7 +51,7 @@ function QuickShortcutLink({ shortcut, pathname }: { shortcut: QuickShortcut; pa
   if (!href) return null;
 
   const className =
-    "relative flex h-8 w-full min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 text-[13px] font-medium text-sidebar-foreground/95 outline-hidden transition-colors hover:bg-sidebar-item-hover hover:text-sidebar-foreground focus-visible:bg-sidebar-item-hover focus-visible:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:opacity-60";
+    "relative flex min-h-8 w-full min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 text-[13px] font-medium text-sidebar-foreground/95 outline-hidden transition-colors hover:bg-sidebar-item-hover hover:text-sidebar-foreground focus-visible:bg-sidebar-item-hover focus-visible:text-sidebar-foreground data-[selected=true]:bg-sidebar-item-active data-[selected=true]:text-sidebar-foreground data-[selected=true]:before:absolute data-[selected=true]:before:bottom-1.5 data-[selected=true]:before:left-0 data-[selected=true]:before:top-1.5 data-[selected=true]:before:w-0.5 data-[selected=true]:before:rounded-r data-[selected=true]:before:bg-brand-gold data-[selected=true]:before:content-[''] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:opacity-60";
   const selected = shortcut.destinationType === 'INTERNAL' && isSelectedPath(pathname, href);
   const content = (
     <ShortcutLinkContent shortcut={shortcut} showNewTabIndicator={shortcut.openInNewTab} />
@@ -88,8 +88,8 @@ function QuickShortcutLink({ shortcut, pathname }: { shortcut: QuickShortcut; pa
 
 function ShortcutMessage({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex min-h-12 items-center justify-between gap-2 px-3 py-2 text-xs text-sidebar-muted">
-      <span>{children}</span>
+    <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-3 py-2 text-xs text-sidebar-muted">
+      <span className="min-w-0 flex-1 break-words">{children}</span>
       {action}
     </div>
   );
@@ -109,20 +109,20 @@ export function QuickShortcutsSidebarMenu() {
 
   return (
     <>
-      <div data-sidebar-menu="group" className="space-y-1 px-2.5">
+      <div data-sidebar-menu="group" className="w-full min-w-0 space-y-1 px-2.5">
         <Collapsible
           defaultOpen
           data-slot="accordion-menu-sub"
-          className="overflow-hidden rounded-md border border-sidebar-border"
+          className="w-full min-w-0 overflow-hidden rounded-md border border-sidebar-border"
         >
-          <div className="flex items-center">
+          <div className="flex w-full min-w-0 items-center">
             <CollapsibleTrigger
               data-slot="accordion-menu-sub-trigger"
               className="group/shortcut-trigger flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 text-start text-[13px] font-medium text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-item-hover focus-visible:bg-sidebar-item-hover"
             >
               <span className="min-w-0 flex-1 truncate">Quick Shortcuts</span>
               {visibleShortcuts.length > 0 ? (
-                <span className="text-[11px] font-normal text-sidebar-muted">
+                <span className="shrink-0 text-[11px] font-normal text-sidebar-muted">
                   {visibleShortcuts.length}
                 </span>
               ) : null}
@@ -141,7 +141,7 @@ export function QuickShortcutsSidebarMenu() {
                 size="sm"
                 aria-label="Manage Quick Shortcuts"
                 title="Manage Quick Shortcuts"
-                className="me-1 text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground"
+                className="me-1 shrink-0 text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground"
                 onClick={() => setManagerOpen(true)}
               >
                 <Settings2 />

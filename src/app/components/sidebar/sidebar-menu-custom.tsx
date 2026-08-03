@@ -4,7 +4,7 @@ import type { MenuConfig } from '@app/config/types';
 
 const SidebarCustomMenu = ({ menu }: { menu?: MenuConfig }) => {
   return (
-    <div className="flex flex-col">
+    <div className="flex w-full min-w-0 flex-col">
       {menu?.map((item, index) =>
         item.render ? <Fragment key={index}>{item.render()}</Fragment> : null
       )}

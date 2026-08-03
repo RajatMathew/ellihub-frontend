@@ -104,6 +104,9 @@
   --sidebar-item-hover: rgba(255, 255, 255, 0.07);
   --sidebar-item-active: rgba(255, 255, 255, 0.11);
   --sidebar-item-selected: rgba(255, 255, 255, 0.18);
+  --sidebar-card: #26435f;
+  --sidebar-card-hover: #2d4b68;
+  --sidebar-card-selected: #4f6781;
   --sidebar-nav-accent: color-mix(in srgb, var(--brand-gold) 82%, var(--sidebar-bg));
   --sidebar-paper: #faf9f5;
   --sidebar-nav-link: #e8a317;
@@ -179,15 +182,15 @@
   [data-slot='accordion-menu-link-item'] {
   height: auto;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--sidebar-paper) 22%, transparent);
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--sidebar-paper) 4%, transparent);
+  margin-bottom: 0.375rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: var(--sidebar-card);
   color: var(--sidebar-paper);
   font-size: 0.8125rem;
   font-weight: 400;
   line-height: 1.25rem;
-  padding: 0.5625rem 0.875rem;
+  padding: 0.6875rem 0.875rem;
   transition:
     color 150ms ease,
     background-color 150ms ease,
@@ -198,7 +201,7 @@
   [data-slot='app-sidebar']
   [data-sidebar-menu='primary']
   [data-slot='accordion-menu-link-item']:hover {
-  background: color-mix(in srgb, var(--sidebar-paper) 8%, transparent);
+  background: var(--sidebar-card-hover);
   color: var(--sidebar-paper);
 }
 
@@ -206,8 +209,7 @@
   [data-slot='app-sidebar']
   [data-sidebar-menu='primary']
   [data-slot='accordion-menu-link-item'][data-selected='true'] {
-  border-color: color-mix(in srgb, var(--sidebar-paper) 34%, transparent);
-  background: color-mix(in srgb, var(--sidebar-paper) 10%, transparent);
+  background: var(--sidebar-card-selected);
   color: var(--sidebar-paper);
   font-weight: 500;
 }
@@ -250,10 +252,10 @@
   [data-sidebar-menu='group']
   > [data-slot='accordion-menu-sub'] {
   overflow: hidden;
-  margin-bottom: 0.25rem;
-  border: 1px solid color-mix(in srgb, var(--sidebar-paper) 22%, transparent);
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--sidebar-paper) 4%, transparent);
+  margin-bottom: 0.375rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: var(--sidebar-card);
 }
 
 .editorial
@@ -268,14 +270,14 @@
   font-size: 0.8125rem;
   font-weight: 400;
   line-height: 1.25rem;
-  padding: 0.5625rem 0.875rem;
+  padding: 0.6875rem 0.875rem;
 }
 
 .editorial
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
   [data-slot='accordion-menu-sub-trigger']:hover {
-  background: color-mix(in srgb, var(--sidebar-paper) 5%, transparent);
+  background: var(--sidebar-card-hover);
   color: var(--sidebar-paper);
 }
 
@@ -301,6 +303,7 @@
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
   [data-slot='accordion-menu-sub-content'] {
+  border-top: 0;
   padding: 0;
 }
 
@@ -311,8 +314,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  border-top: 1px solid color-mix(in srgb, var(--sidebar-paper) 10%, transparent);
-  padding-block: 0.375rem;
+  border-top: 0;
+  padding: 0 0.375rem 0.5rem;
 }
 
 .editorial
@@ -331,14 +334,14 @@
   [data-slot='accordion-menu-link-item'] {
   height: auto;
   gap: 0.5rem;
-  border-radius: 0;
+  border-radius: 0.5rem;
   background: transparent;
   color: var(--sidebar-nav-link);
   font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1.25rem;
-  padding: 0.4375rem 0.5rem;
+  padding: 0.5625rem 0.75rem;
   text-shadow: none;
   transition:
     color 150ms ease,
@@ -349,13 +352,17 @@
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
   [data-slot='accordion-menu-sub-content']
-  [data-slot='accordion-menu-link-item']:hover,
+  [data-slot='accordion-menu-link-item']:hover {
+  background: var(--sidebar-card-hover);
+  color: var(--sidebar-nav-link-hover);
+}
+
 .editorial
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
   [data-slot='accordion-menu-sub-content']
   [data-slot='accordion-menu-link-item'][data-selected='true'] {
-  background: color-mix(in srgb, var(--sidebar-paper) 5%, transparent);
+  background: var(--sidebar-card-selected);
   color: var(--sidebar-nav-link-hover);
 }
 
@@ -374,7 +381,7 @@
   [data-slot='app-sidebar']
   [data-sidebar-menu='group']
   [data-slot='quick-shortcut-empty-action']:focus-visible {
-  background: color-mix(in srgb, var(--sidebar-paper) 5%, transparent);
+  background: var(--sidebar-card-hover);
   color: var(--sidebar-nav-link-hover);
 }
 
@@ -442,9 +449,10 @@
   > a
   > span:first-of-type {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .editorial [data-slot='app-sidebar'] [data-sidebar-menu='group'] [data-slot='email-alias-label'] {
