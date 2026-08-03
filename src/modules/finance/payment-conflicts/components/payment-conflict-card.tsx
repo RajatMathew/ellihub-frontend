@@ -1,6 +1,13 @@
 import { useState } from 'react';
 
 import {
+  Alert,
+  AlertContent,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from '@/app/components/ui/alert';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,7 +30,7 @@ import type {
   PaymentConflictItem,
   PaymentConflictStatus,
 } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
-import { CheckCheck, Loader2, RefreshCcw } from 'lucide-react';
+import { CheckCheck, Loader2, RefreshCcw, TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PaymentConflictCardProps {
@@ -50,8 +57,11 @@ export function PaymentConflictCard({
   const visibleItems = conflict.items.filter((item) => item.status === itemStatus);
   const activeItems = visibleItems.filter((item) => item.status === 'ACTIVE');
   const isActive = itemStatus === 'ACTIVE';
-  const canAcceptAll =
-    activeItems.length > 0 && activeItems.every((item) => item.canAcceptQuickBooks);
+  const canAcceptAll = activeItems.length > 0 && conflict.canAcceptQuickBooks;
+  const itemBlockedReasons = new Set(activeItems.flatMap((item) => item.acceptBlockedReasons));
+  const acceptAllOnlyBlockedReasons = conflict.acceptBlockedReasons.filter(
+    (reason) => !itemBlockedReasons.has(reason)
+  );
   const currency =
     conflict.latestQuickBooks?.currencyCode ?? conflict.baseline.currencyCode ?? 'USD';
   const displayedAmount = conflict.latestQuickBooks?.totalAmount ?? payment.amount;
@@ -131,6 +141,26 @@ export function PaymentConflictCard({
           </div>
         ) : null}
       </header>
+
+      {isActive && acceptAllOnlyBlockedReasons.length > 0 ? (
+        <div className="px-3 pb-3 sm:px-5 sm:pb-4">
+          <Alert variant="warning" appearance="light" size="sm">
+            <AlertIcon>
+              <TriangleAlert aria-hidden="true" />
+            </AlertIcon>
+            <AlertContent>
+              <AlertTitle>Cannot accept all QuickBooks changes</AlertTitle>
+              <AlertDescription>
+                <div className="space-y-1">
+                  {acceptAllOnlyBlockedReasons.map((reason) => (
+                    <p key={reason}>{reason}</p>
+                  ))}
+                </div>
+              </AlertDescription>
+            </AlertContent>
+          </Alert>
+        </div>
+      ) : null}
 
       <div className="space-y-2 border-t border-border p-3">
         {visibleItems.map((item) => (

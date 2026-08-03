@@ -7,6 +7,7 @@ import {
 } from '@/modules/finance/payment-conflicts/api/payment-conflicts.api';
 import { paymentConflictKeys } from '@/modules/finance/payment-conflicts/constants/payment-conflicts.keys';
 import type { PaymentConflictSyncStatusResponse } from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
+import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -84,7 +85,12 @@ export const useAcceptQuickBooksPaymentMutation = () => {
   return useMutation({
     mutationFn: paymentConflictsApi.acceptQuickBooksItems,
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: paymentConflictKeys.all });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: paymentConflictKeys.all }),
+        ...(result.accepted
+          ? [queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.lists() })]
+          : []),
+      ]);
       if (result.accepted) {
         toast.success(
           `${result.acceptedItemIds.length} QuickBooks ${result.acceptedItemIds.length === 1 ? 'change' : 'changes'} accepted into Elli.`
