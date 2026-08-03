@@ -7,9 +7,9 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { formatCurrency } from '@/app/lib/helpers';
+import { QuickBooksPaymentItem } from '@/modules/integrations/components/quickbooks-payment-item';
 import { sumMonthlyBillMoney } from '@/modules/monthly-bills/lib/monthly-bills-money';
 import type { MonthlyBillItem } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { ExternalLink } from 'lucide-react';
 
 interface PaymentsDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg">
+      <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Payments</DialogTitle>
           <DialogDescription>
@@ -31,48 +31,29 @@ export function PaymentsDialog({ open, onOpenChange, payments, poNumber }: Payme
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody>
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {payments.map((payment) => (
-              <li
-                key={payment.id}
-                className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">
-                    {payment.amount !== undefined ? formatCurrency(payment.amount) : '—'}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {payment.txnDate || 'No date'}
-                  </span>
-                  {payment.checkNumber ? (
-                    <span className="text-xs text-muted-foreground">
-                      Check no. {payment.checkNumber}
-                    </span>
-                  ) : null}
-                </div>
-                {payment.transactionUrl ? (
-                  <a
-                    href={payment.transactionUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary/80"
-                  >
-                    {payment.transactionId ?? 'View'}
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    {payment.transactionId ?? '—'}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+        <DialogBody className="flex min-h-0 flex-1 flex-col gap-4">
+          {payments.length > 0 ? (
+            <ul className="min-h-0 space-y-2 overflow-y-auto pr-1">
+              {payments.map((payment) => (
+                <li key={payment.id}>
+                  <QuickBooksPaymentItem
+                    amount={payment.amount}
+                    txnDate={payment.txnDate}
+                    checkNumber={payment.checkNumber}
+                    transactionUrl={payment.transactionUrl}
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
+              No payments have been recorded for this purchase order.
+            </p>
+          )}
 
-          <div className="mt-4 flex items-center justify-between gap-3 px-1 text-sm font-semibold text-foreground">
+          <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-muted/40 px-4 py-3 text-sm font-semibold text-foreground">
             <span>Total</span>
-            <span>{formatCurrency(total)}</span>
+            <span className="tabular-nums">{formatCurrency(total)}</span>
           </div>
         </DialogBody>
       </DialogContent>

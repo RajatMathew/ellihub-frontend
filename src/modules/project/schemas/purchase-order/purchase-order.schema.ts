@@ -313,6 +313,7 @@ export const poPaymentSchema = z
     qbVendorId: z.string().nullable().optional(),
     bankAccountId: z.string().nullable().optional(),
     txnDate: z.string().nullable().optional(),
+    checkNumber: z.string().nullable().optional(),
     transactionId: z.string().nullable().optional(),
     transactionUrl: z.string().nullable().optional(),
     createdAt: z.string().optional(),
