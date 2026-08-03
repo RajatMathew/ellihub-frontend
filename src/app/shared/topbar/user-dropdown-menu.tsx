@@ -1,10 +1,14 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 import { forceCheckForUpdate } from '@/core/pwa/usePwaUpdater';
-import { QuickBooksReferenceSyncDialog } from '@/modules/integrations/components/quickbooks-reference-sync-dialog';
-import { useQuickBooksReferenceSyncStatusQuery } from '@/modules/integrations/hooks/quickbooks.hooks';
-import { FieldwireSyncDialog } from '@/modules/synchronization/components/fieldwire-sync-dialog';
-import { useFieldwireSyncStatusQuery } from '@/modules/synchronization/hooks/synchronization.hooks';
+import {
+  useQuickBooksReferenceSyncStatusQuery,
+  useSyncQuickBooksReferenceDataMutation,
+} from '@/modules/integrations/hooks/quickbooks.hooks';
+import {
+  useFieldwireSyncStatusQuery,
+  useSyncFieldwireMutation,
+} from '@/modules/synchronization/hooks/synchronization.hooks';
 import {
   BetweenHorizontalStart,
   Bug,
@@ -80,8 +84,7 @@ function formatQuickBooksSyncLabel({
 
 export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const navigate = useNavigate();
-  const [fieldwireSyncOpen, setFieldwireSyncOpen] = useState(false);
-  const [quickBooksSyncOpen, setQuickBooksSyncOpen] = useState(false);
+
   const { theme, setTheme } = useTheme();
   const activeTheme = isAppTheme(theme) ? theme : DEFAULT_THEME;
 
@@ -100,6 +103,8 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
   const canManageIntegrations = can('integration', 'read');
   const fieldwireSyncStatusQuery = useFieldwireSyncStatusQuery(canSyncFieldwire);
   const quickBooksSyncStatusQuery = useQuickBooksReferenceSyncStatusQuery(canSyncQuickBooks);
+  const fieldwireSyncMutation = useSyncFieldwireMutation();
+  const quickBooksSyncMutation = useSyncQuickBooksReferenceDataMutation();
   const fieldwireSyncLabel = formatSyncLabel(
     fieldwireSyncStatusQuery.data?.lastSyncedAt,
     fieldwireSyncStatusQuery.isLoading
@@ -236,16 +241,16 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 {canSyncFieldwire && (
                   <DropdownMenuItem
                     className="items-start gap-2"
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setFieldwireSyncOpen(true);
-                    }}
+                    disabled={fieldwireSyncMutation.isPending}
+                    onSelect={() => fieldwireSyncMutation.mutate()}
                   >
-                    <RefreshCcw className="mt-0.5 size-4" />
+                    <RefreshCcw
+                      className={`mt-0.5 size-4 ${fieldwireSyncMutation.isPending ? 'animate-spin' : ''}`}
+                    />
                     <span className="flex min-w-0 flex-col">
                       <span className="text-sm">Fieldwire</span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {fieldwireSyncLabel}
+                        {fieldwireSyncMutation.isPending ? 'Syncing...' : fieldwireSyncLabel}
                       </span>
                     </span>
                   </DropdownMenuItem>
@@ -253,16 +258,20 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                 {canSyncQuickBooks && (
                   <DropdownMenuItem
                     className="items-start gap-2"
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setQuickBooksSyncOpen(true);
-                    }}
+                    disabled={
+                      quickBooksSyncMutation.isPending ||
+                      quickBooksSyncStatusQuery.isLoading ||
+                      quickBooksSyncStatusQuery.data?.connected === false
+                    }
+                    onSelect={() => quickBooksSyncMutation.mutate()}
                   >
-                    <RefreshCcw className="mt-0.5 size-4" />
+                    <RefreshCcw
+                      className={`mt-0.5 size-4 ${quickBooksSyncMutation.isPending ? 'animate-spin' : ''}`}
+                    />
                     <span className="flex min-w-0 flex-col">
                       <span className="text-sm">QuickBooks</span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {quickBooksSyncLabel}
+                        {quickBooksSyncMutation.isPending ? 'Syncing...' : quickBooksSyncLabel}
                       </span>
                     </span>
                   </DropdownMenuItem>
@@ -418,16 +427,8 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {canSyncFieldwire && (
-        <FieldwireSyncDialog open={fieldwireSyncOpen} onOpenChange={setFieldwireSyncOpen} />
-      )}
-      {canSyncQuickBooks && (
-        <QuickBooksReferenceSyncDialog
-          open={quickBooksSyncOpen}
-          onOpenChange={setQuickBooksSyncOpen}
-        />
-      )}
+      {/* Sync dialogs are intentionally bypassed here. Their components remain available if the
+          confirmation flow is restored; profile-menu actions now start each sync immediately. */}
     </>
   );
 }
