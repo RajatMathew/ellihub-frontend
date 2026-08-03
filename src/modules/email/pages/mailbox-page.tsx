@@ -18,10 +18,6 @@ import { EmailReadingPane } from '@/modules/email/components/email-reading-pane'
 import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { MailboxSidebar } from '@/modules/email/components/mailbox-sidebar';
-import {
-  EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
-  EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
-} from '@/modules/email/constants/email-account-storage';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   useArchiveEmailMessageMutation,
@@ -308,12 +304,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
 
   useEffect(() => {
-    if (accountSlug) {
-      window.localStorage.setItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY, accountSlug);
-    }
-  }, [accountSlug]);
-
-  useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSelectedFolder('inbox');
       setSelectedTarget(null);
@@ -355,22 +345,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     refreshMessagesMutation,
   ]);
 
-  useEffect(() => {
-    if (!accountsQuery.data) return;
-
-    const accounts = accountsQuery.data.map((account) => ({
-      id: account.id,
-      slug: getEmailAccountSlug(account),
-      email: account.email,
-      mailboxAddress: account.mailboxAddress,
-      displayName: account.displayName,
-      nickname: account.nickname,
-      provider: account.provider,
-    }));
-
-    window.localStorage.setItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
-  }, [accountsQuery.data]);
-
   const handleAgentLayoutChange = useCallback((layout: EmailAgentLayout) => {
     setAgentLayout(layout);
     if (layout.hidesEmailList) {
@@ -390,17 +364,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     const nextPath = nextAccount
       ? `/app/email/accounts/${getEmailAccountSlug(nextAccount)}`
       : '/app/email';
-
-    if (typeof window !== 'undefined') {
-      if (nextAccount) {
-        window.localStorage.setItem(
-          EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
-          getEmailAccountSlug(nextAccount)
-        );
-      } else {
-        window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
-      }
-    }
 
     setSelectedTarget(null);
     setSelectedFolder('inbox');

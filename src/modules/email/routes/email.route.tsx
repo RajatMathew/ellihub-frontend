@@ -4,6 +4,7 @@ import { NotFound } from '@/app/components/error/not-found';
 import { EmailAccountEmptyState } from '@/modules/email/components/email-account-empty-state';
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
+import { MainEmailPlaceholderPage } from '@/modules/email/pages/main-email-placeholder-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -13,6 +14,18 @@ export default function EmailRoutes() {
       <EmailAuthResultToast />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
+        <Route
+          path="procurement"
+          element={<MainEmailPlaceholderPage mailbox="procurement@ellicorp.com" />}
+        />
+        <Route
+          path="requisitions"
+          element={<MainEmailPlaceholderPage mailbox="requisitions@ellicorp.com" />}
+        />
+        <Route
+          path="contracts"
+          element={<MainEmailPlaceholderPage mailbox="contracts@ellicorp.com" />}
+        />
         <Route path="add-account" element={<EmailAccountEmptyState />} />
         <Route path="accounts" element={<EmailAccountsPage />} />
         <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
@@ -51,7 +64,7 @@ function EmailAuthResultToast() {
 }
 
 function EmailIndexRoute() {
-  return <Navigate to="add-account" replace />;
+  return <Navigate to="procurement" replace />;
 }
 
 function ConnectedMailboxRoute() {

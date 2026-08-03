@@ -13,16 +13,11 @@ import {
   type StartEmailAuthInput,
   type UpdateEmailAccountNicknameInput,
 } from '@/modules/email/api';
-import {
-  EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
-  EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
-} from '@/modules/email/constants/email-account-storage';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   isEmailReconnectRequiredError,
   shouldRetryEmailRequest,
 } from '@/modules/email/lib/email-errors';
-import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import {
   useInfiniteQuery,
   useMutation,
@@ -215,50 +210,7 @@ export const useUpdateEmailAccountNicknameMutation = () => {
 
 type DisconnectAccountSnapshot = {
   accounts: EmailAccount[] | undefined;
-  connectedAccountsStorage: string | null;
-  selectedAccountStorage: string | null;
 };
-
-function writeConnectedAccountsStorage(accounts: EmailAccount[]) {
-  if (typeof window === 'undefined') return;
-
-  window.localStorage.setItem(
-    EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
-    JSON.stringify(
-      accounts.map((account) => ({
-        id: account.id,
-        slug: getEmailAccountSlug(account),
-        email: account.email,
-        mailboxAddress: account.mailboxAddress,
-        displayName: account.displayName,
-        nickname: account.nickname,
-        provider: account.provider,
-      }))
-    )
-  );
-}
-
-function restoreAccountStorage(snapshot: DisconnectAccountSnapshot | undefined) {
-  if (!snapshot || typeof window === 'undefined') return;
-
-  if (snapshot.connectedAccountsStorage === null) {
-    window.localStorage.removeItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY);
-  } else {
-    window.localStorage.setItem(
-      EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
-      snapshot.connectedAccountsStorage
-    );
-  }
-
-  if (snapshot.selectedAccountStorage === null) {
-    window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
-  } else {
-    window.localStorage.setItem(
-      EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
-      snapshot.selectedAccountStorage
-    );
-  }
-}
 
 export const useDisconnectEmailAccountMutation = () => {
   const queryClient = useQueryClient();
@@ -270,35 +222,10 @@ export const useDisconnectEmailAccountMutation = () => {
 
       const accounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
       const nextAccounts = accounts?.filter((account) => account.id !== payload.accountId);
-      const disconnectedAccount = accounts?.find((account) => account.id === payload.accountId);
-      const disconnectedSlug = disconnectedAccount
-        ? getEmailAccountSlug(disconnectedAccount)
-        : null;
-      const snapshot = {
-        accounts,
-        connectedAccountsStorage:
-          typeof window === 'undefined'
-            ? null
-            : window.localStorage.getItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY),
-        selectedAccountStorage:
-          typeof window === 'undefined'
-            ? null
-            : window.localStorage.getItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY),
-      };
+      const snapshot = { accounts };
 
       if (nextAccounts) {
         queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), nextAccounts);
-        writeConnectedAccountsStorage(nextAccounts);
-      }
-
-      if (typeof window !== 'undefined') {
-        const selectedAccount = window.localStorage.getItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
-        if (
-          selectedAccount &&
-          (selectedAccount === payload.accountId || selectedAccount === disconnectedSlug)
-        ) {
-          window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
-        }
       }
 
       queryClient.removeQueries({ queryKey: emailKeys.folders(payload.accountId) });
@@ -311,7 +238,6 @@ export const useDisconnectEmailAccountMutation = () => {
     },
     onError: (error, _payload, snapshot) => {
       queryClient.setQueryData(emailKeys.accounts(), snapshot?.accounts);
-      restoreAccountStorage(snapshot);
       toastApiError(error, 'Failed to disconnect email account.');
     },
     onSettled: async () => {
