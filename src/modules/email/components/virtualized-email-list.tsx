@@ -12,6 +12,9 @@ interface VirtualizedEmailListProps {
   selectedEmailId?: string;
   groupByMonth?: boolean;
   onSelectEmail?: (emailId: string) => void;
+  onPrefetchEmail?: (email: EmailListItem) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
 }
 
 const ESTIMATED_EMAIL_ROW_HEIGHT = 132;
@@ -23,6 +26,9 @@ export function VirtualizedEmailList({
   selectedEmailId,
   groupByMonth = false,
   onSelectEmail,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
 }: VirtualizedEmailListProps) {
   if (groupByMonth) {
     return (
@@ -31,6 +37,9 @@ export function VirtualizedEmailList({
         scrollElement={scrollElement}
         selectedEmailId={selectedEmailId}
         onSelectEmail={onSelectEmail}
+        onPrefetchEmail={onPrefetchEmail}
+        onArchiveEmail={onArchiveEmail}
+        onDeleteEmail={onDeleteEmail}
       />
     );
   }
@@ -41,6 +50,9 @@ export function VirtualizedEmailList({
       scrollElement={scrollElement}
       selectedEmailId={selectedEmailId}
       onSelectEmail={onSelectEmail}
+      onPrefetchEmail={onPrefetchEmail}
+      onArchiveEmail={onArchiveEmail}
+      onDeleteEmail={onDeleteEmail}
     />
   );
 }
@@ -50,6 +62,9 @@ function VirtualizedFlatEmailList({
   scrollElement,
   selectedEmailId,
   onSelectEmail,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
   // TanStack Virtual owns mutable measurement state; React Compiler must not memoize this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -86,6 +101,9 @@ function VirtualizedFlatEmailList({
               email={email}
               selected={email.id === selectedEmailId}
               onSelect={() => onSelectEmail?.(email.id)}
+              onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
+              onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
+              onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
             />
           </div>
         );
@@ -99,6 +117,9 @@ function VirtualizedMonthGroups({
   scrollElement,
   selectedEmailId,
   onSelectEmail,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
   const [collapsedMonthKeys, setCollapsedMonthKeys] = useState<ReadonlySet<string>>(
     () => new Set()
@@ -143,6 +164,9 @@ function VirtualizedMonthGroups({
               collapsed={collapsedMonthKeys.has(group.key)}
               selectedEmailId={selectedEmailId}
               onSelectEmail={onSelectEmail}
+              onPrefetchEmail={onPrefetchEmail}
+              onArchiveEmail={onArchiveEmail}
+              onDeleteEmail={onDeleteEmail}
               onToggle={() =>
                 setCollapsedMonthKeys((current) => {
                   const next = new Set(current);
@@ -167,12 +191,18 @@ function MonthGroupSection({
   collapsed,
   selectedEmailId,
   onSelectEmail,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
   onToggle,
 }: {
   group: EmailMonthGroup;
   collapsed: boolean;
   selectedEmailId?: string;
   onSelectEmail?: (emailId: string) => void;
+  onPrefetchEmail?: (email: EmailListItem) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
   onToggle: () => void;
 }) {
   const emailCountLabel = `${group.emails.length} ${group.emails.length === 1 ? 'email' : 'emails'}`;
@@ -218,6 +248,9 @@ function MonthGroupSection({
                   email={email}
                   selected={email.id === selectedEmailId}
                   onSelect={() => onSelectEmail?.(email.id)}
+                  onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
+                  onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
+                  onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
                 />
               </div>
             ))}

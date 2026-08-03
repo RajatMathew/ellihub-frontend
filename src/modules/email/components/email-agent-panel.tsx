@@ -31,8 +31,10 @@ export type EmailAgentLayout = {
 };
 
 interface EmailAgentPanelProps {
+  open: boolean;
   email: EmailListItem | null;
   mailboxAddress: string;
+  onOpenChange: (open: boolean) => void;
   onLayoutChange: (layout: EmailAgentLayout) => void;
   onRequestMailboxCollapse?: () => void;
 }
@@ -50,12 +52,13 @@ const PUSH_CONTENT_WIDTH = 520;
 const HIDE_EMAIL_LIST_WIDTH = 640;
 
 export function EmailAgentPanel({
+  open,
   email,
   mailboxAddress,
+  onOpenChange,
   onLayoutChange,
   onRequestMailboxCollapse,
 }: EmailAgentPanelProps) {
-  const [open, setOpen] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -130,23 +133,7 @@ export function EmailAgentPanel({
     onRequestMailboxCollapse?.();
   };
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="absolute right-4 top-16 z-30 flex size-14 cursor-pointer items-center justify-center rounded-md border border-border bg-background p-2 shadow-md hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-        aria-label="Open Elli agent"
-        onClick={() => setOpen(true)}
-      >
-        <img
-          src="/favicon/apple-touch-icon.png"
-          alt=""
-          aria-hidden="true"
-          className="size-9 rounded-sm object-contain"
-        />
-      </button>
-    );
-  }
+  if (!open) return null;
 
   return (
     <aside
@@ -202,7 +189,7 @@ export function EmailAgentPanel({
               <PanelRightOpen aria-hidden="true" className="size-4" strokeWidth={1.8} />
             )}
           </AgentIconButton>
-          <AgentIconButton label="Close Elli agent" onClick={() => setOpen(false)}>
+          <AgentIconButton label="Close Elli agent" onClick={() => onOpenChange(false)}>
             <X aria-hidden="true" className="size-4" strokeWidth={1.8} />
           </AgentIconButton>
         </div>

@@ -1,0 +1,273 @@
+import { useState } from 'react';
+
+import { Button } from '@/app/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import { Input, InputWrapper } from '@/app/components/ui/input';
+import { cn } from '@/app/lib/utils';
+import type { ConnectedEmailFolder } from '@/modules/email/api';
+import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, X } from 'lucide-react';
+
+export type EmailListFilter = 'all' | 'unread' | 'attachments';
+
+interface EmailMailToolbarProps {
+  selectedFolder: string;
+  folders?: ConnectedEmailFolder[];
+  filter: EmailListFilter;
+  search: string;
+  isRefreshing?: boolean;
+  isCreatingFolder?: boolean;
+  composeDisabled?: boolean;
+  onSelectFolder?: (folder: string) => void;
+  onFilterChange: (filter: EmailListFilter) => void;
+  onSearchChange: (search: string) => void;
+  onRefresh?: () => void;
+  onCompose?: () => void;
+  onCreateFolder?: (name: string) => void;
+}
+
+export function EmailMailToolbar({
+  selectedFolder,
+  folders = [],
+  filter,
+  search,
+  isRefreshing = false,
+  isCreatingFolder = false,
+  composeDisabled = false,
+  onSelectFolder,
+  onFilterChange,
+  onSearchChange,
+  onRefresh,
+  onCompose,
+  onCreateFolder,
+}: EmailMailToolbarProps) {
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const inboxFolder = folders.find((folder) => folder.key === 'inbox');
+  const otherFolders = folders.filter((folder) => folder.key !== 'inbox');
+  const selectedOtherFolder = otherFolders.find(
+    (folder) => folder.id === selectedFolder || folder.key === selectedFolder
+  );
+  const isProjectEmails =
+    selectedFolder === 'inbox' || Boolean(inboxFolder && selectedFolder === inboxFolder.id);
+  const filterLabel = filter === 'all' ? 'Filters' : `Filters · ${filter}`;
+
+  const submitFolder = () => {
+    const name = folderName.trim();
+    if (!name || !onCreateFolder) return;
+    onCreateFolder(name);
+    setFolderName('');
+    setCreateFolderOpen(false);
+  };
+
+  return (
+    <>
+      <div className="shrink-0 border-b border-border bg-background px-3 py-2 sm:px-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className={cn(
+              'h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9 motion-safe:transition-colors motion-safe:duration-100',
+              !isProjectEmails && 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            )}
+            disabled={!onSelectFolder}
+            aria-pressed={isProjectEmails}
+            onClick={() => onSelectFolder?.(inboxFolder?.id ?? 'inbox')}
+          >
+            Project emails
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant={isProjectEmails ? 'outline' : 'secondary'}
+                size="sm"
+                className="h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9"
+                disabled={!onSelectFolder}
+              >
+                <span className="max-w-36 truncate">{selectedOtherFolder?.name ?? 'Other'}</span>
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto">
+              <DropdownMenuLabel>Go to</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => onSelectFolder?.(inboxFolder?.id ?? 'inbox')}>
+                <Inbox aria-hidden="true" />
+                Inbox
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Other folders</DropdownMenuLabel>
+              {otherFolders.length === 0 ? (
+                <DropdownMenuItem disabled>No other folders</DropdownMenuItem>
+              ) : (
+                otherFolders.map((folder) => (
+                  <DropdownMenuItem key={folder.id} onClick={() => onSelectFolder?.(folder.id)}>
+                    <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+                    {folder.unreadCount > 0 && (
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {folder.unreadCount}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                ))
+              )}
+              {onCreateFolder && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setCreateFolderOpen(true)}>
+                    <FolderPlus aria-hidden="true" />
+                    Create folder
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9"
+              >
+                <span className="capitalize">{filterLabel}</span>
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuLabel>Show messages</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={filter}
+                onValueChange={(value) => onFilterChange(value as EmailListFilter)}
+              >
+                <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="unread">Unread only</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="attachments">With attachments</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="min-w-52 flex-1 sm:max-w-sm">
+            <label htmlFor="email-workspace-search" className="sr-only">
+              Search mail
+            </label>
+            <InputWrapper variant="sm" className="h-10 gap-2 bg-background px-3 sm:h-9">
+              <Search aria-hidden="true" className="size-4" />
+              <Input
+                id="email-workspace-search"
+                type="text"
+                inputMode="search"
+                enterKeyHint="search"
+                value={search}
+                placeholder="Search mail…"
+                autoComplete="off"
+                onChange={(event) => onSearchChange(event.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:size-9 motion-safe:transition-colors motion-safe:duration-100"
+                  aria-label="Clear email search"
+                  onClick={() => onSearchChange('')}
+                >
+                  <X aria-hidden="true" className="size-3.5" />
+                </button>
+              )}
+            </InputWrapper>
+          </div>
+
+          {onRefresh && (
+            <Button
+              type="button"
+              variant="ghost"
+              mode="icon"
+              size="icon"
+              className="size-10 sm:size-9"
+              disabled={isRefreshing}
+              aria-busy={isRefreshing}
+              aria-label="Refresh emails"
+              onClick={onRefresh}
+            >
+              <RefreshCcw
+                aria-hidden="true"
+                className={cn('size-4', isRefreshing && 'motion-safe:animate-spin')}
+              />
+            </Button>
+          )}
+
+          <div className="ml-auto flex items-center">
+            <Button
+              type="button"
+              size="sm"
+              className="h-10 min-h-10 w-20 justify-between gap-0 pl-2 pr-3 active:translate-y-px sm:h-9 sm:min-h-9"
+              disabled={composeDisabled || !onCompose}
+              aria-keyshortcuts="Control+N Meta+N"
+              title="New email (Ctrl/Command+N)"
+              onClick={onCompose}
+            >
+              <Plus aria-hidden="true" className="size-3.5" />
+              New
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create mail folder</DialogTitle>
+            <DialogDescription>Add a folder to this connected mailbox.</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitFolder();
+            }}
+          >
+            <label htmlFor="new-email-folder" className="text-sm font-medium text-foreground">
+              Folder name
+            </label>
+            <Input
+              id="new-email-folder"
+              value={folderName}
+              className="mt-2"
+              autoComplete="off"
+              onChange={(event) => setFolderName(event.target.value)}
+            />
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setCreateFolderOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!folderName.trim() || isCreatingFolder}
+                aria-busy={isCreatingFolder}
+              >
+                {isCreatingFolder ? 'Creating…' : 'Create folder'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

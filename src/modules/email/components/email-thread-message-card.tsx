@@ -249,7 +249,7 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
       <HoverCardTrigger asChild>
         <button
           type="button"
-          className="pointer-events-auto relative z-10 mt-0.5 shrink-0 rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="pointer-events-auto relative z-10 mt-0.5 shrink-0 cursor-pointer rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={`View ${message.senderName} profile`}
         >
           <Avatar className="size-9">

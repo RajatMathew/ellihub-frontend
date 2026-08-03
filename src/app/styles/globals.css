@@ -178,6 +178,11 @@
     @apply outline-ring! rounded-xs! shadow-none! outline-2! outline-offset-3! transition-none!;
   }
 
+  button:focus-visible,
+  [role='button']:focus-visible {
+    @apply outline-none!;
+  }
+
   input[type='number'] {
     appearance: textfield;
     -moz-appearance: textfield;

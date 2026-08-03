@@ -80,31 +80,56 @@ export function EmailActionToolbar({
   };
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2" aria-label="Email actions">
-      <Button type="button" variant="outline" size="sm" disabled={!onReply} onClick={onReply}>
+    <div className="flex shrink-0 flex-wrap items-center gap-1.5" aria-label="Email actions">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="size-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+        disabled={!onReply}
+        aria-label="Reply"
+        onClick={onReply}
+      >
         <ReplyAll aria-hidden="true" className="size-3.5" />
-        Reply
+        <span className="hidden sm:inline">Reply</span>
       </Button>
-      <Button type="button" variant="secondary" size="sm" disabled={!onArchive} onClick={onArchive}>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="size-10 px-0 sm:h-9 sm:w-auto sm:px-3"
+        disabled={!onArchive}
+        aria-label={archiveActionLabel}
+        onClick={onArchive}
+      >
         <Archive aria-hidden="true" className="size-3.5" />
-        {archiveActionLabel}
+        <span className="hidden sm:inline">{archiveActionLabel}</span>
       </Button>
       {onPermanentDelete && (
         <Button
           type="button"
           variant="destructive"
           size="sm"
+          className="size-10 px-0 sm:h-9 sm:w-auto sm:px-3"
           disabled={isPermanentlyDeleting}
           aria-busy={isPermanentlyDeleting}
+          aria-label="Delete permanently"
           onClick={() => setPermanentDeleteDialogOpen(true)}
         >
           <Trash2 aria-hidden="true" className="size-3.5" />
-          Delete permanently
+          <span className="hidden sm:inline">Delete permanently</span>
         </Button>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" mode="icon" size="icon" aria-label="More actions">
+          <Button
+            type="button"
+            variant="ghost"
+            mode="icon"
+            size="icon"
+            className="size-10 sm:size-9"
+            aria-label="More actions"
+          >
             <MoreHorizontal aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>

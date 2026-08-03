@@ -1,19 +1,11 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { cn } from '@/app/lib/utils';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
-import { Inbox, RefreshCcw, Search, X } from 'lucide-react';
+import { Inbox, RefreshCcw } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: string;
@@ -27,19 +19,17 @@ interface EmailListPaneProps {
   hasNextPage?: boolean;
   isLoadingMore?: boolean;
   loadMoreError?: boolean;
-  isRefreshing?: boolean;
-  isRefreshPending?: boolean;
   groupByMonth?: boolean;
   search?: string;
   onSelectEmail?: (emailId: string) => void;
   onLoadMore?: () => void;
   onRetry?: () => void;
   onSearchChange?: (value: string) => void;
+  onPrefetchEmail?: (email: EmailListItem) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
 }
 
-const DEFAULT_WIDTH = 320;
-const MIN_WIDTH = 280;
-const MAX_WIDTH = 420;
 export function EmailListPane({
   mailbox,
   folder,
@@ -52,20 +42,19 @@ export function EmailListPane({
   hasNextPage = false,
   isLoadingMore = false,
   loadMoreError = false,
-  isRefreshing = false,
-  isRefreshPending = false,
   groupByMonth = false,
   search: controlledSearch,
   onSelectEmail,
   onLoadMore,
   onRetry,
   onSearchChange,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
 }: EmailListPaneProps) {
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
   const setSearch = onSearchChange ?? setLocalSearch;
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [isResizing, setIsResizing] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const folderLabel = folderLabelProp ?? getEmailFolderLabel(folder);
@@ -112,106 +101,13 @@ export function EmailListPane({
     return () => observer.disconnect();
   }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore, scrollContainer]);
 
-  const handleResizeStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const startX = event.clientX;
-    const startWidth = width;
-    setIsResizing(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const nextWidth = Math.min(
-        MAX_WIDTH,
-        Math.max(MIN_WIDTH, startWidth + moveEvent.clientX - startX)
-      );
-      setWidth(nextWidth);
-    };
-
-    const handlePointerUp = () => {
-      setIsResizing(false);
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-  };
-
   return (
     <section
-      className={cn(
-        'relative flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-r border-border bg-background',
-        !isResizing &&
-          'motion-safe:transition-[width] motion-safe:duration-150 motion-safe:ease-out',
-        'motion-reduce:transition-none'
-      )}
-      style={{ width }}
+      className="relative flex h-full min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background lg:w-96"
       aria-label={`${folderLabel} email list`}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-        <div className="min-w-0">
-          <h1 className="truncate font-sans text-base font-semibold normal-case tracking-normal text-foreground">
-            {folderLabel}
-          </h1>
-          <p className="whitespace-nowrap text-xs text-muted-foreground">{emailCountLabel}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {onRetry && (
-            <Button
-              type="button"
-              variant="ghost"
-              mode="icon"
-              size="icon"
-              className="size-8"
-              disabled={isLoading || isRefreshPending}
-              aria-busy={isRefreshPending}
-              aria-label={
-                isRefreshPending && !isRefreshing
-                  ? 'Email sync continues in the background'
-                  : 'Refresh emails'
-              }
-              title={
-                isRefreshPending && !isRefreshing
-                  ? 'Email sync continues in the background'
-                  : 'Refresh emails'
-              }
-              onClick={onRetry}
-            >
-              <RefreshCcw
-                aria-hidden="true"
-                className={cn('size-4', isRefreshing && 'motion-safe:animate-spin')}
-              />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="shrink-0 border-b border-border p-3">
-        <label htmlFor="email-list-search" className="sr-only">
-          Search emails
-        </label>
-        <InputWrapper variant="sm" className="h-9 gap-2 px-3">
-          <Search aria-hidden="true" className="size-4" />
-          <Input
-            id="email-list-search"
-            type="text"
-            enterKeyHint="search"
-            value={search}
-            placeholder="Search"
-            autoComplete="off"
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label="Search emails"
-          />
-          {search && (
-            <button
-              type="button"
-              className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Clear email search"
-              onClick={() => setSearch('')}
-            >
-              <X aria-hidden="true" className="size-3.5" />
-            </button>
-          )}
-        </InputWrapper>
+      <div className="sr-only" aria-live="polite">
+        {emailCountLabel}
       </div>
 
       <div ref={setScrollContainer} className="kt-scrollable-y-auto min-h-0 flex-1">
@@ -235,6 +131,9 @@ export function EmailListPane({
             selectedEmailId={selectedEmailId}
             groupByMonth={groupByMonth}
             onSelectEmail={onSelectEmail}
+            onPrefetchEmail={onPrefetchEmail}
+            onArchiveEmail={onArchiveEmail}
+            onDeleteEmail={onDeleteEmail}
           />
         )}
 
@@ -261,13 +160,6 @@ export function EmailListPane({
           </div>
         )}
       </div>
-
-      <button
-        type="button"
-        className="absolute inset-y-0 right-0 z-10 w-2 cursor-col-resize touch-none border-r border-transparent hover:border-primary/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-        aria-label="Resize email list"
-        onPointerDown={handleResizeStart}
-      />
     </section>
   );
 }
@@ -296,9 +188,9 @@ function getEmailCountLabel({
 
 function EmailListSkeleton() {
   return (
-    <div className="space-y-0" aria-label="Loading emails">
+    <div className="space-y-2 p-3" aria-label="Loading emails">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="border-b border-border px-3 py-4">
+        <div key={index} className="rounded-md border border-border bg-background px-3 py-3">
           <div className="flex gap-3">
             <Skeleton className="size-8 rounded-full" />
             <div className="min-w-0 flex-1 space-y-2">

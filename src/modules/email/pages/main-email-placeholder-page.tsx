@@ -1,36 +1,74 @@
-import { Inbox, Users } from 'lucide-react';
+import { useState } from 'react';
+
+import { EmailListPane } from '@/modules/email/components/email-list-pane';
+import {
+  EmailMailToolbar,
+  type EmailListFilter,
+} from '@/modules/email/components/email-mail-toolbar';
+import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
+import {
+  EmailWorkspaceHeader,
+  type EmailWorkspaceView,
+} from '@/modules/email/components/email-workspace-header';
+import { EmailWorkspacePlaceholder } from '@/modules/email/components/email-workspace-placeholder';
+import { useSearchParams } from 'react-router-dom';
 
 interface MainEmailPlaceholderPageProps {
   mailbox: 'procurement@ellicorp.com' | 'requisitions@ellicorp.com' | 'contracts@ellicorp.com';
 }
 
 export function MainEmailPlaceholderPage({ mailbox }: MainEmailPlaceholderPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<EmailListFilter>('all');
+  const activeView = getWorkspaceView(searchParams.get('view'));
+
+  const setActiveView = (view: EmailWorkspaceView) => {
+    const next = new URLSearchParams(searchParams);
+    if (view === 'mail') next.delete('view');
+    else next.set('view', view);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
-    <main className="flex h-[calc(100dvh-var(--header-height-mobile))] items-center justify-center overflow-auto bg-muted/20 px-4 py-10 lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)] lg:px-8">
-      <section
-        className="w-full max-w-xl rounded-xl border border-border bg-background px-6 py-10 text-center shadow-xs sm:px-10"
-        aria-labelledby="main-mailbox-heading"
-      >
-        <div className="mx-auto flex size-12 items-center justify-center rounded-lg border border-border bg-muted/40 text-primary">
-          <Inbox aria-hidden="true" className="size-5" strokeWidth={1.8} />
-        </div>
+    <div className="flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+      <EmailWorkspaceHeader
+        mailboxAddress={mailbox}
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
 
-        <div className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-          <Users aria-hidden="true" className="size-3.5" />
-          Main mailbox
+      {activeView === 'mail' ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <EmailMailToolbar
+            selectedFolder="inbox"
+            filter={filter}
+            search={search}
+            composeDisabled
+            onFilterChange={setFilter}
+            onSearchChange={setSearch}
+          />
+          <div className="flex min-h-0 flex-1 gap-3 bg-muted/30 p-3 lg:gap-4 lg:p-4">
+            <EmailListPane
+              mailbox={mailbox}
+              folder="inbox"
+              folderLabel="Project emails"
+              emails={[]}
+              search={search}
+              onSearchChange={setSearch}
+            />
+            <div className="hidden min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background lg:flex">
+              <EmailReadingPane email={null} mailboxAddress={mailbox} />
+            </div>
+          </div>
         </div>
-
-        <h1
-          id="main-mailbox-heading"
-          className="mt-4 break-words text-2xl font-semibold tracking-tight text-foreground"
-        >
-          {mailbox}
-        </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          This mailbox is shared with everyone in Elli. Its messages and actions will appear here
-          when the main inbox integration is ready.
-        </p>
-      </section>
-    </main>
+      ) : (
+        <EmailWorkspacePlaceholder view={activeView} />
+      )}
+    </div>
   );
+}
+
+function getWorkspaceView(value: string | null): EmailWorkspaceView {
+  return value === 'tasks' || value === 'calendar' ? value : 'mail';
 }
