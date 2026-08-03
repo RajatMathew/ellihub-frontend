@@ -10,6 +10,7 @@ import { MonthlyBillsColumnToggle } from '@/modules/monthly-bills/components/mon
 import { MonthlyBillsFilters } from '@/modules/monthly-bills/components/monthly-bills-filters';
 import { MonthlyBillsStats } from '@/modules/monthly-bills/components/monthly-bills-stats';
 import { MonthlyBillsTable } from '@/modules/monthly-bills/components/monthly-bills-table';
+import { PaymentMarkedDialog } from '@/modules/monthly-bills/components/payment-marked-dialog';
 import {
   getDefaultMonthlyBillColumns,
   type MonthlyBillColumnKey,
@@ -20,6 +21,10 @@ import {
   getMonthlyBillMonthNumber,
   getMonthlyBillYear,
 } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import type {
+  MarkPaymentResult,
+  MonthlyBillItem,
+} from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -41,6 +46,11 @@ export function MonthlyBillsSubcontractorPage({
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkSaveVersion, setBulkSaveVersion] = useState(0);
   const [bulkCancelVersion, setBulkCancelVersion] = useState(0);
+  const [markedPayment, setMarkedPayment] = useState<{
+    payment: MarkPaymentResult;
+    bill: MonthlyBillItem;
+    amount: number;
+  } | null>(null);
   const bulkSaveRef = useRef({
     active: false,
     version: 0,
@@ -108,8 +118,6 @@ export function MonthlyBillsSubcontractorPage({
   const showMonthlyBillsInitialLoader =
     enabled &&
     (monthlyBillsQuery.isLoading || (monthlyBillsQuery.isFetching && !hasMonthlyBillsData));
-  const isRefreshingMonthlyBills =
-    hasMonthlyBillsData && monthlyBillsQuery.isFetching && !monthlyBillsQuery.isFetchingNextPage;
   const monthlyBillsResponse = monthlyBillsPages?.[0];
   const groups = useMemo(
     () => monthlyBillsPages?.flatMap((page) => page.groups) ?? [],
@@ -222,114 +230,132 @@ export function MonthlyBillsSubcontractorPage({
   };
 
   return (
-    <div>
-      <MonthlyBillsStats
-        summary={monthlyBillsResponse?.meta.summary}
-        isLoading={showMonthlyBillsInitialLoader}
-      />
+    <>
+      <div>
+        <MonthlyBillsStats
+          summary={monthlyBillsResponse?.meta.summary}
+          isLoading={showMonthlyBillsInitialLoader}
+        />
 
-      <Card className="overflow-hidden">
-        <TableCardHeader
-          actions={
-            <div className="ml-auto flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end">
-              <div className="min-w-0 xl:w-auto xl:shrink-0">
-                <MonthlyBillsFilters
-                  searchInput={searchInput}
-                  vendorIds={vendorIds}
-                  vendorSearch={vendorSearchInput}
-                  vendorPicker={vendorPicker}
-                  tradeCategoryIds={tradeCategoryIds}
-                  tradeCategorySearch={tradeCategorySearch}
-                  tradeCategoryOptions={tradeCategoryOptions}
-                  onSearchChange={setSearchInput}
-                  onVendorChange={handleVendorChange}
-                  onVendorSearchChange={setVendorSearchInput}
-                  onTradeCategoryChange={setTradeCategoryIds}
-                  onTradeCategorySearchChange={setTradeCategorySearch}
-                  className="xl:w-auto xl:grid-cols-[18rem_12rem_12rem]"
-                />
-              </div>
+        <Card className="overflow-hidden">
+          <TableCardHeader
+            actions={
+              <div className="ml-auto flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end">
+                <div className="min-w-0 xl:w-auto xl:shrink-0">
+                  <MonthlyBillsFilters
+                    searchInput={searchInput}
+                    vendorIds={vendorIds}
+                    vendorSearch={vendorSearchInput}
+                    vendorPicker={vendorPicker}
+                    tradeCategoryIds={tradeCategoryIds}
+                    tradeCategorySearch={tradeCategorySearch}
+                    tradeCategoryOptions={tradeCategoryOptions}
+                    onSearchChange={setSearchInput}
+                    onVendorChange={handleVendorChange}
+                    onVendorSearchChange={setVendorSearchInput}
+                    onTradeCategoryChange={setTradeCategoryIds}
+                    onTradeCategorySearchChange={setTradeCategorySearch}
+                    className="xl:w-auto xl:grid-cols-[18rem_12rem_12rem]"
+                  />
+                </div>
 
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:w-auto xl:flex-nowrap">
-                <MonthlyBillsColumnToggle
-                  visibleColumns={visibleColumns}
-                  onToggleColumn={toggleColumn}
-                  triggerClassName={`${tableHeaderActionButtonClassName} data-[state=open]:!border-table-card-header-foreground/40 data-[state=open]:!bg-card-header data-[state=open]:!text-table-card-header-foreground`}
-                  contentClassName="!bg-popover"
-                />
-                {canUpdateCurrentBills &&
-                  (effectiveBulkEditMode ? (
-                    <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={effectiveBulkSaving}
-                        onClick={handleBulkSave}
-                        className="min-w-28"
-                      >
-                        {effectiveBulkSaving ? (
-                          <Loader2 className="size-4 animate-spin text-white!" />
-                        ) : (
-                          <Save className="size-4 text-white!" />
-                        )}
-                        Save All
-                      </Button>
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:w-auto xl:flex-nowrap">
+                  <MonthlyBillsColumnToggle
+                    visibleColumns={visibleColumns}
+                    onToggleColumn={toggleColumn}
+                    triggerClassName={`${tableHeaderActionButtonClassName} data-[state=open]:!border-table-card-header-foreground/40 data-[state=open]:!bg-card-header data-[state=open]:!text-table-card-header-foreground`}
+                    contentClassName="!bg-popover"
+                  />
+                  {canUpdateCurrentBills &&
+                    (effectiveBulkEditMode ? (
+                      <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={effectiveBulkSaving}
+                          onClick={handleBulkSave}
+                          className="min-w-28"
+                        >
+                          {effectiveBulkSaving ? (
+                            <Loader2 className="size-4 animate-spin text-white!" />
+                          ) : (
+                            <Save className="size-4 text-white!" />
+                          )}
+                          Save All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={effectiveBulkSaving}
+                          onClick={handleBulkCancel}
+                          className={`min-w-24 ${tableHeaderActionButtonClassName}`}
+                        >
+                          <X className="size-3.5" />
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={effectiveBulkSaving}
-                        onClick={handleBulkCancel}
-                        className={`min-w-24 ${tableHeaderActionButtonClassName}`}
+                        onClick={() => setBulkEditMode(true)}
+                        className={`w-full shrink-0 sm:w-auto ${tableHeaderActionButtonClassName}`}
                       >
-                        <X className="size-3.5" />
-                        Cancel
+                        <Pencil className="size-3.5" />
+                        Bulk Edit
                       </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBulkEditMode(true)}
-                      className={`w-full shrink-0 sm:w-auto ${tableHeaderActionButtonClassName}`}
-                    >
-                      <Pencil className="size-3.5" />
-                      Bulk Edit
-                    </Button>
-                  ))}
-                <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
+                    ))}
+                  <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
+                </div>
               </div>
-            </div>
-          }
-        />
+            }
+          />
 
-        <MonthlyBillsTable
-          groups={groups}
-          period={periodMeta}
-          selectedDate={selectedDate}
-          canUpdateBills={canUpdateCurrentBills}
-          canMarkPayment={canMarkCurrentPayment}
-          bulkEditMode={effectiveBulkEditMode}
-          bulkSaveVersion={effectiveBulkSaveVersion}
-          bulkCancelVersion={bulkCancelVersion}
-          visibleColumns={visibleColumns}
-          isLoading={showMonthlyBillsInitialLoader || isRefreshingMonthlyBills}
-          isError={monthlyBillsQuery.isError}
-          onRetry={() => void monthlyBillsQuery.refetch()}
-          onBulkSaveComplete={handleBulkSaveComplete}
+          <MonthlyBillsTable
+            groups={groups}
+            period={periodMeta}
+            selectedDate={selectedDate}
+            canUpdateBills={canUpdateCurrentBills}
+            canMarkPayment={canMarkCurrentPayment}
+            bulkEditMode={effectiveBulkEditMode}
+            bulkSaveVersion={effectiveBulkSaveVersion}
+            bulkCancelVersion={bulkCancelVersion}
+            visibleColumns={visibleColumns}
+            isLoading={showMonthlyBillsInitialLoader}
+            isError={monthlyBillsQuery.isError}
+            onRetry={() => void monthlyBillsQuery.refetch()}
+            onBulkSaveComplete={handleBulkSaveComplete}
+            onPaymentMarked={(payment, bill, amount) => {
+              setMarkedPayment({ payment, bill, amount });
+            }}
+          />
+          <MonthlyBillsLoadMore
+            ref={loadMoreRef}
+            loadedCount={groups.length}
+            totalCount={
+              pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0
+            }
+            hasNextPage={Boolean(hasNextMonthlyBillsPage)}
+            isFetchingNextPage={isFetchingNextMonthlyBillsPage}
+          />
+        </Card>
+      </div>
+      {markedPayment ? (
+        <PaymentMarkedDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) setMarkedPayment(null);
+          }}
+          payment={markedPayment.payment}
+          amount={markedPayment.amount}
+          vendorName={markedPayment.bill.purchaseOrder.vendor.name}
+          poNumber={markedPayment.bill.purchaseOrder.poNumber}
+          balance={markedPayment.payment.billState.balance}
         />
-        <MonthlyBillsLoadMore
-          ref={loadMoreRef}
-          loadedCount={groups.length}
-          totalCount={
-            pagination?.totalItems ?? monthlyBillsResponse?.meta.summary.projectCount ?? 0
-          }
-          hasNextPage={Boolean(hasNextMonthlyBillsPage)}
-          isFetchingNextPage={isFetchingNextMonthlyBillsPage}
-        />
-      </Card>
-    </div>
+      ) : null}
+    </>
   );
 }
 

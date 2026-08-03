@@ -1,9 +1,11 @@
+import { QueryClient, type InfiniteData } from '@tanstack/react-query';
 import { describe, expect, test } from 'bun:test';
 
-import { QueryClient, type InfiniteData } from '@tanstack/react-query';
-
 import { monthlyBillsKeys } from '../src/modules/monthly-bills/constants/monthly-bills.keys';
-import { patchPlannedPaymentsInMonthlyBillsCache } from '../src/modules/monthly-bills/lib/monthly-bills-cache';
+import {
+  patchMarkedPaymentInMonthlyBillsCache,
+  patchPlannedPaymentsInMonthlyBillsCache,
+} from '../src/modules/monthly-bills/lib/monthly-bills-cache';
 import type { MonthlyBillsResponse } from '../src/modules/monthly-bills/schemas/monthly-bills.schema';
 
 const listParams = { month: 7, year: 2026, page: 1, size: 8 };
@@ -118,5 +120,93 @@ describe('monthly bills planned-payment cache patch', () => {
     expect(queryClient.getQueryData(monthlyBillsKeys.recurringList({ month: 7, year: 2026 }))).toBe(
       recurringData
     );
+  });
+
+  test('immediately applies a marked payment and remains idempotent', () => {
+    const queryClient = new QueryClient();
+    const monthlyData = createMonthlyBillsData();
+    const bill = monthlyData.pages[0]?.groups[0]?.bills[0];
+    const summary = monthlyData.pages[0]?.meta.summary;
+    if (!bill || !summary) throw new Error('Monthly bill test fixture is incomplete.');
+
+    bill.plannedPayment = { amount: 100, isReady: true };
+    summary.readyCount = 1;
+    const queryKey = monthlyBillsKeys.list(listParams);
+    queryClient.setQueryData(queryKey, monthlyData);
+
+    const payment = {
+      id: 'payment-1',
+      purchaseOrderId: 'po-1',
+      amount: 100,
+      qbVendorId: 'qb-vendor-1',
+      bankAccountId: 'qb-bank-1',
+      txnDate: '2026-07-30',
+      checkNumber: '1001',
+      transactionId: 'qb-payment-1',
+      transactionUrl: 'https://quickbooks.example/check/1',
+      billState: {
+        purchaseOrderId: 'po-1',
+        totalPaid: 100,
+        balance: 400,
+        fullyPaid: false,
+        plannedPayment: { amount: 0, isReady: false },
+      },
+    };
+
+    patchMarkedPaymentInMonthlyBillsCache(queryClient, payment, { month: 7, year: 2026 });
+    patchMarkedPaymentInMonthlyBillsCache(queryClient, payment, { month: 7, year: 2026 });
+
+    const updated = queryClient.getQueryData<InfiniteData<MonthlyBillsResponse>>(queryKey);
+    const updatedBill = updated?.pages[0]?.groups[0]?.bills[0];
+    const updatedSummary = updated?.pages[0]?.meta.summary;
+
+    expect(updatedBill).toMatchObject({
+      totalPaid: 100,
+      balance: 400,
+      plannedPayment: { amount: 0, isReady: false },
+    });
+    expect(updatedBill?.payments).toHaveLength(1);
+    expect(updatedBill?.payments[0]).toMatchObject({
+      id: 'payment-1',
+      amount: 100,
+      checkNumber: '1001',
+    });
+    expect(updatedSummary).toMatchObject({
+      balance: 400,
+      planned: 0,
+      paidThisMonth: 100,
+      readyCount: 0,
+    });
+  });
+
+  test('does not patch a cached list for a different period', () => {
+    const queryClient = new QueryClient();
+    const augustData = createMonthlyBillsData();
+    augustData.pages[0]!.meta.period.month = 8;
+    const augustKey = monthlyBillsKeys.list({ month: 8, year: 2026, page: 1, size: 8 });
+    queryClient.setQueryData(augustKey, augustData);
+
+    patchMarkedPaymentInMonthlyBillsCache(
+      queryClient,
+      {
+        id: 'payment-1',
+        purchaseOrderId: 'po-1',
+        amount: 100,
+        qbVendorId: 'qb-vendor-1',
+        bankAccountId: 'qb-bank-1',
+        transactionId: 'qb-payment-1',
+        transactionUrl: 'https://quickbooks.example/check/1',
+        billState: {
+          purchaseOrderId: 'po-1',
+          totalPaid: 100,
+          balance: 400,
+          fullyPaid: false,
+          plannedPayment: { amount: 0, isReady: false },
+        },
+      },
+      { month: 7, year: 2026 }
+    );
+
+    expect(queryClient.getQueryData(augustKey)).toBe(augustData);
   });
 });

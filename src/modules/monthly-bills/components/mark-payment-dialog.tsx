@@ -153,7 +153,7 @@ export function MarkPaymentDialog({
   );
   const vendorMatch = suggestedVendorMatchQuery.data ?? loadedVendorMatch;
 
-  const markPayment = useMarkPaymentMutation();
+  const markPayment = useMarkPaymentMutation({ onSuccess: onPaymentMarked });
   const unmapVendor = useUnmapQuickBooksVendorMutation();
 
   const form = useForm<MarkPaymentFormData>({
@@ -215,16 +215,13 @@ export function MarkPaymentDialog({
   const canSubmit = isReady && amount > 0 && !markPayment.isPending;
 
   const handleSubmit = (values: MarkPaymentFormData) => {
-    markPayment.mutate(
-      {
-        purchaseOrderId: bill.purchaseOrder.id,
-        month: period.month,
-        year: period.year,
-        ...values,
-        saveVendorMapping: currentMapping ? false : values.saveVendorMapping,
-      },
-      { onSuccess: onPaymentMarked }
-    );
+    markPayment.mutate({
+      purchaseOrderId: bill.purchaseOrder.id,
+      month: period.month,
+      year: period.year,
+      ...values,
+      saveVendorMapping: currentMapping ? false : values.saveVendorMapping,
+    });
   };
 
   const handleCreatedVendor = (

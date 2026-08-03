@@ -4,6 +4,8 @@ import { MonthlyBillsTableSkeleton } from '@/modules/monthly-bills/components/mo
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
 import { getProjectCardKey } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import type {
+  MarkPaymentResult,
+  MonthlyBillItem,
   MonthlyBillProjectGroup,
   MonthlyBillsPeriodMeta,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
@@ -23,6 +25,7 @@ interface MonthlyBillsTableProps {
   isError: boolean;
   onRetry: () => void;
   onBulkSaveComplete: (result: { version: number; saved: number; failed: number }) => void;
+  onPaymentMarked: (payment: MarkPaymentResult, bill: MonthlyBillItem, amount: number) => void;
 }
 
 export function MonthlyBillsTable({
@@ -39,6 +42,7 @@ export function MonthlyBillsTable({
   isError,
   onRetry,
   onBulkSaveComplete,
+  onPaymentMarked,
 }: MonthlyBillsTableProps) {
   if (isError) {
     return (
@@ -78,6 +82,7 @@ export function MonthlyBillsTable({
           bulkCancelVersion={bulkCancelVersion}
           visibleColumns={visibleColumns}
           onBulkSaveComplete={onBulkSaveComplete}
+          onPaymentMarked={onPaymentMarked}
         />
       ))}
     </div>

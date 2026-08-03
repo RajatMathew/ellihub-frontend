@@ -4,10 +4,14 @@ import {
   type MonthlyBillsQueryParams,
 } from '@/modules/monthly-bills/api/monthly-bills.api';
 import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
-import { patchPlannedPaymentsInMonthlyBillsCache } from '@/modules/monthly-bills/lib/monthly-bills-cache';
+import {
+  patchMarkedPaymentInMonthlyBillsCache,
+  patchPlannedPaymentsInMonthlyBillsCache,
+} from '@/modules/monthly-bills/lib/monthly-bills-cache';
 import type {
   BulkUpsertPlannedPaymentsPayload,
   MarkPaymentPayload,
+  MarkPaymentResult,
   UpsertPlannedPaymentPayload,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -44,9 +48,23 @@ export const useBulkUpsertPlannedPaymentsMutation = () => {
   });
 };
 
-export const useMarkPaymentMutation = () => {
+interface MarkPaymentMutationOptions {
+  onSuccess?: (payment: MarkPaymentResult) => void;
+}
+
+export const useMarkPaymentMutation = (options: MarkPaymentMutationOptions = {}) => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (payload: MarkPaymentPayload) => monthlyBillsApi.markPayment(payload),
+    onSuccess: (payment, variables) => {
+      options.onSuccess?.(payment);
+      patchMarkedPaymentInMonthlyBillsCache(queryClient, payment, variables);
+      void queryClient.invalidateQueries({
+        queryKey: monthlyBillsKeys.lists(),
+        refetchType: 'active',
+      });
+    },
     onError: (error) => toastApiError(error, 'Failed to record payment.'),
   });
 };

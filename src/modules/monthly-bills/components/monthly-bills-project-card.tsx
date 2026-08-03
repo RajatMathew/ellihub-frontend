@@ -1,24 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Table, TableBody, TableFooter } from '@/app/components/ui/table';
-import { formatCurrency } from '@/app/lib/helpers';
 import { useIsMobile } from '@/app/hooks/use-mobile';
+import { formatCurrency } from '@/app/lib/helpers';
 import { MarkPaymentDialog } from '@/modules/monthly-bills/components/mark-payment-dialog';
 import { MonthlyBillMobileCard } from '@/modules/monthly-bills/components/monthly-bill-mobile-card';
 import { MonthlyBillRow } from '@/modules/monthly-bills/components/monthly-bills-row';
 import { MonthlyBillsTableHeader } from '@/modules/monthly-bills/components/monthly-bills-table-header';
 import { MonthlyBillsTotalsRow } from '@/modules/monthly-bills/components/monthly-bills-totals-row';
-import { PaymentMarkedDialog } from '@/modules/monthly-bills/components/payment-marked-dialog';
 import type { MonthlyBillColumnKey } from '@/modules/monthly-bills/constants/monthly-bills-columns';
-import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
 import {
   useBulkUpsertPlannedPaymentsMutation,
   useUpsertPlannedPaymentMutation,
 } from '@/modules/monthly-bills/hooks/monthly-bills.hooks';
-import {
-  getProjectTitle,
-  sumPayments,
-} from '@/modules/monthly-bills/lib/monthly-bills-bill';
+import { getProjectTitle, sumPayments } from '@/modules/monthly-bills/lib/monthly-bills-bill';
 import {
   formatMonthlyBillMonthName,
   getMonthlyBillMonthNumber,
@@ -31,7 +26,6 @@ import type {
   MonthlyBillProjectGroup,
   MonthlyBillsPeriodMeta,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 interface MonthlyBillsProjectCardProps {
@@ -45,6 +39,7 @@ interface MonthlyBillsProjectCardProps {
   bulkCancelVersion: number;
   visibleColumns: Set<MonthlyBillColumnKey>;
   onBulkSaveComplete: (result: { version: number; saved: number; failed: number }) => void;
+  onPaymentMarked: (payment: MarkPaymentResult, bill: MonthlyBillItem, amount: number) => void;
 }
 
 export function MonthlyBillsProjectCard({
@@ -58,23 +53,18 @@ export function MonthlyBillsProjectCard({
   bulkCancelVersion,
   visibleColumns,
   onBulkSaveComplete,
+  onPaymentMarked,
 }: MonthlyBillsProjectCardProps) {
   const monthName = formatMonthlyBillMonthName(selectedDate);
   const month = period?.month ?? getMonthlyBillMonthNumber(selectedDate);
   const year = period?.year ?? getMonthlyBillYear(selectedDate);
   const isMobile = useIsMobile();
 
-  const queryClient = useQueryClient();
   const upsertPlannedPayment = useUpsertPlannedPaymentMutation();
   const bulkUpsertPlannedPayments = useBulkUpsertPlannedPaymentsMutation();
   const handledBulkSaveVersionRef = useRef(bulkSaveVersion);
 
   const [paymentBill, setPaymentBill] = useState<MonthlyBillItem | null>(null);
-  const [markedPayment, setMarkedPayment] = useState<{
-    payment: MarkPaymentResult;
-    bill: MonthlyBillItem;
-    amount: number;
-  } | null>(null);
   const [savedToPayById, setSavedToPayById] = useState<Record<string, number>>(() =>
     Object.fromEntries(
       group.bills.map((bill) => [bill.purchaseOrder.id, bill.plannedPayment?.amount ?? 0])
@@ -99,9 +89,7 @@ export function MonthlyBillsProjectCard({
 
   const serverTotals = useMemo(
     () => ({
-      paidThisMonth: sumMonthlyBillMoney(
-        group.bills.map((bill) => sumPayments(bill.payments))
-      ),
+      paidThisMonth: sumMonthlyBillMoney(group.bills.map((bill) => sumPayments(bill.payments))),
       original: sumMonthlyBillMoney(group.bills.map((bill) => bill.original)),
       totalPaid: sumMonthlyBillMoney(group.bills.map((bill) => bill.totalPaid)),
       balance: sumMonthlyBillMoney(group.bills.map((bill) => bill.balance)),
@@ -391,9 +379,7 @@ export function MonthlyBillsProjectCard({
                 hasAmountChanges={amountChanged}
                 onToPayChange={(value) => handleToPayChange(id, value)}
                 onReadyChange={(checked) => void handleReadyChange(bill, checked)}
-                onAmountEdit={() =>
-                  setAmountEditingById((current) => ({ ...current, [id]: true }))
-                }
+                onAmountEdit={() => setAmountEditingById((current) => ({ ...current, [id]: true }))}
                 onAmountSave={() => void handleSaveAmount(bill)}
                 onMarkPayment={() => setPaymentBill(bill)}
               />
@@ -462,11 +448,7 @@ export function MonthlyBillsProjectCard({
             if (!next) setPaymentBill(null);
           }}
           onPaymentMarked={(payment) => {
-            setMarkedPayment({
-              payment,
-              bill: paymentBill,
-              amount: getSavedAmount(paymentBill),
-            });
+            onPaymentMarked(payment, paymentBill, getSavedAmount(paymentBill));
             setPaymentBill(null);
           }}
           bill={paymentBill}
@@ -475,23 +457,6 @@ export function MonthlyBillsProjectCard({
             getSavedAmount(paymentBill) > 0 && (readyById[paymentBill.purchaseOrder.id] ?? false)
           }
           period={period}
-        />
-      )}
-
-      {markedPayment && (
-        <PaymentMarkedDialog
-          open={Boolean(markedPayment)}
-          onOpenChange={(next) => {
-            if (!next) {
-              setMarkedPayment(null);
-              void queryClient.invalidateQueries({ queryKey: monthlyBillsKeys.all });
-            }
-          }}
-          payment={markedPayment.payment}
-          amount={markedPayment.amount}
-          vendorName={markedPayment.bill.purchaseOrder.vendor.name}
-          poNumber={markedPayment.bill.purchaseOrder.poNumber}
-          balance={markedPayment.bill.balance}
         />
       )}
     </section>

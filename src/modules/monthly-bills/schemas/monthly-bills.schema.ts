@@ -179,6 +179,13 @@ export const markPaymentResultSchema = z.object({
   checkNumber: z.string().nullable().optional(),
   transactionId: z.string(),
   transactionUrl: z.string(),
+  billState: z.object({
+    purchaseOrderId: z.string(),
+    totalPaid: z.coerce.number(),
+    balance: z.coerce.number(),
+    fullyPaid: z.boolean(),
+    plannedPayment: monthlyBillPlannedPaymentSchema,
+  }),
 });
 
 export type MarkPaymentResult = z.infer<typeof markPaymentResultSchema>;
