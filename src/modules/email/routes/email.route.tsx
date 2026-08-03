@@ -1,12 +1,23 @@
 import { useEffect, useRef } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
-import { EmailAccountEmptyState } from '@/modules/email/components/email-account-empty-state';
+import type { SharedMailboxKey } from '@/modules/email/api';
+import {
+  EmailAccountEmptyState,
+  EmailAccountsErrorState,
+  EmailAccountsLoadingState,
+} from '@/modules/email/components/email-account-empty-state';
+import { useEmailAccountsQuery } from '@/modules/email/hooks';
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
-import { MainEmailPlaceholderPage } from '@/modules/email/pages/main-email-placeholder-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+
+const SHARED_MAILBOX_LABELS: Record<SharedMailboxKey, string> = {
+  procurement: 'Procurement',
+  requisitions: 'Requisitions',
+  contracts: 'Contracts',
+};
 
 export default function EmailRoutes() {
   return (
@@ -14,19 +25,13 @@ export default function EmailRoutes() {
       <EmailAuthResultToast />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
-        <Route
-          path="procurement"
-          element={<MainEmailPlaceholderPage mailbox="procurement@ellicorp.com" />}
-        />
+        <Route path="procurement" element={<SharedMailboxRoute sharedMailboxKey="procurement" />} />
         <Route
           path="requisitions"
-          element={<MainEmailPlaceholderPage mailbox="requisitions@ellicorp.com" />}
+          element={<SharedMailboxRoute sharedMailboxKey="requisitions" />}
         />
-        <Route
-          path="contracts"
-          element={<MainEmailPlaceholderPage mailbox="contracts@ellicorp.com" />}
-        />
-        <Route path="add-account" element={<EmailAccountEmptyState />} />
+        <Route path="contracts" element={<SharedMailboxRoute sharedMailboxKey="contracts" />} />
+        <Route path="add-account" element={<EmailAddAccountRoute />} />
         <Route path="accounts" element={<EmailAccountsPage />} />
         <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
         <Route path="*" element={<NotFound />} />
@@ -65,6 +70,40 @@ function EmailAuthResultToast() {
 
 function EmailIndexRoute() {
   return <Navigate to="procurement" replace />;
+}
+
+function EmailAddAccountRoute() {
+  const accountsQuery = useEmailAccountsQuery();
+
+  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
+  if ((accountsQuery.data?.filter((account) => !account.sharedMailboxKey).length ?? 0) > 0) {
+    return <Navigate to="/app/email/accounts" replace />;
+  }
+
+  return <EmailAccountEmptyState />;
+}
+
+function SharedMailboxRoute({ sharedMailboxKey }: { sharedMailboxKey: SharedMailboxKey }) {
+  const accountsQuery = useEmailAccountsQuery();
+  const account = accountsQuery.data?.find(
+    (candidate) => candidate.sharedMailboxKey === sharedMailboxKey
+  );
+  const label = SHARED_MAILBOX_LABELS[sharedMailboxKey];
+
+  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
+  if (accountsQuery.isError) {
+    return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
+  }
+
+  if (account) return <MailboxPage accountSlug={account.id} />;
+
+  return (
+    <EmailAccountEmptyState
+      sharedMailboxKey={sharedMailboxKey}
+      title={`Connect ${label}`}
+      description={`Connect the ${label.toLowerCase()} mailbox for the team. After connecting, choose the short name that appears in the shared mailbox list.`}
+    />
+  );
 }
 
 function ConnectedMailboxRoute() {

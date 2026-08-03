@@ -8,25 +8,21 @@ import {
   EmailAccountsErrorState,
   EmailAccountsLoadingState,
 } from '@/modules/email/components/email-account-empty-state';
-import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
 import { EMAIL_PROVIDER_DETAILS } from '@/modules/email/constants/email-providers';
 import {
   useDisconnectEmailAccountMutation,
   useEmailAccountsQuery,
   useStartEmailAuthMutation,
-  useUpdateEmailAccountNicknameMutation,
 } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
-import { MailCheck, MailOpen, Pencil, Plus, RefreshCw, Unplug } from 'lucide-react';
+import { MailCheck, MailOpen, RefreshCw, Unplug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function EmailAccountsPage() {
   const accountsQuery = useEmailAccountsQuery();
   const startAuthMutation = useStartEmailAuthMutation();
-  const updateNicknameMutation = useUpdateEmailAccountNicknameMutation();
   const disconnectMutation = useDisconnectEmailAccountMutation();
-  const [editingAccount, setEditingAccount] = useState<EmailAccount | null>(null);
   const [disconnectingAccount, setDisconnectingAccount] = useState<EmailAccount | null>(null);
 
   if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
@@ -34,7 +30,7 @@ export function EmailAccountsPage() {
     return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
   }
 
-  const accounts = accountsQuery.data ?? [];
+  const accounts = (accountsQuery.data ?? []).filter((account) => !account.sharedMailboxKey);
   if (accounts.length === 0) return <EmailAccountEmptyState />;
 
   return (
@@ -58,12 +54,6 @@ export function EmailAccountsPage() {
               Open a mailbox, update its Elli email name, or manage its connection. These accounts
               are visible only to you.
             </p>
-            <Button asChild className="mt-6 min-h-10">
-              <Link to="/app/email/add-account">
-                <Plus aria-hidden="true" className="size-4" />
-                Add personal account
-              </Link>
-            </Button>
           </header>
 
           <div className="mt-8 overflow-hidden rounded-xl border border-border bg-background shadow-xs">
@@ -75,7 +65,6 @@ export function EmailAccountsPage() {
                   startAuthMutation.isPending &&
                   startAuthMutation.variables?.loginHint === account.mailboxAddress
                 }
-                onRename={() => setEditingAccount(account)}
                 onReconnect={() =>
                   startAuthMutation.mutate({
                     provider: account.provider,
@@ -92,25 +81,6 @@ export function EmailAccountsPage() {
           </p>
         </section>
       </main>
-
-      {editingAccount && (
-        <EmailAccountNicknameDialog
-          open
-          required={false}
-          connectedAddress={editingAccount.mailboxAddress}
-          defaultNickname={editingAccount.nickname}
-          isSaving={updateNicknameMutation.isPending}
-          onOpenChange={(open) => {
-            if (!open) setEditingAccount(null);
-          }}
-          onSave={(nickname) =>
-            updateNicknameMutation.mutate(
-              { accountId: editingAccount.id, nickname },
-              { onSuccess: () => setEditingAccount(null) }
-            )
-          }
-        />
-      )}
 
       <ConfirmDialog
         open={Boolean(disconnectingAccount)}
@@ -142,13 +112,11 @@ export function EmailAccountsPage() {
 function AccountRow({
   account,
   isReconnecting,
-  onRename,
   onReconnect,
   onDisconnect,
 }: {
   account: EmailAccount;
   isReconnecting: boolean;
-  onRename: () => void;
   onReconnect: () => void;
   onDisconnect: () => void;
 }) {
@@ -191,10 +159,6 @@ function AccountRow({
             <MailOpen aria-hidden="true" className="size-4" />
             Open inbox
           </Link>
-        </Button>
-        <Button type="button" variant="ghost" size="sm" className="min-h-10" onClick={onRename}>
-          <Pencil aria-hidden="true" className="size-4" />
-          Rename
         </Button>
         {needsReconnect && (
           <Button

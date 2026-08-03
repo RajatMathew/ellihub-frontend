@@ -24,6 +24,7 @@ interface EmailAccountNicknameDialogProps {
   required: boolean;
   connectedAddress: string;
   defaultNickname: string;
+  mode?: 'alias' | 'displayName';
   isSaving: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (nickname: string) => void;
@@ -34,6 +35,7 @@ export function EmailAccountNicknameDialog({
   required,
   connectedAddress,
   defaultNickname,
+  mode = 'alias',
   isSaving,
   onOpenChange,
   onSave,
@@ -45,14 +47,24 @@ export function EmailAccountNicknameDialog({
     formState: { errors },
   } = useForm<EmailAccountNicknameInput>({
     resolver: zodResolver(emailAccountNicknameSchema),
-    defaultValues: { nickname: getEmailAccountNicknameLocalPart(defaultNickname) },
+    defaultValues: {
+      nickname:
+        mode === 'displayName'
+          ? defaultNickname
+          : getEmailAccountNicknameLocalPart(defaultNickname),
+    },
   });
 
   useEffect(() => {
     if (open) {
-      reset({ nickname: getEmailAccountNicknameLocalPart(defaultNickname) });
+      reset({
+        nickname:
+          mode === 'displayName'
+            ? defaultNickname
+            : getEmailAccountNicknameLocalPart(defaultNickname),
+      });
     }
-  }, [defaultNickname, open, reset]);
+  }, [defaultNickname, mode, open, reset]);
 
   const closeDialog = () => {
     if (!required && !isSaving) onOpenChange(false);
@@ -74,9 +86,11 @@ export function EmailAccountNicknameDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Name your Elli email</DialogTitle>
+          <DialogTitle>
+            {mode === 'displayName' ? 'Name this mailbox' : 'Name your Elli email'}
+          </DialogTitle>
           <DialogDescription>
-            {connectedAddress} is connected. Choose the address you want to see inside Elli.
+            {connectedAddress} is connected. Choose the name you want to see inside Elli.
           </DialogDescription>
         </DialogHeader>
 
@@ -85,13 +99,15 @@ export function EmailAccountNicknameDialog({
           onSubmit={(event) => void handleSubmit((values) => onSave(values.nickname.trim()))(event)}
         >
           <Field data-invalid={Boolean(errors.nickname)}>
-            <FieldLabel htmlFor="email-account-nickname">Elli email address</FieldLabel>
+            <FieldLabel htmlFor="email-account-nickname">
+              {mode === 'displayName' ? 'Mailbox name' : 'Elli email address'}
+            </FieldLabel>
             <InputGroup>
               <Input
                 id="email-account-nickname"
                 type="text"
                 autoComplete="off"
-                placeholder="aaryan"
+                placeholder={mode === 'displayName' ? 'Procurement' : 'aaryan'}
                 spellCheck={false}
                 autoFocus
                 disabled={isSaving}
@@ -101,10 +117,14 @@ export function EmailAccountNicknameDialog({
                 }
                 {...register('nickname')}
               />
-              <InputAddon className="select-none font-medium">@ellicorp.com</InputAddon>
+              {mode === 'alias' && (
+                <InputAddon className="select-none font-medium">@ellicorp.com</InputAddon>
+              )}
             </InputGroup>
             <FieldDescription id="email-account-nickname-help">
-              This is only your Elli label. Your connected email address stays unchanged.
+              {mode === 'displayName'
+                ? 'This display name is shown to everyone in the shared mailbox list.'
+                : 'This is only your Elli label. Your connected email address stays unchanged.'}
             </FieldDescription>
             <FieldError id="email-account-nickname-error" errors={[errors.nickname]} />
           </Field>

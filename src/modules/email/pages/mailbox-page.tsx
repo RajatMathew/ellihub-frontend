@@ -126,6 +126,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       ) ?? null)
     : null;
   const isConnected = Boolean(connectedAccount);
+  const isSharedMailbox = Boolean(connectedAccount?.sharedMailboxKey);
   const hasPersistedReconnectState =
     connectedAccount?.status.toUpperCase() === 'ERROR' ||
     connectedAccount?.freshness?.errorCode === 'EMAIL_RECONNECT_REQUIRED';
@@ -533,6 +534,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       required={nicknameSetupRequired}
       connectedAddress={connectedAccount.mailboxAddress ?? connectedAccount.email}
       defaultNickname={connectedAccount.nickname}
+      mode={isSharedMailbox ? 'displayName' : 'alias'}
       isSaving={updateAccountNicknameMutation.isPending}
       onOpenChange={(open) => {
         if (!open && !nicknameSetupRequired) closeNicknameDialog();
@@ -568,14 +570,19 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   if (isReconnectRequired && connectedAccount) {
     return (
       <>
-        <div className="flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+        <div className="flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-muted lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
           <EmailWorkspaceHeader
             mailboxAddress={address}
+            mailboxLabel={
+              isSharedMailbox && connectedAccount.displayName
+                ? connectedAccount.displayName
+                : undefined
+            }
             activeView={workspaceView}
             isDisconnectingAccount={disconnectAccountMutation.isPending}
             onViewChange={setWorkspaceView}
-            onEditNickname={openNicknameDialog}
-            onDisconnectAccount={() => setDisconnectConfirmOpen(true)}
+            onEditNickname={isSharedMailbox ? openNicknameDialog : undefined}
+            onDisconnectAccount={isSharedMailbox ? undefined : () => setDisconnectConfirmOpen(true)}
           />
           {workspaceView === 'mail' ? (
             <EmailReconnectRequiredState
@@ -591,6 +598,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 startAuthMutation.mutate({
                   provider: connectedAccount.provider,
                   loginHint: connectedAccount.mailboxAddress ?? connectedAccount.email,
+                  sharedMailboxKey: connectedAccount.sharedMailboxKey ?? undefined,
                 })
               }
             />
@@ -605,14 +613,21 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-background lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
+    <div className="relative flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-muted lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
       <EmailWorkspaceHeader
         mailboxAddress={address}
+        mailboxLabel={
+          isSharedMailbox && connectedAccount?.displayName
+            ? connectedAccount.displayName
+            : undefined
+        }
         activeView={workspaceView}
         isDisconnectingAccount={disconnectAccountMutation.isPending}
         onViewChange={setWorkspaceView}
-        onEditNickname={connectedAccount ? openNicknameDialog : undefined}
-        onDisconnectAccount={connectedAccount ? () => setDisconnectConfirmOpen(true) : undefined}
+        onEditNickname={isSharedMailbox ? openNicknameDialog : undefined}
+        onDisconnectAccount={
+          connectedAccount && !isSharedMailbox ? () => setDisconnectConfirmOpen(true) : undefined
+        }
       />
 
       {workspaceView === 'mail' ? (
@@ -657,7 +672,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             }
           />
 
-          <div className="flex min-h-0 flex-1 gap-3 bg-muted/30 p-3 lg:gap-4 lg:p-4">
+          <div className="flex min-h-0 flex-1 gap-3 bg-muted p-3 lg:gap-4 lg:p-4">
             {showEmailList && (
               <div
                 className={cn(
