@@ -28,10 +28,11 @@ export function EmailAccountEmptyState() {
           id="connect-email-heading"
           className="text-2xl font-semibold tracking-tight text-foreground"
         >
-          Add an email account
+          Add a personal email account
         </h1>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          Connect Gmail, Outlook, or Zoho Mail to read, reply, and manage your email from Elli.
+          Connect Gmail, Outlook, or Zoho Mail to read, reply, and manage your email from Elli. Only
+          you can see and use accounts you connect.
         </p>
 
         <div className="mt-7 w-full max-w-sm space-y-3">
@@ -58,7 +59,7 @@ export function EmailAccountEmptyState() {
 
         <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
           <LockKeyhole className="size-3.5" aria-hidden="true" />
-          You will continue securely with your email provider.
+          Private to your Elli account. You will continue securely with your email provider.
         </p>
       </section>
     </main>
@@ -69,7 +70,7 @@ export function EmailAccountsLoadingState() {
   return (
     <main
       className="flex h-[calc(100dvh-var(--header-height-mobile))] items-center justify-center bg-background p-6 lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]"
-      aria-label="Loading connected email accounts"
+      aria-label="Loading personal email accounts"
     >
       <div className="flex w-full max-w-md flex-col items-center">
         <Skeleton className="size-14" />

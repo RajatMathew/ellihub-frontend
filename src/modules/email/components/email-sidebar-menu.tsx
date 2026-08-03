@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { SidebarGroupMenu } from '@/app/components/sidebar/sidebar-menu-group';
 import type { MenuConfig } from '@/app/config/types';
@@ -10,7 +10,6 @@ import {
 } from '@/modules/email/constants/email-account-storage';
 import { useEmailAccountsQuery } from '@/modules/email/hooks';
 import { getEmailAccountNicknameLocalPart } from '@/modules/email/schemas/email-account.schema';
-import { dedupeEmailAccounts } from '@/modules/email/utils/email-account-identity';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { Mail, Plus } from 'lucide-react';
 
@@ -20,22 +19,47 @@ type StoredEmailAccount = Pick<
 >;
 
 export function EmailSidebarMenu() {
-  const [storedAccounts] = useState<StoredEmailAccount[]>(readStoredAccounts);
   const accountsQuery = useEmailAccountsQuery();
-  const connectedAccounts = accountsQuery.data ?? storedAccounts;
+  const connectedAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
 
   useEffect(() => {
-    if (!accountsQuery.data) return;
+    // Personal account identities must not survive a user switch in shared browser storage.
+    window.localStorage.removeItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY);
+    window.localStorage.removeItem(EMAIL_SELECTED_ACCOUNT_STORAGE_KEY);
+  }, []);
 
-    const accounts = accountsQuery.data.map(toStoredAccount);
-    writeStoredAccounts(accounts);
-  }, [accountsQuery.data]);
-
-  const connectedMenu = useMemo<MenuConfig>(() => {
+  const mainMenu = useMemo<MenuConfig>(() => {
     return [
       {
         type: 'group-collapsed',
-        title: 'Emails',
+        title: 'Main',
+        collapse: false,
+        children: [
+          {
+            title: 'procurement@ellicorp.com',
+            path: '../email/procurement',
+            icon: Mail,
+          },
+          {
+            title: 'requisitions@ellicorp.com',
+            path: '../email/requisitions',
+            icon: Mail,
+          },
+          {
+            title: 'contracts@ellicorp.com',
+            path: '../email/contracts',
+            icon: Mail,
+          },
+        ],
+      },
+    ];
+  }, []);
+
+  const personalMenu = useMemo<MenuConfig>(() => {
+    return [
+      {
+        type: 'group-collapsed',
+        title: 'Personal accounts',
         collapse: false,
         children: [
           ...connectedAccounts.map((account) => {
@@ -48,7 +72,7 @@ export function EmailSidebarMenu() {
             };
           }),
           {
-            title: 'Add account',
+            title: 'Add personal account',
             path: '../email/add-account',
             icon: Plus,
           },
@@ -58,9 +82,16 @@ export function EmailSidebarMenu() {
   }, [connectedAccounts]);
 
   return (
-    <div onClickCapture={rememberSelectedAccountFromClick}>
-      <SidebarGroupMenu menu={connectedMenu} name="emails" />
-    </div>
+    <section aria-labelledby="email-sidebar-heading">
+      <h2
+        id="email-sidebar-heading"
+        className="px-5 pb-1 text-[11px] font-semibold uppercase text-sidebar-foreground"
+      >
+        Email
+      </h2>
+      <SidebarGroupMenu menu={mainMenu} name="email-main" />
+      <SidebarGroupMenu menu={personalMenu} name="email-personal" />
+    </section>
   );
 }
 
@@ -73,49 +104,4 @@ function getSidebarAccountName(account: StoredEmailAccount) {
     'email';
 
   return `${localPart}@ellicorp.com`;
-}
-
-function toStoredAccount(account: EmailAccount): StoredEmailAccount {
-  return {
-    id: account.id,
-    slug: getEmailAccountSlug(account),
-    email: account.email,
-    mailboxAddress: account.mailboxAddress,
-    displayName: account.displayName,
-    nickname: account.nickname,
-    provider: account.provider,
-  };
-}
-
-function readStoredAccounts(): StoredEmailAccount[] {
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const value = window.localStorage.getItem(EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY);
-    if (!value) return [];
-    const parsed = JSON.parse(value) as StoredEmailAccount[];
-    return Array.isArray(parsed) ? dedupeEmailAccounts(parsed) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredAccounts(accounts: StoredEmailAccount[]) {
-  window.localStorage.setItem(
-    EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
-    JSON.stringify(dedupeEmailAccounts(accounts))
-  );
-}
-
-function rememberSelectedAccountFromClick(event: MouseEvent<HTMLDivElement>) {
-  const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
-    'a[href*="/email/accounts/"]'
-  );
-  const accountSlug = anchor?.href.match(/\/email\/accounts\/([^/?#]+)/)?.[1];
-  if (accountSlug) {
-    window.localStorage.setItem(
-      EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
-      decodeURIComponent(accountSlug)
-    );
-  }
 }

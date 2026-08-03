@@ -42,25 +42,26 @@ export function EmailAccountsPage() {
       <main className="flex h-[calc(100dvh-var(--header-height-mobile))] overflow-y-auto bg-muted/20 px-4 py-10 lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)] lg:px-8">
         <section
           className="m-auto w-full max-w-3xl"
-          aria-labelledby="connected-email-accounts-heading"
+          aria-labelledby="personal-email-accounts-heading"
         >
           <header className="flex flex-col items-center text-center">
             <div className="flex size-12 items-center justify-center rounded-lg border border-border bg-background text-primary shadow-xs">
               <MailCheck aria-hidden="true" className="size-5" strokeWidth={1.8} />
             </div>
             <h1
-              id="connected-email-accounts-heading"
+              id="personal-email-accounts-heading"
               className="mt-5 text-2xl font-semibold tracking-tight text-foreground"
             >
-              Connected email accounts
+              Personal email accounts
             </h1>
             <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
-              Open a mailbox, update its Elli email name, or manage its connection.
+              Open a mailbox, update its Elli email name, or manage its connection. These accounts
+              are visible only to you.
             </p>
             <Button asChild className="mt-6 min-h-10">
               <Link to="/app/email/add-account">
                 <Plus aria-hidden="true" className="size-4" />
-                Add account
+                Add personal account
               </Link>
             </Button>
           </header>
