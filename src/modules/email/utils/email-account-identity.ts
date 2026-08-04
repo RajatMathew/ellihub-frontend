@@ -2,11 +2,13 @@ type EmailAccountIdentity = {
   provider: string;
   email: string;
   mailboxAddress: string;
+  sharedMailboxKey?: string | null;
 };
 
 export function getEmailAccountIdentityKey(account: EmailAccountIdentity): string {
   const address = (account.mailboxAddress || account.email).trim().toLowerCase();
-  return `${account.provider}:${address}`;
+  const scope = account.sharedMailboxKey ? `shared:${account.sharedMailboxKey}` : 'personal';
+  return `${scope}:${account.provider}:${address}`;
 }
 
 export function dedupeEmailAccounts<T extends EmailAccountIdentity>(accounts: T[]): T[] {

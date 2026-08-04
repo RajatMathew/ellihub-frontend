@@ -456,12 +456,26 @@
 }
 
 .editorial [data-slot='app-sidebar'] [data-sidebar-menu='group'] [data-slot='email-alias-label'] {
-  display: flex;
-  width: 100%;
+  display: block;
+  width: 0;
   min-width: 0;
   max-width: 100%;
   flex: 1 1 0%;
   overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-link-item']
+  > [data-slot='email-alias-label']:first-of-type {
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editorial [data-slot='app-sidebar'] [data-slot='separator'] {

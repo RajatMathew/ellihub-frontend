@@ -11,7 +11,7 @@ export function EmailAliasLabel({ value, className }: EmailAliasLabelProps) {
   return (
     <span
       data-slot="email-alias-label"
-      className={cn('block min-w-0 flex-1 truncate', className)}
+      className={cn('block w-0 min-w-0 flex-1 basis-0 truncate whitespace-nowrap', className)}
       title={value}
     >
       {value}
