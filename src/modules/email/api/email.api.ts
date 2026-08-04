@@ -176,6 +176,11 @@ const emailAuthStartSchema = z.object({
   authorizationUrl: z.string().url(),
 });
 
+const emailConfigSchema = z.object({
+  enabledProviders: z.array(z.enum(['gmail', 'outlook', 'zoho'])),
+  maxPersonalAccounts: z.number().int().nonnegative(),
+});
+
 const emailListResponseSchema = z.object({
   records: z.array(emailListItemSchema),
   nextPageToken: z.string().nullable().optional(),
@@ -199,6 +204,7 @@ export type ConnectedEmailThreadMessage = z.infer<typeof emailThreadMessageSchem
 export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
 export type EmailFreshness = z.infer<typeof emailFreshnessSchema>;
 export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
+export type EmailConfig = z.infer<typeof emailConfigSchema>;
 export type { EmailProvider } from '@/modules/email/constants/email-providers';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
@@ -272,6 +278,11 @@ function unwrapData<T>(data: unknown, key = 'data'): T {
 }
 
 export const emailApi = {
+  async getConfig(): Promise<EmailConfig> {
+    const res = await api.get(`${BASE}/config`);
+    return emailConfigSchema.parse(unwrapData(res.data));
+  },
+
   async listAccounts(): Promise<EmailAccount[]> {
     const res = await api.get(`${BASE}/accounts`);
     return dedupeEmailAccounts(z.array(emailAccountSchema).parse(unwrapData(res.data)));

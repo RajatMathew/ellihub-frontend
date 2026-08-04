@@ -12,26 +12,46 @@ import { EMAIL_PROVIDER_DETAILS } from '@/modules/email/constants/email-provider
 import {
   useDisconnectEmailAccountMutation,
   useEmailAccountsQuery,
+  useEmailConfigQuery,
   useStartEmailAuthMutation,
 } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
-import { MailCheck, MailOpen, RefreshCw, Unplug } from 'lucide-react';
+import { MailCheck, MailOpen, Plus, RefreshCw, Unplug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function EmailAccountsPage() {
   const accountsQuery = useEmailAccountsQuery();
+  const configQuery = useEmailConfigQuery();
   const startAuthMutation = useStartEmailAuthMutation();
   const disconnectMutation = useDisconnectEmailAccountMutation();
   const [disconnectingAccount, setDisconnectingAccount] = useState<EmailAccount | null>(null);
 
-  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
+  if (accountsQuery.isLoading || configQuery.isLoading) return <EmailAccountsLoadingState />;
   if (accountsQuery.isError) {
     return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
   }
+  if (configQuery.isError) {
+    return <EmailAccountsErrorState onRetry={() => void configQuery.refetch()} />;
+  }
+  if (!configQuery.data) return <EmailAccountsLoadingState />;
 
   const accounts = (accountsQuery.data ?? []).filter((account) => !account.sharedMailboxKey);
-  if (accounts.length === 0) return <EmailAccountEmptyState />;
+  const emailConfig = configQuery.data;
+  const maxPersonalAccounts = emailConfig.maxPersonalAccounts;
+  const canAddPersonalAccount = accounts.length < maxPersonalAccounts;
+  if (accounts.length === 0) {
+    if (maxPersonalAccounts === 0) {
+      return (
+        <EmailAccountEmptyState
+          title="Personal email accounts disabled"
+          description="Personal mailbox connections are disabled for this environment."
+          connectionsDisabled
+        />
+      );
+    }
+    return <EmailAccountEmptyState />;
+  }
 
   return (
     <>
@@ -71,14 +91,26 @@ export function EmailAccountsPage() {
                     loginHint: account.mailboxAddress,
                   })
                 }
+                canReconnect={emailConfig.enabledProviders.includes(account.provider)}
                 onDisconnect={() => setDisconnectingAccount(account)}
               />
             ))}
           </div>
 
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'} connected
-          </p>
+          <div className="mt-4 flex flex-col items-center justify-center gap-3 text-center sm:flex-row">
+            <p className="text-xs text-muted-foreground">
+              {accounts.length} of {maxPersonalAccounts}{' '}
+              {maxPersonalAccounts === 1 ? 'account' : 'accounts'} connected
+            </p>
+            {canAddPersonalAccount && (
+              <Button asChild variant="outline" size="sm" className="min-h-10">
+                <Link to="/app/email/add-account">
+                  <Plus aria-hidden="true" className="size-4" />
+                  Add personal account
+                </Link>
+              </Button>
+            )}
+          </div>
         </section>
       </main>
 
@@ -112,11 +144,13 @@ export function EmailAccountsPage() {
 function AccountRow({
   account,
   isReconnecting,
+  canReconnect,
   onReconnect,
   onDisconnect,
 }: {
   account: EmailAccount;
   isReconnecting: boolean;
+  canReconnect: boolean;
   onReconnect: () => void;
   onDisconnect: () => void;
 }) {
@@ -160,7 +194,7 @@ function AccountRow({
             Open inbox
           </Link>
         </Button>
-        {needsReconnect && (
+        {needsReconnect && canReconnect && (
           <Button
             type="button"
             variant="secondary"

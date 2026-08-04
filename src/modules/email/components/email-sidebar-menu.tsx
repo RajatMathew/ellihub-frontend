@@ -8,7 +8,7 @@ import {
   EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
   EMAIL_SELECTED_ACCOUNT_STORAGE_KEY,
 } from '@/modules/email/constants/email-account-storage';
-import { emailKeys, useEmailAccountsQuery } from '@/modules/email/hooks';
+import { emailKeys, useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Plus } from 'lucide-react';
@@ -28,7 +28,9 @@ export function EmailSidebarMenu() {
   const queryClient = useQueryClient();
   const cleanedAccountIdsRef = useRef(new Set<string>());
   const accountsQuery = useEmailAccountsQuery();
+  const configQuery = useEmailConfigQuery();
   const connectedAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const maxPersonalAccounts = configQuery.data?.maxPersonalAccounts ?? Number.POSITIVE_INFINITY;
   const sharedAccounts = useMemo(
     () => connectedAccounts.filter((account) => account.sharedMailboxKey),
     [connectedAccounts]
@@ -37,8 +39,14 @@ export function EmailSidebarMenu() {
     () => connectedAccounts.filter((account) => !account.sharedMailboxKey),
     [connectedAccounts]
   );
-  const primaryPersonalAccount = personalAccounts[0];
-  const extraPersonalAccounts = useMemo(() => personalAccounts.slice(1), [personalAccounts]);
+  const visiblePersonalAccounts = useMemo(
+    () => personalAccounts.slice(0, maxPersonalAccounts),
+    [maxPersonalAccounts, personalAccounts]
+  );
+  const extraPersonalAccounts = useMemo(
+    () => personalAccounts.slice(maxPersonalAccounts),
+    [maxPersonalAccounts, personalAccounts]
+  );
 
   useEffect(() => {
     // Personal account identities must not survive a user switch in shared browser storage.
@@ -47,6 +55,8 @@ export function EmailSidebarMenu() {
   }, []);
 
   useEffect(() => {
+    if (!configQuery.data) return;
+
     const accountsToDisconnect = extraPersonalAccounts.filter(
       (account) => !cleanedAccountIdsRef.current.has(account.id)
     );
@@ -55,7 +65,7 @@ export function EmailSidebarMenu() {
     accountsToDisconnect.forEach((account) => cleanedAccountIdsRef.current.add(account.id));
     queryClient.setQueryData<EmailAccount[]>(
       emailKeys.accounts(),
-      primaryPersonalAccount ? [...sharedAccounts, primaryPersonalAccount] : [...sharedAccounts]
+      [...sharedAccounts, ...visiblePersonalAccounts]
     );
 
     void Promise.allSettled(
@@ -68,7 +78,7 @@ export function EmailSidebarMenu() {
       });
       void queryClient.invalidateQueries({ queryKey: emailKeys.accounts() });
     });
-  }, [extraPersonalAccounts, primaryPersonalAccount, queryClient, sharedAccounts]);
+  }, [configQuery.data, extraPersonalAccounts, queryClient, sharedAccounts, visiblePersonalAccounts]);
 
   const emailMenu = useMemo<MenuConfig>(() => {
     return [
@@ -90,7 +100,7 @@ export function EmailSidebarMenu() {
           {
             type: 'separator',
           },
-          ...personalAccounts.slice(0, 1).map((account) => {
+          ...visiblePersonalAccounts.map((account) => {
             const address = getSidebarAccountAddress(account);
             return {
               title: address,
@@ -99,7 +109,7 @@ export function EmailSidebarMenu() {
               render: () => <EmailAliasLabel value={address} />,
             };
           }),
-          ...(personalAccounts.length === 0
+          ...(configQuery.data && personalAccounts.length < maxPersonalAccounts
             ? [
                 {
                   title: 'Add personal account',
@@ -111,7 +121,13 @@ export function EmailSidebarMenu() {
         ],
       },
     ];
-  }, [personalAccounts, sharedAccounts]);
+  }, [
+    configQuery.data,
+    maxPersonalAccounts,
+    personalAccounts.length,
+    sharedAccounts,
+    visiblePersonalAccounts,
+  ]);
 
   return (
     <section aria-label="Email">

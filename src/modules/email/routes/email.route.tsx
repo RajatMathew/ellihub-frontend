@@ -7,7 +7,7 @@ import {
   EmailAccountsErrorState,
   EmailAccountsLoadingState,
 } from '@/modules/email/components/email-account-empty-state';
-import { useEmailAccountsQuery } from '@/modules/email/hooks';
+import { useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hooks';
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
@@ -74,9 +74,20 @@ function EmailIndexRoute() {
 
 function EmailAddAccountRoute() {
   const accountsQuery = useEmailAccountsQuery();
+  const configQuery = useEmailConfigQuery();
 
-  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
-  if ((accountsQuery.data?.filter((account) => !account.sharedMailboxKey).length ?? 0) > 0) {
+  if (accountsQuery.isLoading || configQuery.isLoading) return <EmailAccountsLoadingState />;
+  if (accountsQuery.isError) {
+    return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
+  }
+  if (configQuery.isError) {
+    return <EmailAccountsErrorState onRetry={() => void configQuery.refetch()} />;
+  }
+  if (!configQuery.data) return <EmailAccountsLoadingState />;
+
+  const personalAccountCount =
+    accountsQuery.data?.filter((account) => !account.sharedMailboxKey).length ?? 0;
+  if (personalAccountCount >= configQuery.data.maxPersonalAccounts) {
     return <Navigate to="/app/email/accounts" replace />;
   }
 
