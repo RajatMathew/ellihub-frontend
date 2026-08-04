@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
 import {
@@ -58,7 +59,7 @@ function getLinkHref(url: string) {
 }
 
 function linkifyPlainText(value: string) {
-  const nodes: Array<string | JSX.Element> = [];
+  const nodes: ReactNode[] = [];
   let lastIndex = 0;
 
   for (const match of value.matchAll(URL_PATTERN)) {
@@ -110,7 +111,7 @@ function EmailHtmlBody({
     const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
     let imageCleanups: Array<() => void> = [];
     let themeObserver: MutationObserver | null = null;
-    let restoreReadableColors = () => undefined;
+    let restoreReadableColors: () => void = () => undefined;
 
     const frameId = window.requestAnimationFrame(() => {
       const documentHtml = sanitizeEmailDocument(sourceHtml, attachments, inlineImageBaseUrl);

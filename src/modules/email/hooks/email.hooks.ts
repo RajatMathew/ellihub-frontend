@@ -5,6 +5,7 @@ import {
   type ConnectedEmailListItem,
   type ConnectedEmailTag,
   type EmailAccount,
+  type EmailConfig,
   type EmailDraftMessagePayload,
   type EmailMeetingResponseAction,
   type EmailMessagePage,
@@ -35,6 +36,7 @@ const EMAIL_MESSAGES_CACHE_TIME_MS = 15 * 60 * 1000;
 
 export const emailKeys = {
   all: ['connected-email'] as const,
+  config: () => [...emailKeys.all, 'config'] as const,
   accounts: () => [...emailKeys.all, 'accounts'] as const,
   folders: (accountId?: string) => [...emailKeys.all, 'folders', accountId] as const,
   tags: (accountId?: string) => [...emailKeys.all, 'tags', accountId] as const,
@@ -47,6 +49,17 @@ export const emailKeys = {
   conversation: (accountId?: string, threadId?: string | null) =>
     [...emailKeys.conversationRoot(accountId), threadId] as const,
 };
+
+export const useEmailConfigQuery = () =>
+  useQuery<EmailConfig>({
+    queryKey: emailKeys.config(),
+    queryFn: emailApi.getConfig,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
 export const useEmailAccountsQuery = () =>
   useQuery({
