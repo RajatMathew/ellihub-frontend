@@ -34,10 +34,58 @@ export function EmailMessageBody({
   return (
     <div className="max-w-prose space-y-3 text-sm leading-6 text-foreground">
       {content.map((paragraph, index) => (
-        <p key={`${index}-${paragraph}`}>{paragraph}</p>
+        <p key={`${index}-${paragraph}`}>{linkifyPlainText(paragraph)}</p>
       ))}
     </div>
   );
+}
+
+const URL_PATTERN = /\b((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+const TRAILING_URL_PUNCTUATION_PATTERN = /[),.;:!?]+$/;
+const EMAIL_LINK_COLOR = '#2563eb';
+
+function splitTrailingUrlPunctuation(value: string) {
+  const trailing = value.match(TRAILING_URL_PUNCTUATION_PATTERN)?.[0] ?? '';
+  if (!trailing) return { url: value, trailing: '' };
+  return {
+    url: value.slice(0, -trailing.length),
+    trailing,
+  };
+}
+
+function getLinkHref(url: string) {
+  return url.startsWith('www.') ? `https://${url}` : url;
+}
+
+function linkifyPlainText(value: string) {
+  const nodes: Array<string | JSX.Element> = [];
+  let lastIndex = 0;
+
+  for (const match of value.matchAll(URL_PATTERN)) {
+    const matchedValue = match[0];
+    const matchIndex = match.index ?? 0;
+    const { url, trailing } = splitTrailingUrlPunctuation(matchedValue);
+
+    if (matchIndex > lastIndex) nodes.push(value.slice(lastIndex, matchIndex));
+    if (url) {
+      nodes.push(
+        <a
+          key={`${matchIndex}-${url}`}
+          href={getLinkHref(url)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+        >
+          {url}
+        </a>
+      );
+    }
+    if (trailing) nodes.push(trailing);
+    lastIndex = matchIndex + matchedValue.length;
+  }
+
+  if (lastIndex < value.length) nodes.push(value.slice(lastIndex));
+  return nodes.length > 0 ? nodes : value;
 }
 
 function looksLikeHtml(value: string) {
@@ -97,6 +145,11 @@ function EmailHtmlBody({
         color: inherit;
         font: inherit;
         opacity: 0.65;
+      }
+      a[href] {
+        color: ${EMAIL_LINK_COLOR};
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
     `;
 
@@ -355,7 +408,12 @@ function sanitizeEmailDocument(
   document.body.querySelectorAll<HTMLAnchorElement>('a[href]').forEach((link) => {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+    link.style.setProperty('color', EMAIL_LINK_COLOR);
+    link.style.setProperty('text-decoration', 'underline');
+    link.style.setProperty('text-underline-offset', '2px');
   });
+
+  linkifyTextNodes(document);
 
   document.body
     .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img, source')
@@ -406,4 +464,60 @@ function sanitizeEmailDocument(
     });
 
   return document.documentElement.outerHTML;
+}
+
+function linkifyTextNodes(document: Document) {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.textContent || !URL_PATTERN.test(node.textContent)) {
+        URL_PATTERN.lastIndex = 0;
+        return NodeFilter.FILTER_REJECT;
+      }
+      URL_PATTERN.lastIndex = 0;
+
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (parent.closest('a, style, script, code, pre')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+
+  for (const textNode of textNodes) {
+    const fragment = document.createDocumentFragment();
+    const value = textNode.textContent ?? '';
+    let lastIndex = 0;
+
+    for (const match of value.matchAll(URL_PATTERN)) {
+      const matchedValue = match[0];
+      const matchIndex = match.index ?? 0;
+      const { url, trailing } = splitTrailingUrlPunctuation(matchedValue);
+
+      if (matchIndex > lastIndex) {
+        fragment.append(document.createTextNode(value.slice(lastIndex, matchIndex)));
+      }
+      if (url) {
+        const link = document.createElement('a');
+        link.href = getLinkHref(url);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = url;
+        link.style.setProperty('color', EMAIL_LINK_COLOR);
+        link.style.setProperty('text-decoration', 'underline');
+        link.style.setProperty('text-underline-offset', '2px');
+        fragment.append(link);
+      }
+      if (trailing) fragment.append(document.createTextNode(trailing));
+      lastIndex = matchIndex + matchedValue.length;
+    }
+
+    if (lastIndex < value.length) {
+      fragment.append(document.createTextNode(value.slice(lastIndex)));
+    }
+    textNode.replaceWith(fragment);
+  }
 }
