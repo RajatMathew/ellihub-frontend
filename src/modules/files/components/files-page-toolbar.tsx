@@ -17,7 +17,8 @@ interface FilesPageToolbarProps {
   title?: string;
   searchInput: string;
   searchMode: FilesSearchMode;
-  canMutateFolder: boolean;
+  canCreateFolder: boolean;
+  canUpload: boolean;
   canExport: boolean;
   isExporting?: boolean;
   showMutationActions?: boolean;
@@ -32,7 +33,8 @@ export function FilesPageToolbar({
   title = 'Files',
   searchInput,
   searchMode,
-  canMutateFolder,
+  canCreateFolder,
+  canUpload,
   canExport,
   isExporting = false,
   showMutationActions = true,
@@ -127,28 +129,22 @@ export function FilesPageToolbar({
             )}
             {isExporting ? 'View Export' : 'Export ZIP'}
           </Button>
-          {showMutationActions && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={onCreateFolder}
-                disabled={!canMutateFolder}
-              >
-                <FolderPlus className="size-4" />
-                New Folder
-              </Button>
-              <Button
-                size="sm"
-                className="w-full sm:w-auto"
-                onClick={onUploadFile}
-                disabled={!canMutateFolder}
-              >
-                <Upload className="size-4" />
-                Upload
-              </Button>
-            </>
+          {showMutationActions && canCreateFolder && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={onCreateFolder}
+            >
+              <FolderPlus className="size-4" />
+              New Folder
+            </Button>
+          )}
+          {showMutationActions && canUpload && (
+            <Button size="sm" className="w-full sm:w-auto" onClick={onUploadFile}>
+              <Upload className="size-4" />
+              Upload
+            </Button>
           )}
         </ToolbarActions>
       </ToolbarWrapper>

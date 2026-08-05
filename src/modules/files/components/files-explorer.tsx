@@ -37,6 +37,8 @@ interface FilesExplorerProps {
   readOnly?: boolean;
   permissions?: {
     create?: boolean;
+    upload?: boolean;
+    createFolder?: boolean;
     update?: boolean;
     delete?: boolean;
     export?: boolean;
@@ -159,10 +161,14 @@ export function FilesExplorer({
     rootLabel
   );
   const showResultLocation = isSearchActive && searchMode === 'global';
-  const canCreate = permissions?.create ?? !readOnly;
-  const canUpdate = permissions?.update ?? !readOnly;
-  const canDelete = permissions?.delete ?? !readOnly;
-  const canExport = permissions?.export ?? true;
+  const baseCanCreate = permissions?.create ?? !readOnly;
+  const folderCapabilities = folderDetail?.capabilities;
+  const canUpload = (permissions?.upload ?? baseCanCreate) && (folderCapabilities?.upload ?? true);
+  const canCreateFolder =
+    (permissions?.createFolder ?? baseCanCreate) && (folderCapabilities?.createFolder ?? true);
+  const canUpdate = (permissions?.update ?? !readOnly) && (folderCapabilities?.update ?? true);
+  const canDelete = (permissions?.delete ?? !readOnly) && (folderCapabilities?.delete ?? true);
+  const canExport = (permissions?.export ?? true) && (folderCapabilities?.export ?? true);
   const pinnedPrimeContractFileIds = useMemo(
     () => new Set(primeContractPinning?.pinnedFileIds ?? []),
     [primeContractPinning?.pinnedFileIds]
@@ -264,8 +270,8 @@ export function FilesExplorer({
     canPinPrimeContract,
     onSetPrimeContractPrimary: primeContractPinning?.onSetPrimary,
     canSetPrimeContractPrimary,
-    canRename: canUpdate,
-    canDelete,
+    canRename: canUpdate && !showResultLocation,
+    canDelete: canDelete && !showResultLocation,
     canExport,
   });
 
@@ -275,10 +281,11 @@ export function FilesExplorer({
         title={title}
         searchInput={searchInput}
         searchMode={searchMode}
-        canMutateFolder={canCreate && !!currentFolderId}
+        canCreateFolder={canCreateFolder && !!currentFolderId}
+        canUpload={canUpload && !!currentFolderId}
         canExport={canExport && (!!folderDetail || folderZipExport.isExporting)}
         isExporting={folderZipExport.isExporting}
-        showMutationActions={canCreate}
+        showMutationActions={canCreateFolder || canUpload}
         onSearchChange={handleSearchChange}
         onSearchModeChange={handleSearchModeChange}
         onExport={handleExport}
@@ -405,7 +412,8 @@ export function FilesExplorer({
         onRenameItemChange={setRenameItem}
         onDeleteItemChange={setDeleteItem}
         readOnly={readOnly}
-        canCreate={canCreate}
+        canCreateFolder={canCreateFolder}
+        canUpload={canUpload}
         canUpdate={canUpdate}
         canDelete={canDelete}
       />

@@ -1,3 +1,4 @@
+import { PermissionRoute } from '@/app/components/access/permission-route';
 import { NotFound } from '@/app/components/error/not-found';
 import ProjectContractOverview from '@/modules/project/pages/project-contract-overview';
 import ProjectFilesPage from '@/modules/project/pages/project-files';
@@ -15,7 +16,14 @@ const ProjectRoutes = () => {
       <Route index element={<Navigate to="overview" replace />} />
       <Route path="edit" element={<ProjectForm />} />
       <Route path="overview" element={<ProjectContractOverview />} />
-      <Route path="files" element={<ProjectFilesPage />} />
+      <Route
+        path="files"
+        element={
+          <PermissionRoute resource="file" action="read">
+            <ProjectFilesPage />
+          </PermissionRoute>
+        }
+      />
       <Route path="prime-change-orders/*" element={<PrimeChangeOrderRoutes />} />
       <Route path="rfqs/*" element={<RFQRoutes />} />
       <Route path="invoices/*" element={<InvoiceRoutes />} />

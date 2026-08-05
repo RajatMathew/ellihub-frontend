@@ -26,7 +26,8 @@ interface FilesPageDialogsProps {
   onRenameItemChange: (item: FileItem | null) => void;
   onDeleteItemChange: (item: FileItem | null) => void;
   readOnly?: boolean;
-  canCreate?: boolean;
+  canCreateFolder?: boolean;
+  canUpload?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
 }
@@ -44,7 +45,8 @@ export function FilesPageDialogs({
   onRenameItemChange,
   onDeleteItemChange,
   readOnly = false,
-  canCreate = !readOnly,
+  canCreateFolder = !readOnly,
+  canUpload = !readOnly,
   canUpdate = !readOnly,
   canDelete = !readOnly,
 }: FilesPageDialogsProps) {
@@ -57,31 +59,31 @@ export function FilesPageDialogs({
 
   return (
     <>
-      {canCreate && (
-        <>
-          <CreateFolderDialog
-            open={createFolderOpen}
-            onOpenChange={onCreateFolderOpenChange}
-            parentId={currentFolderId}
-            isSubmitting={createFolderMutation.isPending}
-            onSubmit={(data) => {
-              createFolderMutation.mutate(data, {
-                onSuccess: () => onCreateFolderOpenChange(false),
-              });
-            }}
-          />
-          <UploadFileDialog
-            open={uploadFileOpen}
-            onOpenChange={onUploadFileOpenChange}
-            parentId={currentFolderId}
-            multiple
-            isSubmitting={false}
-            onSubmit={(payloads) => {
-              uploadManager.enqueueUploads(payloads, { label: 'Files' });
-              onUploadFileOpenChange(false);
-            }}
-          />
-        </>
+      {canCreateFolder && (
+        <CreateFolderDialog
+          open={createFolderOpen}
+          onOpenChange={onCreateFolderOpenChange}
+          parentId={currentFolderId}
+          isSubmitting={createFolderMutation.isPending}
+          onSubmit={(data) => {
+            createFolderMutation.mutate(data, {
+              onSuccess: () => onCreateFolderOpenChange(false),
+            });
+          }}
+        />
+      )}
+      {canUpload && (
+        <UploadFileDialog
+          open={uploadFileOpen}
+          onOpenChange={onUploadFileOpenChange}
+          parentId={currentFolderId}
+          multiple
+          isSubmitting={false}
+          onSubmit={(payloads) => {
+            uploadManager.enqueueUploads(payloads, { label: 'Files' });
+            onUploadFileOpenChange(false);
+          }}
+        />
       )}
       {canUpdate && (
         <RenameDialog

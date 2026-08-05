@@ -10,6 +10,18 @@ export const fileBreadcrumbSchema = z.object({
   name: z.string(),
 });
 
+export const fileActionCapabilitiesSchema = z.object({
+  read: z.boolean(),
+  download: z.boolean(),
+  export: z.boolean(),
+  upload: z.boolean(),
+  createFolder: z.boolean(),
+  update: z.boolean(),
+  delete: z.boolean(),
+});
+
+export type FileActionCapabilities = z.infer<typeof fileActionCapabilitiesSchema>;
+
 export const fileExportStatusSchema = z.enum([
   'PENDING',
   'PROCESSING',
@@ -29,6 +41,7 @@ export const fileSchema = z
     objectId: z.string().nullable().optional(),
     mimeType: z.string().nullable().optional(),
     size: z.number().nullable().optional(),
+    capabilities: fileActionCapabilitiesSchema.optional(),
     parentId: z.string().nullable().optional(),
     type: fileTypeSchema,
     isDeletable: z.boolean(),
