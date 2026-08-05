@@ -2,6 +2,7 @@ import { toastApiError } from '@/app/lib/toast-api-error';
 import {
   monthlyBillsApi,
   type MonthlyBillsQueryParams,
+  type MonthlyBillsSummaryQueryParams,
 } from '@/modules/monthly-bills/api/monthly-bills.api';
 import { monthlyBillsKeys } from '@/modules/monthly-bills/constants/monthly-bills.keys';
 import {
@@ -14,7 +15,7 @@ import type {
   MarkPaymentResult,
   UpsertPlannedPaymentPayload,
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 export const useInfiniteMonthlyBillsQuery = (params: MonthlyBillsQueryParams, enabled = true) =>
   useInfiniteQuery({
@@ -26,6 +27,18 @@ export const useInfiniteMonthlyBillsQuery = (params: MonthlyBillsQueryParams, en
       lastPage.meta.pagination.hasNextPage ? lastPage.meta.pagination.currentPage + 1 : undefined,
     enabled,
     staleTime: 60_000,
+  });
+
+export const useMonthlyBillsSummaryQuery = (
+  params: MonthlyBillsSummaryQueryParams,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: monthlyBillsKeys.summary(params),
+    queryFn: () => monthlyBillsApi.getSummary(params),
+    enabled,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
 export const useUpsertPlannedPaymentMutation = () => {
@@ -62,6 +75,10 @@ export const useMarkPaymentMutation = (options: MarkPaymentMutationOptions = {})
       patchMarkedPaymentInMonthlyBillsCache(queryClient, payment, variables);
       void queryClient.invalidateQueries({
         queryKey: monthlyBillsKeys.lists(),
+        refetchType: 'active',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: monthlyBillsKeys.summaries(),
         refetchType: 'active',
       });
     },

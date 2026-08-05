@@ -1,7 +1,7 @@
 export const MONTHLY_BILL_TABS = [
-  { label: 'Recurring', path: 'recurring', pageTitle: 'Recurring page' },
-  { label: 'Subcontractor', path: 'subcontractor', pageTitle: 'Subcontractor page' },
-  { label: 'Summary', path: 'summary', pageTitle: 'Summary page' },
+  { label: 'Recurring', path: 'recurring' },
+  { label: 'Subcontractor', path: 'subcontractor' },
+  { label: 'Summary', path: 'summary' },
 ] as const;
 
 export const MONTHLY_BILLS_DEFAULT_PATH = '/app/monthly-bills/subcontractor';

@@ -93,6 +93,19 @@ export const monthlyBillsSummarySchema = z.object({
 
 export type MonthlyBillsSummary = z.infer<typeof monthlyBillsSummarySchema>;
 
+export const monthlyBillsPaidSummarySchema = z.object({
+  period: z.object({
+    month: z.number().int().min(1).max(12),
+    year: z.number().int(),
+    label: z.string(),
+  }),
+  materialPosPaid: z.coerce.number(),
+  subcontractorPosPaid: z.coerce.number(),
+  totalPaid: z.coerce.number(),
+});
+
+export type MonthlyBillsPaidSummary = z.infer<typeof monthlyBillsPaidSummarySchema>;
+
 export const monthlyBillsPaginationSchema = z.object({
   currentPage: z.coerce.number(),
   totalPages: z.coerce.number(),

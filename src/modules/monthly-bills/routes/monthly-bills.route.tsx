@@ -13,7 +13,6 @@ import { useQuickBooksStatusQuery } from '@/modules/integrations/hooks/quickbook
 import { MonthYearPicker } from '@/modules/monthly-bills/components/month-year-picker';
 import { MonthlyBillsTabs } from '@/modules/monthly-bills/components/monthly-bills-tabs';
 import {
-  MONTHLY_BILL_TABS,
   MONTHLY_BILLS_ALLOWED_ROLES,
   MONTHLY_BILLS_DEFAULT_PATH,
 } from '@/modules/monthly-bills/constants/monthly-bills.constants';
@@ -28,7 +27,7 @@ import {
 import {
   MonthlyBillsRecurringPage,
   MonthlyBillsSubcontractorPage,
-  MonthlyBillsTabPage,
+  MonthlyBillsSummaryPage,
 } from '@/modules/monthly-bills/pages';
 import {
   getRecurringBillsQaDate,
@@ -126,24 +125,28 @@ export default function MonthlyBillsRoute() {
         ) : (
           <Routes>
             <Route index element={<Navigate to={defaultTabPath} replace />} />
-            {MONTHLY_BILL_TABS.map((tab) => (
-              <Route
-                key={tab.path}
-                path={tab.path}
-                element={
-                  tab.path === 'recurring' ? (
-                    <MonthlyBillsRecurringPage selectedDate={selectedDate} qaDate={qaDate} />
-                  ) : tab.path === 'subcontractor' ? (
-                    <MonthlyBillsSubcontractorPage
-                      selectedDate={selectedDate}
-                      enabled={canAccess && !isLoading && isQuickBooksConnected}
-                    />
-                  ) : (
-                    <MonthlyBillsTabPage title={tab.pageTitle} selectedDate={selectedDate} />
-                  )
-                }
-              />
-            ))}
+            <Route
+              path="recurring"
+              element={<MonthlyBillsRecurringPage selectedDate={selectedDate} qaDate={qaDate} />}
+            />
+            <Route
+              path="subcontractor"
+              element={
+                <MonthlyBillsSubcontractorPage
+                  selectedDate={selectedDate}
+                  enabled={canAccess && !isLoading && isQuickBooksConnected}
+                />
+              }
+            />
+            <Route
+              path="summary"
+              element={
+                <MonthlyBillsSummaryPage
+                  selectedDate={selectedDate}
+                  enabled={canAccess && !isLoading && isQuickBooksConnected}
+                />
+              }
+            />
             <Route path="*" element={<Navigate to={defaultTabPath} replace />} />
           </Routes>
         )}
