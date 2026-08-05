@@ -1,3 +1,4 @@
+import { activityLogKeys } from '@/app/hooks/activity-log.keys';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import {
   emailApi,
@@ -9,7 +10,9 @@ import {
   type EmailDraftMessagePayload,
   type EmailMeetingResponseAction,
   type EmailMessagePage,
+  type EmailThreadClassification,
   type ReplyConnectedEmailPayload,
+  type SaveEmailThreadClassificationPayload,
   type SendConnectedEmailPayload,
   type StartEmailAuthInput,
   type UpdateEmailAccountNicknameInput,
@@ -199,6 +202,109 @@ export const useEmailMessageQuery = (
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+type EmailThreadClassificationSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  message: ConnectedEmailListItem | undefined;
+};
+
+function applyClassificationToMessagePages(
+  data: EmailMessagePages | undefined,
+  conversationKey: string,
+  classification: EmailThreadClassification
+) {
+  if (!data) return data;
+
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      records: page.records.map((message) =>
+        message.conversationKey === conversationKey ? { ...message, classification } : message
+      ),
+    })),
+  };
+}
+
+export const useSaveEmailThreadClassificationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SaveEmailThreadClassificationPayload) =>
+      emailApi.saveThreadClassification(payload),
+    onMutate: async (payload): Promise<EmailThreadClassificationSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.cancelQueries({ queryKey: emailKeys.message(payload.accountId, undefined) }),
+      ]);
+
+      const optimisticClassification: EmailThreadClassification = {
+        id: null,
+        conversationKey: payload.conversationKey,
+        threadId: payload.threadId ?? null,
+        status: payload.status,
+        references: payload.references.map((reference, index) => ({
+          ...reference,
+          sortOrder: index,
+        })),
+      };
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const message = queryClient.getQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.threadId ?? null)
+      );
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          applyClassificationToMessagePages(
+            current,
+            payload.conversationKey,
+            optimisticClassification
+          )
+      );
+      queryClient.setQueriesData<ConnectedEmailListItem>({ queryKey: emailKeys.all }, (current) =>
+        current?.conversationKey === payload.conversationKey
+          ? { ...current, classification: optimisticClassification }
+          : current
+      );
+
+      return { messages, message };
+    },
+    onSuccess: (classification, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          applyClassificationToMessagePages(current, payload.conversationKey, classification)
+      );
+      queryClient.setQueriesData<ConnectedEmailListItem>({ queryKey: emailKeys.all }, (current) =>
+        current?.conversationKey === payload.conversationKey
+          ? { ...current, classification }
+          : current
+      );
+      void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
+    },
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      if (snapshot?.message) {
+        queryClient.setQueryData(
+          emailKeys.message(payload.accountId, payload.threadId),
+          snapshot.message
+        );
+      }
+      toastApiError(error, 'Unable to save email references.');
+    },
+    onSettled: (_result, _error, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'active',
+      });
+    },
+  });
+};
 
 export const useStartEmailAuthMutation = () =>
   useMutation({

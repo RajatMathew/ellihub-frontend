@@ -14,12 +14,21 @@ import {
   EmailReadingPaneErrorState,
   EmailReadingPaneSkeleton,
 } from '@/modules/email/components/email-reading-pane-states';
+import {
+  EmailReferenceMarker,
+  EmailThreadStatusMarker,
+} from '@/modules/email/components/email-reference-marker';
+import {
+  type EmailReferenceMarkerState,
+  type EmailThreadState,
+} from '@/modules/email/components/email-reference-marker-storage';
 import type {
   EmailAttachment,
   EmailListItem,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
+import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
   isReplyableEmailMessage,
@@ -115,6 +124,7 @@ export function EmailReadingPane({
     attachment: EmailAttachment;
   } | null>(null);
   const attachmentBlobCacheRef = useRef(new Map<string, Promise<Blob>>());
+  const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
   const loadEmailAttachment = useCallback(
     (messageId: string, attachmentId: string) => {
       if (!accountId) return Promise.reject(new Error('Email account is unavailable'));
@@ -146,6 +156,41 @@ export function EmailReadingPane({
       return loadEmailAttachment(previewAttachment.messageId, file.id);
     },
     [loadEmailAttachment, previewAttachment]
+  );
+  const conversationKey = email?.conversationKey ?? email?.threadId ?? email?.id ?? '';
+  const referenceMarkerState: EmailReferenceMarkerState = email?.classification
+    ? {
+        id: email.classification.id ?? null,
+        conversationKey: email.classification.conversationKey,
+        threadId: email.classification.threadId ?? email.threadId ?? null,
+        status: email.classification.status,
+        references: email.classification.references,
+      }
+    : {
+        id: null,
+        conversationKey,
+        threadId: email?.threadId ?? null,
+        status: 'open',
+        references: [],
+      };
+  const saveReferenceMarkerState = useCallback(
+    (nextState: EmailReferenceMarkerState) => {
+      if (!accountId || !conversationKey) return;
+      saveClassificationMutation.mutate({
+        accountId,
+        conversationKey,
+        threadId: nextState.threadId ?? email?.threadId ?? null,
+        status: nextState.status,
+        references: nextState.references,
+      });
+    },
+    [accountId, conversationKey, email?.threadId, saveClassificationMutation]
+  );
+  const saveThreadState = useCallback(
+    (status: EmailThreadState) => {
+      saveReferenceMarkerState({ ...referenceMarkerState, status });
+    },
+    [referenceMarkerState, saveReferenceMarkerState]
   );
 
   useEffect(() => {
@@ -185,7 +230,6 @@ export function EmailReadingPane({
       ).length ?? 0),
     0
   );
-
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background" aria-label="Email">
       <div className="flex min-h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3">
@@ -286,10 +330,25 @@ export function EmailReadingPane({
                 </span>
               )}
             </div>
-            <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight text-foreground">
-              {email.subject}
-            </h1>
+            <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
+                {email.subject}
+              </h1>
+              <EmailThreadStatusMarker
+                state={referenceMarkerState.status}
+                isSaving={saveClassificationMutation.isPending}
+                onChange={saveThreadState}
+              />
+            </div>
             <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
+            {accountId && (
+              <EmailReferenceMarker
+                accountId={accountId}
+                state={referenceMarkerState}
+                isSaving={saveClassificationMutation.isPending}
+                onChange={saveReferenceMarkerState}
+              />
+            )}
           </header>
 
           <div className="space-y-4">
