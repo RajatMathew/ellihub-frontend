@@ -161,6 +161,14 @@ const emailReferenceOptionSchema = z.object({
   meta: z.string().nullable(),
 });
 
+const emailReferenceProjectSchema = z.object({
+  entityId: z.string(),
+  jobNumber: z.string().nullable(),
+  name: z.string(),
+  label: z.string(),
+  mailCount: z.number().int().nonnegative(),
+});
+
 const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
@@ -253,6 +261,7 @@ export type EmailConfig = z.infer<typeof emailConfigSchema>;
 export type EmailThreadReference = z.infer<typeof emailThreadReferenceSchema>;
 export type EmailThreadClassification = z.infer<typeof emailThreadClassificationSchema>;
 export type EmailReferenceOption = z.infer<typeof emailReferenceOptionSchema>;
+export type EmailReferenceProject = z.infer<typeof emailReferenceProjectSchema>;
 export type { EmailProvider } from '@/modules/email/constants/email-providers';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
@@ -395,6 +404,11 @@ export const emailApi = {
     return z.array(emailReferenceOptionSchema).parse(unwrapData(res.data));
   },
 
+  async listReferenceProjects(accountId: string): Promise<EmailReferenceProject[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/reference-projects`);
+    return z.array(emailReferenceProjectSchema).parse(unwrapData(res.data));
+  },
+
   async saveThreadClassification(
     payload: SaveEmailThreadClassificationPayload
   ): Promise<EmailThreadClassification> {
@@ -413,6 +427,7 @@ export const emailApi = {
     pageToken?: string;
     size?: number;
     search?: string;
+    projectId?: string;
     signal?: AbortSignal;
   }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
@@ -422,6 +437,7 @@ export const emailApi = {
         pageToken: params.pageToken,
         size: params.size ?? 100,
         search: params.search || undefined,
+        projectId: params.projectId || undefined,
       },
       signal: params.signal,
     });

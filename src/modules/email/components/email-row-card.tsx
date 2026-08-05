@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { EmailMeetingEvent, EmailThreadClassification } from '@/modules/email/api';
 import { EmailThreadStatusPill } from '@/modules/email/components/email-reference-marker';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { Archive, Paperclip, Trash2 } from 'lucide-react';
+import { Archive, BriefcaseBusiness, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -106,6 +107,12 @@ export function EmailRowCard({
   const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
   const hasQuickActions = Boolean(onArchive || onDelete);
   const threadState = email.classification?.status ?? 'open';
+  const projectReference = email.classification?.references?.find(
+    (reference) => reference.type === 'project'
+  );
+  const projectSummary = projectReference
+    ? getProjectReferenceSummary(projectReference.label)
+    : null;
 
   useEffect(() => {
     if (!isSelected) return;
@@ -194,8 +201,41 @@ export function EmailRowCard({
           {email.preview}
         </span>
 
-        {(email.attachmentCount || email.category || visibleTags.length > 0 || threadState) && (
+        {(email.attachmentCount ||
+          email.category ||
+          visibleTags.length > 0 ||
+          threadState ||
+          projectReference) && (
           <span className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5 pr-16">
+            {projectReference && projectSummary && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex max-w-24 items-center gap-1 rounded-sm border border-border bg-muted/35 px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold tabular-nums text-foreground/80"
+                    aria-label={`Project ${projectSummary.id}`}
+                  >
+                    <BriefcaseBusiness aria-hidden="true" className="size-3 shrink-0" />
+                    <span className="truncate">{projectSummary.id}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  sideOffset={6}
+                  collisionPadding={12}
+                  className="max-w-56 whitespace-normal break-words text-left"
+                >
+                  <span className="block font-mono text-[0.6875rem] leading-4">
+                    {projectSummary.id}
+                  </span>
+                  {projectSummary.name && (
+                    <span className="block text-xs leading-4 opacity-80">
+                      {projectSummary.name}
+                    </span>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {threadState && <EmailThreadStatusPill state={threadState} />}
             {Boolean(email.attachmentCount) && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -251,4 +291,16 @@ export function EmailRowCard({
       )}
     </article>
   );
+}
+
+function getProjectReferenceSummary(label: string) {
+  const separatorIndex = label.indexOf(' - ');
+  if (separatorIndex <= 0) {
+    return { id: label, name: null };
+  }
+
+  return {
+    id: label.slice(0, separatorIndex),
+    name: label.slice(separatorIndex + 3),
+  };
 }
