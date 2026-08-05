@@ -112,6 +112,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedCategoryTagId, setSelectedCategoryTagId] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<'list' | 'reading'>('list');
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
@@ -221,6 +222,20 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     if (!query || !isWaitingForServerSearch) return connectedEmails;
     return connectedEmails.filter((email) => matchesEmailSearch(email, query));
   }, [connectedEmails, debouncedMessageSearch, messageSearch, messagesQuery.isPlaceholderData]);
+  const availableOtherCategoryTags = useMemo(() => {
+    if (mailFilter !== 'other') return [];
+    const tagKeywords = new Set(
+      emailsForActiveSearch.flatMap((email) =>
+        (email.keywords ?? []).map((keyword) => keyword.toLowerCase())
+      )
+    );
+    return (tagsQuery.data ?? []).filter(
+      (tag) =>
+        tagKeywords.has(tag.id.toLowerCase()) ||
+        tagKeywords.has(tag.providerId.toLowerCase()) ||
+        tagKeywords.has(tag.name.toLowerCase())
+    );
+  }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
     if (mailFilter === 'unread') return emailsForActiveSearch.filter((email) => email.unread);
     if (mailFilter === 'attachments') {
@@ -228,8 +243,22 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         (email) => Boolean(email.attachmentCount) || Boolean(email.attachments?.length)
       );
     }
+    if (mailFilter === 'other' && selectedCategoryTagId) {
+      const selectedTag = availableOtherCategoryTags.find(
+        (tag) => tag.id === selectedCategoryTagId
+      );
+      if (!selectedTag) return emailsForActiveSearch;
+      const tagKeys = new Set([
+        selectedTag.id.toLowerCase(),
+        selectedTag.providerId.toLowerCase(),
+        selectedTag.name.toLowerCase(),
+      ]);
+      return emailsForActiveSearch.filter((email) =>
+        (email.keywords ?? []).some((keyword) => tagKeys.has(keyword.toLowerCase()))
+      );
+    }
     return emailsForActiveSearch;
-  }, [emailsForActiveSearch, mailFilter]);
+  }, [availableOtherCategoryTags, emailsForActiveSearch, mailFilter, selectedCategoryTagId]);
   const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
   const viewKey = `account:${connectedAccount?.id ?? accountSlug ?? 'unknown'}`;
   const selectedEmailId =
@@ -341,6 +370,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       setMessageSearch('');
       setMailFilter('all');
       setSelectedProjectId(null);
+      setSelectedCategoryTagId(null);
       setMobilePane('list');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -656,17 +686,24 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             filter={mailFilter}
             search={messageSearch}
             projects={referenceProjectsQuery.data}
+            categoryTags={availableOtherCategoryTags}
             selectedProjectId={selectedProjectId}
+            selectedCategoryTagId={selectedCategoryTagId}
             isRefreshing={showEmailSyncIndicator}
             isCreatingFolder={createFolderMutation.isPending}
             onSelectFolder={(folder) => {
               setSelectedFolder(folder);
               setSelectedTarget(null);
               setMailFilter('all');
+              setSelectedCategoryTagId(null);
               setMobilePane('list');
             }}
-            onFilterChange={setMailFilter}
+            onFilterChange={(filter) => {
+              setMailFilter(filter);
+              if (filter !== 'other') setSelectedCategoryTagId(null);
+            }}
             onProjectChange={setSelectedProjectId}
+            onCategoryTagChange={setSelectedCategoryTagId}
             onSearchChange={setMessageSearch}
             onRefresh={() => {
               if (connectedAccount) {
