@@ -50,8 +50,17 @@ export const emailKeys = {
     folder?: string,
     size?: number,
     search?: string,
-    projectId?: string
-  ) => [...emailKeys.messagesRoot(accountId), folder, size, search, projectId ?? null] as const,
+    projectId?: string,
+    classification?: 'other'
+  ) =>
+    [
+      ...emailKeys.messagesRoot(accountId),
+      folder,
+      size,
+      search,
+      projectId ?? null,
+      classification ?? null,
+    ] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
@@ -112,7 +121,7 @@ export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { size?: number; search?: string; projectId?: string },
+  pagination?: { size?: number; search?: string; projectId?: string; classification?: 'other' },
   enabled = true
 ) =>
   useInfiniteQuery({
@@ -121,7 +130,8 @@ export const useEmailMessagesQuery = (
       folder.id ?? folder.key,
       pagination?.size,
       pagination?.search,
-      pagination?.projectId
+      pagination?.projectId,
+      pagination?.classification
     ),
     queryFn: ({ pageParam, signal }) =>
       emailApi.listMessages({
@@ -132,6 +142,7 @@ export const useEmailMessagesQuery = (
         size: pagination?.size,
         search: pagination?.search,
         projectId: pagination?.projectId,
+        classification: pagination?.classification,
         signal,
       }),
     initialPageParam: null as string | null,
@@ -252,12 +263,17 @@ function applyClassificationToMessagePages(
 function normalizeClassificationReferences(
   references: EmailThreadClassification['references']
 ): EmailThreadClassification['references'] {
-  const seenTypes = new Set<EmailThreadClassification['references'][number]['type']>();
+  const seenReferences = new Set<string>();
   const uniqueReferences: EmailThreadClassification['references'] = [];
 
   for (const reference of references) {
-    if (seenTypes.has(reference.type)) continue;
-    seenTypes.add(reference.type);
+    if (reference.type === 'other') return [{ ...reference, sortOrder: 0 }];
+    const valueKey = reference.entityId
+      ? `id:${reference.entityId}`
+      : `label:${reference.label.toLowerCase()}`;
+    const key = [reference.type, reference.entityType ?? '', valueKey].join('|');
+    if (seenReferences.has(key)) continue;
+    seenReferences.add(key);
     uniqueReferences.push(reference);
   }
 
@@ -318,6 +334,9 @@ export const useSaveEmailThreadClassificationMutation = () => {
           ? { ...current, classification }
           : current
       );
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.referenceProjects(payload.accountId),
+      });
       void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
     },
     onError: (error, payload, snapshot) => {
