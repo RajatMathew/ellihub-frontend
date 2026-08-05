@@ -10,6 +10,7 @@ import {
   type EmailDraftMessagePayload,
   type EmailMeetingResponseAction,
   type EmailMessagePage,
+  type EmailReferenceProject,
   type EmailThreadClassification,
   type ReplyConnectedEmailPayload,
   type SaveEmailThreadClassificationPayload,
@@ -44,13 +45,20 @@ export const emailKeys = {
   folders: (accountId?: string) => [...emailKeys.all, 'folders', accountId] as const,
   tags: (accountId?: string) => [...emailKeys.all, 'tags', accountId] as const,
   messagesRoot: (accountId?: string) => [...emailKeys.all, 'messages', accountId] as const,
-  messages: (accountId?: string, folder?: string, size?: number, search?: string) =>
-    [...emailKeys.messagesRoot(accountId), folder, size, search] as const,
+  messages: (
+    accountId?: string,
+    folder?: string,
+    size?: number,
+    search?: string,
+    projectId?: string
+  ) => [...emailKeys.messagesRoot(accountId), folder, size, search, projectId ?? null] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
   conversation: (accountId?: string, threadId?: string | null) =>
     [...emailKeys.conversationRoot(accountId), threadId] as const,
+  referenceProjects: (accountId?: string) =>
+    [...emailKeys.all, 'reference-projects', accountId] as const,
 };
 
 export const useEmailConfigQuery = () =>
@@ -104,7 +112,7 @@ export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { size?: number; search?: string },
+  pagination?: { size?: number; search?: string; projectId?: string },
   enabled = true
 ) =>
   useInfiniteQuery({
@@ -112,7 +120,8 @@ export const useEmailMessagesQuery = (
       accountId,
       folder.id ?? folder.key,
       pagination?.size,
-      pagination?.search
+      pagination?.search,
+      pagination?.projectId
     ),
     queryFn: ({ pageParam, signal }) =>
       emailApi.listMessages({
@@ -122,6 +131,7 @@ export const useEmailMessagesQuery = (
         pageToken: pageParam ?? undefined,
         size: pagination?.size,
         search: pagination?.search,
+        projectId: pagination?.projectId,
         signal,
       }),
     initialPageParam: null as string | null,
@@ -134,6 +144,19 @@ export const useEmailMessagesQuery = (
     refetchOnMount: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+  });
+
+export const useEmailReferenceProjectsQuery = (accountId?: string, enabled = true) =>
+  useQuery<EmailReferenceProject[]>({
+    queryKey: emailKeys.referenceProjects(accountId),
+    queryFn: () => emailApi.listReferenceProjects(accountId!),
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 export const useRefreshEmailMessagesMutation = () => {
@@ -226,6 +249,21 @@ function applyClassificationToMessagePages(
   };
 }
 
+function normalizeClassificationReferences(
+  references: EmailThreadClassification['references']
+): EmailThreadClassification['references'] {
+  const seenTypes = new Set<EmailThreadClassification['references'][number]['type']>();
+  const uniqueReferences: EmailThreadClassification['references'] = [];
+
+  for (const reference of references) {
+    if (seenTypes.has(reference.type)) continue;
+    seenTypes.add(reference.type);
+    uniqueReferences.push(reference);
+  }
+
+  return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
+}
+
 export const useSaveEmailThreadClassificationMutation = () => {
   const queryClient = useQueryClient();
 
@@ -243,10 +281,7 @@ export const useSaveEmailThreadClassificationMutation = () => {
         conversationKey: payload.conversationKey,
         threadId: payload.threadId ?? null,
         status: payload.status,
-        references: payload.references.map((reference, index) => ({
-          ...reference,
-          sortOrder: index,
-        })),
+        references: normalizeClassificationReferences(payload.references),
       };
       const messages = queryClient.getQueriesData<EmailMessagePages>({
         queryKey: emailKeys.messagesRoot(payload.accountId),

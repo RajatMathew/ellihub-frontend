@@ -21,7 +21,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
-import type { ConnectedEmailFolder } from '@/modules/email/api';
+import type { ConnectedEmailFolder, EmailReferenceProject } from '@/modules/email/api';
 import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, X } from 'lucide-react';
 
 export type EmailListFilter = 'all' | 'unread' | 'attachments';
@@ -31,12 +31,15 @@ interface EmailMailToolbarProps {
   folders?: ConnectedEmailFolder[];
   filter: EmailListFilter;
   search: string;
+  projects?: EmailReferenceProject[];
+  selectedProjectId?: string | null;
   isRefreshing?: boolean;
   isCreatingFolder?: boolean;
   composeDisabled?: boolean;
   onSelectFolder?: (folder: string) => void;
   onFilterChange: (filter: EmailListFilter) => void;
   onSearchChange: (search: string) => void;
+  onProjectChange?: (projectId: string | null) => void;
   onRefresh?: () => void;
   onCompose?: () => void;
   onCreateFolder?: (name: string) => void;
@@ -47,12 +50,15 @@ export function EmailMailToolbar({
   folders = [],
   filter,
   search,
+  projects = [],
+  selectedProjectId = null,
   isRefreshing = false,
   isCreatingFolder = false,
   composeDisabled = false,
   onSelectFolder,
   onFilterChange,
   onSearchChange,
+  onProjectChange,
   onRefresh,
   onCompose,
   onCreateFolder,
@@ -64,8 +70,8 @@ export function EmailMailToolbar({
   const selectedOtherFolder = otherFolders.find(
     (folder) => folder.id === selectedFolder || folder.key === selectedFolder
   );
-  const isProjectEmails =
-    selectedFolder === 'inbox' || Boolean(inboxFolder && selectedFolder === inboxFolder.id);
+  const selectedProject =
+    projects.find((project) => project.entityId === selectedProjectId) ?? null;
   const filterLabel = filter === 'all' ? 'Filters' : `Filters · ${filter}`;
 
   const submitFolder = () => {
@@ -80,25 +86,52 @@ export function EmailMailToolbar({
     <>
       <div className="shrink-0 border-b border-border bg-background px-3 py-2 sm:px-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            className={cn(
-              'h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9 motion-safe:transition-colors motion-safe:duration-100',
-              !isProjectEmails && 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            )}
-            disabled={!onSelectFolder}
-            aria-pressed={isProjectEmails}
-            onClick={() => onSelectFolder?.(inboxFolder?.id ?? 'inbox')}
-          >
-            Project emails
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                className={cn(
+                  'h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9 motion-safe:transition-colors motion-safe:duration-100',
+                  selectedProject && 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                )}
+                disabled={!onProjectChange}
+              >
+                <span className="max-w-40 truncate">
+                  {selectedProject?.label ?? 'Project emails'}
+                </span>
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 w-64 overflow-y-auto">
+              <DropdownMenuRadioGroup
+                value={selectedProjectId ?? 'all'}
+                onValueChange={(value) => onProjectChange?.(value === 'all' ? null : value)}
+              >
+                <DropdownMenuLabel>Filter by project</DropdownMenuLabel>
+                <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
+                {projects.length > 0 && <DropdownMenuSeparator />}
+                {projects.length === 0 ? (
+                  <DropdownMenuItem disabled>No project mail yet</DropdownMenuItem>
+                ) : (
+                  projects.map((project) => (
+                    <DropdownMenuRadioItem key={project.entityId} value={project.entityId}>
+                      <span className="min-w-0 flex-1 truncate">{project.label}</span>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {project.mailCount}
+                      </span>
+                    </DropdownMenuRadioItem>
+                  ))
+                )}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
-                variant={isProjectEmails ? 'outline' : 'secondary'}
+                variant="secondary"
                 size="sm"
                 className="h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9"
                 disabled={!onSelectFolder}

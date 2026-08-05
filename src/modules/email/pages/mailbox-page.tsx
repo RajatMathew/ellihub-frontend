@@ -37,6 +37,7 @@ import {
   useEmailFoldersQuery,
   useEmailMessageQuery,
   useEmailMessagesQuery,
+  useEmailReferenceProjectsQuery,
   useEmailTagsQuery,
   useMoveEmailMessageMutation,
   useOpenEmailDraftMutation,
@@ -109,6 +110,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<'list' | 'reading'>('list');
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
@@ -141,6 +143,10 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     reconnectRequiredAccountId !== connectedAccount?.id;
   const foldersQuery = useEmailFoldersQuery(connectedAccount?.id, canLoadConnectedMailbox);
   const tagsQuery = useEmailTagsQuery(connectedAccount?.id, canLoadConnectedMailbox);
+  const referenceProjectsQuery = useEmailReferenceProjectsQuery(
+    connectedAccount?.id,
+    canLoadConnectedMailbox
+  );
   const selectedConnectedFolder = isConnected
     ? (foldersQuery.data?.find((folder) => folder.id === selectedFolder) ??
       foldersQuery.data?.find((folder) => folder.key === selectedFolder) ??
@@ -155,6 +161,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     {
       size: CONNECTED_EMAIL_PAGE_SIZE,
       search: debouncedMessageSearch || undefined,
+      projectId: selectedProjectId ?? undefined,
     },
     canLoadConnectedMailbox
   );
@@ -331,6 +338,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       setSelectedTarget(null);
       setMessageSearch('');
       setMailFilter('all');
+      setSelectedProjectId(null);
       setMobilePane('list');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -645,6 +653,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             folders={foldersQuery.data}
             filter={mailFilter}
             search={messageSearch}
+            projects={referenceProjectsQuery.data}
+            selectedProjectId={selectedProjectId}
             isRefreshing={showEmailSyncIndicator}
             isCreatingFolder={createFolderMutation.isPending}
             onSelectFolder={(folder) => {
@@ -654,6 +664,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
               setMobilePane('list');
             }}
             onFilterChange={setMailFilter}
+            onProjectChange={setSelectedProjectId}
             onSearchChange={setMessageSearch}
             onRefresh={() => {
               if (connectedAccount) {

@@ -1,8 +1,17 @@
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
   Command,
+  CommandCheck,
   CommandEmpty,
   CommandInput,
   CommandItem,
@@ -10,6 +19,7 @@ import {
 } from '@/app/components/ui/command';
 import { Input } from '@/app/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
+import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { emailApi } from '@/modules/email/api';
@@ -21,17 +31,25 @@ import {
   type EmailReferenceType,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
-import { useQuery } from '@tanstack/react-query';
 import {
-  AtSign,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  CircleDotDashed,
-  Loader2,
-  Plus,
-  X,
-} from 'lucide-react';
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useQuery } from '@tanstack/react-query';
+import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, X } from 'lucide-react';
 
 type EmailReferenceMarkerProps = {
   accountId: string;
@@ -46,6 +64,29 @@ type EmailThreadStatusMarkerProps = {
   onChange: (state: EmailThreadState) => void;
 };
 
+type EmailReferenceFilterType = 'all' | EmailReferenceType;
+
+const SEARCHABLE_REFERENCE_TYPES: Array<Exclude<EmailReferenceType, 'rfi' | 'other'>> = [
+  'project',
+  'rfq',
+  'purchaseOrder',
+  'changeOrder',
+  'invoice',
+];
+
+function normalizeReferenceTimeline(references: EmailReference[]) {
+  const seenTypes = new Set<EmailReferenceType>();
+  const uniqueReferences: EmailReference[] = [];
+
+  for (const reference of references) {
+    if (seenTypes.has(reference.type)) continue;
+    seenTypes.add(reference.type);
+    uniqueReferences.push(reference);
+  }
+
+  return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
+}
+
 export function EmailReferenceMarker({
   accountId,
   state,
@@ -53,34 +94,56 @@ export function EmailReferenceMarker({
   onChange,
 }: EmailReferenceMarkerProps) {
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<EmailReferenceType>('project');
+  const [selectedType, setSelectedType] = useState<EmailReferenceFilterType>('all');
   const selectedProjectId = useMemo(
     () => state.references.find((reference) => reference.type === 'project')?.entityId ?? undefined,
     [state.references]
   );
+  const references = useMemo(() => {
+    const projectReferences = state.references.filter((reference) => reference.type === 'project');
+    const otherReferences = state.references.filter((reference) => reference.type !== 'project');
+    return normalizeReferenceTimeline([...projectReferences, ...otherReferences]);
+  }, [state.references]);
+  const getChipValue = useCallback(
+    (reference: EmailReference) =>
+      `${reference.type}:${reference.entityType ?? 'manual'}:${reference.entityId ?? reference.label}`,
+    []
+  );
 
-  const updateReferences = (references: EmailReference[]) => {
+  const updateReferences = (next: EmailReference[]) => {
+    const projectReferences = next.filter((reference) => reference.type === 'project');
+    const otherReferences = next.filter((reference) => reference.type !== 'project');
     onChange({
       ...state,
-      references: references.map((reference, index) => ({ ...reference, sortOrder: index })),
+      references: normalizeReferenceTimeline([...projectReferences, ...otherReferences]),
     });
   };
 
-  const removeReference = (index: number) => {
-    updateReferences(state.references.filter((_, itemIndex) => itemIndex !== index));
+  const removeReference = (reference: EmailReference) => {
+    const value = getChipValue(reference);
+    updateReferences(state.references.filter((item) => getChipValue(item) !== value));
   };
 
-  const moveReference = (index: number, direction: -1 | 1) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= state.references.length) return;
-    const next = [...state.references];
-    const item = next[index];
-    next[index] = next[nextIndex];
-    next[nextIndex] = item;
-    updateReferences(next);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeIndex = references.findIndex((reference) => getChipValue(reference) === active.id);
+    const overIndex = references.findIndex((reference) => getChipValue(reference) === over.id);
+    if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return;
+    updateReferences(arrayMove(references, activeIndex, overIndex));
   };
 
   const addReference = (reference: EmailReference) => {
+    const existingIndex = state.references.findIndex((item) => item.type === reference.type);
     const exists = state.references.some(
       (item) =>
         item.type === reference.type &&
@@ -89,7 +152,13 @@ export function EmailReferenceMarker({
     );
     if (exists) return;
 
-    updateReferences([...state.references, reference]);
+    if (existingIndex >= 0) {
+      const next = [...state.references];
+      next[existingIndex] = reference;
+      updateReferences(next);
+    } else {
+      updateReferences([...state.references, reference]);
+    }
     setOpen(false);
   };
 
@@ -107,100 +176,163 @@ export function EmailReferenceMarker({
   }, []);
 
   return (
-    <section className="mt-2 min-w-0" aria-label="References">
+    <section className="mt-3 min-w-0" aria-label="References">
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-8 gap-1.5 rounded-full bg-background px-3 text-xs"
-            disabled={isSaving}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <AtSign aria-hidden="true" className="size-3.5 text-primary" />
-            References
-            {state.references.length > 0 && (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] text-muted-foreground">
-                {state.references.length}
-              </span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-[min(22rem,calc(100vw-2rem))] p-2">
-          <div className="flex flex-wrap gap-1 pb-2">
-            {EMAIL_REFERENCE_TYPES.map((item) => (
-              <button
-                key={item.type}
-                type="button"
-                className={cn(
-                  'inline-flex min-h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  selectedType === item.type
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/80 hover:text-foreground'
-                )}
-                aria-pressed={selectedType === item.type}
-                onClick={() => setSelectedType(item.type)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+            <SortableContext items={references.map(getChipValue)} strategy={rectSortingStrategy}>
+              {references.map((reference) => (
+                <ReferenceChip
+                  key={getChipValue(reference)}
+                  reference={reference}
+                  isSaving={isSaving}
+                  isDraggable={reference.type !== 'project' && !isSaving}
+                  onRemove={() => removeReference(reference)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant={state.references.length > 0 ? 'ghost' : 'outline'}
+              size={state.references.length > 0 ? 'icon' : 'sm'}
+              className={cn(
+                'shrink-0 bg-background text-xs',
+                state.references.length > 0
+                  ? 'size-8 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground'
+                  : 'min-h-8 gap-1.5 rounded-md px-3'
+              )}
+              disabled={isSaving}
+            >
+              {state.references.length > 0 ? (
+                <>
+                  <Plus aria-hidden="true" className="size-3.5" />
+                  <span className="sr-only">Add reference</span>
+                </>
+              ) : (
+                <>
+                  <AtSign aria-hidden="true" className="size-3.5 text-primary" />
+                  References
+                </>
+              )}
+            </Button>
+          </PopoverTrigger>
+        </div>
+        <PopoverContent
+          align={state.references.length > 0 ? 'end' : 'start'}
+          sideOffset={8}
+          collisionPadding={12}
+          className="max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] overflow-hidden p-3"
+        >
+          <Tabs
+            value={selectedType}
+            onValueChange={(value) => setSelectedType(value as EmailReferenceFilterType)}
+          >
+            <TabsList
+              variant="line"
+              size="sm"
+              className="mb-3 w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b"
+              aria-label="Reference type"
+            >
+              <TabsTrigger value="all" className="min-h-10 px-1 uppercase tracking-normal">
+                All
+              </TabsTrigger>
+              {EMAIL_REFERENCE_TYPES.map((item) => (
+                <TabsTrigger key={item.type} value={item.type} className="min-h-10 px-1">
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
           <ReferencePicker
             accountId={accountId}
             type={selectedType}
-            projectId={selectedType === 'project' ? undefined : (selectedProjectId ?? undefined)}
-            placeholder={
-              EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
-              'Add reference'
+            projectId={
+              selectedType === 'project' || selectedType === 'all'
+                ? selectedProjectId
+                : (selectedProjectId ?? undefined)
             }
+            placeholder={
+              selectedType === 'all'
+                ? 'Search all references'
+                : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
+                  'Add reference')
+            }
+            selectedReferences={references}
             onAdd={addReference}
           />
         </PopoverContent>
       </Popover>
-
-      {state.references.length > 0 && (
-        <div className="mt-2 flex max-w-md flex-col items-start gap-1.5">
-          {state.references.map((reference, index) => (
-            <span
-              key={`${reference.type}:${reference.entityType ?? 'manual'}:${reference.entityId ?? reference.label}`}
-              className="group flex min-h-8 max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/35 px-2.5 text-xs font-medium text-foreground"
-              title={`${getReferenceTypeLabel(reference.type)}: ${reference.label}`}
-            >
-              {reference.type !== 'other' && (
-                <span className="shrink-0 text-[0.625rem] uppercase text-muted-foreground">
-                  {getReferenceTypeLabel(reference.type)}
-                </span>
-              )}
-              <span className="min-w-0 flex-1 truncate">{reference.label}</span>
-              <span className="flex shrink-0 items-center gap-0.5 opacity-70 group-hover:opacity-100">
-                <BubbleIconButton
-                  label={`Move ${reference.label} up`}
-                  disabled={index === 0 || isSaving}
-                  onClick={() => moveReference(index, -1)}
-                >
-                  <ChevronUp aria-hidden="true" className="size-3" />
-                </BubbleIconButton>
-                <BubbleIconButton
-                  label={`Move ${reference.label} down`}
-                  disabled={index === state.references.length - 1 || isSaving}
-                  onClick={() => moveReference(index, 1)}
-                >
-                  <ChevronDown aria-hidden="true" className="size-3" />
-                </BubbleIconButton>
-                <BubbleIconButton
-                  label={`Remove ${reference.label}`}
-                  disabled={isSaving}
-                  onClick={() => removeReference(index)}
-                >
-                  <X aria-hidden="true" className="size-3" />
-                </BubbleIconButton>
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
     </section>
+  );
+}
+
+function ReferenceChip({
+  reference,
+  isSaving,
+  isDraggable,
+  onRemove,
+}: {
+  reference: EmailReference;
+  isSaving?: boolean;
+  isDraggable?: boolean;
+  onRemove: () => void;
+}) {
+  const id = `${reference.type}:${reference.entityType ?? 'manual'}:${reference.entityId ?? reference.label}`;
+  const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
+    id,
+    disabled: !isDraggable,
+  });
+  const style: CSSProperties = {
+    transition,
+    transform: CSS.Translate.toString(transform),
+    zIndex: isDragging ? 10 : undefined,
+  };
+  const typeLabel = getReferenceTypeLabel(reference.type);
+  const showTypeSegment = reference.type !== 'other';
+
+  return (
+    <span
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...(isDraggable ? listeners : undefined)}
+      className={cn(
+        'group inline-flex h-8 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background text-xs font-medium shadow-xs shadow-black/5',
+        isDraggable
+          ? 'cursor-grab touch-none hover:border-primary/50 hover:shadow-sm active:cursor-grabbing'
+          : 'cursor-default',
+        isDragging && 'opacity-80 shadow-md'
+      )}
+      title={`${typeLabel}: ${reference.label}`}
+    >
+      {showTypeSegment && (
+        <>
+          <span className="flex h-full shrink-0 items-center bg-muted/50 px-2 text-muted-foreground">
+            {typeLabel}
+          </span>
+          <span aria-hidden="true" className="h-4 w-px shrink-0 bg-border" />
+        </>
+      )}
+      <span className="min-w-0 max-w-56 truncate px-2.5 text-foreground">{reference.label}</span>
+      <span className="flex h-full shrink-0 items-center border-l border-border bg-muted/20 px-1 opacity-75 transition-opacity group-hover:opacity-100">
+        <BubbleIconButton
+          label={`Remove ${reference.label}`}
+          disabled={isSaving}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={onRemove}
+        >
+          <X aria-hidden="true" className="size-3" />
+        </BubbleIconButton>
+      </span>
+    </span>
   );
 }
 
@@ -260,23 +392,45 @@ function ReferencePicker({
   type,
   projectId,
   placeholder,
+  selectedReferences,
   onAdd,
 }: {
   accountId: string;
-  type: EmailReferenceType;
+  type: EmailReferenceFilterType;
   projectId?: string;
   placeholder: string;
+  selectedReferences: EmailReference[];
   onAdd: (reference: EmailReference) => void;
 }) {
+  if (type === 'all') {
+    return (
+      <AllReferencePicker
+        accountId={accountId}
+        projectId={projectId}
+        placeholder={placeholder}
+        selectedReferences={selectedReferences}
+        onAdd={onAdd}
+      />
+    );
+  }
+
   if (type === 'other') {
     return (
       <button
         type="button"
-        className="flex min-h-10 w-full items-center justify-between rounded-sm px-2 text-left text-sm hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn(
+          'flex min-h-10 w-full items-center justify-between rounded-sm px-2 text-left text-sm hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+          selectedReferences.some((reference) => reference.type === 'other') &&
+            'bg-primary/10 text-primary'
+        )}
         onClick={() => onAdd({ type: 'other', entityType: null, entityId: null, label: 'Other' })}
       >
         <span>Mark as Other</span>
-        <Plus aria-hidden="true" className="size-4 text-muted-foreground" />
+        {selectedReferences.some((reference) => reference.type === 'other') ? (
+          <CommandCheck aria-hidden="true" />
+        ) : (
+          <Plus aria-hidden="true" className="size-4 text-muted-foreground" />
+        )}
       </button>
     );
   }
@@ -291,8 +445,111 @@ function ReferencePicker({
       type={type}
       projectId={projectId}
       placeholder={placeholder}
+      selectedReferences={selectedReferences}
       onAdd={onAdd}
     />
+  );
+}
+
+function AllReferencePicker({
+  accountId,
+  projectId,
+  placeholder,
+  selectedReferences,
+  onAdd,
+}: {
+  accountId: string;
+  projectId?: string;
+  placeholder: string;
+  selectedReferences: EmailReference[];
+  onAdd: (reference: EmailReference) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim(), 200);
+  const optionsQuery = useQuery({
+    queryKey: [
+      'connected-email',
+      'reference-options',
+      accountId,
+      'all',
+      projectId,
+      debouncedSearch,
+    ],
+    queryFn: async () => {
+      const groups = await Promise.all(
+        SEARCHABLE_REFERENCE_TYPES.map(async (type) => {
+          const options = await emailApi.listReferenceOptions({
+            accountId,
+            type,
+            projectId: type === 'project' ? undefined : projectId,
+            search: debouncedSearch || undefined,
+            size: 8,
+          });
+          return options.map((option) => ({
+            ...option,
+            groupLabel: getReferenceTypeLabel(type),
+          }));
+        })
+      );
+
+      return groups.flat();
+    },
+    staleTime: 60 * 1000,
+    enabled: Boolean(accountId),
+  });
+  const options = optionsQuery.data ?? [];
+
+  return (
+    <Command shouldFilter={false}>
+      <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
+      <CommandList className="max-h-80">
+        {optionsQuery.isLoading ? (
+          <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
+            <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+            Loading
+          </div>
+        ) : (
+          <CommandEmpty>No matches found.</CommandEmpty>
+        )}
+        {options.map((option) => {
+          const selected = isOptionSelected(option, selectedReferences);
+          return (
+            <CommandItem
+              key={`${option.entityType}:${option.entityId}`}
+              value={`${option.groupLabel} ${option.label} ${option.meta ?? ''}`}
+              className={cn(
+                'min-h-10',
+                selected && 'bg-primary/10 text-primary data-[selected=true]:bg-primary/15'
+              )}
+              onSelect={() => onAdd(optionToReference(option))}
+            >
+              <span
+                className={cn(
+                  'mr-2 inline-flex h-6 w-16 shrink-0 items-center justify-center rounded-sm border border-border bg-muted/35 text-[0.6875rem] font-semibold uppercase text-muted-foreground',
+                  selected && 'border-primary/25 bg-primary/10 text-primary'
+                )}
+              >
+                {option.groupLabel}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{option.label}</span>
+                {option.meta && (
+                  <span
+                    className={cn(
+                      'block truncate text-xs text-muted-foreground',
+                      selected && 'text-primary/80'
+                    )}
+                  >
+                    {option.meta}
+                  </span>
+                )}
+              </span>
+              {selected && <CommandCheck aria-hidden="true" />}
+            </CommandItem>
+          );
+        })}
+      </CommandList>
+    </Command>
   );
 }
 
@@ -301,12 +558,14 @@ function SearchReferencePicker({
   type,
   projectId,
   placeholder,
+  selectedReferences,
   onAdd,
 }: {
   accountId: string;
   type: Exclude<EmailReferenceType, 'rfi' | 'other'>;
   projectId?: string;
   placeholder: string;
+  selectedReferences: EmailReference[];
   onAdd: (reference: EmailReference) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -342,21 +601,35 @@ function SearchReferencePicker({
         ) : (
           <CommandEmpty>No matches found.</CommandEmpty>
         )}
-        {options.map((option) => (
-          <CommandItem
-            key={`${option.entityType}:${option.entityId}`}
-            value={`${option.label} ${option.meta ?? ''}`}
-            className="min-h-10"
-            onSelect={() => onAdd(optionToReference(option))}
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate">{option.label}</span>
-              {option.meta && (
-                <span className="block truncate text-xs text-muted-foreground">{option.meta}</span>
+        {options.map((option) => {
+          const selected = isOptionSelected(option, selectedReferences);
+          return (
+            <CommandItem
+              key={`${option.entityType}:${option.entityId}`}
+              value={`${option.label} ${option.meta ?? ''}`}
+              className={cn(
+                'min-h-10',
+                selected && 'bg-primary/10 text-primary data-[selected=true]:bg-primary/15'
               )}
-            </span>
-          </CommandItem>
-        ))}
+              onSelect={() => onAdd(optionToReference(option))}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{option.label}</span>
+                {option.meta && (
+                  <span
+                    className={cn(
+                      'block truncate text-xs text-muted-foreground',
+                      selected && 'text-primary/80'
+                    )}
+                  >
+                    {option.meta}
+                  </span>
+                )}
+              </span>
+              {selected && <CommandCheck aria-hidden="true" />}
+            </CommandItem>
+          );
+        })}
         {canCreateReference && (
           <CommandItem
             value={`create ${createLabel}`}
@@ -468,11 +741,13 @@ function BubbleIconButton({
   label,
   disabled,
   children,
+  onPointerDown,
   onClick,
 }: {
   label: string;
   disabled?: boolean;
   children: ReactNode;
+  onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: () => void;
 }) {
   return (
@@ -481,6 +756,7 @@ function BubbleIconButton({
       className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-25"
       aria-label={label}
       disabled={disabled}
+      onPointerDown={onPointerDown}
       onClick={onClick}
     >
       {children}
@@ -495,6 +771,17 @@ function optionToReference(option: EmailReferenceOption): EmailReference {
     entityId: option.entityId,
     label: option.label,
   };
+}
+
+function isOptionSelected(option: EmailReferenceOption, selectedReferences: EmailReference[]) {
+  return selectedReferences.some((reference) => {
+    if (reference.type !== option.type) return false;
+    if (reference.entityId || option.entityId) {
+      return reference.entityId === option.entityId && reference.entityType === option.entityType;
+    }
+
+    return reference.label.toLowerCase() === option.label.toLowerCase();
+  });
 }
 
 function getReferenceTypeLabel(type: EmailReferenceType) {
