@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 import { cn } from '@/app/lib/utils';
-import type { EmailMeetingEvent } from '@/modules/email/api';
+import type { EmailMeetingEvent, EmailThreadClassification } from '@/modules/email/api';
+import { EmailThreadStatusPill } from '@/modules/email/components/email-reference-marker';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { Archive, Paperclip, Trash2 } from 'lucide-react';
 
@@ -33,6 +34,7 @@ export type EmailListItem = {
   bcc?: EmailAddress[];
   threadMessages?: EmailThreadMessage[];
   threadMessageCount?: number;
+  classification?: EmailThreadClassification;
 };
 
 export type EmailAddress = {
@@ -103,6 +105,7 @@ export function EmailRowCard({
   const visibleTags = (email.keywords ?? []).slice(0, 2);
   const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
   const hasQuickActions = Boolean(onArchive || onDelete);
+  const threadState = email.classification?.status ?? 'open';
 
   useEffect(() => {
     if (!isSelected) return;
@@ -124,7 +127,7 @@ export function EmailRowCard({
     >
       <button
         type="button"
-        className="w-full cursor-pointer px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="w-full cursor-pointer px-3.5 py-3.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         aria-current={isSelected ? 'true' : undefined}
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
         onPointerEnter={onPrefetch}
@@ -175,7 +178,7 @@ export function EmailRowCard({
 
         <span
           className={cn(
-            'mt-1 block truncate text-sm text-foreground',
+            'mt-2 block truncate text-sm text-foreground',
             email.unread ? 'font-semibold' : 'font-medium'
           )}
         >
@@ -184,15 +187,16 @@ export function EmailRowCard({
 
         <span
           className={cn(
-            'mt-1 line-clamp-2 text-sm leading-5',
+            'mt-1.5 line-clamp-2 text-sm leading-5',
             email.unread ? 'text-foreground/80' : 'text-muted-foreground'
           )}
         >
           {email.preview}
         </span>
 
-        {(email.attachmentCount || email.category || visibleTags.length > 0) && (
-          <span className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 pr-16">
+        {(email.attachmentCount || email.category || visibleTags.length > 0 || threadState) && (
+          <span className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5 pr-16">
+            {threadState && <EmailThreadStatusPill state={threadState} />}
             {Boolean(email.attachmentCount) && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
                 <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />

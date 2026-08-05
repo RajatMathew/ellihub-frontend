@@ -117,6 +117,50 @@ const emailMeetingEventSchema = z.object({
   ),
 });
 
+const emailReferenceTypeSchema = z.enum([
+  'project',
+  'rfq',
+  'rfi',
+  'purchaseOrder',
+  'changeOrder',
+  'invoice',
+  'other',
+]);
+
+const emailReferenceEntityTypeSchema = z.enum([
+  'project',
+  'rfq',
+  'purchaseOrder',
+  'primeChangeOrder',
+  'subChangeOrder',
+  'invoice',
+]);
+
+const emailThreadReferenceSchema = z.object({
+  id: z.string().optional(),
+  type: emailReferenceTypeSchema,
+  entityType: emailReferenceEntityTypeSchema.nullable().optional(),
+  entityId: z.string().nullable().optional(),
+  label: z.string(),
+  sortOrder: z.number().optional(),
+});
+
+const emailThreadClassificationSchema = z.object({
+  id: z.string().nullable().optional(),
+  conversationKey: z.string(),
+  threadId: z.string().nullable().optional(),
+  status: z.enum(['open', 'closed']),
+  references: z.array(emailThreadReferenceSchema),
+});
+
+const emailReferenceOptionSchema = z.object({
+  type: emailReferenceTypeSchema,
+  entityType: emailReferenceEntityTypeSchema.nullable(),
+  entityId: z.string().nullable(),
+  label: z.string(),
+  meta: z.string().nullable(),
+});
+
 const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
@@ -141,6 +185,7 @@ const emailListItemSchema = z.object({
   threadMessageCount: z.number().optional(),
   body: z.array(z.string()).optional(),
   attachments: z.array(emailAttachmentSchema).optional(),
+  classification: emailThreadClassificationSchema.optional(),
 });
 
 const emailThreadMessageSchema = z.object({
@@ -205,6 +250,9 @@ export type ConnectedEmailTag = z.infer<typeof emailTagSchema>;
 export type EmailFreshness = z.infer<typeof emailFreshnessSchema>;
 export type EmailSyncResult = z.infer<typeof emailSyncResultSchema>;
 export type EmailConfig = z.infer<typeof emailConfigSchema>;
+export type EmailThreadReference = z.infer<typeof emailThreadReferenceSchema>;
+export type EmailThreadClassification = z.infer<typeof emailThreadClassificationSchema>;
+export type EmailReferenceOption = z.infer<typeof emailReferenceOptionSchema>;
 export type { EmailProvider } from '@/modules/email/constants/email-providers';
 export type StartEmailAuthInput = {
   provider: EmailProvider;
@@ -272,6 +320,14 @@ export type ReplyConnectedEmailPayload = {
   bcc?: Array<{ address: string; name?: string }>;
 };
 
+export type SaveEmailThreadClassificationPayload = {
+  accountId: string;
+  conversationKey: string;
+  threadId?: string | null;
+  status: 'open' | 'closed';
+  references: EmailThreadReference[];
+};
+
 function unwrapData<T>(data: unknown, key = 'data'): T {
   const response = data as Record<string, unknown>;
   return (response?.[key] ?? response) as T;
@@ -319,6 +375,35 @@ export const emailApi = {
   async listTags(accountId: string): Promise<ConnectedEmailTag[]> {
     const res = await api.get(`${BASE}/accounts/${accountId}/tags`);
     return z.array(emailTagSchema).parse(unwrapData(res.data));
+  },
+
+  async listReferenceOptions(params: {
+    accountId: string;
+    type: EmailThreadReference['type'];
+    search?: string;
+    projectId?: string;
+    size?: number;
+  }): Promise<EmailReferenceOption[]> {
+    const res = await api.get(`${BASE}/accounts/${params.accountId}/references/options`, {
+      params: {
+        type: params.type,
+        search: params.search || undefined,
+        projectId: params.projectId || undefined,
+        size: params.size ?? 20,
+      },
+    });
+    return z.array(emailReferenceOptionSchema).parse(unwrapData(res.data));
+  },
+
+  async saveThreadClassification(
+    payload: SaveEmailThreadClassificationPayload
+  ): Promise<EmailThreadClassification> {
+    const { accountId, ...classification } = payload;
+    const res = await api.put(
+      `${BASE}/accounts/${accountId}/thread-classification`,
+      classification
+    );
+    return emailThreadClassificationSchema.parse(unwrapData(res.data));
   },
 
   async listMessages(params: {

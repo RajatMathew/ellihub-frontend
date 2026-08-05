@@ -17,7 +17,7 @@ interface VirtualizedEmailListProps {
   onDeleteEmail?: (email: EmailListItem) => void;
 }
 
-const ESTIMATED_EMAIL_ROW_HEIGHT = 132;
+const ESTIMATED_EMAIL_ROW_HEIGHT = 154;
 const ESTIMATED_MONTH_HEADER_HEIGHT = 48;
 
 export function VirtualizedEmailList({
