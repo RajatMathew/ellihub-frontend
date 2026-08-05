@@ -21,9 +21,13 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
-import type { ConnectedEmailFolder, EmailReferenceProject } from '@/modules/email/api';
+import type {
+  ConnectedEmailFolder,
+  ConnectedEmailTag,
+  EmailReferenceProject,
+} from '@/modules/email/api';
 import { EMAIL_FOLDERS } from '@/modules/email/constants/email-folders';
-import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, X } from 'lucide-react';
+import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, Tag, X } from 'lucide-react';
 
 export type EmailListFilter = 'all' | 'unread' | 'attachments' | 'other';
 
@@ -33,7 +37,9 @@ interface EmailMailToolbarProps {
   filter: EmailListFilter;
   search: string;
   projects?: EmailReferenceProject[];
+  categoryTags?: ConnectedEmailTag[];
   selectedProjectId?: string | null;
+  selectedCategoryTagId?: string | null;
   isRefreshing?: boolean;
   isCreatingFolder?: boolean;
   composeDisabled?: boolean;
@@ -41,6 +47,7 @@ interface EmailMailToolbarProps {
   onFilterChange: (filter: EmailListFilter) => void;
   onSearchChange: (search: string) => void;
   onProjectChange?: (projectId: string | null) => void;
+  onCategoryTagChange?: (tagId: string | null) => void;
   onRefresh?: () => void;
   onCompose?: () => void;
   onCreateFolder?: (name: string) => void;
@@ -52,7 +59,9 @@ export function EmailMailToolbar({
   filter,
   search,
   projects = [],
+  categoryTags = [],
   selectedProjectId = null,
+  selectedCategoryTagId = null,
   isRefreshing = false,
   isCreatingFolder = false,
   composeDisabled = false,
@@ -60,6 +69,7 @@ export function EmailMailToolbar({
   onFilterChange,
   onSearchChange,
   onProjectChange,
+  onCategoryTagChange,
   onRefresh,
   onCompose,
   onCreateFolder,
@@ -72,24 +82,37 @@ export function EmailMailToolbar({
     (folder) => folder.id === selectedFolder || folder.key === selectedFolder
   );
   const selectedFolderKey = selectedFolderRecord?.key ?? selectedFolder;
-  const isInboxSelected = selectedFolderKey === 'inbox';
-  const selectedFolderLabel =
-    selectedFolderRecord?.name ??
-    EMAIL_FOLDERS.find((folder) => folder.key === selectedFolder)?.label ??
-    'Inbox';
+  const isOtherView = filter === 'other';
+  const isInboxSelected = !isOtherView && selectedFolderKey === 'inbox';
+  const selectedFolderLabel = isOtherView
+    ? 'Other'
+    : (selectedFolderRecord?.name ??
+      EMAIL_FOLDERS.find((folder) => folder.key === selectedFolder)?.label ??
+      'Inbox');
   const selectedProject =
     projects.find((project) => project.entityId === selectedProjectId) ?? null;
+  const selectedCategoryTag =
+    categoryTags.find((tag) => tag.id === selectedCategoryTagId) ??
+    categoryTags.find((tag) => tag.providerId === selectedCategoryTagId) ??
+    null;
   const filterLabels: Record<EmailListFilter, string> = {
     all: 'All emails',
     unread: 'Unread',
     attachments: 'Attachments',
     other: 'Other',
   };
-  const filterLabel = filter === 'all' ? 'Filters' : `Filters · ${filterLabels[filter]}`;
+  const filterLabel = isOtherView
+    ? selectedCategoryTag
+      ? `Filters · ${selectedCategoryTag.name}`
+      : 'Filters'
+    : filter === 'all'
+      ? 'Filters'
+      : `Filters · ${filterLabels[filter]}`;
 
   const openOtherCategory = () => {
     onSelectFolder?.(inboxFolder?.id ?? 'inbox');
     onFilterChange('other');
+    onCategoryTagChange?.(null);
   };
 
   const submitFolder = () => {
@@ -154,7 +177,11 @@ export function EmailMailToolbar({
                 className="h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9"
                 disabled={!onSelectFolder}
               >
-                {isInboxSelected && <Inbox aria-hidden="true" className="size-4" />}
+                {isOtherView ? (
+                  <Tag aria-hidden="true" className="size-4" />
+                ) : (
+                  isInboxSelected && <Inbox aria-hidden="true" className="size-4" />
+                )}
                 <span className="max-w-36 truncate">{selectedFolderLabel}</span>
                 <ChevronDown aria-hidden="true" className="size-3.5" />
               </Button>
@@ -206,15 +233,39 @@ export function EmailMailToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel>Show messages</DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={filter}
-                onValueChange={(value) => onFilterChange(value as EmailListFilter)}
-              >
-                <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="unread">Unread only</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="attachments">With attachments</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
+              {isOtherView ? (
+                <DropdownMenuRadioGroup
+                  value={selectedCategoryTagId ?? 'all'}
+                  onValueChange={(value) => onCategoryTagChange?.(value === 'all' ? null : value)}
+                >
+                  <DropdownMenuLabel>Filter by category</DropdownMenuLabel>
+                  <DropdownMenuRadioItem value="all">All Other mail</DropdownMenuRadioItem>
+                  {categoryTags.length > 0 && <DropdownMenuSeparator />}
+                  {categoryTags.length === 0 ? (
+                    <DropdownMenuItem disabled>No assigned categories</DropdownMenuItem>
+                  ) : (
+                    categoryTags.map((tag) => (
+                      <DropdownMenuRadioItem key={tag.id} value={tag.id}>
+                        <span className="min-w-0 flex-1 truncate">{tag.name}</span>
+                      </DropdownMenuRadioItem>
+                    ))
+                  )}
+                </DropdownMenuRadioGroup>
+              ) : (
+                <>
+                  <DropdownMenuLabel>Show messages</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={filter}
+                    onValueChange={(value) => onFilterChange(value as EmailListFilter)}
+                  >
+                    <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="unread">Unread only</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="attachments">
+                      With attachments
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
