@@ -428,6 +428,7 @@ export const emailApi = {
     size?: number;
     search?: string;
     projectId?: string;
+    classification?: 'other';
     signal?: AbortSignal;
   }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
@@ -438,6 +439,7 @@ export const emailApi = {
         size: params.size ?? 100,
         search: params.search || undefined,
         projectId: params.projectId || undefined,
+        classification: params.classification,
       },
       signal: params.signal,
     });

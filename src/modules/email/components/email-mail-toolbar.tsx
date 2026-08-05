@@ -22,9 +22,10 @@ import {
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
 import type { ConnectedEmailFolder, EmailReferenceProject } from '@/modules/email/api';
+import { EMAIL_FOLDERS } from '@/modules/email/constants/email-folders';
 import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, X } from 'lucide-react';
 
-export type EmailListFilter = 'all' | 'unread' | 'attachments';
+export type EmailListFilter = 'all' | 'unread' | 'attachments' | 'other';
 
 interface EmailMailToolbarProps {
   selectedFolder: string;
@@ -67,12 +68,29 @@ export function EmailMailToolbar({
   const [folderName, setFolderName] = useState('');
   const inboxFolder = folders.find((folder) => folder.key === 'inbox');
   const otherFolders = folders.filter((folder) => folder.key !== 'inbox');
-  const selectedOtherFolder = otherFolders.find(
+  const selectedFolderRecord = folders.find(
     (folder) => folder.id === selectedFolder || folder.key === selectedFolder
   );
+  const selectedFolderKey = selectedFolderRecord?.key ?? selectedFolder;
+  const isInboxSelected = selectedFolderKey === 'inbox';
+  const selectedFolderLabel =
+    selectedFolderRecord?.name ??
+    EMAIL_FOLDERS.find((folder) => folder.key === selectedFolder)?.label ??
+    'Inbox';
   const selectedProject =
     projects.find((project) => project.entityId === selectedProjectId) ?? null;
-  const filterLabel = filter === 'all' ? 'Filters' : `Filters · ${filter}`;
+  const filterLabels: Record<EmailListFilter, string> = {
+    all: 'All emails',
+    unread: 'Unread',
+    attachments: 'Attachments',
+    other: 'Other',
+  };
+  const filterLabel = filter === 'all' ? 'Filters' : `Filters · ${filterLabels[filter]}`;
+
+  const openOtherCategory = () => {
+    onSelectFolder?.(inboxFolder?.id ?? 'inbox');
+    onFilterChange('other');
+  };
 
   const submitFolder = () => {
     const name = folderName.trim();
@@ -136,7 +154,8 @@ export function EmailMailToolbar({
                 className="h-10 min-h-10 gap-1.5 px-3.5 sm:h-9 sm:min-h-9"
                 disabled={!onSelectFolder}
               >
-                <span className="max-w-36 truncate">{selectedOtherFolder?.name ?? 'Other'}</span>
+                {isInboxSelected && <Inbox aria-hidden="true" className="size-4" />}
+                <span className="max-w-36 truncate">{selectedFolderLabel}</span>
                 <ChevronDown aria-hidden="true" className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -147,10 +166,11 @@ export function EmailMailToolbar({
                 Inbox
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel>Other folders</DropdownMenuLabel>
-              {otherFolders.length === 0 ? (
-                <DropdownMenuItem disabled>No other folders</DropdownMenuItem>
-              ) : (
+              <DropdownMenuLabel>Folders & categories</DropdownMenuLabel>
+              <DropdownMenuItem onClick={openOtherCategory}>
+                <span className="min-w-0 flex-1 truncate">Other</span>
+              </DropdownMenuItem>
+              {otherFolders.length > 0 &&
                 otherFolders.map((folder) => (
                   <DropdownMenuItem key={folder.id} onClick={() => onSelectFolder?.(folder.id)}>
                     <span className="min-w-0 flex-1 truncate">{folder.name}</span>
@@ -160,8 +180,7 @@ export function EmailMailToolbar({
                       </span>
                     )}
                   </DropdownMenuItem>
-                ))
-              )}
+                ))}
               {onCreateFolder && (
                 <>
                   <DropdownMenuSeparator />

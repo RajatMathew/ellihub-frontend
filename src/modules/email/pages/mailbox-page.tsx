@@ -163,6 +163,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       size: selectedProjectId ? PROJECT_EMAIL_PAGE_SIZE : CONNECTED_EMAIL_PAGE_SIZE,
       search: debouncedMessageSearch || undefined,
       projectId: selectedProjectId ?? undefined,
+      classification: mailFilter === 'other' ? 'other' : undefined,
     },
     canLoadConnectedMailbox
   );
