@@ -66,7 +66,8 @@ interface MailboxPageProps {
   accountSlug?: string;
 }
 
-const CONNECTED_EMAIL_PAGE_SIZE = 100;
+const CONNECTED_EMAIL_PAGE_SIZE = 50;
+const PROJECT_EMAIL_PAGE_SIZE = 100;
 const EMAIL_SEARCH_DEBOUNCE_MS = 150;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
@@ -159,7 +160,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     connectedAccount?.id,
     selectedFolderQuery,
     {
-      size: CONNECTED_EMAIL_PAGE_SIZE,
+      size: selectedProjectId ? PROJECT_EMAIL_PAGE_SIZE : CONNECTED_EMAIL_PAGE_SIZE,
       search: debouncedMessageSearch || undefined,
       projectId: selectedProjectId ?? undefined,
     },
@@ -810,7 +811,12 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 }
                 onCreateTag={
                   connectedAccount
-                    ? (name) => createTagMutation.mutate({ accountId: connectedAccount.id, name })
+                    ? (name, messageId) =>
+                        createTagMutation.mutate({
+                          accountId: connectedAccount.id,
+                          name,
+                          messageId,
+                        })
                     : undefined
                 }
                 onArchive={

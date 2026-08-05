@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import type {
@@ -58,7 +66,7 @@ interface EmailReadingPaneProps {
   archiveActionLabel?: string;
   onMoveToFolder?: (messageId: string, folderId: string) => void;
   onToggleTag?: (messageId: string, tag: ConnectedEmailTag, enabled: boolean) => void;
-  onCreateTag?: (name: string) => void;
+  onCreateTag?: (name: string, messageId?: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onPermanentDelete?: (messageId: string) => Promise<void> | void;
@@ -99,7 +107,12 @@ export function EmailReadingPane({
   isLoading = false,
   isError = false,
   onRetry,
+  tags,
+  isUpdatingTags,
+  isCreatingTag,
   archiveActionLabel = 'Archive',
+  onToggleTag,
+  onCreateTag,
   onArchive,
   isSendingReply = false,
   onReply,
@@ -158,21 +171,25 @@ export function EmailReadingPane({
     [loadEmailAttachment, previewAttachment]
   );
   const conversationKey = email?.conversationKey ?? email?.threadId ?? email?.id ?? '';
-  const referenceMarkerState: EmailReferenceMarkerState = email?.classification
-    ? {
-        id: email.classification.id ?? null,
-        conversationKey: email.classification.conversationKey,
-        threadId: email.classification.threadId ?? email.threadId ?? null,
-        status: email.classification.status,
-        references: email.classification.references,
-      }
-    : {
-        id: null,
-        conversationKey,
-        threadId: email?.threadId ?? null,
-        status: 'open',
-        references: [],
-      };
+  const referenceMarkerState: EmailReferenceMarkerState = useMemo(
+    () =>
+      email?.classification
+        ? {
+            id: email.classification.id ?? null,
+            conversationKey: email.classification.conversationKey,
+            threadId: email.classification.threadId ?? email.threadId ?? null,
+            status: email.classification.status,
+            references: email.classification.references,
+          }
+        : {
+            id: null,
+            conversationKey,
+            threadId: email?.threadId ?? null,
+            status: 'open',
+            references: [],
+          },
+    [conversationKey, email]
+  );
   const saveReferenceMarkerState = useCallback(
     (nextState: EmailReferenceMarkerState) => {
       if (!accountId || !conversationKey) return;
@@ -345,6 +362,17 @@ export function EmailReadingPane({
               <EmailReferenceMarker
                 accountId={accountId}
                 state={referenceMarkerState}
+                messageId={actionMessageId}
+                tags={tags}
+                keywords={latestMessage?.keywords ?? email.keywords}
+                isUpdatingTags={isUpdatingTags}
+                isCreatingTag={isCreatingTag}
+                onToggleTag={
+                  onToggleTag
+                    ? (tag, enabled) => onToggleTag(actionMessageId, tag, enabled)
+                    : undefined
+                }
+                onCreateTag={onCreateTag ? (name) => onCreateTag(name, actionMessageId) : undefined}
                 isSaving={saveClassificationMutation.isPending}
                 onChange={saveReferenceMarkerState}
               />
