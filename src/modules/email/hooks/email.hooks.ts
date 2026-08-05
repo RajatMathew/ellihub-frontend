@@ -142,7 +142,7 @@ export const useEmailMessagesQuery = (
     placeholderData: keepPreviousData,
     retry: shouldRetryEmailRequest,
     refetchOnMount: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
 
@@ -626,11 +626,25 @@ export const useCreateEmailTagMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { accountId: string; name: string; color?: string }) =>
-      emailApi.createTag(payload.accountId, { name: payload.name, color: payload.color }),
-    onSuccess: async (_tag: ConnectedEmailTag, payload) => {
-      await queryClient.invalidateQueries({ queryKey: emailKeys.tags(payload.accountId) });
-      toast.success('Tag created.');
+    mutationFn: (payload: {
+      accountId: string;
+      name: string;
+      color?: string;
+      messageId?: string;
+    }) => emailApi.createTag(payload.accountId, { name: payload.name, color: payload.color }),
+    onSuccess: async (tag: ConnectedEmailTag, payload) => {
+      if (payload.messageId) {
+        await emailApi.updateMessageTags(payload.accountId, payload.messageId, {
+          add: [tag.providerId],
+          remove: [],
+        });
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: emailKeys.tags(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      toast.success(payload.messageId ? 'Tag created and applied.' : 'Tag created.');
     },
     onError: (error) => toastApiError(error, 'Failed to create tag.'),
   });

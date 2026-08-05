@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { emailApi } from '@/modules/email/api';
+import type { ConnectedEmailTag } from '@/modules/email/api';
 import {
   EMAIL_REFERENCE_TYPES,
   type EmailReference,
@@ -49,12 +50,19 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useQuery } from '@tanstack/react-query';
-import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, X } from 'lucide-react';
+import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, Tag, X } from 'lucide-react';
 
 type EmailReferenceMarkerProps = {
   accountId: string;
   state: EmailReferenceMarkerState;
+  messageId?: string;
+  tags?: ConnectedEmailTag[];
+  keywords?: string[];
+  isUpdatingTags?: boolean;
+  isCreatingTag?: boolean;
   isSaving?: boolean;
+  onToggleTag?: (tag: ConnectedEmailTag, enabled: boolean) => void;
+  onCreateTag?: (name: string) => void;
   onChange: (state: EmailReferenceMarkerState) => void;
 };
 
@@ -90,11 +98,19 @@ function normalizeReferenceTimeline(references: EmailReference[]) {
 export function EmailReferenceMarker({
   accountId,
   state,
+  messageId,
+  tags = [],
+  keywords = [],
+  isUpdatingTags = false,
+  isCreatingTag = false,
   isSaving,
+  onToggleTag,
+  onCreateTag,
   onChange,
 }: EmailReferenceMarkerProps) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<EmailReferenceFilterType>('all');
+  const [newTagName, setNewTagName] = useState('');
   const selectedProjectId = useMemo(
     () => state.references.find((reference) => reference.type === 'project')?.entityId ?? undefined,
     [state.references]
@@ -104,6 +120,13 @@ export function EmailReferenceMarker({
     const otherReferences = state.references.filter((reference) => reference.type !== 'project');
     return normalizeReferenceTimeline([...projectReferences, ...otherReferences]);
   }, [state.references]);
+  const isOtherSelected = references.some((reference) => reference.type === 'other');
+  const effectiveSelectedType =
+    isOtherSelected && selectedType !== 'other' ? 'other' : selectedType;
+  const keywordSet = useMemo(
+    () => new Set(keywords.map((keyword) => keyword.toLowerCase())),
+    [keywords]
+  );
   const getChipValue = useCallback(
     (reference: EmailReference) =>
       `${reference.type}:${reference.entityType ?? 'manual'}:${reference.entityId ?? reference.label}`,
@@ -143,6 +166,18 @@ export function EmailReferenceMarker({
   };
 
   const addReference = (reference: EmailReference) => {
+    if (reference.type === 'other') {
+      updateReferences([reference]);
+      setSelectedType('other');
+      setOpen(false);
+      return;
+    }
+    if (isOtherSelected) {
+      setSelectedType('other');
+      setOpen(true);
+      return;
+    }
+
     const existingIndex = state.references.findIndex((item) => item.type === reference.type);
     const exists = state.references.some(
       (item) =>
@@ -160,6 +195,13 @@ export function EmailReferenceMarker({
       updateReferences([...state.references, reference]);
     }
     setOpen(false);
+  };
+
+  const submitNewTag = () => {
+    const name = newTagName.replace(/\s+/g, ' ').trim();
+    if (!name || !onCreateTag) return;
+    onCreateTag(name);
+    setNewTagName('');
   };
 
   useEffect(() => {
@@ -231,7 +273,7 @@ export function EmailReferenceMarker({
           className="max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] overflow-hidden p-3"
         >
           <Tabs
-            value={selectedType}
+            value={effectiveSelectedType}
             onValueChange={(value) => setSelectedType(value as EmailReferenceFilterType)}
           >
             <TabsList
@@ -240,11 +282,20 @@ export function EmailReferenceMarker({
               className="mb-3 w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b"
               aria-label="Reference type"
             >
-              <TabsTrigger value="all" className="min-h-10 px-1 uppercase tracking-normal">
+              <TabsTrigger
+                value="all"
+                disabled={isOtherSelected}
+                className="min-h-10 px-1 uppercase tracking-normal"
+              >
                 All
               </TabsTrigger>
               {EMAIL_REFERENCE_TYPES.map((item) => (
-                <TabsTrigger key={item.type} value={item.type} className="min-h-10 px-1">
+                <TabsTrigger
+                  key={item.type}
+                  value={item.type}
+                  disabled={isOtherSelected && item.type !== 'other'}
+                  className="min-h-10 px-1"
+                >
                   {item.label}
                 </TabsTrigger>
               ))}
@@ -253,23 +304,38 @@ export function EmailReferenceMarker({
 
           <ReferencePicker
             accountId={accountId}
-            type={selectedType}
+            type={effectiveSelectedType}
             projectId={
-              selectedType === 'project' || selectedType === 'all'
+              effectiveSelectedType === 'project' || effectiveSelectedType === 'all'
                 ? selectedProjectId
                 : (selectedProjectId ?? undefined)
             }
             placeholder={
-              selectedType === 'all'
+              effectiveSelectedType === 'all'
                 ? 'Search all references'
-                : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
-                  'Add reference')
+                : (EMAIL_REFERENCE_TYPES.find((item) => item.type === effectiveSelectedType)
+                    ?.placeholder ?? 'Add reference')
             }
             selectedReferences={references}
+            otherLocked={isOtherSelected}
             onAdd={addReference}
           />
         </PopoverContent>
       </Popover>
+      {isOtherSelected && (
+        <OtherTagPanel
+          tags={tags}
+          keywordSet={keywordSet}
+          messageId={messageId}
+          newTagName={newTagName}
+          isUpdatingTags={isUpdatingTags}
+          isCreatingTag={isCreatingTag}
+          onNewTagNameChange={setNewTagName}
+          onSubmitNewTag={submitNewTag}
+          onToggleTag={onToggleTag}
+          onCreateTag={onCreateTag}
+        />
+      )}
     </section>
   );
 }
@@ -336,6 +402,124 @@ function ReferenceChip({
   );
 }
 
+function OtherExclusivePickerNotice() {
+  return (
+    <div className="rounded-md border border-border bg-muted/25 p-3 text-sm">
+      <p className="font-medium text-foreground">Other is exclusive</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Remove the Other chip before linking this mail to a project, PO, invoice, RFQ, RFI, or CO.
+        Use tags below to organize uncategorized mail into provider tag folders.
+      </p>
+    </div>
+  );
+}
+
+function OtherTagPanel({
+  tags,
+  keywordSet,
+  messageId,
+  newTagName,
+  isUpdatingTags,
+  isCreatingTag,
+  onNewTagNameChange,
+  onSubmitNewTag,
+  onToggleTag,
+  onCreateTag,
+}: {
+  tags: ConnectedEmailTag[];
+  keywordSet: Set<string>;
+  messageId?: string;
+  newTagName: string;
+  isUpdatingTags: boolean;
+  isCreatingTag: boolean;
+  onNewTagNameChange: (value: string) => void;
+  onSubmitNewTag: () => void;
+  onToggleTag?: (tag: ConnectedEmailTag, enabled: boolean) => void;
+  onCreateTag?: (name: string) => void;
+}) {
+  const createTagInputId = useId();
+  const canManageTags = Boolean(messageId && onToggleTag);
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
+      <div className="flex items-start gap-2">
+        <Tag aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Organize with tags</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+            Provider tags keep this mail in its tagged folder while Other stays separate from
+            project references.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {tags.length === 0 ? (
+          <span className="text-xs text-muted-foreground">No provider tags yet.</span>
+        ) : (
+          tags.map((tag) => {
+            const selected =
+              keywordSet.has(tag.name.toLowerCase()) ||
+              keywordSet.has(tag.providerId.toLowerCase());
+
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+                  selected && 'border-primary/30 bg-primary/10 text-primary'
+                )}
+                aria-pressed={selected}
+                disabled={!canManageTags || isUpdatingTags}
+                onClick={() => onToggleTag?.(tag, !selected)}
+              >
+                {selected && <CommandCheck aria-hidden="true" className="ms-0 size-3.5" />}
+                <span className="max-w-36 truncate">{tag.name}</span>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {onCreateTag && (
+        <form
+          className="mt-3 flex max-w-sm gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmitNewTag();
+          }}
+        >
+          <label htmlFor={createTagInputId} className="sr-only">
+            Create and apply tag
+          </label>
+          <Input
+            id={createTagInputId}
+            type="text"
+            variant="sm"
+            className="h-9"
+            value={newTagName}
+            placeholder="Create and apply tag"
+            disabled={isCreatingTag}
+            onChange={(event) => onNewTagNameChange(event.target.value)}
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            mode="icon"
+            size="icon"
+            className="size-9 shrink-0"
+            disabled={!newTagName.trim() || isCreatingTag || !messageId}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+            <span className="sr-only">Create and apply tag</span>
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function EmailThreadStatusMarker({
   state,
   isSaving,
@@ -393,6 +577,7 @@ function ReferencePicker({
   projectId,
   placeholder,
   selectedReferences,
+  otherLocked,
   onAdd,
 }: {
   accountId: string;
@@ -400,8 +585,13 @@ function ReferencePicker({
   projectId?: string;
   placeholder: string;
   selectedReferences: EmailReference[];
+  otherLocked: boolean;
   onAdd: (reference: EmailReference) => void;
 }) {
+  if (otherLocked && type !== 'other') {
+    return <OtherExclusivePickerNotice />;
+  }
+
   if (type === 'all') {
     return (
       <AllReferencePicker
