@@ -237,6 +237,18 @@
 }
 
 /** Smooth scroll **/
+.mock-agent-conversation,
+.mock-agent-conversation * {
+  scrollbar-width: none;
+}
+
+.mock-agent-conversation::-webkit-scrollbar,
+.mock-agent-conversation *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 html {
   max-width: 100%;
   height: 100%;

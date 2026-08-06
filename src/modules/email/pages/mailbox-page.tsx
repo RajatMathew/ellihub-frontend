@@ -6,7 +6,7 @@ import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
-import type { EmailAgentLayout } from '@/modules/email/components/email-agent-panel';
+import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import {
@@ -85,7 +85,7 @@ const DEFAULT_AGENT_LAYOUT: EmailAgentLayout = {
 };
 
 const EmailAgentPanel = lazy(() =>
-  import('@/modules/email/components/email-agent-panel').then((module) => ({
+  import('@/mock/email-agent-panel').then((module) => ({
     default: module.EmailAgentPanel,
   }))
 );
@@ -108,6 +108,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [composeLoaded, setComposeLoaded] = useState(false);
   const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
+  const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(null);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
@@ -313,6 +314,19 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
+  const requestArchive = useCallback((messageId: string) => {
+    setArchiveConfirmation({ messageId });
+  }, []);
+  const confirmArchive = useCallback(() => {
+    if (!connectedAccount || !archiveConfirmation) return;
+    if (selectedTarget?.emailId === archiveConfirmation.messageId) setSelectedTarget(null);
+    archiveMessageMutation.mutate({
+      accountId: connectedAccount.id,
+      messageId: archiveConfirmation.messageId,
+      targetFolderId: archiveFolderId,
+    });
+    setArchiveConfirmation(null);
+  }, [archiveConfirmation, archiveFolderId, archiveMessageMutation, connectedAccount, selectedTarget?.emailId]);
   const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
   const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
   const showEmailSyncIndicator = useBoundedEmailSyncIndicator(
@@ -517,6 +531,12 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         return;
       }
 
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        setAgentOpen((open) => !open);
+        return;
+      }
+
       if (event.key === 'ArrowUp' && previousEmail) {
         event.preventDefault();
         selectEmail(previousEmail.id);
@@ -602,6 +622,21 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       onConfirm={handleDisconnectAccount}
     />
   ) : null;
+  const archiveDialog = (
+    <ConfirmDialog
+      open={Boolean(archiveConfirmation)}
+      onOpenChange={(open) => {
+        if (!archiveMessageMutation.isPending && !open) setArchiveConfirmation(null);
+      }}
+      title="Archive this email?"
+      description="This will move the email out of your inbox and into Archive."
+      confirmLabel="Archive"
+      variant="primary"
+      isPending={archiveMessageMutation.isPending}
+      autoFocusConfirm
+      onConfirm={confirmArchive}
+    />
+  );
 
   if (!accountsQuery.isLoading && !accountsQuery.isError && !connectedAccount) {
     return <Navigate to="/app/email/add-account" replace />;
@@ -773,12 +808,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                   onPrefetchEmail={prefetchEmail}
                   onArchiveEmail={
                     connectedAccount && !isArchiveFolder
-                      ? (email) =>
-                          archiveMessageMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId: email.latestMessageId ?? email.id,
-                            targetFolderId: archiveFolderId,
-                          })
+                      ? (email) => requestArchive(email.latestMessageId ?? email.id)
                       : undefined
                   }
                   onDeleteEmail={
@@ -860,8 +890,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 onArchive={
                   connectedAccount
                     ? (messageId) => {
-                        setSelectedTarget(null);
                         if (isArchiveFolder) {
+                          setSelectedTarget(null);
                           unarchiveMessageMutation.mutate({
                             accountId: connectedAccount.id,
                             messageId,
@@ -869,11 +899,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                           });
                           return;
                         }
-                        archiveMessageMutation.mutate({
-                          accountId: connectedAccount.id,
-                          messageId,
-                          targetFolderId: archiveFolderId,
-                        });
+                        requestArchive(messageId);
                       }
                     : undefined
                 }
@@ -991,6 +1017,11 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             open={agentOpen}
             email={visibleEmail}
             mailboxAddress={address}
+            accountId={connectedAccount?.id}
+            threadKey={visibleEmail?.threadId ?? visibleEmail?.conversationKey ?? visibleEmail?.id ?? null}
+            contextEmails={emailsForActiveSearch}
+            folders={foldersQuery.data}
+            tags={tagsQuery.data}
             onOpenChange={(open) => {
               setAgentOpen(open);
               if (!open) {
@@ -1070,6 +1101,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       )}
       {nicknameDialog}
       {disconnectDialog}
+      {archiveDialog}
     </div>
   );
 }

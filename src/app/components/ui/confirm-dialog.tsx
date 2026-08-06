@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ interface ConfirmDialogProps {
   isPending?: boolean;
   confirmDisabled?: boolean;
   keepOpenOnConfirm?: boolean;
+  autoFocusConfirm?: boolean;
 }
 
 export function ConfirmDialog({
@@ -35,10 +36,18 @@ export function ConfirmDialog({
   isPending = false,
   confirmDisabled = false,
   keepOpenOnConfirm = false,
+  autoFocusConfirm = false,
 }: ConfirmDialogProps) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onOpenAutoFocus={(event) => {
+          if (!autoFocusConfirm) return;
+          event.preventDefault();
+          confirmRef.current?.focus();
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -46,6 +55,7 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
+            ref={confirmRef}
             variant={variant === 'destructive' ? 'destructive' : undefined}
             onClick={(event) => {
               if (keepOpenOnConfirm) event.preventDefault();

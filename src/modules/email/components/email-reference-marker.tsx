@@ -99,7 +99,6 @@ export function EmailReferenceMarker({
   );
   const isOtherSelected = references.some((reference) => reference.type === 'other');
   const isProjectMode = !isOtherSelected;
-  const showOtherTagPanel = isOtherSelected && closedOtherPanelKey !== state.conversationKey;
   const effectiveSelectedType =
     isOtherSelected && selectedType !== 'other' ? 'other' : selectedType;
   const keywordSet = useMemo(
@@ -114,6 +113,8 @@ export function EmailReferenceMarker({
       ),
     [keywordSet, tags]
   );
+  const showOtherTagPanel =
+    isOtherSelected && selectedOtherTags.length === 0 && closedOtherPanelKey !== state.conversationKey;
   const getChipValue = useCallback(
     (reference: EmailReference) => getReferenceIdentity(reference),
     []

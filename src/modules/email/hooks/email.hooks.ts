@@ -924,13 +924,62 @@ export const useDeleteEmailMessageMutation = () => {
       messageId: string;
       targetFolderId?: string | null;
     }) => emailApi.deleteMessage(payload.accountId, payload.messageId),
-    onSuccess: async (_result, payload) => {
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
+        accountId: payload.accountId,
+        messageId: payload.messageId,
+        targetFolderId: payload.targetFolderId,
+      }),
+    onSuccess: () => {
       toast.success('Email moved to deleted items.');
+    },
+    onError: (error, payload, snapshot) => {
+      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
+      toastApiError(error, 'Failed to delete email.');
+    },
+    onSettled: async (_result, _error, payload) => {
       await refreshEmailActionQueries(queryClient, payload.accountId);
     },
-    onError: (error) => toastApiError(error, 'Failed to delete email.'),
   });
 };
+
+type EmailTagsSnapshot = Array<[QueryKey, EmailMessagePages | undefined]>;
+
+async function applyOptimisticEmailTags(
+  queryClient: ReturnType<typeof useQueryClient>,
+  payload: { accountId: string; messageId: string; add?: string[]; remove?: string[] }
+): Promise<EmailTagsSnapshot> {
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+    queryClient.cancelQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+  ]);
+
+  const snapshots = getMessageQuerySnapshots(queryClient, payload.accountId);
+  const add = new Set(payload.add ?? []);
+  const remove = new Set(payload.remove ?? []);
+  queryClient.setQueriesData<EmailMessagePages>(
+    { queryKey: emailKeys.messagesRoot(payload.accountId) },
+    (current) =>
+      current
+        ? {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              records: page.records.map((message) => {
+                if (message.id !== payload.messageId && message.providerId !== payload.messageId) {
+                  return message;
+                }
+                const keywords = new Set(message.keywords ?? []);
+                remove.forEach((keyword) => keywords.delete(keyword));
+                add.forEach((keyword) => keywords.add(keyword));
+                return { ...message, keywords: Array.from(keywords) };
+              }),
+            })),
+          }
+        : current
+  );
+  return snapshots;
+}
 
 export const usePermanentlyDeleteEmailMessageMutation = () => {
   const queryClient = useQueryClient();
@@ -960,6 +1009,7 @@ export const useUpdateEmailMessageTagsMutation = () => {
         add: payload.add,
         remove: payload.remove,
       }),
+    onMutate: (payload) => applyOptimisticEmailTags(queryClient, payload),
     onSuccess: async (_result, payload) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
@@ -968,7 +1018,12 @@ export const useUpdateEmailMessageTagsMutation = () => {
       ]);
       toast.success('Tags updated.');
     },
-    onError: (error) => toastApiError(error, 'Failed to update tags.'),
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      toastApiError(error, 'Failed to update tags.');
+    },
   });
 };
 
