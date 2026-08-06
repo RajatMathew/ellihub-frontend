@@ -1018,7 +1018,7 @@ export const useUpdateEmailMessageTagsMutation = () => {
       ]);
       toast.success('Tags updated.');
     },
-    onError: (error, payload, snapshot) => {
+    onError: (error, _payload, snapshot) => {
       for (const [queryKey, messages] of snapshot ?? []) {
         queryClient.setQueryData(queryKey, messages);
       }

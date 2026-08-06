@@ -36,8 +36,6 @@ export default defineConfig({
             if (pkg === 'posthog-js' || pkg === 'posthog') return 'analytics';
             if (pkg === 'react-hook-form' || pkg === 'hookform' || pkg === 'zod') return 'forms';
             if (pkg === 'date-fns' || pkg === 'react-day-picker') return 'dates';
-
-            return 'vendor';
           }
         },
         chunkFileNames: 'assets/[name]-[hash].js',

@@ -442,10 +442,11 @@ export function EmailAgentPanel({
         return `Added ${matchedTags.map((tag) => tag.name).join(', ')}.`;
       }
       if (action.action === 'set_status') {
-        const targetEmail = [email, ...contextEmails].find((item) =>
-          getMessageId(item) === messageId ||
-          item.conversationKey === action.conversationKey ||
-          item.threadId === action.conversationKey
+        const targetEmail = (email ? [email, ...contextEmails] : contextEmails).find(
+          (item) =>
+            getMessageId(item) === messageId ||
+            item.conversationKey === action.conversationKey ||
+            item.threadId === action.conversationKey
         ) ?? email;
         const conversationKey = action.conversationKey ?? targetEmail?.conversationKey ?? targetEmail?.threadId;
         if (!conversationKey) throw new Error('I could not identify the email thread.');
@@ -574,7 +575,7 @@ export function EmailAgentPanel({
         <div className="flex shrink-0 items-center gap-1">
           {messages.length > 0 ? (
             <IconButton label="Start a new chat" onClick={handleNewConversation}>
-              <PenNewRoundIcon className="size-[18px]" aria-hidden="true" />
+              <PenNewRoundIcon className="size-[18px]" aria-hidden />
             </IconButton>
           ) : null}
           <IconButton label="Show Elli chat history" onClick={() => setHistoryOpen((value) => !value)}>
