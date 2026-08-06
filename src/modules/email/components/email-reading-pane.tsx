@@ -289,8 +289,9 @@ export function EmailReadingPane({
         </Button>
         <div className="ml-auto flex items-center gap-2">
           <EmailReadingPaneShortcuts
-            mailboxActionKey={isUnarchiveAction ? 'u' : 'e'}
+            mailboxActionKey={isUnarchiveAction ? 'u' : 'a'}
             mailboxActionLabel={isUnarchiveAction ? 'unarchive' : 'archive'}
+            agentActionKey={onOpenAgent ? 'e' : undefined}
             onReply={
               latestReplyableMessage && onReply
                 ? () =>
@@ -310,8 +311,8 @@ export function EmailReadingPane({
               mode="icon"
               size="icon"
               className="size-10 bg-background p-1.5 sm:size-9"
-              aria-label="Open Elli agent"
-              title="Open Elli agent"
+              aria-label="Open or close Elli agent"
+              title="Open or close Elli agent (E)"
               onClick={onOpenAgent}
             >
               <img
@@ -480,11 +481,13 @@ export function EmailReadingPane({
 function EmailReadingPaneShortcuts({
   mailboxActionKey,
   mailboxActionLabel,
+  agentActionKey,
   onReply,
   onArchive,
 }: {
-  mailboxActionKey: 'e' | 'u';
+  mailboxActionKey: 'a' | 'u';
   mailboxActionLabel: 'archive' | 'unarchive';
+  agentActionKey?: 'e';
   onReply?: () => void;
   onArchive?: () => void;
 }) {
@@ -550,6 +553,15 @@ function EmailReadingPaneShortcuts({
         {mailboxActionKey.toUpperCase()}
       </kbd>
       <span>{mailboxActionLabel}</span>
+      {agentActionKey ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
+            {agentActionKey.toUpperCase()}
+          </kbd>
+          <span>Elli</span>
+        </>
+      ) : null}
     </span>
   );
 }
