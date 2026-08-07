@@ -26,7 +26,7 @@ import {
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
 import { useQuery } from '@tanstack/react-query';
-import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, Tag, X } from 'lucide-react';
+import { AtSign, CheckCircle2, CircleDotDashed, Info, Loader2, Plus, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 type EmailReferenceMarkerProps = {
@@ -451,25 +451,33 @@ function ReferencePickerPopover({
         </TabsList>
       </Tabs>
 
-      <ReferencePicker
-        accountId={accountId}
-        type={selectedType}
-        projectId={
-          selectedType === 'project' || selectedType === 'all'
-            ? selectedProjectId
-            : (selectedProjectId ?? undefined)
-        }
-        placeholder={
-          selectedType === 'all'
-            ? 'Search all references'
-            : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
-              'Add reference')
-        }
-        selectedReferences={selectedReferences}
-        otherLocked={otherLocked}
-        projectRequired={projectRequired}
-        onAdd={onAdd}
-      />
+      <div className="space-y-2">
+        {projectRequired && selectedType === 'project' && (
+          <div className="flex items-center gap-2 rounded-md border border-info/15 bg-info-soft/50 px-3 py-2 text-xs text-info-soft-foreground">
+            <Info aria-hidden="true" className="size-3.5 shrink-0" />
+            <span>You need to select project first.</span>
+          </div>
+        )}
+        <ReferencePicker
+          accountId={accountId}
+          type={selectedType}
+          projectId={
+            selectedType === 'project' || selectedType === 'all'
+              ? selectedProjectId
+              : (selectedProjectId ?? undefined)
+          }
+          placeholder={
+            selectedType === 'all'
+              ? 'Search all references'
+              : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
+                'Add reference')
+          }
+          selectedReferences={selectedReferences}
+          otherLocked={otherLocked}
+          projectRequired={projectRequired}
+          onAdd={onAdd}
+        />
+      </div>
     </PopoverContent>
   );
 }
@@ -514,12 +522,12 @@ function ReferenceGroupChip({
   const typeLabel = getReferenceGroupLabel(type);
 
   return (
-    <span className="inline-flex h-9 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5">
-      <span className="flex h-full shrink-0 items-center bg-muted/50 px-3 text-muted-foreground">
+    <span className="inline-flex h-auto min-h-9 max-w-full min-w-0 flex-wrap items-center rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5">
+      <span className="flex h-9 shrink-0 items-center bg-muted/50 px-3 text-muted-foreground">
         {typeLabel}
       </span>
       <span aria-hidden="true" className="h-4 w-px shrink-0 bg-border" />
-      <span className="flex min-w-0 items-center overflow-hidden px-2.5 text-foreground">
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-y-1 px-2.5 py-1 text-foreground">
         {references.map((reference, index) => (
           <span
             key={getReferenceIdentity(reference)}
@@ -528,7 +536,14 @@ function ReferenceGroupChip({
             {index > 0 && <span className="mr-1 text-muted-foreground">,</span>}
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="max-w-44 truncate">{reference.label}</span>
+                <span
+                  className={cn(
+                    'max-w-full whitespace-normal break-words sm:max-w-44 sm:truncate',
+                    type === 'project' && 'font-semibold text-brand-clay'
+                  )}
+                >
+                  {reference.label}
+                </span>
               </TooltipTrigger>
               <TooltipContent side="top" showArrow className="max-w-80 whitespace-nowrap">
                 {reference.label}
@@ -537,7 +552,7 @@ function ReferenceGroupChip({
             <BubbleIconButton
               label={`Remove ${reference.label}`}
               disabled={isSaving}
-              className="opacity-0 transition-opacity group-hover/reference:opacity-100 group-focus-within/reference:opacity-100"
+              className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover/reference:opacity-100 sm:group-focus-within/reference:opacity-100"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => onRemove(reference)}
             >
