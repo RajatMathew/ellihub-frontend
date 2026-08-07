@@ -299,7 +299,6 @@ export function EmailAgentPanel({
       }
     },
   });
-  const streamingAssistantId = (status === 'submitted' || status === 'streaming') && messages.at(-1)?.role === 'assistant' ? messages.at(-1)?.id ?? null : null;
   const replyMutation = useReplyConnectedEmailMutation();
   const archiveMutation = useArchiveEmailMessageMutation();
   const moveMutation = useMoveEmailMessageMutation();
@@ -678,8 +677,8 @@ export function EmailAgentPanel({
             </div>
             ) : (
             <div className="space-y-5" aria-live="polite">
-              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} hiddenMessageId={streamingAssistantId} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} /></div>)}
-              {status === 'submitted' || status === 'streaming' ? <ThinkingIndicator /> : null}
+              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} /></div>)}
+              {status === 'submitted' ? <ThinkingIndicator /> : null}
             </div>
             )}
             {error ? <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">Elli could not complete that request. Check the agent configuration and try again.</div> : null}
@@ -795,7 +794,6 @@ function AgentMessage({
   drafts,
   onDraftChange,
   onApprove,
-  hiddenMessageId,
   pendingApproval,
 }: {
   message: UIMessage;
@@ -803,24 +801,33 @@ function AgentMessage({
   drafts: Record<string, MockAgentAction>;
   onDraftChange: (id: string, draft: MockAgentAction) => void;
   onApprove: (id: string, action: MockAgentAction, approved: boolean) => Promise<void>;
-  hiddenMessageId: string | null;
   pendingApproval: { id: string; approved: boolean } | null;
 }) {
-  return (
-    <div className="space-y-2">
-      {message.parts.map((part, index) => {
-        if (part.type === 'text' && part.text.trim()) {
-          if (message.id === hiddenMessageId) return null;
-          return <div key={`${message.id}-${index}`}><MessageBubble from={message.role} mentionLabels={mentionLabels}>{part.text}</MessageBubble></div>;
-        }
-        if (part.type !== 'tool-proposeEmailAction' || !('toolCallId' in part)) return null;
-        const toolPart = part as unknown as { toolCallId: string; state: string; input?: MockAgentAction; output?: string; errorText?: string };
-        const action = drafts[toolPart.toolCallId] ?? toolPart.input;
-        if (!action) return <div key={toolPart.toolCallId} className="rounded-md border border-border p-3 text-xs text-muted-foreground">Preparing an action for review…</div>;
-        return <ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />;
-      })}
-    </div>
-  );
+  const renderedParts: ReactNode[] = [];
+  let textBuffer = '';
+  const flushText = () => {
+    if (!textBuffer) return;
+    const text = textBuffer;
+    textBuffer = '';
+    renderedParts.push(<MessageBubble key={`${message.id}-text-${renderedParts.length}`} from={message.role} mentionLabels={mentionLabels}>{text}</MessageBubble>);
+  };
+  message.parts.forEach((part) => {
+    if (part.type === 'text') {
+      textBuffer += part.text;
+      return;
+    }
+    flushText();
+    if (part.type !== 'tool-proposeEmailAction' || !('toolCallId' in part)) return;
+    const toolPart = part as unknown as { toolCallId: string; state: string; input?: MockAgentAction; output?: string; errorText?: string };
+    const action = drafts[toolPart.toolCallId] ?? toolPart.input;
+    if (!action) {
+      renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing an action for review…</div>);
+      return;
+    }
+    renderedParts.push(<ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />);
+  });
+  flushText();
+  return <div className="space-y-2" aria-live={message.role === 'assistant' ? 'polite' : undefined}>{renderedParts}</div>;
 }
 
 function MessageBubble({ from, children, mentionLabels }: { from: UIMessage['role']; children: string; mentionLabels: string[] }) {

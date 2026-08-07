@@ -333,10 +333,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     refreshMessagesMutation.isPending,
     `${connectedAccount?.id ?? 'no-account'}:${refreshMessagesMutation.submittedAt}`
   );
-  const isInitialSyncing =
-    isConnected && showEmailSyncIndicator && !activeFreshness?.lastSyncedAt && !hasCachedMessages;
   const isMailboxLoading = isConnectedRoute
-    ? accountsQuery.isLoading || messagesQuery.isLoading || isInitialSyncing
+    ? accountsQuery.isLoading || messagesQuery.isLoading
     : false;
   const isMailboxError = isConnectedRoute
     ? accountsQuery.isError ||
