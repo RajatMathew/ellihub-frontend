@@ -38,6 +38,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '@/app/api';
 import { Button } from '@/app/components/ui/button';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -224,6 +225,7 @@ export function EmailAgentPanel({
   const [drafts, setDrafts] = useState<Record<string, MockAgentAction>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [history, setHistory] = useState<ConversationSummary[]>([]);
+  const [actionsDisabled, setActionsDisabled] = useState<boolean | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -274,6 +276,21 @@ export function EmailAgentPanel({
       setHistoryLoading(false);
     }
   }, [accountId]);
+  useEffect(() => {
+    let active = true;
+    void api
+      .get<{ data: { actionsDisabled?: boolean } }>('/mock/agent/config')
+      .then((response) => {
+        if (active) setActionsDisabled(response.data.data?.actionsDisabled === true);
+      })
+      .catch(() => {
+        // The chat endpoint also sends this flag with each stream. Approval
+        // fails closed if neither request can confirm the execution mode.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -292,10 +309,13 @@ export function EmailAgentPanel({
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onData: (part) => {
       if (part.type !== 'data-conversation-metadata') return;
-      const metadata = part.data as { conversationId?: string };
+      const metadata = part.data as { conversationId?: string; actionsDisabled?: boolean };
       if (metadata.conversationId) {
         setConversationId(metadata.conversationId);
         conversationIdRef.current = metadata.conversationId;
+      }
+      if (typeof metadata.actionsDisabled === 'boolean') {
+        setActionsDisabled(metadata.actionsDisabled);
       }
     },
   });
@@ -394,6 +414,28 @@ export function EmailAgentPanel({
       const messageId = action.messageIds[0];
       if (!messageId) throw new Error('The agent did not identify an email.');
 
+      let shouldDisableActions = actionsDisabled;
+      if (shouldDisableActions === null) {
+        try {
+          const response = await api.get<{ data: { actionsDisabled?: boolean } }>('/mock/agent/config');
+          shouldDisableActions = response.data.data?.actionsDisabled === true;
+          setActionsDisabled(shouldDisableActions);
+        } catch {
+          shouldDisableActions = true;
+          setActionsDisabled(true);
+        }
+      }
+
+      if (shouldDisableActions) {
+        if (action.action === 'reply') return 'Reply simulated successfully.';
+        if (action.action === 'archive') return 'Email archive simulated successfully.';
+        if (action.action === 'move') return `Email move to ${action.targetFolderName ?? 'the target folder'} simulated successfully.`;
+        if (action.action === 'tag') return `Adding ${(action.tagNames ?? []).join(', ') || 'the requested tags'} simulated successfully.`;
+        if (action.action === 'set_status') return `Thread status change to ${action.status ?? 'open'} simulated successfully.`;
+        if (action.action === 'mark_read') return 'Mark-as-read simulated successfully.';
+        return 'Delete simulated successfully.';
+      }
+
       if (action.action === 'archive' || action.action === 'move' || action.action === 'delete') {
         preserveConversationOnThreadChangeRef.current = true;
       }
@@ -470,7 +512,7 @@ export function EmailAgentPanel({
       });
       return 'Email moved to deleted items.';
     },
-    [accountId, archiveMutation, classificationMutation, contextEmails, deleteMutation, email, folders, moveMutation, replyMutation, statusMutation, tags, tagsMutation]
+    [accountId, actionsDisabled, archiveMutation, classificationMutation, contextEmails, deleteMutation, email, folders, moveMutation, replyMutation, statusMutation, tags, tagsMutation]
   );
 
   const handleApproval = useCallback(
@@ -481,15 +523,23 @@ export function EmailAgentPanel({
           addToolOutput({
             tool: 'proposeEmailAction',
             toolCallId,
-            output: 'Rejected. No mailbox change was made.',
+            state: 'output-available',
+            output: 'REJECTED: No mailbox change was made.',
           });
           return;
         }
         const result = await executeAction(action);
-        const output = action.action === 'reply'
-          ? `${result} The approved final reply was:\n${action.body ?? ''}`
-          : result;
-        addToolOutput({ tool: 'proposeEmailAction', toolCallId, output });
+        if (result.toLowerCase().includes('simulated successfully')) {
+          toast('PREVIEW MODE: EMAIL NOT SENT', {
+            description: 'The approved action was simulated for this demo.',
+          });
+        }
+        addToolOutput({
+          tool: 'proposeEmailAction',
+          toolCallId,
+          state: 'output-available',
+          output: `SUCCESS: ${result}${result.toLowerCase().includes('simulated successfully') ? ' No mailbox change was made.' : ''}`,
+        });
       } catch (actionError) {
         preserveConversationOnThreadChangeRef.current = false;
         addToolOutput({
@@ -872,6 +922,7 @@ function ActionCard({
   onApprove: (approved: boolean) => Promise<void>;
 }) {
   const isWaiting = state === 'input-available' || processing;
+  const isRejected = output?.startsWith('REJECTED:') === true;
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 shadow-sm">
       <div className="flex items-start gap-3">
@@ -882,7 +933,7 @@ function ActionCard({
       {action.action === 'reply' && !isWaiting ? <p className="mt-3 whitespace-pre-wrap rounded-md bg-background p-3 text-sm text-muted-foreground">{action.body}</p> : null}
       {errorText ? <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{errorText}</p> : null}
       {isWaiting ? <div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={processing} onClick={() => void onApprove(false)}><X className="size-3.5" /> {processing && processingApproved === false ? 'Working…' : 'Reject'}</Button><Button type="button" variant="primary" size="sm" disabled={processing} onClick={() => void onApprove(true)}><Check className="size-3.5" /> {processing && processingApproved === true ? 'Working…' : 'Approve'}</Button></div> : null}
-      {state === 'output-available' && output ? <p className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"><Check className="size-3.5" />{output}</p> : null}
+      {state === 'output-available' && output ? <p className={cn('mt-3 flex items-center gap-2 text-xs font-medium', isRejected ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-400')}><Check className="size-3.5" />{action.action === 'reply' ? (isRejected ? 'Reply rejected. No email was sent.' : 'Reply approved successfully.') : output}</p> : null}
     </div>
   );
 }
