@@ -121,6 +121,18 @@ export function SidebarGroupMenu({
           <AccordionMenuSubContent type="single" collapsible parentValue={`${name}-trigger`}>
             {item.children?.map((child, index) => {
               if (child.type === 'separator') {
+                if (child.title) {
+                  return (
+                    <div
+                      key={index}
+                      role="presentation"
+                      className="sidebar-section-label px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-muted"
+                    >
+                      {child.title}
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={index}

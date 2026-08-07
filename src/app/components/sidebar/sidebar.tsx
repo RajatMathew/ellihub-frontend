@@ -38,6 +38,7 @@ export default function Sidebar({
         <SidebarAnimatedContent menuConfig={menuConfig} mode={mode} />
       </ScrollArea>
       <footer
+        data-slot="sidebar-footer"
         className="shrink-0 border-t border-sidebar-border px-3 py-2"
         title="Double click to check for updates"
       >

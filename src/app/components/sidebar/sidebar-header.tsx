@@ -9,7 +9,10 @@ export function SidebarHeader() {
   const { sidebarToggle } = useLayout();
 
   return (
-    <div className="mb-1 mt-1 flex h-[calc(var(--header-height)-1px)] w-full min-w-0 items-center">
+    <div
+      data-slot="sidebar-header"
+      className="mb-1 mt-1 flex h-[calc(var(--header-height)-1px)] w-full min-w-0 items-center"
+    >
       <div className="flex w-full min-w-0 grow items-center justify-between gap-2.5 px-2.5">
         <SidebarLogo className="flex-1 overflow-hidden" />
         <Button

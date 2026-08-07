@@ -173,7 +173,7 @@ const SidebarBuilder = ({ menuConfig }: Props) => {
     });
   }, [accessibleMenuConfig]);
 
-  return <div className="flex min-h-full w-full min-w-0 flex-col gap-1 pt-2">{renderedMenu}</div>;
+  return <div className="flex min-h-full w-full min-w-0 flex-col gap-0.5 pt-2">{renderedMenu}</div>;
 };
 
 export default memo(SidebarBuilder);

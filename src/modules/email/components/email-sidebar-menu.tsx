@@ -87,6 +87,7 @@ export function EmailSidebarMenu() {
         title: 'Email',
         collapse: false,
         children: [
+          { type: 'separator', title: 'Common' },
           ...SHARED_MAILBOXES.map((mailbox) => {
             const account = sharedAccounts.find(
               (candidate) => candidate.sharedMailboxKey === mailbox.key
@@ -97,9 +98,7 @@ export function EmailSidebarMenu() {
               icon: Mail,
             };
           }),
-          {
-            type: 'separator',
-          },
+          { type: 'separator', title: 'Personal' },
           ...visiblePersonalAccounts.map((account) => {
             const address = getSidebarAccountAddress(account);
             return {

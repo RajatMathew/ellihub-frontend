@@ -25,7 +25,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       style={
         {
           '--page-margin': '0px',
-          '--sidebar-width': '240px',
+          '--sidebar-width': '280px',
           '--sidebar-collapsed-width': '0px',
           '--sidebar-header-height': '54px',
           '--header-height': '48px',
