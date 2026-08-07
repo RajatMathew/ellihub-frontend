@@ -514,12 +514,12 @@ function ReferenceGroupChip({
   const typeLabel = getReferenceGroupLabel(type);
 
   return (
-    <span className="inline-flex h-9 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5">
-      <span className="flex h-full shrink-0 items-center bg-muted/50 px-3 text-muted-foreground">
+    <span className="inline-flex h-auto min-h-9 max-w-full min-w-0 flex-wrap items-center rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5">
+      <span className="flex h-9 shrink-0 items-center bg-muted/50 px-3 text-muted-foreground">
         {typeLabel}
       </span>
       <span aria-hidden="true" className="h-4 w-px shrink-0 bg-border" />
-      <span className="flex min-w-0 items-center overflow-hidden px-2.5 text-foreground">
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-y-1 px-2.5 py-1 text-foreground">
         {references.map((reference, index) => (
           <span
             key={getReferenceIdentity(reference)}
@@ -528,7 +528,14 @@ function ReferenceGroupChip({
             {index > 0 && <span className="mr-1 text-muted-foreground">,</span>}
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="max-w-44 truncate">{reference.label}</span>
+                <span
+                  className={cn(
+                    'max-w-full whitespace-normal break-words sm:max-w-44 sm:truncate',
+                    type === 'project' && 'font-semibold text-brand-clay'
+                  )}
+                >
+                  {reference.label}
+                </span>
               </TooltipTrigger>
               <TooltipContent side="top" showArrow className="max-w-80 whitespace-nowrap">
                 {reference.label}
@@ -537,7 +544,7 @@ function ReferenceGroupChip({
             <BubbleIconButton
               label={`Remove ${reference.label}`}
               disabled={isSaving}
-              className="opacity-0 transition-opacity group-hover/reference:opacity-100 group-focus-within/reference:opacity-100"
+              className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover/reference:opacity-100 sm:group-focus-within/reference:opacity-100"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => onRemove(reference)}
             >
