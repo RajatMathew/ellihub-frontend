@@ -12,6 +12,7 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { emailApi } from '@/modules/email/api';
@@ -26,6 +27,7 @@ import {
 } from '@/modules/email/components/email-reference-marker-storage';
 import { useQuery } from '@tanstack/react-query';
 import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, Tag, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 type EmailReferenceMarkerProps = {
   accountId: string;
@@ -98,6 +100,7 @@ export function EmailReferenceMarker({
     [state.references]
   );
   const isOtherSelected = references.some((reference) => reference.type === 'other');
+  const hasProjectReference = references.some((reference) => reference.type === 'project');
   const isProjectMode = !isOtherSelected;
   const effectiveSelectedType =
     isOtherSelected && selectedType !== 'other' ? 'other' : selectedType;
@@ -114,7 +117,9 @@ export function EmailReferenceMarker({
     [keywordSet, tags]
   );
   const showOtherTagPanel =
-    isOtherSelected && selectedOtherTags.length === 0 && closedOtherPanelKey !== state.conversationKey;
+    isOtherSelected &&
+    selectedOtherTags.length === 0 &&
+    closedOtherPanelKey !== state.conversationKey;
   const getChipValue = useCallback(
     (reference: EmailReference) => getReferenceIdentity(reference),
     []
@@ -129,14 +134,31 @@ export function EmailReferenceMarker({
 
   const removeReference = (reference: EmailReference) => {
     const value = getChipValue(reference);
+    const isLastProjectReference =
+      reference.type === 'project' &&
+      !references.some((item) => item.type === 'project' && getChipValue(item) !== value);
+    const hasDependentReferences = references.some((item) => item.type !== 'project');
+
+    if (isLastProjectReference && hasDependentReferences) {
+      toast.warning('Cannot remove the project reference', {
+        description:
+          'Remove the RFQ, PO, invoice, and change-order references first, then remove the project.',
+      });
+      return;
+    }
+
     updateReferences(state.references.filter((item) => getChipValue(item) !== value));
   };
 
   const addReference = (reference: EmailReference) => {
+    if (reference.type !== 'project' && !hasProjectReference) {
+      setSelectedType('project');
+      setOpen(true);
+      return;
+    }
     if (reference.type === 'other') {
       updateReferences([reference]);
       setSelectedType('other');
-      setOpen(false);
       return;
     }
     if (isOtherSelected) {
@@ -151,7 +173,6 @@ export function EmailReferenceMarker({
     if (exists) return;
 
     updateReferences([...references.filter((item) => item.type !== 'other'), reference]);
-    setOpen(false);
   };
 
   const setCategoryMode = (mode: 'project' | 'other') => {
@@ -231,7 +252,13 @@ export function EmailReferenceMarker({
         )}
 
         {isProjectMode && (
-          <Popover open={open} onOpenChange={setOpen}>
+          <Popover
+            open={open}
+            onOpenChange={(nextOpen) => {
+              setOpen(nextOpen);
+              if (nextOpen && !hasProjectReference) setSelectedType('project');
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -265,6 +292,7 @@ export function EmailReferenceMarker({
               selectedProjectId={selectedProjectId}
               selectedReferences={references}
               otherLocked={isOtherSelected}
+              projectRequired={!hasProjectReference}
               onSelectedTypeChange={setSelectedType}
               onAdd={addReference}
             />
@@ -372,6 +400,7 @@ function ReferencePickerPopover({
   selectedProjectId,
   selectedReferences,
   otherLocked,
+  projectRequired,
   onSelectedTypeChange,
   onAdd,
 }: {
@@ -381,6 +410,7 @@ function ReferencePickerPopover({
   selectedProjectId?: string;
   selectedReferences: EmailReference[];
   otherLocked: boolean;
+  projectRequired: boolean;
   onSelectedTypeChange: (value: EmailReferenceFilterType) => void;
   onAdd: (reference: EmailReference) => void;
 }) {
@@ -403,7 +433,7 @@ function ReferencePickerPopover({
         >
           <TabsTrigger
             value="all"
-            disabled={otherLocked}
+            disabled={otherLocked || projectRequired}
             className="min-h-10 px-1 uppercase tracking-normal"
           >
             All
@@ -412,7 +442,7 @@ function ReferencePickerPopover({
             <TabsTrigger
               key={item.type}
               value={item.type}
-              disabled={otherLocked}
+              disabled={otherLocked || (projectRequired && item.type !== 'project')}
               className="min-h-10 px-1"
             >
               {item.label}
@@ -437,6 +467,7 @@ function ReferencePickerPopover({
         }
         selectedReferences={selectedReferences}
         otherLocked={otherLocked}
+        projectRequired={projectRequired}
         onAdd={onAdd}
       />
     </PopoverContent>
@@ -483,22 +514,30 @@ function ReferenceGroupChip({
   const typeLabel = getReferenceGroupLabel(type);
 
   return (
-    <span
-      className="inline-flex h-9 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5"
-      title={`${typeLabel}: ${references.map((reference) => reference.label).join(', ')}`}
-    >
+    <span className="inline-flex h-9 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background text-sm font-medium shadow-xs shadow-black/5">
       <span className="flex h-full shrink-0 items-center bg-muted/50 px-3 text-muted-foreground">
         {typeLabel}
       </span>
       <span aria-hidden="true" className="h-4 w-px shrink-0 bg-border" />
       <span className="flex min-w-0 items-center overflow-hidden px-2.5 text-foreground">
         {references.map((reference, index) => (
-          <span key={getReferenceIdentity(reference)} className="inline-flex min-w-0 items-center">
+          <span
+            key={getReferenceIdentity(reference)}
+            className="group/reference inline-flex min-w-0 items-center"
+          >
             {index > 0 && <span className="mr-1 text-muted-foreground">,</span>}
-            <span className="max-w-44 truncate">{reference.label}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="max-w-44 truncate">{reference.label}</span>
+              </TooltipTrigger>
+              <TooltipContent side="top" showArrow className="max-w-80 whitespace-nowrap">
+                {reference.label}
+              </TooltipContent>
+            </Tooltip>
             <BubbleIconButton
               label={`Remove ${reference.label}`}
               disabled={isSaving}
+              className="opacity-0 transition-opacity group-hover/reference:opacity-100 group-focus-within/reference:opacity-100"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => onRemove(reference)}
             >
@@ -518,6 +557,18 @@ function OtherExclusivePickerNotice() {
       <p className="mt-1 text-xs leading-5 text-muted-foreground">
         Switch back to Project before linking this mail to a project, PO, invoice, RFQ, RFI, or CO.
         Use tags to organize uncategorized mail into provider tag folders.
+      </p>
+    </div>
+  );
+}
+
+function ProjectRequiredNotice() {
+  return (
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+      <p className="font-medium text-foreground">Add a project first</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Link this thread to a project before adding an RFQ, purchase order, invoice, or change
+        order.
       </p>
     </div>
   );
@@ -697,6 +748,7 @@ function ReferencePicker({
   placeholder,
   selectedReferences,
   otherLocked,
+  projectRequired,
   onAdd,
 }: {
   accountId: string;
@@ -705,10 +757,14 @@ function ReferencePicker({
   placeholder: string;
   selectedReferences: EmailReference[];
   otherLocked: boolean;
+  projectRequired: boolean;
   onAdd: (reference: EmailReference) => void;
 }) {
   if (otherLocked && type !== 'other') {
     return <OtherExclusivePickerNotice />;
+  }
+  if (projectRequired && type !== 'project') {
+    return <ProjectRequiredNotice />;
   }
 
   if (type === 'all') {
@@ -1050,19 +1106,24 @@ function BubbleIconButton({
   label,
   disabled,
   children,
+  className,
   onPointerDown,
   onClick,
 }: {
   label: string;
   disabled?: boolean;
   children: ReactNode;
+  className?: string;
   onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-25"
+      className={cn(
+        'inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-25',
+        className
+      )}
       aria-label={label}
       disabled={disabled}
       onPointerDown={onPointerDown}
