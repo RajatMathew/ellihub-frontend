@@ -4,8 +4,6 @@ import { ProjectSidebarSwitcher } from '@/modules/project/components/project-sid
 import { QuickShortcutsSidebarMenu } from '@/modules/quick-shortcuts/components/quick-shortcuts-sidebar-menu';
 import { ArrowLeft } from 'lucide-react';
 
-const isDev = import.meta.env.DEV;
-
 export const mainSidebarMenu: MenuConfig = [
   {
     type: 'custom',
@@ -19,28 +17,16 @@ export const mainSidebarMenu: MenuConfig = [
     type: 'custom',
     render: () => <QuickShortcutsSidebarMenu />,
   },
-  { type: 'separator' },
+  {
+    type: 'menu',
+    children: [{ title: 'Requisitions', disabled: true }],
+  },
   {
     type: 'menu',
     children: [
       {
         title: 'Monthly Bills',
         path: '../monthly-bills',
-      },
-    ],
-  },
-  {
-    type: 'group-collapsed',
-    title: 'Finance',
-    children: [
-      {
-        title: 'Checking Register',
-        path: '../finance/checking-register',
-      },
-      {
-        title: 'Payment Conflicts',
-        path: '../finance/payment-conflicts',
-        access: { resource: 'quickBooksPaymentConflict', action: 'read' },
       },
     ],
   },
@@ -99,28 +85,26 @@ export const mainSidebarMenu: MenuConfig = [
     ],
   },
   {
-    type: 'menu',
-    children: [{ title: 'Files', path: '../files' }],
+    type: 'group-collapsed',
+    title: 'Finance',
+    children: [
+      { title: 'Check Register', path: '../finance/checking-register' },
+      { title: 'Project Executives', disabled: true },
+      { title: 'Loans', disabled: true },
+      { title: 'Cost Codes', path: '../catalog/cost-codes', adminOnly: true },
+    ],
   },
   {
     type: 'group-collapsed',
-    title: 'Catalog',
-    children: [{ title: 'Cost Codes', path: '../catalog/cost-codes' }],
-  },
-  {
-    type: 'menu',
-    children: [{ title: 'Activity Log', path: '../activity-log' }],
-  },
-  {
-    type: 'menu',
-    children: [{ title: 'Lookups', path: '../lookup' }],
+    title: 'Admin',
+    adminOnly: true,
+    children: [
+      { title: 'Integrations', path: '../settings/integrations' },
+      { title: 'Activity Log', path: '../activity-log' },
+    ],
   },
 
-  isDev && {
-    type: 'menu',
-    children: [{ title: 'UI Kit', path: '../ui', badge: { variant: 'primary', text: 'Dev' } }],
-  },
-].filter(Boolean) as MenuConfig; // Filter out falsey values (like the dev-only menu in production)
+];
 
 export const projectSidebarMenu: MenuConfig = [
   {

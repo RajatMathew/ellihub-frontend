@@ -112,7 +112,7 @@ export function EmailSidebarMenu() {
           ...(configQuery.data && personalAccounts.length < maxPersonalAccounts
             ? [
                 {
-                  title: 'Add personal account',
+                  title: 'Add account',
                   path: '../email/add-account',
                   icon: Plus,
                 },

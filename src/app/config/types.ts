@@ -24,6 +24,8 @@ export interface MenuItem {
   heading?: string;
   children?: MenuConfig;
   disabled?: boolean;
+  /** Restricts a navigation item or group to administrators. */
+  adminOnly?: boolean;
   /** For sidebar groups: set false to open the group by default. */
   collapse?: boolean;
   collapseTitle?: string;

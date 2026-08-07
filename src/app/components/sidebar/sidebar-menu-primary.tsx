@@ -77,14 +77,24 @@ export function SidebarPrimaryMenu({ menu = [] }: { menu?: MenuConfig }) {
                   key={index}
                   value={child.path || '#'}
                   asChild
-                  className={child.createPath ? 'group/sidebar-menu-item gap-1! pe-1!' : undefined}
+                  className={
+                    child.disabled
+                      ? 'pointer-events-none cursor-not-allowed opacity-50'
+                      : child.createPath
+                        ? 'group/sidebar-menu-item gap-1! pe-1!'
+                        : undefined
+                  }
                   trailing={
                     createTo ? (
                       <SidebarMenuCreateAction item={child} createPath={createTo} />
                     ) : undefined
                   }
                 >
-                  <Link to={to}>
+                  <Link
+                    to={child.disabled ? '#' : to}
+                    aria-disabled={child.disabled}
+                    tabIndex={child.disabled ? -1 : undefined}
+                  >
                     {child.icon && <child.icon />}
                     <span className="min-w-0 flex-1 break-words whitespace-normal">
                       {child.title}

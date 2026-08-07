@@ -7,6 +7,7 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
+import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { useAccess } from '@/app/contexts/access-context';
 import { useQuickBooksStatusQuery } from '@/modules/integrations/hooks/quickbooks.hooks';
@@ -37,7 +38,7 @@ import {
 } from '@/modules/monthly-bills/testing/recurring-bills-qa-clock';
 import { RecurringBillsQaClockControl } from '@/modules/monthly-bills/testing/recurring-bills-qa-clock-control';
 import { Landmark } from 'lucide-react';
-import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 
 export default function MonthlyBillsRoute() {
   const { access, isAdmin, isLoading } = useAccess();
@@ -165,6 +166,9 @@ function MonthlyBillsQuickBooksRequiredState() {
           Connect QuickBooks from integration settings to load monthly bills, recurring bills, and
           payment reference data.
         </p>
+        <Button className="mt-4" asChild>
+          <Link to="/app/settings/integrations">Open integration settings</Link>
+        </Button>
       </CardContent>
     </Card>
   );

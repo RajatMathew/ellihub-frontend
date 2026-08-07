@@ -88,10 +88,13 @@ function filterMenuForAccess(
   const filtered = menuConfig
     .map((item) => {
       if (item.type === 'separator' || item.type === 'custom') return item;
+      if (item.adminOnly && !access.isAdmin) return null;
       if (!item.children) return null;
 
       const children = item.children
         .filter((child) => {
+          if (child.adminOnly && !access.isAdmin) return false;
+          if (child.disabled) return true;
           if (child.access) return access.can(child.access.resource, child.access.action);
           const path = child.path ?? '';
           if (path.includes('projects')) return access.access?.projectScope !== 'none';
@@ -105,7 +108,7 @@ function filterMenuForAccess(
           }
           if (path.includes('finance/checking-register')) return access.isAdmin;
           if (path.includes('email')) return true;
-          if (path.includes('catalog/cost-codes')) return access.can('costCode', 'read');
+          if (path.includes('catalog/cost-codes')) return access.isAdmin;
           if (path.includes('directory/contacts')) return access.can('contact', 'read');
           if (path.includes('directory/general-contractors')) {
             return access.can('generalContractor', 'read');
