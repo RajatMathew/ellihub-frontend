@@ -29,7 +29,10 @@ export default function Sidebar({
     }
   }
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg">
+    <div
+      data-slot="app-sidebar"
+      className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar-bg"
+    >
       <SidebarHeader />
       <ScrollArea
         className="mt-0 min-h-0 w-full min-w-0 flex-1"
