@@ -26,7 +26,7 @@ import {
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
 import { useQuery } from '@tanstack/react-query';
-import { AtSign, CheckCircle2, CircleDotDashed, Loader2, Plus, Tag, X } from 'lucide-react';
+import { AtSign, CheckCircle2, CircleDotDashed, Info, Loader2, Plus, Tag, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 type EmailReferenceMarkerProps = {
@@ -451,25 +451,33 @@ function ReferencePickerPopover({
         </TabsList>
       </Tabs>
 
-      <ReferencePicker
-        accountId={accountId}
-        type={selectedType}
-        projectId={
-          selectedType === 'project' || selectedType === 'all'
-            ? selectedProjectId
-            : (selectedProjectId ?? undefined)
-        }
-        placeholder={
-          selectedType === 'all'
-            ? 'Search all references'
-            : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
-              'Add reference')
-        }
-        selectedReferences={selectedReferences}
-        otherLocked={otherLocked}
-        projectRequired={projectRequired}
-        onAdd={onAdd}
-      />
+      <div className="space-y-2">
+        {projectRequired && selectedType === 'project' && (
+          <div className="flex items-center gap-2 rounded-md border border-info/15 bg-info-soft/50 px-3 py-2 text-xs text-info-soft-foreground">
+            <Info aria-hidden="true" className="size-3.5 shrink-0" />
+            <span>You need to select project first.</span>
+          </div>
+        )}
+        <ReferencePicker
+          accountId={accountId}
+          type={selectedType}
+          projectId={
+            selectedType === 'project' || selectedType === 'all'
+              ? selectedProjectId
+              : (selectedProjectId ?? undefined)
+          }
+          placeholder={
+            selectedType === 'all'
+              ? 'Search all references'
+              : (EMAIL_REFERENCE_TYPES.find((item) => item.type === selectedType)?.placeholder ??
+                'Add reference')
+          }
+          selectedReferences={selectedReferences}
+          otherLocked={otherLocked}
+          projectRequired={projectRequired}
+          onAdd={onAdd}
+        />
+      </div>
     </PopoverContent>
   );
 }
