@@ -30,7 +30,7 @@ export const QUICK_SHORTCUT_DESTINATIONS: QuickShortcutDestination[] = [
     label: 'Checking Register',
     group: 'Finance',
     path: '/app/finance/checking-register',
-    canAccess: (access) => access.isAdmin,
+    canAccess: (access) => access.canAccessCheckingRegister,
   },
   {
     label: 'Payment Conflicts',

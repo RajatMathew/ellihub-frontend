@@ -24,6 +24,7 @@ import {
   useResetMemberPasswordMutation,
   useSuspendMemberMutation,
   useUnsuspendMemberMutation,
+  useUpdateCheckingRegisterAccessMutation,
   useUpdateMemberMutation,
   useUpdateMemberRoleMutation,
 } from '@/modules/settings/hooks/members.hooks';
@@ -51,11 +52,16 @@ export default function MembersPage() {
   const [roleTarget, setRoleTarget] = useState<{ member: MemberUser; role: MemberRole } | null>(
     null
   );
+  const [checkingRegisterAccessTarget, setCheckingRegisterAccessTarget] = useState<{
+    member: MemberUser;
+    enabled: boolean;
+  } | null>(null);
 
   const membersQuery = useMembersQuery(listParams.params, isAdmin);
   const createMutation = useCreateMemberMutation();
   const updateMutation = useUpdateMemberMutation();
   const updateRoleMutation = useUpdateMemberRoleMutation();
+  const updateCheckingRegisterAccessMutation = useUpdateCheckingRegisterAccessMutation();
   const resetPasswordMutation = useResetMemberPasswordMutation();
   const suspendMutation = useSuspendMemberMutation();
   const unsuspendMutation = useUnsuspendMemberMutation();
@@ -83,6 +89,8 @@ export default function MembersPage() {
       setDialogOpen(true);
     },
     onRoleChange: (member, role) => setRoleTarget({ member, role }),
+    onCheckingRegisterAccessChange: (member, enabled) =>
+      setCheckingRegisterAccessTarget({ member, enabled }),
     onResetPassword: setResetPasswordTarget,
     onSuspend: setSuspendTarget,
     onUnsuspend: setUnsuspendTarget,
@@ -283,6 +291,44 @@ export default function MembersPage() {
           );
         }}
         isPending={updateRoleMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!checkingRegisterAccessTarget}
+        onOpenChange={(open) => !open && setCheckingRegisterAccessTarget(null)}
+        title={
+          checkingRegisterAccessTarget?.enabled
+            ? 'Grant Checking Register Access'
+            : 'Remove Checking Register Access'
+        }
+        description={
+          checkingRegisterAccessTarget?.enabled ? (
+            <>
+              Allow <strong>{checkingRegisterAccessTarget.member.name}</strong> to view QuickBooks
+              checking accounts and register transactions?
+            </>
+          ) : (
+            <>
+              Remove <strong>{checkingRegisterAccessTarget?.member.name}</strong>&apos;s access to
+              QuickBooks checking accounts and register transactions?
+            </>
+          )
+        }
+        confirmLabel={checkingRegisterAccessTarget?.enabled ? 'Grant Access' : 'Remove Access'}
+        variant={checkingRegisterAccessTarget?.enabled ? 'default' : 'destructive'}
+        onConfirm={() => {
+          if (!checkingRegisterAccessTarget) return;
+          updateCheckingRegisterAccessMutation.mutate(
+            {
+              userId: checkingRegisterAccessTarget.member.id,
+              enabled: checkingRegisterAccessTarget.enabled,
+            },
+            {
+              onSuccess: () => setCheckingRegisterAccessTarget(null),
+            }
+          );
+        }}
+        isPending={updateCheckingRegisterAccessMutation.isPending}
       />
 
       <ConfirmDialog

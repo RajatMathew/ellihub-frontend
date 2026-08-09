@@ -24,6 +24,7 @@ interface MemberActionsMenuProps {
   currentUserId?: string;
   onEdit: (member: MemberUser) => void;
   onRoleChange: (member: MemberUser, role: MemberRole) => void;
+  onCheckingRegisterAccessChange: (member: MemberUser, enabled: boolean) => void;
   onResetPassword: (member: MemberUser) => void;
   onSuspend: (member: MemberUser) => void;
   onUnsuspend: (member: MemberUser) => void;
@@ -35,6 +36,7 @@ export function MemberActionsMenu({
   currentUserId,
   onEdit,
   onRoleChange,
+  onCheckingRegisterAccessChange,
   onResetPassword,
   onSuspend,
   onUnsuspend,
@@ -114,6 +116,16 @@ export function MemberActionsMenu({
           <UserRound className="size-4" />
           Make User
         </DropdownMenuItem>
+        {role === 'accountant' && (
+          <DropdownMenuItem
+            onClick={() => onCheckingRegisterAccessChange(member, !member.checkingRegisterAccess)}
+          >
+            <ShieldCheck className="size-4" />
+            {member.checkingRegisterAccess
+              ? 'Remove Check Register Access'
+              : 'Grant Check Register Access'}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" disabled={isSelf} onClick={() => onRemove(member)}>
           <Trash2 className="size-4" />

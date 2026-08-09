@@ -32,6 +32,7 @@ export const memberUserSchema = z
     banExpires: dateLikeSchema,
     createdAt: dateLikeSchema,
     updatedAt: dateLikeSchema,
+    checkingRegisterAccess: z.boolean().optional().default(false),
   })
   .passthrough();
 

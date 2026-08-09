@@ -102,6 +102,14 @@ export const membersApi = {
     }
   },
 
+  async updateCheckingRegisterAccess(userId: string, enabled: boolean): Promise<void> {
+    try {
+      await api.put(`/users/${userId}/checking-register-access`, { enabled });
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Failed to update Checking Register access.'));
+    }
+  },
+
   async resetPassword(input: MemberPasswordResetInput): Promise<void> {
     try {
       await api.post(`/users/${input.id}/reset-password`, {

@@ -1,4 +1,3 @@
-import { AdminRoute } from '@/app/components/access/admin-route';
 import { PermissionRoute } from '@/app/components/access/permission-route';
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ModuleLoader } from '@/app/components/loader/elegant';
@@ -8,14 +7,23 @@ import PaymentConflictsPage from '@/modules/finance/payment-conflicts/pages/paym
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 function FinanceIndexRedirect() {
-  const { can, isAdmin, isLoading } = useAccess();
+  const { can, canAccessCheckingRegister, isLoading } = useAccess();
 
   if (isLoading) return <ModuleLoader />;
-  if (isAdmin) return <Navigate to="checking-register" replace />;
+  if (canAccessCheckingRegister) return <Navigate to="checking-register" replace />;
   if (can('quickBooksPaymentConflict', 'read')) {
     return <Navigate to="payment-conflicts" replace />;
   }
   return <Forbidden />;
+}
+
+function CheckingRegisterRoute() {
+  const { canAccessCheckingRegister, isLoading } = useAccess();
+
+  if (isLoading) return <ModuleLoader />;
+  if (!canAccessCheckingRegister) return <Forbidden />;
+
+  return <CheckingRegisterPage />;
 }
 
 export default function FinanceRoute() {
@@ -25,9 +33,7 @@ export default function FinanceRoute() {
       <Route
         path="checking-register"
         element={
-          <AdminRoute>
-            <CheckingRegisterPage />
-          </AdminRoute>
+          <CheckingRegisterRoute />
         }
       />
       <Route

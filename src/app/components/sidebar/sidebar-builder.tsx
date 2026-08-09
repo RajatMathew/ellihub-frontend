@@ -106,7 +106,7 @@ function filterMenuForAccess(
               access.access?.role === 'ap'
             );
           }
-          if (path.includes('finance/checking-register')) return access.isAdmin;
+          if (path.includes('finance/checking-register')) return access.canAccessCheckingRegister;
           if (path.includes('email')) return true;
           if (path.includes('catalog/cost-codes')) return access.isAdmin;
           if (path.includes('directory/contacts')) return access.can('contact', 'read');

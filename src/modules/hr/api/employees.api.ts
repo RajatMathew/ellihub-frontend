@@ -33,6 +33,7 @@ function toCreatePayload(input: CreateEmployeeInput) {
     ...(input.createAccount
       ? {
           authRole: input.authRole,
+          checkingRegisterAccess: input.checkingRegisterAccess,
           password: input.password,
         }
       : {}),

@@ -26,6 +26,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       isLoading: accessQuery.isLoading,
       isDev: accessQuery.data?.isDev ?? accessQuery.data?.role === 'dev',
       isAdmin: accessQuery.data?.isAdmin ?? ['dev', 'admin'].includes(accessQuery.data?.role ?? ''),
+      canAccessCheckingRegister: accessQuery.data?.canAccessCheckingRegister ?? false,
       can,
     }),
     [accessQuery.data, accessQuery.isLoading, can]

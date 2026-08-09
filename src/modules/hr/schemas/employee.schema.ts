@@ -113,6 +113,7 @@ const createEmployeeBaseSchema = z.object({
   roleLabel: optionalTrimmedStringSchema,
   createAccount: z.boolean().default(false),
   authRole: employeeAuthRoleSchema.optional(),
+  checkingRegisterAccess: z.boolean().default(false),
   password: z.string().optional(),
 });
 
@@ -155,7 +156,7 @@ export const createEmployeeInputSchema = createEmployeeBaseSchema.superRefine((v
 export type CreateEmployeeInput = z.infer<typeof createEmployeeInputSchema>;
 
 export const updateEmployeeInputSchema = createEmployeeBaseSchema
-  .omit({ createAccount: true, authRole: true, password: true })
+  .omit({ createAccount: true, authRole: true, checkingRegisterAccess: true, password: true })
   .extend({
     id: z.string(),
   })

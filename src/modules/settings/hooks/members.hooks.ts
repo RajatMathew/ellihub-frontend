@@ -60,6 +60,20 @@ export const useUpdateMemberRoleMutation = () => {
   });
 };
 
+export const useUpdateCheckingRegisterAccessMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, enabled }: { userId: string; enabled: boolean }) =>
+      membersApi.updateCheckingRegisterAccess(userId, enabled),
+    onSuccess: (_, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
+      toast.success(enabled ? 'Checking Register access granted.' : 'Checking Register access removed.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to update Checking Register access.'),
+  });
+};
+
 export const useResetMemberPasswordMutation = () => {
   const queryClient = useQueryClient();
 

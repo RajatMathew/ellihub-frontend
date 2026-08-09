@@ -7,6 +7,7 @@ export type AccessContextValue = {
   isLoading: boolean;
   isDev: boolean;
   isAdmin: boolean;
+  canAccessCheckingRegister: boolean;
   can: (resource: string, action: string) => boolean;
 };
 

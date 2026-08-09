@@ -39,6 +39,7 @@ export function useEmployeeFormState(id: string | undefined) {
       roleLabel: '',
       createAccount: false,
       authRole: 'user',
+      checkingRegisterAccess: false,
       password: '',
     },
   });
@@ -60,6 +61,7 @@ export function useEmployeeFormState(id: string | undefined) {
       roleLabel: '',
       createAccount: false,
       authRole: 'user',
+      checkingRegisterAccess: false,
       password: '',
     });
   }, [employeeQuery.data, form, isEdit]);
@@ -81,6 +83,7 @@ export function useEmployeeFormState(id: string | undefined) {
       roleLabel: '',
       createAccount: false,
       authRole: 'user',
+      checkingRegisterAccess: false,
       password: '',
     });
     toast.info('Populated with candidate data.');

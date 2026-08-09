@@ -9,6 +9,7 @@ export type CurrentAccess = {
   role: AppRole;
   isDev: boolean;
   isAdmin: boolean;
+  canAccessCheckingRegister: boolean;
   employeeId: string | null;
   projectScope: ProjectScope;
   permissions: AccessPermissions;

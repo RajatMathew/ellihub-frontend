@@ -31,6 +31,7 @@ export function EmployeeEmploymentSection({
   roleOptions,
 }: EmployeeEmploymentSectionProps) {
   const createAccount = useWatch({ control, name: 'createAccount' });
+  const authRole = useWatch({ control, name: 'authRole' });
   const { field: roleLabelField, fieldState: roleLabelFieldState } = useController({
     control,
     name: 'roleLabel',
@@ -191,6 +192,25 @@ export function EmployeeEmploymentSection({
                   </Field>
                 )}
               />
+
+              {authRole === 'accountant' && (
+                <Controller
+                  name="checkingRegisterAccess"
+                  control={control}
+                  render={({ field }) => (
+                    <Field className="md:col-span-2">
+                      <EmployeeFormFieldLabel>Checking Register Access</EmployeeFormFieldLabel>
+                      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Allow this Accountant to view QuickBooks checking accounts and register
+                          transactions
+                        </span>
+                      </div>
+                    </Field>
+                  )}
+                />
+              )}
             </>
           )}
         </div>

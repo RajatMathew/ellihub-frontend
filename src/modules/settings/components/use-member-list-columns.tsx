@@ -19,6 +19,7 @@ interface UseMemberListColumnsArgs {
   currentUserId?: string;
   onEdit: (member: MemberUser) => void;
   onRoleChange: (member: MemberUser, role: MemberRole) => void;
+  onCheckingRegisterAccessChange: (member: MemberUser, enabled: boolean) => void;
   onResetPassword: (member: MemberUser) => void;
   onSuspend: (member: MemberUser) => void;
   onUnsuspend: (member: MemberUser) => void;
@@ -29,6 +30,7 @@ export function useMemberListColumns({
   currentUserId,
   onEdit,
   onRoleChange,
+  onCheckingRegisterAccessChange,
   onResetPassword,
   onSuspend,
   onUnsuspend,
@@ -149,6 +151,7 @@ export function useMemberListColumns({
               currentUserId={currentUserId}
               onEdit={onEdit}
               onRoleChange={onRoleChange}
+              onCheckingRegisterAccessChange={onCheckingRegisterAccessChange}
               onResetPassword={onResetPassword}
               onSuspend={onSuspend}
               onUnsuspend={onUnsuspend}
@@ -163,6 +166,15 @@ export function useMemberListColumns({
         enableSorting: false,
       },
     ],
-    [currentUserId, onEdit, onRemove, onResetPassword, onRoleChange, onSuspend, onUnsuspend]
+    [
+      currentUserId,
+      onCheckingRegisterAccessChange,
+      onEdit,
+      onRemove,
+      onResetPassword,
+      onRoleChange,
+      onSuspend,
+      onUnsuspend,
+    ]
   );
 }
