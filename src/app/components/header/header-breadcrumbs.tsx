@@ -131,6 +131,16 @@ export function HeaderBreadcrumbs() {
     const dynamicLabel = breadcrumbLabels[path];
     const previousSegment = pathSegments[index - 1];
 
+    // Project detail URLs use the singular `/project/:projectId` route, while
+    // the Projects breadcrumb should return to the plural project index.
+    if (segment === 'project' && index === projectSegmentIndex) {
+      return {
+        label: 'Project',
+        path: '/app/projects',
+        isLast: index === pathSegments.length - 1,
+      };
+    }
+
     if (dynamicLabel) {
       const pendingLabel =
         previousSegment && DYNAMIC_SEGMENT_PENDING_LABELS[previousSegment] === dynamicLabel;
