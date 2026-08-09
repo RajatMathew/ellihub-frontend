@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import { ProgressCircle } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
@@ -26,6 +28,8 @@ type UploadSummary = {
   title: string;
   status: string;
 };
+
+const COMPLETED_UPLOADS_DISMISS_DELAY_MS = 10_000;
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
@@ -418,9 +422,26 @@ export function UploadTransferTray() {
   const { tasks, open, collapsed, cancelAll, clearTerminalUploads, setCollapsed } =
     useUploadManager();
 
+  const summary = getSummary(tasks);
+  const areAllUploadsCompleted =
+    tasks.length > 0 &&
+    summary.activeCount === 0 &&
+    summary.completedCount === tasks.length &&
+    summary.failedCount === 0 &&
+    summary.cancelledCount === 0;
+
+  useEffect(() => {
+    if (!areAllUploadsCompleted) return;
+
+    const timeoutId = window.setTimeout(() => {
+      clearTerminalUploads();
+    }, COMPLETED_UPLOADS_DISMISS_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [areAllUploadsCompleted, clearTerminalUploads]);
+
   if (!open || tasks.length === 0) return null;
 
-  const summary = getSummary(tasks);
   const hasActiveTasks = summary.activeCount > 0;
   const hasTerminalTasks = summary.terminalCount > 0;
   const summaryDetail = getSummaryDetail(summary);
