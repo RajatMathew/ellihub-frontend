@@ -6,6 +6,7 @@ import { useAccess } from '@/app/contexts/access-context';
 import QuickBooksIntegrationPage from '@/modules/integrations/pages/quickbooks-integration-page';
 import MembersPage from '@/modules/settings/pages/members-page';
 import TemplateSettingsPage from '@/modules/settings/pages/template-settings-page';
+import { SharedMailboxesPage } from '@/modules/settings/pages/shared-mailboxes-page';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 function SettingsIndex() {
@@ -43,6 +44,14 @@ export default function SettingsRoutes() {
         element={
           <PermissionRoute resource="integration" action="read">
             <QuickBooksIntegrationPage />
+          </PermissionRoute>
+        }
+      />
+      <Route
+        path="email-mailboxes"
+        element={
+          <PermissionRoute resource="user" action="manage-permissions">
+            <SharedMailboxesPage />
           </PermissionRoute>
         }
       />

@@ -16,6 +16,7 @@ import {
   Coffee,
   FileText,
   HistoryIcon,
+  Mail,
   Palette,
   RefreshCcw,
   Settings,
@@ -202,6 +203,14 @@ export function UserDropdownMenu({ trigger }: { trigger: ReactNode }) {
                   <Link to="/app/settings/members" className="flex items-center gap-2">
                     <Users />
                     Members & Roles
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <DropdownMenuItem asChild>
+                  <Link to="/app/settings/email-mailboxes" className="flex items-center gap-2">
+                    <Mail />
+                    Common Inboxes
                   </Link>
                 </DropdownMenuItem>
               )}
