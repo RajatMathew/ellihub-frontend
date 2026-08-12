@@ -88,12 +88,14 @@ function filterMenuForAccess(
   const filtered = menuConfig
     .map((item) => {
       if (item.type === 'separator' || item.type === 'custom') return item;
-      if (item.adminOnly && !access.isAdmin) return null;
+      if (item.adminOnly && !(access.isAdmin || access.isDev)) return null;
+      if (item.adminOrDevOnly && !(access.isAdmin || access.isDev)) return null;
       if (!item.children) return null;
 
       const children = item.children
         .filter((child) => {
-          if (child.adminOnly && !access.isAdmin) return false;
+          if (child.adminOnly && !(access.isAdmin || access.isDev)) return false;
+          if (child.adminOrDevOnly && !(access.isAdmin || access.isDev)) return false;
           if (child.disabled) return true;
           if (child.access) return access.can(child.access.resource, child.access.action);
           const path = child.path ?? '';
@@ -108,7 +110,7 @@ function filterMenuForAccess(
           }
           if (path.includes('finance/checking-register')) return access.canAccessCheckingRegister;
           if (path.includes('email')) return true;
-          if (path.includes('catalog/cost-codes')) return access.isAdmin;
+          if (path.includes('catalog/cost-codes')) return access.isAdmin || access.isDev;
           if (path.includes('directory/contacts')) return access.can('contact', 'read');
           if (path.includes('directory/general-contractors')) {
             return access.can('generalContractor', 'read');
@@ -118,12 +120,12 @@ function filterMenuForAccess(
           if (path.includes('hr/departments')) return access.can('department', 'read');
           if (path.includes('hr/pto'))
             return access.can('leave', 'view') || access.can('leave', 'create');
-          if (path.includes('files')) return access.isAdmin;
+          if (path.includes('files')) return access.isAdmin || access.isDev;
           if (path.includes('activity-log')) return access.can('activityLog', 'read');
           if (path.includes('settings')) {
             return access.can('user', 'manage-permissions') || access.can('template', 'read');
           }
-          if (path.includes('lookup')) return access.isDev;
+          if (path.includes('lookup')) return access.isAdmin || access.isDev;
           if (path.includes('ui')) return access.isDev;
           return false;
         })

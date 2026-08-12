@@ -115,10 +115,10 @@ export function QuickShortcutsSidebarMenu() {
           data-slot="accordion-menu-sub"
           className="w-full min-w-0 overflow-hidden rounded-md border border-sidebar-border"
         >
-          <div className="flex w-full min-w-0 items-center">
+          <div className="relative flex w-full min-w-0 items-center">
             <CollapsibleTrigger
               data-slot="accordion-menu-sub-trigger"
-              className="group/shortcut-trigger flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 text-start text-[13px] font-medium text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-item-hover focus-visible:bg-sidebar-item-hover"
+              className="group/shortcut-trigger relative flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 pe-16 text-start text-[13px] font-medium text-sidebar-foreground outline-hidden transition-colors hover:bg-sidebar-item-hover focus-visible:bg-sidebar-item-hover"
             >
               <span className="min-w-0 flex-1 truncate">Quick Shortcuts</span>
               {visibleShortcuts.length > 0 ? (
@@ -129,7 +129,7 @@ export function QuickShortcutsSidebarMenu() {
               <ChevronDown
                 aria-hidden="true"
                 data-slot="accordion-menu-sub-indicator"
-                className="size-3.5 shrink-0 text-sidebar-muted transition-transform group-data-[state=open]/shortcut-trigger:-rotate-180"
+                className="absolute end-2 size-3.5 text-sidebar-muted transition-transform group-data-[state=open]/shortcut-trigger:-rotate-180"
               />
             </CollapsibleTrigger>
 
@@ -141,7 +141,7 @@ export function QuickShortcutsSidebarMenu() {
                 size="sm"
                 aria-label="Manage Quick Shortcuts"
                 title="Manage Quick Shortcuts"
-                className="me-1 shrink-0 text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground"
+                className="absolute end-8 shrink-0 text-sidebar-muted hover:bg-sidebar-item-hover hover:text-sidebar-foreground"
                 onClick={() => setManagerOpen(true)}
               >
                 <Settings2 />
