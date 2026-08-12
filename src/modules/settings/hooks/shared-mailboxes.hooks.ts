@@ -1,16 +1,23 @@
+import { sharedMailboxesApi } from '@/modules/settings/api/shared-mailboxes.api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { sharedMailboxesApi } from '@/modules/settings/api/shared-mailboxes.api';
-
 const sharedMailboxKeys = {
   all: ['settings', 'shared-mailboxes'] as const,
+  vendorConnections: ['settings', 'shared-mailboxes', 'vendor-connections'] as const,
 };
 
 export const useSharedMailboxesQuery = (enabled = true) =>
   useQuery({
     queryKey: sharedMailboxKeys.all,
     queryFn: () => sharedMailboxesApi.list(),
+    enabled,
+  });
+
+export const useVendorConnectionsQuery = (enabled = true) =>
+  useQuery({
+    queryKey: sharedMailboxKeys.vendorConnections,
+    queryFn: () => sharedMailboxesApi.listVendorConnections(),
     enabled,
   });
 

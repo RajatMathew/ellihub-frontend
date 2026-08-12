@@ -18,8 +18,19 @@ const sharedMailboxSchema = z.object({
   provider: z.string(),
   status: z.string(),
   account: sharedMailboxAccountSchema,
+  vendorEmails: z.array(z.string()),
+  sourceCount: z.number().int().nonnegative(),
   createdAt: z.string(),
   updatedAt: z.string(),
+});
+
+const vendorConnectionSchema = z.object({
+  id: z.string(),
+  emailAddress: z.string(),
+  displayName: z.string().nullable(),
+  status: z.string(),
+  createdAt: z.string(),
+  sharedMailboxCount: z.number().int().nonnegative(),
 });
 
 const authStartSchema = z.object({
@@ -27,6 +38,7 @@ const authStartSchema = z.object({
 });
 
 export type SharedMailbox = z.infer<typeof sharedMailboxSchema>;
+export type VendorConnection = z.infer<typeof vendorConnectionSchema>;
 
 type ApiResponse<T> = { data?: T; message?: string };
 
@@ -39,6 +51,13 @@ export const sharedMailboxesApi = {
   async list(): Promise<SharedMailbox[]> {
     const response = await api.get<ApiResponse<unknown>>('/email/shared-mailboxes');
     return sharedMailboxSchema.array().parse(response.data.data ?? []);
+  },
+
+  async listVendorConnections(): Promise<VendorConnection[]> {
+    const response = await api.get<ApiResponse<unknown>>(
+      '/email/shared-mailboxes/vendor-connections'
+    );
+    return vendorConnectionSchema.array().parse(response.data.data ?? []);
   },
 
   async create(input: {
