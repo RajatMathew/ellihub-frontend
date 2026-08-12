@@ -174,8 +174,15 @@ export const useRefreshEmailMessagesMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { accountId: string; daysWithin?: number }) => {
-      return emailApi.syncAccount(payload.accountId, payload.daysWithin);
+    mutationFn: async (payload: { accountId: string; daysWithin?: number }) => {
+      let result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+      let steps = 0;
+      while (result.hasMore && steps < 1000) {
+        steps += 1;
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+        result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+      }
+      return result;
     },
     onSuccess: (result, payload) => {
       void Promise.allSettled([
@@ -193,9 +200,7 @@ export const useRefreshEmailMessagesMutation = () => {
         }),
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
-      if (result.hasMore) {
-        toast.info('Recent email changes are still catching up. Refresh again to continue.');
-      }
+      if (result.hasMore) toast.info('Email sync is still in progress. Refresh to continue.');
     },
     onError: (error) => {
       if (isEmailReconnectRequiredError(error)) return;
