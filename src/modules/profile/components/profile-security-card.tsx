@@ -14,6 +14,7 @@ import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
+import { ProfileConnectedAccounts } from '@/modules/profile/components/profile-connected-accounts';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
@@ -75,51 +76,63 @@ export function ProfileSecurityCard() {
       <CardHeader>
         <CardHeading>
           <CardTitle>Security</CardTitle>
-          <CardDescription>Change your password and sign out other sessions.</CardDescription>
+          <CardDescription>
+            Manage your sign-in methods, password, and active sessions.
+          </CardDescription>
         </CardHeading>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <PasswordField
-            control={form.control}
-            name="currentPassword"
-            label="Current Password"
-            placeholder="Current password"
-            visible={passwordVisible}
-          />
-          <PasswordField
-            control={form.control}
-            name="newPassword"
-            label="New Password"
-            placeholder="New password"
-            visible={passwordVisible}
-          />
-          <PasswordField
-            control={form.control}
-            name="confirmPassword"
-            label="Confirm Password"
-            placeholder="Confirm password"
-            visible={passwordVisible}
-          />
-          <div className="flex items-center gap-2 md:col-span-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPasswordVisible((prev) => !prev)}
-            >
-              {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              {passwordVisible ? 'Hide' : 'Show'}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isSubmitting}
-              onClick={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
-            >
-              <KeyRound className="size-4" />
-              {isSubmitting ? 'Updating...' : 'Update Password'}
-            </Button>
+      <CardContent className="space-y-6">
+        <ProfileConnectedAccounts />
+
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Password</h3>
+            <p className="text-xs text-muted-foreground">
+              Updating your password signs out your other active sessions.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <PasswordField
+              control={form.control}
+              name="currentPassword"
+              label="Current Password"
+              placeholder="Current password"
+              visible={passwordVisible}
+            />
+            <PasswordField
+              control={form.control}
+              name="newPassword"
+              label="New Password"
+              placeholder="New password"
+              visible={passwordVisible}
+            />
+            <PasswordField
+              control={form.control}
+              name="confirmPassword"
+              label="Confirm Password"
+              placeholder="Confirm password"
+              visible={passwordVisible}
+            />
+            <div className="flex items-center gap-2 md:col-span-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPasswordVisible((prev) => !prev)}
+              >
+                {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {passwordVisible ? 'Hide' : 'Show'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={isSubmitting}
+                onClick={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
+              >
+                <KeyRound className="size-4" />
+                {isSubmitting ? 'Updating...' : 'Update Password'}
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

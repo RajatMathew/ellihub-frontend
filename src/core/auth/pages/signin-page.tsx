@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import { usePostHog } from '@posthog/react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { usePostHog } from '@posthog/react';
 import { AlertCircle, Check, Eye, EyeOff, LoaderCircleIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -21,7 +21,9 @@ import {
 import { Input } from '@app/components/ui/input';
 import { onInvalidFormSubmit } from '@app/lib/form-error-toast';
 import { getApiErrorMessage } from '@app/lib/toast-api-error';
+import { MicrosoftSignInSection } from '@core/auth/components/microsoft-sign-in-section';
 import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-schema';
+import { getAuthCallbackErrorMessage, getSafeAuthRedirect } from '@core/auth/lib/auth-redirect';
 
 export function SignInPageComponent() {
   const [searchParams] = useSearchParams();
@@ -36,7 +38,6 @@ export function SignInPageComponent() {
   useEffect(() => {
     const pwdReset = searchParams.get('pwd_reset');
     const errorParam = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
 
     if (pwdReset === 'success') {
       setSuccessMessage(
@@ -44,23 +45,7 @@ export function SignInPageComponent() {
       );
     }
 
-    if (errorParam) {
-      switch (errorParam) {
-        case 'auth_callback_failed':
-          setError(errorDescription || 'Authentication failed. Please try again.');
-          break;
-        case 'auth_callback_error':
-          setError(
-            errorDescription || 'An error occurred during authentication. Please try again.'
-          );
-          break;
-        case 'auth_token_error':
-          setError(errorDescription || 'Failed to set authentication session. Please try again.');
-          break;
-        default:
-          setError(errorDescription || 'Authentication error. Please try again.');
-      }
-    }
+    setError(getAuthCallbackErrorMessage(errorParam));
   }, [searchParams]);
 
   const form = useForm<SigninSchemaType>({
@@ -96,8 +81,6 @@ export function SignInPageComponent() {
     }
   };
 
-  useEffect(() => {}, [error]);
-
   async function onSubmit(values: SigninSchemaType) {
     try {
       setIsProcessing(true);
@@ -119,6 +102,8 @@ export function SignInPageComponent() {
     }
   }
 
+  const callbackURL = getSafeAuthRedirect(searchParams.get('next'));
+
   return (
     <Form {...form}>
       <form
@@ -128,7 +113,7 @@ export function SignInPageComponent() {
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
           <p className="text-sm text-muted-foreground">
-            Welcome back! Log in with your credentials.
+            Use Microsoft or your Elli email and password.
           </p>
         </div>
         <div className="h-12">
@@ -150,6 +135,12 @@ export function SignInPageComponent() {
             <AlertTitle>{successMessage}</AlertTitle>
           </Alert>
         )}
+
+        <MicrosoftSignInSection
+          callbackURL={callbackURL}
+          disabled={isProcessing}
+          onError={setError}
+        />
 
         <FormField
           control={form.control}
@@ -229,7 +220,6 @@ export function SignInPageComponent() {
             'Sign In'
           )}
         </Button>
-
       </form>
     </Form>
   );
@@ -238,8 +228,7 @@ export function SignInPageComponent() {
 export const SignInPage = () => {
   const { isPending, data } = useSession();
   const [searchParams] = useSearchParams();
-  const next_param = searchParams.get('next');
-  const next = next_param ? decodeURIComponent(next_param) : null;
+  const next = getSafeAuthRedirect(searchParams.get('next'));
 
   if (isPending) {
     return (
@@ -248,7 +237,7 @@ export const SignInPage = () => {
       </div>
     );
   }
-  if (data && data.session) return <Navigate to={next || '/'} replace />;
+  if (data && data.session) return <Navigate to={next} replace />;
 
   return <SignInPageComponent />;
 };
