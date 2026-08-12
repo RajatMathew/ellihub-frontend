@@ -1,37 +1,46 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
-import { linkMicrosoftAccount } from '@/core/auth/api/auth-methods.api';
-import { MicrosoftIcon } from '@/core/auth/components/microsoft-icon';
+import { linkSocialAccount } from '@/core/auth/api/auth-methods.api';
+import {
+  getSocialAuthenticationProvider,
+  SOCIAL_AUTHENTICATION_PROVIDERS,
+  type SocialAuthenticationProviderDefinition,
+} from '@/core/auth/config/social-auth-providers';
 import { getAuthCallbackErrorMessage } from '@/core/auth/lib/auth-redirect';
+import { SocialProviderAccountRow } from '@/modules/profile/components/social-provider-account-row';
 import { useAuthenticationMethodsQuery } from '@/modules/profile/hooks/profile.hooks';
-import { LoaderCircleIcon, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function ProfileConnectedAccounts() {
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectingProviderId, setConnectingProviderId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const methodsQuery = useAuthenticationMethodsQuery();
 
   useEffect(() => {
     const action = searchParams.get('auth_action');
-    if (action !== 'link_microsoft') return;
+    if (action !== 'link_social') return;
+
+    const provider = getSocialAuthenticationProvider(
+      searchParams.get('linked') ?? searchParams.get('provider')
+    );
 
     const errorMessage = getAuthCallbackErrorMessage(searchParams.get('error'));
     if (errorMessage) {
       toast.error(errorMessage);
-    } else if (searchParams.get('linked') === 'microsoft') {
-      toast.success('Microsoft account connected.');
+    } else if (provider && searchParams.get('linked') === provider.id) {
+      toast.success(`${provider.displayName} account connected.`);
     }
 
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.delete('auth_action');
     nextSearchParams.delete('linked');
+    nextSearchParams.delete('provider');
     nextSearchParams.delete('error');
     nextSearchParams.delete('error_description');
     setSearchParams(nextSearchParams, { replace: true });
@@ -69,63 +78,43 @@ export function ProfileConnectedAccounts() {
     );
   }
 
-  if (!methodsQuery.data.capabilities.providers.microsoft) return null;
-
+  const capabilities = methodsQuery.data.capabilities.providers;
+  const enabledProviders = SOCIAL_AUTHENTICATION_PROVIDERS.filter(
+    (provider) => capabilities[provider.id]
+  );
+  if (enabledProviders.length === 0) return null;
   const accounts = methodsQuery.data.accounts;
-  const microsoftConnected = accounts.some((account) => account.providerId === 'microsoft');
 
-  async function connectMicrosoft() {
-    setIsConnecting(true);
+  async function connectProvider(provider: SocialAuthenticationProviderDefinition) {
+    setConnectingProviderId(provider.id);
 
     try {
-      await linkMicrosoftAccount(
-        '/app/profile?auth_action=link_microsoft&linked=microsoft',
-        '/app/profile?auth_action=link_microsoft'
+      await linkSocialAccount(
+        provider.id,
+        `/app/profile?auth_action=link_social&linked=${provider.id}`,
+        `/app/profile?auth_action=link_social&provider=${provider.id}`
       );
     } catch (error: unknown) {
-      toast.error(getApiErrorMessage(error, 'Microsoft account could not be connected.'));
-      setIsConnecting(false);
+      toast.error(
+        getApiErrorMessage(error, `${provider.displayName} account could not be connected.`)
+      );
+      setConnectingProviderId(null);
     }
   }
 
   return (
     <SignInMethodsSection>
-      <div className="flex flex-col gap-4 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-foreground">
-            <MicrosoftIcon className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-foreground">Microsoft</p>
-              <Badge
-                variant={microsoftConnected ? 'success' : 'secondary'}
-                appearance="light"
-                size="sm"
-              >
-                {microsoftConnected ? 'Connected' : 'Not connected'}
-              </Badge>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {microsoftConnected
-                ? 'You can use Microsoft or your Elli password to sign in.'
-                : 'Microsoft connects automatically when its email matches your verified Elli email.'}
-            </p>
-          </div>
-        </div>
-
-        {!microsoftConnected ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isConnecting}
-            onClick={() => void connectMicrosoft()}
-          >
-            {isConnecting ? <LoaderCircleIcon className="animate-spin" /> : <MicrosoftIcon />}
-            {isConnecting ? 'Connecting...' : 'Connect Microsoft'}
-          </Button>
-        ) : null}
+      <div className="space-y-3">
+        {enabledProviders.map((provider) => (
+          <SocialProviderAccountRow
+            key={provider.id}
+            provider={provider}
+            connected={accounts.some((account) => account.providerId === provider.id)}
+            connecting={connectingProviderId === provider.id}
+            connectionDisabled={connectingProviderId !== null}
+            onConnect={connectProvider}
+          />
+        ))}
       </div>
     </SignInMethodsSection>
   );
@@ -138,7 +127,7 @@ function SignInMethodsSection({ children }: { children: ReactNode }) {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Sign-in methods</h3>
           <p className="text-xs text-muted-foreground">
-            Microsoft links automatically when your verified Elli email matches.
+            Enabled providers link automatically when your verified Elli email matches.
           </p>
         </div>
         {children}

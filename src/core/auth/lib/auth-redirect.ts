@@ -18,26 +18,26 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   auth_callback_error: 'Authentication could not be completed. Please try again.',
   auth_token_error: 'The authentication session could not be created. Please try again.',
   account_not_linked:
-    'Your Elli email is not verified for automatic Microsoft sign-in. Contact an administrator, or sign in with your password and connect Microsoft from My Profile.',
+    'Your Elli email is not verified for automatic social sign-in. Contact an administrator, or sign in with your password and connect the provider from My Profile.',
   signup_disabled:
-    'No active Elli account matches this Microsoft email. Contact an administrator for access.',
+    'No active Elli account matches this sign-in email. Contact an administrator for access.',
   email_not_found:
-    'Microsoft did not provide an email address for this account. Contact your Microsoft administrator.',
+    'The sign-in provider did not supply an email address. Contact your administrator.',
   email_is_missing:
-    'Microsoft did not provide an email address for this account. Contact your Microsoft administrator.',
-  "email_doesn't_match": 'Your Microsoft email must match your Elli account email.',
-  email_doesnt_match: 'Your Microsoft email must match your Elli account email.',
+    'The sign-in provider did not supply an email address. Contact your administrator.',
+  "email_doesn't_match": 'Your provider email must match your Elli account email.',
+  email_doesnt_match: 'Your provider email must match your Elli account email.',
   account_already_linked_to_different_user:
-    'This Microsoft account is already connected to another Elli user.',
-  oauth2_failed: 'Microsoft sign-in could not be completed. Please try again.',
-  oauth_provider_not_found: 'Microsoft sign-in is not configured for this environment.',
-  invalid_callback_request: 'The Microsoft sign-in response was invalid. Please try again.',
-  invalid_code: 'The Microsoft sign-in request expired or was invalid. Please try again.',
-  no_code: 'Microsoft did not return a sign-in code. Please try again.',
-  unable_to_link_account: 'The Microsoft account could not be connected to your Elli account.',
-  unable_to_get_user_info: 'Microsoft could not provide the required account details.',
-  state_mismatch: 'The Microsoft sign-in request expired or was invalid. Please try again.',
-  access_denied: 'Microsoft sign-in was cancelled or denied.',
+    'This provider account is already connected to another Elli user.',
+  oauth2_failed: 'Social sign-in could not be completed. Please try again.',
+  oauth_provider_not_found: 'This sign-in provider is not configured for this environment.',
+  invalid_callback_request: 'The social sign-in response was invalid. Please try again.',
+  invalid_code: 'The social sign-in request expired or was invalid. Please try again.',
+  no_code: 'The provider did not return a sign-in code. Please try again.',
+  unable_to_link_account: 'The provider account could not be connected to your Elli account.',
+  unable_to_get_user_info: 'The provider could not supply the required account details.',
+  state_mismatch: 'The social sign-in request expired or was invalid. Please try again.',
+  access_denied: 'Social sign-in was cancelled or denied.',
 };
 
 export function getAuthCallbackErrorMessage(errorCode: string | null) {

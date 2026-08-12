@@ -2,9 +2,7 @@ import api, { authClient } from '@/app/api';
 import { z } from 'zod';
 
 const authCapabilitiesSchema = z.object({
-  providers: z.object({
-    microsoft: z.boolean(),
-  }),
+  providers: z.record(z.string(), z.boolean()),
 });
 
 export type AuthCapabilities = z.infer<typeof authCapabilitiesSchema>;
@@ -23,9 +21,13 @@ export async function listAuthenticationAccounts() {
 
 export type AuthenticationAccount = Awaited<ReturnType<typeof listAuthenticationAccounts>>[number];
 
-export async function linkMicrosoftAccount(callbackURL: string, errorCallbackURL: string) {
+export async function linkSocialAccount(
+  provider: string,
+  callbackURL: string,
+  errorCallbackURL: string
+) {
   const result = await authClient.linkSocial({
-    provider: 'microsoft',
+    provider,
     callbackURL,
     errorCallbackURL,
   });

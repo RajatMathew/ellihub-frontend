@@ -21,7 +21,7 @@ import {
 import { Input } from '@app/components/ui/input';
 import { onInvalidFormSubmit } from '@app/lib/form-error-toast';
 import { getApiErrorMessage } from '@app/lib/toast-api-error';
-import { MicrosoftSignInSection } from '@core/auth/components/microsoft-sign-in-section';
+import { SocialSignInSection } from '@core/auth/components/social-sign-in-section';
 import { getSigninSchema, type SigninSchemaType } from '@core/auth/forms/signin-schema';
 import { getAuthCallbackErrorMessage, getSafeAuthRedirect } from '@core/auth/lib/auth-redirect';
 
@@ -113,7 +113,7 @@ export function SignInPageComponent() {
         <div className="text-center space-y-1 pb-3">
           <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
           <p className="text-sm text-muted-foreground">
-            Use Microsoft or your Elli email and password.
+            Use a connected sign-in provider or your Elli email and password.
           </p>
         </div>
         <div className="h-12">
@@ -136,11 +136,7 @@ export function SignInPageComponent() {
           </Alert>
         )}
 
-        <MicrosoftSignInSection
-          callbackURL={callbackURL}
-          disabled={isProcessing}
-          onError={setError}
-        />
+        <SocialSignInSection callbackURL={callbackURL} disabled={isProcessing} onError={setError} />
 
         <FormField
           control={form.control}
