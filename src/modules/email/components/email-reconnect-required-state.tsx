@@ -8,7 +8,7 @@ interface EmailReconnectRequiredStateProps {
   email: string;
   reason?: 'authorization' | 'calendarPermission';
   isReconnecting: boolean;
-  onReconnect: () => void;
+  onReconnect?: () => void;
 }
 
 export function EmailReconnectRequiredState({
@@ -20,6 +20,7 @@ export function EmailReconnectRequiredState({
 }: EmailReconnectRequiredStateProps) {
   const providerLabel = EMAIL_PROVIDER_DETAILS[provider].reconnectLabel;
   const needsCalendarPermission = reason === 'calendarPermission';
+  const isCommonMailbox = !onReconnect;
 
   return (
     <section
@@ -31,24 +32,30 @@ export function EmailReconnectRequiredState({
           <Link2Off aria-hidden="true" className="size-5 text-muted-foreground" strokeWidth={1.8} />
         </div>
         <h1 className="mt-5 text-lg font-semibold text-foreground">
-          {needsCalendarPermission
-            ? 'Reconnect Outlook to manage meetings'
-            : `Reconnect your ${providerLabel} account`}
+          {isCommonMailbox
+            ? 'Common inbox needs administrator attention'
+            : needsCalendarPermission
+              ? 'Reconnect Outlook to manage meetings'
+              : `Reconnect your ${providerLabel} account`}
         </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {needsCalendarPermission
-            ? `${email} was connected before calendar actions were enabled. Sign in once more and approve calendar access to continue. Your email and Elli session remain intact.`
-            : `The authorization for ${email} is no longer valid. Sign in to ${providerLabel} again to continue viewing and sending email. Your Elli session is still active.`}
+          {isCommonMailbox
+            ? `${email} is kept available through a hidden Microsoft vendor account. Ask the shared-mailbox administrator to reconnect that vendor source.`
+            : needsCalendarPermission
+              ? `${email} was connected before calendar actions were enabled. Sign in once more and approve calendar access to continue. Your email and Elli session remain intact.`
+              : `The authorization for ${email} is no longer valid. Sign in to ${providerLabel} again to continue viewing and sending email. Your Elli session is still active.`}
         </p>
-        <Button
-          type="button"
-          className="mt-5"
-          disabled={isReconnecting}
-          aria-busy={isReconnecting}
-          onClick={onReconnect}
-        >
-          {isReconnecting ? 'Opening sign-in…' : `Reconnect ${providerLabel}`}
-        </Button>
+        {onReconnect && (
+          <Button
+            type="button"
+            className="mt-5"
+            disabled={isReconnecting}
+            aria-busy={isReconnecting}
+            onClick={onReconnect}
+          >
+            {isReconnecting ? 'Opening sign-in…' : `Reconnect ${providerLabel}`}
+          </Button>
+        )}
       </div>
     </section>
   );

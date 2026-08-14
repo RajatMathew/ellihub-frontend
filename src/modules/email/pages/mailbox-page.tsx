@@ -4,9 +4,9 @@ import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
+import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
-import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import {
@@ -108,7 +108,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [composeLoaded, setComposeLoaded] = useState(false);
   const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
-  const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(null);
+  const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
+    null
+  );
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
@@ -326,7 +328,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       targetFolderId: archiveFolderId,
     });
     setArchiveConfirmation(null);
-  }, [archiveConfirmation, archiveFolderId, archiveMessageMutation, connectedAccount, selectedTarget?.emailId]);
+  }, [
+    archiveConfirmation,
+    archiveFolderId,
+    archiveMessageMutation,
+    connectedAccount,
+    selectedTarget?.emailId,
+  ]);
   const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
   const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
   const showEmailSyncIndicator = useBoundedEmailSyncIndicator(
@@ -667,12 +675,14 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                   : 'authorization'
               }
               isReconnecting={startAuthMutation.isPending}
-              onReconnect={() =>
-                startAuthMutation.mutate({
-                  provider: connectedAccount.provider,
-                  loginHint: connectedAccount.mailboxAddress ?? connectedAccount.email,
-                  sharedMailboxKey: connectedAccount.sharedMailboxKey ?? undefined,
-                })
+              onReconnect={
+                isSharedMailbox
+                  ? undefined
+                  : () =>
+                      startAuthMutation.mutate({
+                        provider: connectedAccount.provider,
+                        loginHint: connectedAccount.mailboxAddress ?? connectedAccount.email,
+                      })
               }
             />
           ) : (
@@ -1016,7 +1026,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             email={visibleEmail}
             mailboxAddress={address}
             accountId={connectedAccount?.id}
-            threadKey={visibleEmail?.threadId ?? visibleEmail?.conversationKey ?? visibleEmail?.id ?? null}
+            threadKey={
+              visibleEmail?.threadId ?? visibleEmail?.conversationKey ?? visibleEmail?.id ?? null
+            }
             contextEmails={emailsForActiveSearch}
             folders={foldersQuery.data}
             tags={tagsQuery.data}

@@ -1,9 +1,16 @@
+import { useState } from 'react';
+
+import { useSession } from '@/app/api';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
 import {
+  useDisconnectVendorConnectionMutation,
   useDiscoverSharedMailboxesMutation,
+  useRemoveSharedMailboxMutation,
+  useRemoveVendorConnectionMutation,
   useSharedMailboxesQuery,
   useVendorConnectionsQuery,
 } from '@/modules/settings/hooks/shared-mailboxes.hooks';
@@ -11,11 +18,34 @@ import { AlertCircle, CheckCircle2, Mail, Plus, RefreshCw, Users } from 'lucide-
 
 export function SharedMailboxesPage() {
   const { isAdmin, isLoading: isAccessLoading } = useAccess();
-  const mailboxesQuery = useSharedMailboxesQuery(isAdmin);
-  const vendorConnectionsQuery = useVendorConnectionsQuery(isAdmin);
+  const { data: sessionData, isPending: isSessionPending } = useSession();
+  const isSharedMailboxAdmin =
+    isAdmin && sessionData?.user.email?.trim().toLowerCase() === 'admin@elli.com';
+  const mailboxesQuery = useSharedMailboxesQuery(isSharedMailboxAdmin);
+  const vendorConnectionsQuery = useVendorConnectionsQuery(isSharedMailboxAdmin);
   const discoverMutation = useDiscoverSharedMailboxesMutation();
+  const disconnectMutation = useDisconnectVendorConnectionMutation();
+  const removeVendorMutation = useRemoveVendorConnectionMutation();
+  const removeMailboxMutation = useRemoveSharedMailboxMutation();
+  const [disconnectTarget, setDisconnectTarget] = useState<{
+    id: string;
+    emailAddress: string;
+  } | null>(null);
+  const [removeVendorTarget, setRemoveVendorTarget] = useState<{
+    id: string;
+    emailAddress: string;
+  } | null>(null);
+  const [removeMailboxTarget, setRemoveMailboxTarget] = useState<{
+    id: string;
+    displayName: string;
+    emailAddress: string;
+  } | null>(null);
 
-  if (isAccessLoading || mailboxesQuery.isLoading || vendorConnectionsQuery.isLoading) {
+  if (
+    isAccessLoading ||
+    isSessionPending ||
+    (isSharedMailboxAdmin && (mailboxesQuery.isLoading || vendorConnectionsQuery.isLoading))
+  ) {
     return (
       <div className="container-fluid space-y-5 py-7.5">
         <Skeleton className="h-8 w-64" />
@@ -25,8 +55,18 @@ export function SharedMailboxesPage() {
     );
   }
 
-  if (!isAdmin) {
-    return <div className="container-fluid py-7.5">You do not have access to this page.</div>;
+  if (!isSharedMailboxAdmin) {
+    return (
+      <main className="container-fluid py-7.5">
+        <section className="max-w-xl rounded-lg border border-border bg-background p-5">
+          <h1 className="text-base font-semibold text-foreground">Common inbox administration</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Only admin@elli.com can connect or manage the hidden Microsoft vendor accounts that keep
+            common inboxes available to everyone.
+          </p>
+        </section>
+      </main>
+    );
   }
 
   const hasError = mailboxesQuery.isError || vendorConnectionsQuery.isError;
@@ -96,7 +136,9 @@ export function SharedMailboxesPage() {
             <Users aria-hidden="true" className="size-4" />
             <span className="text-xs font-medium uppercase tracking-wide">Vendor accounts</span>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{vendorConnections.length}</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">
+            {vendorConnections.filter((connection) => connection.status === 'CONNECTED').length}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Sources connected to this organization
           </p>
@@ -160,6 +202,35 @@ export function SharedMailboxesPage() {
                       ? 'Connected'
                       : connection.status.toLowerCase()}
                   </Badge>
+                  {connection.status === 'CONNECTED' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10"
+                      onClick={() =>
+                        setDisconnectTarget({
+                          id: connection.id,
+                          emailAddress: connection.emailAddress,
+                        })
+                      }
+                    >
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 text-destructive hover:text-destructive"
+                      onClick={() =>
+                        setRemoveVendorTarget({
+                          id: connection.id,
+                          emailAddress: connection.emailAddress,
+                        })
+                      }
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -187,7 +258,7 @@ export function SharedMailboxesPage() {
         ) : (
           <div className="divide-y divide-border">
             {mailboxes.map((mailbox) => {
-              const isConnected = mailbox.account?.status === 'CONNECTED';
+              const isConnected = mailbox.status === 'CONNECTED' && mailbox.sourceCount > 0;
               return (
                 <article
                   key={mailbox.id}
@@ -210,13 +281,27 @@ export function SharedMailboxesPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <Badge variant={isConnected ? 'success' : 'warning'} appearance="light">
                       {isConnected ? 'Ready for everyone' : 'Needs attention'}
                     </Badge>
                     {isConnected && (
                       <CheckCircle2 aria-hidden="true" className="size-4 text-success-accent" />
                     )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-10 text-destructive hover:text-destructive"
+                      onClick={() =>
+                        setRemoveMailboxTarget({
+                          id: mailbox.id,
+                          displayName: mailbox.displayName,
+                          emailAddress: mailbox.emailAddress,
+                        })
+                      }
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </article>
               );
@@ -224,6 +309,66 @@ export function SharedMailboxesPage() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+        open={disconnectTarget !== null}
+        onOpenChange={(open) => !open && setDisconnectTarget(null)}
+        title="Disconnect vendor account?"
+        description={
+          disconnectTarget
+            ? `Disconnecting ${disconnectTarget.emailAddress} stops access through this vendor account. Shared inboxes provided by another connected vendor remain available.`
+            : ''
+        }
+        confirmLabel="Disconnect"
+        variant="destructive"
+        isPending={disconnectMutation.isPending}
+        onConfirm={() => {
+          if (!disconnectTarget) return;
+          disconnectMutation.mutate(disconnectTarget.id, {
+            onSuccess: () => setDisconnectTarget(null),
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={removeVendorTarget !== null}
+        onOpenChange={(open) => !open && setRemoveVendorTarget(null)}
+        title="Remove disconnected vendor account?"
+        description={
+          removeVendorTarget
+            ? `${removeVendorTarget.emailAddress} will be removed from this organization in Elli. This does not delete the Microsoft account.`
+            : ''
+        }
+        confirmLabel="Remove account"
+        variant="destructive"
+        isPending={removeVendorMutation.isPending}
+        onConfirm={() => {
+          if (!removeVendorTarget) return;
+          removeVendorMutation.mutate(removeVendorTarget.id, {
+            onSuccess: () => setRemoveVendorTarget(null),
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={removeMailboxTarget !== null}
+        onOpenChange={(open) => !open && setRemoveMailboxTarget(null)}
+        title="Remove common mailbox?"
+        description={
+          removeMailboxTarget
+            ? `${removeMailboxTarget.displayName} (${removeMailboxTarget.emailAddress}) will be removed from Elli. The actual Microsoft shared mailbox and its messages will not be deleted.`
+            : ''
+        }
+        confirmLabel="Remove mailbox"
+        variant="destructive"
+        isPending={removeMailboxMutation.isPending}
+        onConfirm={() => {
+          if (!removeMailboxTarget) return;
+          removeMailboxMutation.mutate(removeMailboxTarget.id, {
+            onSuccess: () => setRemoveMailboxTarget(null),
+          });
+        }}
+      />
     </main>
   );
 }

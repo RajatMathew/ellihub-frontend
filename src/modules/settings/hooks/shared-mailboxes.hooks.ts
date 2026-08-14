@@ -42,6 +42,47 @@ export const useDiscoverSharedMailboxesMutation = () =>
     onError: () => toast.error('Failed to start vendor account connection.'),
   });
 
+export const useDisconnectVendorConnectionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: sharedMailboxesApi.disconnectVendorConnection,
+    onSuccess: () => {
+      toast.success('Vendor account disconnected.');
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.all });
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.vendorConnections });
+      void queryClient.invalidateQueries({ queryKey: ['email', 'accounts'] });
+    },
+    onError: () => toast.error('Could not disconnect the vendor account. Try again.'),
+  });
+};
+
+export const useRemoveVendorConnectionMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: sharedMailboxesApi.removeVendorConnection,
+    onSuccess: () => {
+      toast.success('Disconnected vendor account removed.');
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.all });
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.vendorConnections });
+      void queryClient.invalidateQueries({ queryKey: ['email', 'accounts'] });
+    },
+    onError: () => toast.error('Could not remove the vendor account. Try again.'),
+  });
+};
+
+export const useRemoveSharedMailboxMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: sharedMailboxesApi.removeSharedMailbox,
+    onSuccess: () => {
+      toast.success('Common mailbox removed from Elli.');
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ['email', 'accounts'] });
+    },
+    onError: () => toast.error('Could not remove the common mailbox. Try again.'),
+  });
+};
+
 export const useConnectSharedMailboxMutation = () =>
   useMutation({
     mutationFn: sharedMailboxesApi.connect,

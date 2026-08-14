@@ -60,6 +60,18 @@ export const sharedMailboxesApi = {
     return vendorConnectionSchema.array().parse(response.data.data ?? []);
   },
 
+  async disconnectVendorConnection(vendorConnectionId: string): Promise<void> {
+    await api.delete(`/email/shared-mailboxes/vendor-connections/${vendorConnectionId}`);
+  },
+
+  async removeVendorConnection(vendorConnectionId: string): Promise<void> {
+    await api.delete(`/email/shared-mailboxes/vendor-connections/${vendorConnectionId}/remove`);
+  },
+
+  async removeSharedMailbox(sharedMailboxId: string): Promise<void> {
+    await api.delete(`/email/shared-mailboxes/${sharedMailboxId}`);
+  },
+
   async create(input: {
     key: string;
     displayName: string;
