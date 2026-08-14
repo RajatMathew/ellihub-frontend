@@ -91,8 +91,16 @@ export function EmailReferenceMarker({
   const [selectedType, setSelectedType] = useState<EmailReferenceFilterType>('all');
   const [newTagName, setNewTagName] = useState('');
   const [closedOtherPanelKey, setClosedOtherPanelKey] = useState<string | null>(null);
-  const selectedProjectId = useMemo(
-    () => state.references.find((reference) => reference.type === 'project')?.entityId ?? undefined,
+  const selectedProjectIds = useMemo(
+    () =>
+      [
+        ...new Set(
+          state.references
+            .filter((reference) => reference.type === 'project')
+            .map((reference) => reference.entityId)
+            .filter((projectId): projectId is string => Boolean(projectId))
+        ),
+      ],
     [state.references]
   );
   const references = useMemo(
@@ -289,7 +297,7 @@ export function EmailReferenceMarker({
               accountId={accountId}
               align={references.length > 0 ? 'end' : 'start'}
               selectedType={effectiveSelectedType}
-              selectedProjectId={selectedProjectId}
+              selectedProjectIds={selectedProjectIds}
               selectedReferences={references}
               otherLocked={isOtherSelected}
               projectRequired={!hasProjectReference}
@@ -397,7 +405,7 @@ function ReferencePickerPopover({
   accountId,
   align,
   selectedType,
-  selectedProjectId,
+  selectedProjectIds,
   selectedReferences,
   otherLocked,
   projectRequired,
@@ -407,7 +415,7 @@ function ReferencePickerPopover({
   accountId: string;
   align: 'start' | 'end';
   selectedType: EmailReferenceFilterType;
-  selectedProjectId?: string;
+  selectedProjectIds: string[];
   selectedReferences: EmailReference[];
   otherLocked: boolean;
   projectRequired: boolean;
@@ -462,11 +470,7 @@ function ReferencePickerPopover({
         <ReferencePicker
           accountId={accountId}
           type={selectedType}
-          projectId={
-            selectedType === 'project' || selectedType === 'all'
-              ? selectedProjectId
-              : (selectedProjectId ?? undefined)
-          }
+          projectIds={selectedProjectIds}
           placeholder={
             selectedType === 'all'
               ? 'Search all references'
@@ -760,7 +764,7 @@ export function EmailThreadStatusPill({ state }: { state: EmailThreadState }) {
 function ReferencePicker({
   accountId,
   type,
-  projectId,
+  projectIds,
   placeholder,
   selectedReferences,
   otherLocked,
@@ -769,7 +773,7 @@ function ReferencePicker({
 }: {
   accountId: string;
   type: EmailReferenceFilterType;
-  projectId?: string;
+  projectIds: string[];
   placeholder: string;
   selectedReferences: EmailReference[];
   otherLocked: boolean;
@@ -787,7 +791,7 @@ function ReferencePicker({
     return (
       <AllReferencePicker
         accountId={accountId}
-        projectId={projectId}
+        projectIds={projectIds}
         placeholder={placeholder}
         selectedReferences={selectedReferences}
         onAdd={onAdd}
@@ -824,7 +828,7 @@ function ReferencePicker({
     <SearchReferencePicker
       accountId={accountId}
       type={type}
-      projectId={projectId}
+      projectIds={projectIds}
       placeholder={placeholder}
       selectedReferences={selectedReferences}
       onAdd={onAdd}
@@ -834,13 +838,13 @@ function ReferencePicker({
 
 function AllReferencePicker({
   accountId,
-  projectId,
+  projectIds,
   placeholder,
   selectedReferences,
   onAdd,
 }: {
   accountId: string;
-  projectId?: string;
+  projectIds: string[];
   placeholder: string;
   selectedReferences: EmailReference[];
   onAdd: (reference: EmailReference) => void;
@@ -853,30 +857,32 @@ function AllReferencePicker({
       'reference-options',
       accountId,
       'all',
-      projectId,
+      projectIds,
       debouncedSearch,
     ],
     queryFn: async () => {
-      const groups = await Promise.all(
-        SEARCHABLE_REFERENCE_TYPES.map(async (type) => {
-          const options = await emailApi.listReferenceOptions({
-            accountId,
-            type,
-            projectId: type === 'project' ? undefined : projectId,
-            search: debouncedSearch || undefined,
-            size: 8,
-          });
-          return options.map((option) => ({
-            ...option,
-            groupLabel: getReferenceTypeLabel(type),
-          }));
-        })
+      const optionGroups = await Promise.all(
+        SEARCHABLE_REFERENCE_TYPES.flatMap((type) =>
+          (type === 'project' ? [undefined] : projectIds).map(async (projectId) => {
+            const options = await emailApi.listReferenceOptions({
+              accountId,
+              type,
+              projectId,
+              search: debouncedSearch || undefined,
+              size: 8,
+            });
+            return options.map((option) => ({
+              ...option,
+              groupLabel: getReferenceTypeLabel(type),
+            }));
+          })
+        )
       );
 
-      return groups.flat();
+      return dedupeReferenceOptions(optionGroups.flat());
     },
     staleTime: 60 * 1000,
-    enabled: Boolean(accountId),
+    enabled: Boolean(accountId) && projectIds.length > 0,
   });
   const options = optionsQuery.data ?? [];
 
@@ -937,14 +943,14 @@ function AllReferencePicker({
 function SearchReferencePicker({
   accountId,
   type,
-  projectId,
+  projectIds,
   placeholder,
   selectedReferences,
   onAdd,
 }: {
   accountId: string;
   type: Exclude<EmailReferenceType, 'rfi' | 'other'>;
-  projectId?: string;
+  projectIds: string[];
   placeholder: string;
   selectedReferences: EmailReference[];
   onAdd: (reference: EmailReference) => void;
@@ -952,16 +958,20 @@ function SearchReferencePicker({
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 200);
   const optionsQuery = useQuery({
-    queryKey: ['connected-email', 'reference-options', accountId, type, projectId, debouncedSearch],
+    queryKey: ['connected-email', 'reference-options', accountId, type, projectIds, debouncedSearch],
     queryFn: () =>
-      emailApi.listReferenceOptions({
-        accountId,
-        type,
-        projectId,
-        search: debouncedSearch || undefined,
-      }),
+      Promise.all(
+        (type === 'project' ? [undefined] : projectIds).map((projectId) =>
+          emailApi.listReferenceOptions({
+            accountId,
+            type,
+            projectId,
+            search: debouncedSearch || undefined,
+          })
+        )
+      ).then((optionGroups) => dedupeReferenceOptions(optionGroups.flat())),
     staleTime: 60 * 1000,
-    enabled: Boolean(accountId),
+    enabled: Boolean(accountId) && (type === 'project' || projectIds.length > 0),
   });
   const options = optionsQuery.data ?? [];
   const createLabel = search.replace(/\s+/g, ' ').trim();
@@ -1157,6 +1167,16 @@ function optionToReference(option: EmailReferenceOption): EmailReference {
     entityId: option.entityId,
     label: option.label,
   };
+}
+
+function dedupeReferenceOptions<T extends EmailReferenceOption>(options: T[]): T[] {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function isOptionSelected(option: EmailReferenceOption, selectedReferences: EmailReference[]) {
