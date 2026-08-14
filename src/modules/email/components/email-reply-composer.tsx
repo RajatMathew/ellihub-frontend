@@ -1,14 +1,23 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import type { EmailThreadMessage } from '@/modules/email/components/email-row-card';
+import { getEmailAddressListError } from '@/modules/email/lib/email-addresses';
 import { Paperclip, Send, Trash2 } from 'lucide-react';
+
+export type EmailReplyDraft = {
+  body: string;
+  to: string;
+  cc: string;
+  bcc: string;
+};
 
 interface EmailReplyComposerProps {
   message: EmailThreadMessage;
   isSending?: boolean;
-  onSend: (body: string) => Promise<void> | void;
+  onSend: (draft: EmailReplyDraft) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -19,9 +28,18 @@ export function EmailReplyComposer({
   onCancel,
 }: EmailReplyComposerProps) {
   const [body, setBody] = useState('');
+  const [to, setTo] = useState(message.senderEmail);
+  const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
+  const [showCc, setShowCc] = useState(false);
+  const [showBcc, setShowBcc] = useState(false);
+  const [addressErrors, setAddressErrors] = useState<Partial<Record<'to' | 'cc' | 'bcc', string>>>({});
+  const toId = useId();
+  const ccId = useId();
+  const bccId = useId();
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = body.trim().length > 0 && !isSending;
+  const canSend = body.trim().length > 0 && to.trim().length > 0 && !isSending;
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -33,18 +51,78 @@ export function EmailReplyComposer({
       aria-label={`Reply to ${message.senderName}`}
       onSubmit={async (event) => {
         event.preventDefault();
+        const nextErrors = {
+          to: getEmailAddressListError(to, 'To', true) ?? undefined,
+          cc: getEmailAddressListError(cc, 'Cc') ?? undefined,
+          bcc: getEmailAddressListError(bcc, 'Bcc') ?? undefined,
+        };
+        setAddressErrors(nextErrors);
+        if (Object.values(nextErrors).some(Boolean)) return;
         if (!canSend) return;
-        await onSend(body);
+        await onSend({ body, to, cc, bcc });
         setBody('');
       }}
     >
-      <div className="border-b border-border px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="shrink-0 font-medium text-foreground">To:</span>
-          <span className="min-w-0 truncate text-muted-foreground">
-            {message.senderName} &lt;{message.senderEmail}&gt;
-          </span>
-        </div>
+      <div className="divide-y divide-border border-b border-border">
+        <ReplyAddressField
+          id={toId}
+          label="To"
+          value={to}
+          required
+          disabled={isSending}
+          error={addressErrors.to}
+          onChange={(value) => {
+            setTo(value);
+            setAddressErrors((current) => ({ ...current, to: undefined }));
+          }}
+        >
+          {!showCc && (
+            <button
+              type="button"
+              className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={isSending}
+              onClick={() => setShowCc(true)}
+            >
+              Cc
+            </button>
+          )}
+          {!showBcc && (
+            <button
+              type="button"
+              className="rounded-sm px-1.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={isSending}
+              onClick={() => setShowBcc(true)}
+            >
+              Bcc
+            </button>
+          )}
+        </ReplyAddressField>
+        {showCc && (
+          <ReplyAddressField
+            id={ccId}
+            label="Cc"
+            value={cc}
+            disabled={isSending}
+            error={addressErrors.cc}
+            onChange={(value) => {
+              setCc(value);
+              setAddressErrors((current) => ({ ...current, cc: undefined }));
+            }}
+          />
+        )}
+        {showBcc && (
+          <ReplyAddressField
+            id={bccId}
+            label="Bcc"
+            value={bcc}
+            disabled={isSending}
+            error={addressErrors.bcc}
+            onChange={(value) => {
+              setBcc(value);
+              setAddressErrors((current) => ({ ...current, bcc: undefined }));
+            }}
+          />
+        )}
       </div>
 
       <div className="space-y-3 p-4">
@@ -91,5 +169,57 @@ export function EmailReplyComposer({
         </div>
       </div>
     </form>
+  );
+}
+
+function ReplyAddressField({
+  id,
+  label,
+  value,
+  required,
+  disabled,
+  error,
+  onChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  onChange: (value: string) => void;
+  children?: ReactNode;
+}) {
+  const errorId = `${id}-error`;
+  return (
+    <div className="px-4 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <label htmlFor={id} className="w-7 shrink-0 text-xs font-medium text-muted-foreground">
+          {label}
+          {required && <span className="text-destructive"> *</span>}
+        </label>
+        <Input
+          id={id}
+          type="text"
+          inputMode="email"
+          autoComplete="email"
+          spellCheck={false}
+          value={value}
+          placeholder="recipient@example.com"
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? errorId : undefined}
+          className="min-w-0 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
+      </div>
+      {error && (
+        <p id={errorId} className="pt-1 pl-9 text-xs text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
