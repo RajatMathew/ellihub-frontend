@@ -419,11 +419,12 @@ function ReferencePickerPopover({
       align={align}
       sideOffset={8}
       collisionPadding={12}
-      className="max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] overflow-hidden p-3"
+      className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] flex-col overflow-hidden p-3"
     >
       <Tabs
         value={selectedType}
         onValueChange={(value) => onSelectedTypeChange(value as EmailReferenceFilterType)}
+        className="shrink-0"
       >
         <TabsList
           variant="line"
@@ -451,9 +452,9 @@ function ReferencePickerPopover({
         </TabsList>
       </Tabs>
 
-      <div className="space-y-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
         {projectRequired && selectedType === 'project' && (
-          <div className="flex items-center gap-2 rounded-md border border-info/15 bg-info-soft/50 px-3 py-2 text-xs text-info-soft-foreground">
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-info/15 bg-info-soft/50 px-3 py-2 text-xs text-info-soft-foreground">
             <Info aria-hidden="true" className="size-3.5 shrink-0" />
             <span>You need to select project first.</span>
           </div>
@@ -880,9 +881,9 @@ function AllReferencePicker({
   const options = optionsQuery.data ?? [];
 
   return (
-    <Command shouldFilter={false}>
+    <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
-      <CommandList className="max-h-80">
+      <CommandList className="max-h-none min-h-0 flex-1">
         {optionsQuery.isLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
@@ -970,9 +971,9 @@ function SearchReferencePicker({
   const canCreateReference = createLabel.length > 0 && !hasExactMatch && !optionsQuery.isLoading;
 
   return (
-    <Command shouldFilter={false}>
+    <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
-      <CommandList className="max-h-64">
+      <CommandList className="max-h-none min-h-0 flex-1">
         {optionsQuery.isLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
