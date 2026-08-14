@@ -568,11 +568,13 @@ function EmailReadingPaneShortcuts({
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {
   if (email.threadMessages?.length) {
-    return email.threadMessages.map((message) => ({
-      ...message,
-      recipientName: message.recipientName === 'Elli Team' ? '' : message.recipientName,
-      recipientEmail: message.recipientEmail || mailboxAddress,
-    }));
+    return [...email.threadMessages]
+      .sort((left, right) => getMessageTimestamp(left) - getMessageTimestamp(right))
+      .map((message) => ({
+        ...message,
+        recipientName: message.recipientName === 'Elli Team' ? '' : message.recipientName,
+        recipientEmail: message.recipientEmail || mailboxAddress,
+      }));
   }
   const messageId = email.latestMessageId ?? email.id;
 
@@ -595,6 +597,11 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       keywords: email.keywords ?? [],
     },
   ];
+}
+
+function getMessageTimestamp(message: EmailThreadMessage): number {
+  const timestamp = new Date(message.sentAt).getTime();
+  return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
 }
 
 function hasMatchingSyncedReply(
