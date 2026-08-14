@@ -36,6 +36,7 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
+import type { EmailReplyDraft } from '@/modules/email/components/email-reply-composer';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
@@ -76,7 +77,7 @@ interface EmailReadingPaneProps {
   isSendingReply?: boolean;
   onReply?: (
     messageId: string,
-    body: string
+    draft: EmailReplyDraft
   ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
   isRespondingToMeeting?: boolean;
   isUpdatingMeeting?: boolean;
@@ -404,7 +405,7 @@ export function EmailReadingPane({
                 replyOpen={replyMessageId === message.id}
                 isSendingReply={isSendingReply}
                 onReply={(messageId) => setReplyTarget({ emailId: email.id, messageId })}
-                onSendReply={(messageId, body) => {
+                onSendReply={(messageId, draft) => {
                   if (!onReply) return;
                   const targetMessage = messages.find((message) => message.id === messageId);
                   const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
@@ -415,7 +416,7 @@ export function EmailReadingPane({
                     recipientName: targetMessage?.senderName ?? email.senderName,
                     recipientEmail: targetMessage?.senderEmail ?? email.senderEmail,
                     sentAt: 'Sending...',
-                    body: [body],
+                    body: [draft.body],
                     deliveryStatus: 'sending',
                   };
 
@@ -423,12 +424,12 @@ export function EmailReadingPane({
                     ...current,
                     {
                       emailId: email.id,
-                      plainBody: body,
+                      plainBody: draft.body,
                       message: optimisticMessage,
                     },
                   ]);
                   setReplyTarget(null);
-                  Promise.resolve(onReply(messageId, body))
+                  Promise.resolve(onReply(messageId, draft))
                     .then((sentMessage) => {
                       setPendingReplies((current) =>
                         markPendingReplySent(

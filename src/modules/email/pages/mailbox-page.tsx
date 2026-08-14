@@ -957,13 +957,16 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 isUpdatingReadStatus={updateMessageStatusMutation.isPending}
                 onReply={
                   connectedAccount
-                    ? (messageId, body) =>
+                    ? (messageId, draft) =>
                         replyMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
-                          body: plainTextToEmailHtml(body),
+                          body: plainTextToEmailHtml(draft.body),
                           bodyType: 'html',
                           subject: selectedEmail?.subject,
+                          to: parseEmailAddresses(draft.to),
+                          cc: parseEmailAddresses(draft.cc),
+                          bcc: parseEmailAddresses(draft.bcc),
                         })
                     : undefined
                 }

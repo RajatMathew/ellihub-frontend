@@ -8,7 +8,10 @@ import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attac
 import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
-import { EmailReplyComposer } from '@/modules/email/components/email-reply-composer';
+import {
+  EmailReplyComposer,
+  type EmailReplyDraft,
+} from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailThreadMessage,
@@ -27,7 +30,7 @@ interface EmailThreadMessageCardProps {
   replyOpen?: boolean;
   isSendingReply?: boolean;
   onReply: (messageId: string) => void;
-  onSendReply: (messageId: string, body: string) => Promise<void> | void;
+  onSendReply: (messageId: string, draft: EmailReplyDraft) => Promise<void> | void;
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
   onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
@@ -205,7 +208,7 @@ export function EmailThreadMessageCard({
           <EmailReplyComposer
             message={message}
             isSending={isSendingReply}
-            onSend={(body) => onSendReply(message.id, body)}
+            onSend={(draft) => onSendReply(message.id, draft)}
             onCancel={onCancelReply}
           />
         )}
