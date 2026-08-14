@@ -150,6 +150,12 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     connectedAccount?.id,
     canLoadConnectedMailbox
   );
+  const activeProjectId = useMemo(() => {
+    if (!selectedProjectId || !referenceProjectsQuery.isSuccess) return selectedProjectId;
+    return referenceProjectsQuery.data.some((project) => project.entityId === selectedProjectId)
+      ? selectedProjectId
+      : null;
+  }, [referenceProjectsQuery.data, referenceProjectsQuery.isSuccess, selectedProjectId]);
   const selectedConnectedFolder = isConnected
     ? (foldersQuery.data?.find((folder) => folder.id === selectedFolder) ??
       foldersQuery.data?.find((folder) => folder.key === selectedFolder) ??
@@ -162,9 +168,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     connectedAccount?.id,
     selectedFolderQuery,
     {
-      size: selectedProjectId ? PROJECT_EMAIL_PAGE_SIZE : CONNECTED_EMAIL_PAGE_SIZE,
+      size: activeProjectId ? PROJECT_EMAIL_PAGE_SIZE : CONNECTED_EMAIL_PAGE_SIZE,
       search: debouncedMessageSearch || undefined,
-      projectId: selectedProjectId ?? undefined,
+      projectId: activeProjectId ?? undefined,
       classification: mailFilter === 'other' ? 'other' : undefined,
     },
     canLoadConnectedMailbox
@@ -334,7 +340,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     `${connectedAccount?.id ?? 'no-account'}:${refreshMessagesMutation.submittedAt}`
   );
   const isMailboxLoading = isConnectedRoute
-    ? accountsQuery.isLoading || messagesQuery.isLoading
+    ? accountsQuery.isLoading ||
+      messagesQuery.isLoading ||
+      (messagesQuery.isFetching && messagesQuery.isPlaceholderData)
     : false;
   const isMailboxError = isConnectedRoute
     ? accountsQuery.isError ||
@@ -720,7 +728,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             search={messageSearch}
             projects={referenceProjectsQuery.data}
             categoryTags={availableOtherCategoryTags}
-            selectedProjectId={selectedProjectId}
+            selectedProjectId={activeProjectId}
             selectedCategoryTagId={selectedCategoryTagId}
             isRefreshing={showEmailSyncIndicator}
             isCreatingFolder={createFolderMutation.isPending}
@@ -735,7 +743,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
               setMailFilter(filter);
               if (filter !== 'other') setSelectedCategoryTagId(null);
             }}
-            onProjectChange={setSelectedProjectId}
+            onProjectChange={(projectId) => {
+              setSelectedProjectId(projectId);
+              setSelectedTarget(null);
+              setMailFilter('all');
+              setSelectedCategoryTagId(null);
+              setMobilePane('list');
+            }}
             onCategoryTagChange={setSelectedCategoryTagId}
             onSearchChange={setMessageSearch}
             onRefresh={() => {
