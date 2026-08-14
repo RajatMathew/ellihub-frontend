@@ -51,7 +51,9 @@ export function EmailThreadMessageCard({
   const visibleAttachments = attachments.filter(
     (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
   );
-  const isAlwaysExpanded = singleMessage || visibleAttachments.length > 0;
+  // Attachments must not lock a thread card open: every message in a
+  // conversation remains collapsible unless it is the only message displayed.
+  const isAlwaysExpanded = singleMessage;
   const isExpanded = isAlwaysExpanded || Boolean(replyOpen) || isManuallyExpanded;
   const canCollapse = !isAlwaysExpanded && !replyOpen;
   const hasBodyContent = hasVisibleEmailBodyContent(message.body);
