@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { Forbidden } from '@/app/components/error/forbidden';
 import { FormContent, FormLayout } from '@/app/components/form-layout';
+import { Button } from '@/app/components/ui/button';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { useVendorPickerOptions, type VendorPickerOption } from '@/modules/directory/hooks';
@@ -13,6 +14,7 @@ import {
 } from '@/modules/project/components/purchase-order';
 import { calculatePurchaseOrderTotals } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { getRFQStatusName } from '@/modules/project/components/rfq';
+import { RFQQuoteViewDialog } from '@/modules/project/components/rfq/rfq-quote-view-dialog';
 import {
   ProjectFormDocumentsCard,
   ProjectFormPageLoading,
@@ -40,6 +42,7 @@ import {
   resolveProjectEntityFolder,
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
+import { getAwardedRFQQuote } from '@/modules/project/lib/rfq-quote';
 import {
   createPOInputSchema,
   getPoNumberSuffix,
@@ -49,6 +52,7 @@ import {
 } from '@/modules/project/schemas/purchase-order';
 import type { RFQDeliverable, RFQDetail } from '@/modules/project/schemas/rfq';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye } from 'lucide-react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -175,10 +179,6 @@ function getRFQDeliverableUnitId(deliverable: RFQDeliverable) {
   return '';
 }
 
-function getAwardedRFQQuote(rfq: RFQDetail) {
-  return rfq.quotes.find((quote) => quote.isAwarded || quote.vendorId === rfq.awardedVendorId);
-}
-
 function getAwardedRFQVendorId(rfq: RFQDetail) {
   const awardedQuote = getAwardedRFQQuote(rfq);
   return rfq.awardedVendorId ?? rfq.awardedVendor?.id ?? awardedQuote?.vendorId ?? '';
@@ -229,6 +229,7 @@ export function POFormPage() {
   const [costCodeSearch, setCostCodeSearch] = useState('');
   const [pickedVendorOption, setPickedVendorOption] = useState<VendorPickerOption | null>(null);
   const [pickedRfqOption, setPickedRfqOption] = useState<ProjectPickerOption | null>(null);
+  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
   const tradeCategoryOptions = useMemo(
     () =>
       (tradeCategories ?? []).map((category) => ({
@@ -269,9 +270,7 @@ export function POFormPage() {
 
   const populatedFromRfqId = useRef<string | null>(null);
 
-  const selectedRfqAwardedQuote = selectedRfq?.quotes.find(
-    (quote) => quote.isAwarded || quote.vendorId === selectedRfq?.awardedVendorId
-  );
+  const selectedRfqAwardedQuote = selectedRfq ? getAwardedRFQQuote(selectedRfq) : undefined;
   const selectedRfqAwardedVendorId =
     selectedRfq?.awardedVendorId ??
     selectedRfq?.awardedVendor?.id ??
@@ -381,6 +380,7 @@ export function POFormPage() {
 
   useEffect(() => {
     setPickedRfqOption((current) => (current && current.value !== selectedRfqId ? null : current));
+    setIsQuotationOpen(false);
   }, [selectedRfqId]);
 
   useEffect(() => {
@@ -736,6 +736,22 @@ export function POFormPage() {
             taxPercent={taxPercent}
             taxAmount={taxAmount}
             total={total}
+            headerAction={
+              selectedRfq &&
+              getRFQStatusName(selectedRfq) === 'AWARDED' &&
+              selectedRfqAwardedQuote ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => setIsQuotationOpen(true)}
+                >
+                  <Eye className="size-4" aria-hidden="true" />
+                  View Quotation
+                </Button>
+              ) : null
+            }
           />
           <ProjectFormDocumentsCard
             title="Backup Documents"
@@ -749,6 +765,13 @@ export function POFormPage() {
           />
         </FormContent>
       </FormLayout>
+      <RFQQuoteViewDialog
+        key={selectedRfqAwardedQuote?.id ?? 'no-awarded-quote'}
+        open={isQuotationOpen}
+        onOpenChange={setIsQuotationOpen}
+        quote={selectedRfqAwardedQuote}
+        rfqLabel={selectedRfq?.rfqNumber ?? selectedRfq?.title}
+      />
     </ProjectFormShell>
   );
 }

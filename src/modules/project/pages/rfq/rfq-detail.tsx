@@ -51,7 +51,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useDownloadFile, useFilePreviewQuery } from '@/modules/files/hooks/files.hooks';
+import { useFilePreviewQuery } from '@/modules/files/hooks/files.hooks';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { createFileUploadPayload } from '@/modules/files/uploads/use-managed-file-uploads';
 import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
@@ -65,10 +65,11 @@ import {
   RFQDetailVendorsCard,
   RfqEmailWizardDialog,
 } from '@/modules/project/components/rfq';
+import { RFQQuoteViewDialog } from '@/modules/project/components/rfq/rfq-quote-view-dialog';
 import {
   InfoRow,
-  ProjectActivityPanel,
   PdfGenerateDialog,
+  ProjectActivityPanel,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
 import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
@@ -98,7 +99,7 @@ import {
   useProjectFolderQuery,
 } from '@/modules/project/hooks/use-project-folder';
 import { calculateRFQFinancialSummary } from '@/modules/project/lib/commercial-decimal';
-import type { RFQQuoteAttachment } from '@/modules/project/schemas/rfq';
+import type { RFQQuote, RFQQuoteAttachment } from '@/modules/project/schemas/rfq';
 import {
   Calendar,
   CheckCircle2,
@@ -113,7 +114,6 @@ import {
   ShieldAlert,
   Trash2,
   Trophy,
-  Upload,
   Users,
   X,
   XCircle,
@@ -258,8 +258,6 @@ export default function RFQDetailPage() {
   const addAttachmentMutation = useAddRFQAttachmentMutation();
   const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
   const uploadManager = useUploadManager();
-  const downloadFile = useDownloadFile();
-
   const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
   const rfqEntityFolderQuery = useProjectEntityFolderQuery(
     projectId,
@@ -321,7 +319,7 @@ export default function RFQDetailPage() {
   const [quoteNegotiationAmount, setQuoteNegotiationAmount] = useState<number | ''>('');
   const [quoteLeadTime, setQuoteLeadTime] = useState('');
   const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
-  const [isQuoteViewOnly, setIsQuoteViewOnly] = useState(false);
+  const [viewingQuote, setViewingQuote] = useState<RFQQuote | null>(null);
   const [isQuoteUploadPending, setIsQuoteUploadPending] = useState(false);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<RFQQuoteAttachment[]>([]);
@@ -409,8 +407,6 @@ export default function RFQDetailPage() {
   const selectedPreviewAttachment =
     selectedComparisonAttachments.find((attachment) => attachment.id === activePreviewDocId) ??
     selectedComparisonAttachments[0];
-
-
 
   const alreadyInvitedVendorIds = useMemo(
     () =>
@@ -516,10 +512,14 @@ export default function RFQDetailPage() {
     existingQuoteId?: string,
     viewOnly = false
   ) {
+    if (viewOnly) {
+      setViewingQuote(quotes.find((quote) => quote.id === existingQuoteId) ?? null);
+      return;
+    }
+
     setQuoteInviteId(inviteId);
     setQuoteVendorId(vendorId);
     setEditingQuoteId(existingQuoteId ?? null);
-    setIsQuoteViewOnly(viewOnly);
     // Pre-fill if editing existing quote
     if (existingQuoteId) {
       const eq = quotes.find((q) => q.id === existingQuoteId);
@@ -546,7 +546,6 @@ export default function RFQDetailPage() {
     setQuoteNegotiationAmount('');
     setQuoteLeadTime('');
     setEditingQuoteId(null);
-    setIsQuoteViewOnly(false);
     setQuoteFile(null);
     setExistingAttachments([]);
   }
@@ -1776,6 +1775,16 @@ export default function RFQDetailPage() {
         </DialogContent>
       </Dialog>
 
+      <RFQQuoteViewDialog
+        key={viewingQuote?.id ?? 'no-viewing-quote'}
+        open={!!viewingQuote}
+        onOpenChange={(open) => {
+          if (!open) setViewingQuote(null);
+        }}
+        quote={viewingQuote}
+        rfqLabel={rfq.rfqNumber ?? rfq.title}
+      />
+
       {/* ---- Upload / Edit Quotation dialog ---- */}
       <Dialog
         open={quoteOpen}
@@ -1787,13 +1796,7 @@ export default function RFQDetailPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <FileText className="size-5 text-primary" />
-              <DialogTitle>
-                {isQuoteViewOnly
-                  ? 'View Quotation'
-                  : editingQuoteId
-                    ? 'Edit Quotation'
-                    : 'Upload Quotation'}
-              </DialogTitle>
+              <DialogTitle>{editingQuoteId ? 'Edit Quotation' : 'Upload Quotation'}</DialogTitle>
             </div>
           </DialogHeader>
           <div className="space-y-4">
@@ -1810,7 +1813,6 @@ export default function RFQDetailPage() {
                   decimalPlaces={2}
                   placeholder="0.00"
                   useGrouping
-                  disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
             </Field>
@@ -1828,7 +1830,6 @@ export default function RFQDetailPage() {
                   decimalPlaces={2}
                   placeholder="0.00"
                   useGrouping
-                  disabled={isQuoteViewOnly}
                 />
               </InputWrapper>
             </Field>
@@ -1844,7 +1845,6 @@ export default function RFQDetailPage() {
                   step={1}
                   placeholder="e.g. 30"
                   value={quoteLeadTime}
-                  disabled={isQuoteViewOnly}
                   onChange={(e) => setQuoteLeadTime(e.target.value.replace(/[^0-9]/g, ''))}
                   onKeyDown={(e) => {
                     if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
@@ -1857,13 +1857,11 @@ export default function RFQDetailPage() {
               <FieldLabel className="text-xs font-semibold tracking-normal uppercase">
                 Quote Document
               </FieldLabel>
-              {!isQuoteViewOnly && (
-                <FileDropZone
-                  value={quoteFile}
-                  onChange={setQuoteFile}
-                  accept=".pdf,.xlsx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                />
-              )}
+              <FileDropZone
+                value={quoteFile}
+                onChange={setQuoteFile}
+                accept=".pdf,.xlsx,.docx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              />
             </Field>
 
             {existingAttachments.length > 0 && (
@@ -1883,13 +1881,16 @@ export default function RFQDetailPage() {
                           type="button"
                           className="truncate text-left text-sm font-medium text-primary hover:underline"
                           onClick={() => {
-                            const doc =
+                            const document =
                               att.document ??
                               (att.documentId
                                 ? { id: att.documentId, name: att.name ?? 'Document' }
                                 : null);
-                            if (doc) {
-                              setQuoteAttachmentPreviewFile({ id: doc.id, name: doc.name });
+                            if (document) {
+                              setQuoteAttachmentPreviewFile({
+                                id: document.id,
+                                name: document.name,
+                              });
                             }
                           }}
                         >
@@ -1899,136 +1900,105 @@ export default function RFQDetailPage() {
                         <span className="text-sm truncate">{att.name || 'Document'}</span>
                       )}
                     </div>
-                    {!isQuoteViewOnly && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        aria-label={`Remove ${att.document?.name || att.name || 'document'}`}
-                        className="size-7 hover:text-destructive"
-                        onClick={() =>
-                          setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))
-                        }
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    )}
-                    {isQuoteViewOnly && (att.document || att.documentId) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        mode="icon"
-                        aria-label={`Download ${att.document?.name || att.name || 'document'}`}
-                        className="size-7"
-                        onClick={() => {
-                          const doc =
-                            att.document ??
-                            (att.documentId
-                              ? { id: att.documentId, name: att.name ?? 'Document' }
-                              : null);
-                          if (doc) {
-                            downloadFile.mutate(doc);
-                          }
-                        }}
-                      >
-                        <Upload className="size-4 rotate-180" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      mode="icon"
+                      aria-label={`Remove ${att.document?.name || att.name || 'document'}`}
+                      className="size-7 hover:text-destructive"
+                      onClick={() =>
+                        setExistingAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                      }
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
           </div>
           <DialogFooter>
-            {isQuoteViewOnly ? (
-              <Button onClick={resetQuoteDialog}>Close</Button>
-            ) : (
-              <>
-                <Button variant="outline" onClick={resetQuoteDialog}>
-                  Cancel
-                </Button>
-                <Button
-                  disabled={
-                    !quoteAmount ||
-                    quoteAmount <= 0 ||
-                    !hasQuoteAttachment ||
-                    submitQuoteMutation.isPending ||
-                    updateQuoteMutation.isPending ||
-                    isQuoteUploadPending
+            <Button variant="outline" onClick={resetQuoteDialog}>
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                !quoteAmount ||
+                quoteAmount <= 0 ||
+                !hasQuoteAttachment ||
+                submitQuoteMutation.isPending ||
+                updateQuoteMutation.isPending ||
+                isQuoteUploadPending
+              }
+              onClick={async () => {
+                if (!quoteAmount || quoteAmount <= 0) return;
+                if (!hasQuoteAttachment) return;
+
+                try {
+                  let fileIds: string[] = [];
+                  if (quoteFile && rfqUploadFolderId) {
+                    setIsQuoteUploadPending(true);
+                    const [fileItem] = await uploadManager.enqueueUploadsAndWait(
+                      [
+                        createFileUploadPayload(
+                          quoteFile,
+                          rfqUploadFolderId,
+                          getQuoteDocumentUploadName
+                        ),
+                      ],
+                      { label: 'Quote document' }
+                    );
+                    fileIds = fileItem ? [fileItem.id] : [];
                   }
-                  onClick={async () => {
-                    if (!quoteAmount || quoteAmount <= 0) return;
-                    if (!hasQuoteAttachment) return;
 
-                    try {
-                      let fileIds: string[] = [];
-                      if (quoteFile && rfqUploadFolderId) {
-                        setIsQuoteUploadPending(true);
-                        const [fileItem] = await uploadManager.enqueueUploadsAndWait(
-                          [
-                            createFileUploadPayload(
-                              quoteFile,
-                              rfqUploadFolderId,
-                              getQuoteDocumentUploadName
-                            ),
-                          ],
-                          { label: 'Quote document' }
-                        );
-                        fileIds = fileItem ? [fileItem.id] : [];
-                      }
+                  const existingIds = existingAttachments.map((a) => a.documentId || a.id);
+                  const allFileIds = [...existingIds, ...fileIds];
 
-                      const existingIds = existingAttachments.map((a) => a.documentId || a.id);
-                      const allFileIds = [...existingIds, ...fileIds];
-
-                      if (editingQuoteId) {
-                        await updateQuoteMutation.mutateAsync({
-                          rfqId,
-                          data: {
-                            id: quoteInviteId,
-                            quotedAmount: quoteAmount,
-                            negotiationAmount:
-                              typeof quoteNegotiationAmount === 'number' &&
-                              quoteNegotiationAmount > 0
-                                ? quoteNegotiationAmount
-                                : null,
-                            leadTime: quoteLeadTime || undefined,
-                            attachments: allFileIds,
-                          },
-                        });
-                      } else {
-                        await submitQuoteMutation.mutateAsync({
-                          rfqId,
-                          data: {
-                            id: quoteInviteId,
-                            quotedAmount: quoteAmount,
-                            negotiationAmount:
-                              typeof quoteNegotiationAmount === 'number' &&
-                              quoteNegotiationAmount > 0
-                                ? quoteNegotiationAmount
-                                : null,
-                            leadTime: quoteLeadTime || undefined,
-                            attachments: allFileIds,
-                          },
-                        });
-                      }
-                      resetQuoteDialog();
-                    } catch {
-                      // errors handled by mutations
-                    } finally {
-                      setIsQuoteUploadPending(false);
-                    }
-                  }}
-                >
-                  {submitQuoteMutation.isPending ||
-                  updateQuoteMutation.isPending ||
-                  isQuoteUploadPending
-                    ? 'Uploading...'
-                    : editingQuoteId
-                      ? 'Save Changes'
-                      : 'Upload Quote'}
-                </Button>
-              </>
-            )}
+                  if (editingQuoteId) {
+                    await updateQuoteMutation.mutateAsync({
+                      rfqId,
+                      data: {
+                        id: quoteInviteId,
+                        quotedAmount: quoteAmount,
+                        negotiationAmount:
+                          typeof quoteNegotiationAmount === 'number' && quoteNegotiationAmount > 0
+                            ? quoteNegotiationAmount
+                            : null,
+                        leadTime: quoteLeadTime || undefined,
+                        attachments: allFileIds,
+                      },
+                    });
+                  } else {
+                    await submitQuoteMutation.mutateAsync({
+                      rfqId,
+                      data: {
+                        id: quoteInviteId,
+                        quotedAmount: quoteAmount,
+                        negotiationAmount:
+                          typeof quoteNegotiationAmount === 'number' && quoteNegotiationAmount > 0
+                            ? quoteNegotiationAmount
+                            : null,
+                        leadTime: quoteLeadTime || undefined,
+                        attachments: allFileIds,
+                      },
+                    });
+                  }
+                  resetQuoteDialog();
+                } catch {
+                  // errors handled by mutations
+                } finally {
+                  setIsQuoteUploadPending(false);
+                }
+              }}
+            >
+              {submitQuoteMutation.isPending ||
+              updateQuoteMutation.isPending ||
+              isQuoteUploadPending
+                ? 'Uploading...'
+                : editingQuoteId
+                  ? 'Save Changes'
+                  : 'Upload Quote'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

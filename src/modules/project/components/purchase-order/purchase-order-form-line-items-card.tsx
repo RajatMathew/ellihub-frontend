@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { LineItems } from '@/app/components/line-items';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
@@ -30,6 +32,7 @@ interface PurchaseOrderFormLineItemsCardProps {
   taxPercent: number;
   taxAmount: number;
   total: number;
+  headerAction?: ReactNode;
 }
 
 const defaultLineItem: CreatePOInput['lineItems'][number] = {
@@ -59,6 +62,7 @@ export function PurchaseOrderFormLineItemsCard({
   taxPercent,
   taxAmount,
   total,
+  headerAction,
 }: PurchaseOrderFormLineItemsCardProps) {
   return (
     <LineItems
@@ -81,6 +85,7 @@ export function PurchaseOrderFormLineItemsCard({
       defaultItem={defaultLineItem}
       rootError={rootError?.root}
       showLineTotal
+      headerAction={headerAction}
     >
       <PurchaseOrderFormTotalsFooter
         control={control}
