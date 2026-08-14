@@ -311,8 +311,8 @@ export function EmailReadingPane({
               mode="icon"
               size="icon"
               className="size-10 bg-background p-1.5 sm:size-9"
-              aria-label="Open or close Elli agent"
-              title="Open or close Elli agent (E)"
+              aria-label="Open or close elliot agent"
+              title="Open or close elliot agent (E)"
               onClick={onOpenAgent}
             >
               <img
@@ -559,7 +559,7 @@ function EmailReadingPaneShortcuts({
           <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
             {agentActionKey.toUpperCase()}
           </kbd>
-          <span>Elli</span>
+          <span>elliot</span>
         </>
       ) : null}
     </span>

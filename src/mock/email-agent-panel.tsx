@@ -600,12 +600,12 @@ export function EmailAgentPanel({
         'motion-reduce:transition-none'
       )}
       style={{ width, top: pushesContent ? 0 : 12, bottom: pushesContent ? 0 : 12 }}
-      aria-label="Elli agent"
+      aria-label="elliot agent"
     >
       <button
         type="button"
         className="absolute inset-y-0 -left-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center border-l border-transparent text-muted-foreground hover:border-primary/40 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label="Resize Elli agent"
+        aria-label="Resize elliot agent"
         onPointerDown={handleResizeStart}
       >
         <GripVertical aria-hidden="true" className="size-3.5" />
@@ -617,7 +617,7 @@ export function EmailAgentPanel({
             <img src="/favicon/apple-touch-icon.png" alt="" className="size-7 rounded-sm object-contain" />
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">Elli agent</h2>
+            <h2 className="truncate text-sm font-semibold">elliot agent</h2>
             <p className="truncate text-xs text-muted-foreground">Your inbox, with you in control.</p>
           </div>
         </div>
@@ -627,13 +627,13 @@ export function EmailAgentPanel({
               <PenNewRoundIcon className="size-[18px]" aria-hidden />
             </IconButton>
           ) : null}
-          <IconButton label="Show Elli chat history" onClick={() => setHistoryOpen((value) => !value)}>
+          <IconButton label="Show elliot chat history" onClick={() => setHistoryOpen((value) => !value)}>
             <Clock3 className="size-4" />
           </IconButton>
-          <IconButton label={pushesContent ? 'Use overlay width' : 'Expand Elli agent workspace'} onClick={handleWorkspaceToggle}>
+          <IconButton label={pushesContent ? 'Use overlay width' : 'Expand elliot agent workspace'} onClick={handleWorkspaceToggle}>
             {pushesContent ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
           </IconButton>
-          <IconButton label="Close Elli agent" onClick={() => onOpenChange(false)}><X className="size-4" /></IconButton>
+          <IconButton label="Close elliot agent" onClick={() => onOpenChange(false)}><X className="size-4" /></IconButton>
         </div>
       </header>
 
@@ -703,7 +703,7 @@ export function EmailAgentPanel({
                 ))
               )}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">You can attach multiple threads to this chat. Elli will use all selected references.</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">You can attach multiple threads to this chat. elliot will use all selected references.</p>
           </div>
         )}
 
@@ -712,8 +712,8 @@ export function EmailAgentPanel({
             {messages.length === 0 ? (
             <div className="flex min-h-full flex-col justify-center gap-5 py-6">
               <div className="space-y-2 text-center">
-                <p className="text-xl font-semibold">What should Elli help with?</p>
-                <p className="mx-auto max-w-80 text-sm leading-6 text-muted-foreground">Elli can draft replies and prepare mailbox actions. You approve every change.</p>
+                <p className="text-xl font-semibold">What should elliot help with?</p>
+                <p className="mx-auto max-w-80 text-sm leading-6 text-muted-foreground">elliot can draft replies and prepare mailbox actions. You approve every change.</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-3">
                 {suggestions.map((suggestion) => <button key={suggestion} type="button" className="min-h-20 rounded-md border border-border bg-background p-3 text-left text-xs font-medium shadow-sm hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void sendMessage({ text: suggestion })}><Sparkles className="mb-3 size-4 text-primary" aria-hidden="true" />{suggestion}</button>)}
@@ -731,7 +731,7 @@ export function EmailAgentPanel({
               {status === 'submitted' ? <ThinkingIndicator /> : null}
             </div>
             )}
-            {error ? <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">Elli could not complete that request. Check the agent configuration and try again.</div> : null}
+            {error ? <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">elliot could not complete that request. Check the agent configuration and try again.</div> : null}
           </ConversationContent>
           {messages.length >= 4 ? <ConversationRail messages={messages} messageRefs={messageRefs} activeTurnId={activeTurnId ?? messages[0]?.id ?? null} onActiveChange={setActiveTurnId} onSelect={setActiveTurnId} /> : null}
         </Conversation>
@@ -899,7 +899,7 @@ function escapeRegExp(value: string) {
 }
 
 function ThinkingIndicator() {
-  return <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground" role="status" aria-live="polite"><LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" /><span>Elli is thinking</span><span className="inline-flex gap-0.5" aria-hidden="true"><span className="animate-pulse">.</span><span className="animate-pulse [animation-delay:150ms]">.</span><span className="animate-pulse [animation-delay:300ms]">.</span></span></div>;
+  return <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground" role="status" aria-live="polite"><LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" /><span>elliot is thinking</span><span className="inline-flex gap-0.5" aria-hidden="true"><span className="animate-pulse">.</span><span className="animate-pulse [animation-delay:150ms]">.</span><span className="animate-pulse [animation-delay:300ms]">.</span></span></div>;
 }
 
 function ActionCard({
@@ -996,7 +996,7 @@ function PromptComposerFields({
     }
   };
 
-  return <PromptInput className="rounded-2xl border border-border/80 bg-background p-2 shadow-none transition-colors focus-within:border-foreground/25 focus-within:ring-0" onSubmit={({ text }) => { const nextText = text.trim(); if (nextText) onSubmit({ text: nextText }); }}><PromptInputBody><div className="relative"><PromptInputTextarea id="elli-agent-message" rows={2} onKeyDown={handlePromptKeyDown} className="scrollbar-hide block !min-h-0 max-h-48 resize-none !border-0 !bg-transparent px-2 pb-0 pt-1.5 text-sm leading-6 !shadow-none outline-none placeholder:text-muted-foreground/55 focus:!border-0 focus:!ring-0 focus-visible:!border-0 focus-visible:!ring-0" placeholder="Ask Elli…" /><PromptInputMentionMenu candidates={mentionCandidates} activeIndex={mentionIndex} onActiveIndexChange={(index) => setMentionSelection({ key: mentionKey, index })} onSelect={selectMention} /></div></PromptInputBody><PromptInputFooter className="mt-1 min-h-8 items-center gap-1"><PromptInputSubmit status={status} onStop={onStop} className="ml-auto !size-8 !rounded-full bg-foreground text-background shadow-none hover:bg-foreground/90">{status === 'ready' ? <ArrowUp className="size-4" aria-hidden="true" /> : undefined}</PromptInputSubmit></PromptInputFooter></PromptInput>;
+  return <PromptInput className="rounded-2xl border border-border/80 bg-background p-2 shadow-none transition-colors focus-within:border-foreground/25 focus-within:ring-0" onSubmit={({ text }) => { const nextText = text.trim(); if (nextText) onSubmit({ text: nextText }); }}><PromptInputBody><div className="relative"><PromptInputTextarea id="elliot-agent-message" rows={2} onKeyDown={handlePromptKeyDown} className="scrollbar-hide block !min-h-0 max-h-48 resize-none !border-0 !bg-transparent px-2 pb-0 pt-1.5 text-sm leading-6 !shadow-none outline-none placeholder:text-muted-foreground/55 focus:!border-0 focus:!ring-0 focus-visible:!border-0 focus-visible:!ring-0" placeholder="Ask elliot…" /><PromptInputMentionMenu candidates={mentionCandidates} activeIndex={mentionIndex} onActiveIndexChange={(index) => setMentionSelection({ key: mentionKey, index })} onSelect={selectMention} /></div></PromptInputBody><PromptInputFooter className="mt-1 min-h-8 items-center gap-1"><PromptInputSubmit status={status} onStop={onStop} className="ml-auto !size-8 !rounded-full bg-foreground text-background shadow-none hover:bg-foreground/90">{status === 'ready' ? <ArrowUp className="size-4" aria-hidden="true" /> : undefined}</PromptInputSubmit></PromptInputFooter></PromptInput>;
 }
 
 function PromptInputMentionMenu({ candidates, activeIndex, onActiveIndexChange, onSelect }: { candidates: EmailListItem[]; activeIndex: number; onActiveIndexChange: (index: number) => void; onSelect: (item: EmailListItem) => void }) {
