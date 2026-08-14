@@ -1,12 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { primeChangeOrderApi } from '@/modules/project/api/prime-change-order';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
 import { projectKeys } from '@/modules/project/constants/project.keys';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
 import type { ListPrimeChangeOrderParams } from '@/modules/project/schemas/prime-change-order';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export const usePrimeChangeOrdersQuery = (params: ListPrimeChangeOrderParams) =>
   useQuery({
@@ -48,11 +47,12 @@ export const useSyncPrimeChangeOrdersMutation = () => {
         primeChangeOrderKeys.financialSummary(projectId),
         primeChangeOrderKeys.syncStatus(projectId),
         projectKeys.list(),
+        projectKeys.budgets(projectId),
       ]);
       toast.success(
         `Synced ${result.summary.totalReceived} Fieldwire change order${
           result.summary.totalReceived === 1 ? '' : 's'
-        }.`,
+        }.`
       );
     },
     onError: (err) => toastApiError(err, 'Failed to sync Fieldwire change orders.'),

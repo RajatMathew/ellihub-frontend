@@ -264,6 +264,30 @@ export const projectDetailSchema = z
 
 export type ProjectDetail = z.infer<typeof projectDetailSchema>;
 
+export const projectBudgetSummarySchema = z.object({
+  projectId: z.string(),
+  originalContractValue: z.coerce.number(),
+  approvedPrimeChangeOrdersTotal: z.coerce.number(),
+  revisedContractValue: z.coerce.number(),
+  targetBudgetPercent: z.coerce.number(),
+  budgetLimit: z.coerce.number(),
+  committedPurchaseOrdersTotal: z.coerce.number(),
+  approvedSubChangeOrdersTotal: z.coerce.number(),
+  committedTotal: z.coerce.number(),
+  remainingBudget: z.coerce.number(),
+  budgetConfigured: z.boolean(),
+  existingPurchaseOrder: z
+    .object({
+      id: z.string(),
+      status: z.enum(['DRAFT', 'ISSUED', 'DELIVERED', 'CANCELLED']),
+      persistedTotal: z.coerce.number(),
+      committedAmount: z.coerce.number(),
+    })
+    .nullable(),
+});
+
+export type ProjectBudgetSummary = z.infer<typeof projectBudgetSummarySchema>;
+
 export const fieldwireProjectOptionSchema = z
   .object({
     id: z.string(),

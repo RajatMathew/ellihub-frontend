@@ -4,6 +4,9 @@ export const projectKeys = {
   options: () => [...projectKeys.all, 'options'] as const,
   stats: () => [...projectKeys.all, 'stats'] as const,
   detail: (id: string) => [...projectKeys.all, id] as const,
+  budgets: (id: string) => [...projectKeys.detail(id), 'budget'] as const,
+  budget: (id: string, purchaseOrderId?: string) =>
+    [...projectKeys.budgets(id), purchaseOrderId ?? null] as const,
   fieldwireProjects: () => [...projectKeys.all, 'fieldwire', 'projects'] as const,
   costCodes: (id: string) => [...projectKeys.detail(id), 'cost-codes'] as const,
   employeeOptions: (id: string) => [...projectKeys.detail(id), 'employee-options'] as const,

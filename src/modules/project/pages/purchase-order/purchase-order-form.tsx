@@ -23,6 +23,7 @@ import {
 import { PO_FORM_SECTIONS } from '@/modules/project/constants/purchase-order';
 import poMockData from '@/modules/project/constants/purchase-order/purchase-order-create.mock.json';
 import {
+  useProjectBudgetSummaryQuery,
   useProjectCostCodePickerOptions,
   useProjectDetailQuery,
   useRFQDetailQuery,
@@ -215,6 +216,7 @@ export function POFormPage() {
     existingPO?.poNumber ?? undefined
   );
   const { data: project, isLoading: isLoadingProject } = useProjectDetailQuery(projectId);
+  const budgetSummaryQuery = useProjectBudgetSummaryQuery(projectId, poId);
 
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
   const { data: units } = useLookupsQuery('UNIT');
@@ -736,6 +738,10 @@ export function POFormPage() {
             taxPercent={taxPercent}
             taxAmount={taxAmount}
             total={total}
+            budgetSummary={budgetSummaryQuery.data}
+            isBudgetLoading={budgetSummaryQuery.isLoading}
+            isBudgetError={budgetSummaryQuery.isError}
+            onRetryBudget={() => void budgetSummaryQuery.refetch()}
             headerAction={
               selectedRfq &&
               getRFQStatusName(selectedRfq) === 'AWARDED' &&

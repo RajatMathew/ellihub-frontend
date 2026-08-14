@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { LineItems } from '@/app/components/line-items';
+import type { ProjectBudgetSummary } from '@/modules/project/schemas/project.schema';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
   Control,
@@ -33,6 +34,10 @@ interface PurchaseOrderFormLineItemsCardProps {
   taxAmount: number;
   total: number;
   headerAction?: ReactNode;
+  budgetSummary?: ProjectBudgetSummary;
+  isBudgetLoading: boolean;
+  isBudgetError: boolean;
+  onRetryBudget: () => void;
 }
 
 const defaultLineItem: CreatePOInput['lineItems'][number] = {
@@ -63,6 +68,10 @@ export function PurchaseOrderFormLineItemsCard({
   taxAmount,
   total,
   headerAction,
+  budgetSummary,
+  isBudgetLoading,
+  isBudgetError,
+  onRetryBudget,
 }: PurchaseOrderFormLineItemsCardProps) {
   return (
     <LineItems
@@ -96,6 +105,10 @@ export function PurchaseOrderFormLineItemsCard({
         negotiatedDiscountName="negotiatedDiscount"
         shippingHandlingFeeName="shippingHandlingFee"
         taxPercentName="taxPercent"
+        budgetSummary={budgetSummary}
+        isBudgetLoading={isBudgetLoading}
+        isBudgetError={isBudgetError}
+        onRetryBudget={onRetryBudget}
       />
     </LineItems>
   );

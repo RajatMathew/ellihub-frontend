@@ -1,5 +1,3 @@
-import posthog from 'posthog-js';
-
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { projectApi } from '@/modules/project/api/project.api';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
@@ -18,6 +16,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import posthog from 'posthog-js';
 import { toast } from 'sonner';
 
 const hasProjectCapabilities = (project: ProjectDetail) =>
@@ -102,6 +101,13 @@ export const useProjectDetailQuery = (id: string) =>
     enabled: !!id,
   });
 
+export const useProjectBudgetSummaryQuery = (projectId: string, purchaseOrderId?: string) =>
+  useQuery({
+    queryKey: projectKeys.budget(projectId, purchaseOrderId),
+    queryFn: () => projectApi.getBudgetSummary(projectId, purchaseOrderId),
+    enabled: !!projectId,
+  });
+
 export const useFieldwireProjectsQuery = (enabled = true) =>
   useQuery({
     queryKey: projectKeys.fieldwireProjects(),
@@ -179,6 +185,7 @@ export const useUpdateProjectMutation = () => {
       await invalidateProjectQueries(qc, [
         projectKeys.list(),
         projectKeys.detail(updated.id),
+        projectKeys.budgets(updated.id),
         primeChangeOrderKeys.all,
       ]);
       toast.success('Project updated successfully.');

@@ -4,20 +4,20 @@ import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 
 interface BudgetCardProps {
-  totalSpent: number;
+  totalCommitted: number;
   budgetLimit: number;
   targetBudgetPercent: number;
   className?: string;
 }
 
 export function BudgetCard({
-  totalSpent,
+  totalCommitted,
   budgetLimit,
   targetBudgetPercent,
   className,
 }: BudgetCardProps) {
-  const committedUtilization = budgetLimit > 0 ? (totalSpent / budgetLimit) * 100 : 0;
-  const remaining = budgetLimit - totalSpent;
+  const committedUtilization = budgetLimit > 0 ? (totalCommitted / budgetLimit) * 100 : 0;
+  const remaining = budgetLimit - totalCommitted;
 
   const getUtilizationColor = (utilization: number) => {
     if (utilization > 90) return 'bg-destructive';
@@ -28,18 +28,16 @@ export function BudgetCard({
   return (
     <Card className={cn('flex min-h-80 flex-col', className)}>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
-          Budget
-        </CardTitle>
+        <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">Budget</CardTitle>
       </CardHeader>
       <CardContent className="flex grow flex-col p-0 sm:p-0">
         <div className="flex flex-col px-5 py-5">
           <div>
             <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-1 leading-tight">
-              Total Spent
+              Total Committed
             </div>
             <div className="text-2xl font-bold tabular-nums leading-tight whitespace-nowrap">
-              {formatCurrency(totalSpent)}
+              {formatCurrency(totalCommitted)}
             </div>
           </div>
 
@@ -47,7 +45,7 @@ export function BudgetCard({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase leading-tight">
-                  Spent Utilization
+                  Committed Utilization
                 </span>
                 <span className="text-sm font-bold tabular-nums leading-snug whitespace-nowrap">
                   {Math.round(committedUtilization)}%
