@@ -34,7 +34,11 @@ export interface SaveToFilesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   source: SaveToFilesSource;
-  /** Restrict browsing to this folder subtree (e.g. a project's folder). */
+  /**
+   * Restrict browsing to this folder subtree (e.g. a project's folder).
+   * Required for non-admin users: `GET /file/root` is admin-only, so omitting
+   * this makes the picker fail to open for everyone else.
+   */
   rootFolderId?: string;
   rootLabel?: string;
   defaultFolderId?: string;

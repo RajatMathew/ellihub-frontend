@@ -25,9 +25,9 @@ import { toast } from 'sonner';
 export interface UseSaveToFilesOptions {
   source: SaveToFilesSource;
   onSaved?: (file: FileItem) => void;
-  /** Needs `POST /file/import-url`. Off until the endpoint ships. */
+  /** Server-side import via `POST /file/import-url`. */
   enableExternalUrl?: boolean;
-  /** Needs `POST /file/:id/copy` and `/move`. Off until the endpoints ship. */
+  /** Server-side copy/move via `POST /file/:id/copy` and `/move`. */
   enableExistingTransfer?: boolean;
 }
 
@@ -42,8 +42,8 @@ export type SaveToFilesOutcome = 'queued' | 'saved';
 export function useSaveToFiles({
   source,
   onSaved,
-  enableExternalUrl = false,
-  enableExistingTransfer = false,
+  enableExternalUrl = true,
+  enableExistingTransfer = true,
 }: UseSaveToFilesOptions) {
   const { enqueueUploads } = useUploadManager();
   const importFromUrl = useImportFileFromUrlMutation();
