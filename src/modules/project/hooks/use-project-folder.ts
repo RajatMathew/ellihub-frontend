@@ -10,8 +10,6 @@ const PROJECT_SUBFOLDER_TYPES: Record<string, ProjectProtectedFolderType> = {
   invoice: 'INVOICE',
   rfq: 'RFQ',
   'purchase order': 'PURCHASE_ORDER',
-  'purchase order co': 'PURCHASE_ORDER_CO',
-  'prime co': 'PRIME_CO',
   'sub change order': 'SUB_CHANGE_ORDER',
   sco: 'SUB_CHANGE_ORDER',
   'prime contract': 'PRIME_CONTRACT',

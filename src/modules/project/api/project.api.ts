@@ -12,6 +12,7 @@ import {
 import { invoiceApi } from '@/modules/project/api/invoice';
 import {
   fieldwireProjectOptionSchema,
+  projectBudgetSummarySchema,
   projectDetailSchema,
   projectOptionPaginatedResponseSchema,
   projectPaginatedResponseSchema,
@@ -19,6 +20,7 @@ import {
   type CreateProjectInput,
   type FieldwireProjectOption,
   type ListProjectsParams,
+  type ProjectBudgetSummary,
   type ProjectDetail,
   type ProjectOptionPaginatedResponse,
   type ProjectPaginatedResponse,
@@ -160,6 +162,16 @@ export const projectApi = {
     const res = await api.get(`${BASE}/${id}`);
     const raw = res.data?.data ?? res.data;
     return projectDetailSchema.parse(raw);
+  },
+
+  async getBudgetSummary(
+    projectId: string,
+    purchaseOrderId?: string
+  ): Promise<ProjectBudgetSummary> {
+    const res = await api.get(`${BASE}/${projectId}/budget-summary`, {
+      params: purchaseOrderId ? { purchaseOrderId } : undefined,
+    });
+    return projectBudgetSummarySchema.parse(res.data?.data ?? res.data);
   },
 
   async listFieldwireProjects(): Promise<FieldwireProjectOption[]> {

@@ -25,8 +25,6 @@ export type ProjectProtectedFolderType =
   | 'INVOICE'
   | 'RFQ'
   | 'PURCHASE_ORDER'
-  | 'PURCHASE_ORDER_CO'
-  | 'PRIME_CO'
   | 'SUB_CHANGE_ORDER'
   | 'PRIME_CONTRACT'
   | 'MASTER_SCHEDULE'

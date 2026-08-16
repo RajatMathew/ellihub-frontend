@@ -31,6 +31,7 @@ import {
   useDeleteProjectMutation,
   usePrimeChangeOrderFinancialSummaryQuery,
   usePrimeChangeOrdersQuery,
+  useProjectBudgetSummaryQuery,
   useProjectDetailQuery,
   useProjectFolderQuery,
   useProjectMasterScheduleQuery,
@@ -64,6 +65,7 @@ export default function ProjectContractOverview() {
 
   /* ---- Queries ---- */
   const { data: project, isLoading } = useProjectDetailQuery(projectId);
+  const { data: budgetSummary } = useProjectBudgetSummaryQuery(projectId);
   const { data: primeChangeOrderSummary } = usePrimeChangeOrderFinancialSummaryQuery(projectId);
   const { data: pcoList } = usePrimeChangeOrdersQuery({
     projectId,
@@ -99,9 +101,10 @@ export default function ProjectContractOverview() {
   const removeMasterScheduleMutation = useRemoveProjectMasterScheduleMutation();
 
   /* ---- Custom Hooks ---- */
-  const totalCommitted = poStats?.totalCommitted ?? 0;
+  const totalCommitted = budgetSummary?.committedTotal ?? poStats?.totalCommitted ?? 0;
   const approvedSCOTotal = scoStats?.approvedAmount ?? 0;
-  const totalPOCommitted = totalCommitted - approvedSCOTotal;
+  const totalPOCommitted =
+    budgetSummary?.committedPurchaseOrdersTotal ?? totalCommitted - approvedSCOTotal;
   const activePOsCount =
     (poStats?.issuedPurchaseOrders ?? 0) + (poStats?.deliveredPurchaseOrders ?? 0);
   const approvedSCOsCount = scoStats?.approvedSubChangeOrders ?? 0;
@@ -278,9 +281,11 @@ export default function ProjectContractOverview() {
           <ContractDetailsSimpleCard project={project} />
           <FinancialSummarySimpleCard computations={computations} />
           <BudgetCard
-            totalSpent={totalSpent}
-            budgetLimit={computations.budgetLimit}
-            targetBudgetPercent={computations.targetBudgetPercent}
+            totalCommitted={totalCommitted}
+            budgetLimit={budgetSummary?.budgetLimit ?? computations.budgetLimit}
+            targetBudgetPercent={
+              budgetSummary?.targetBudgetPercent ?? computations.targetBudgetPercent
+            }
             className="md:col-span-2 xl:col-span-1"
           />
         </div>

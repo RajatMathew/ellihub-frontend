@@ -97,6 +97,8 @@ export interface LineItemsProps {
   title?: string;
   /** Section subtitle */
   subtitle?: string;
+  /** Optional action rendered beside the section heading */
+  headerAction?: ReactNode;
   /** Add button label */
   addLabel?: string;
   /** Default values for a new line item */
@@ -273,6 +275,7 @@ export function LineItems({
   rootError,
   title = 'Line Items',
   subtitle = 'At least one line item is required.',
+  headerAction,
   addLabel = 'Add Line Item',
   defaultItem,
   id = 'line-items',
@@ -301,9 +304,12 @@ export function LineItems({
   return (
     <Card id={id}>
       <CardContent className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          </div>
+          {headerAction ? <div className="w-full shrink-0 sm:w-auto">{headerAction}</div> : null}
         </div>
 
         <Separator />

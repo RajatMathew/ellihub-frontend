@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react';
+
 import { LineItems } from '@/app/components/line-items';
+import type { ProjectBudgetSummary } from '@/modules/project/schemas/project.schema';
 import type { CreatePOInput } from '@/modules/project/schemas/purchase-order';
 import type {
   Control,
@@ -30,6 +33,11 @@ interface PurchaseOrderFormLineItemsCardProps {
   taxPercent: number;
   taxAmount: number;
   total: number;
+  headerAction?: ReactNode;
+  budgetSummary?: ProjectBudgetSummary;
+  isBudgetLoading: boolean;
+  isBudgetError: boolean;
+  onRetryBudget: () => void;
 }
 
 const defaultLineItem: CreatePOInput['lineItems'][number] = {
@@ -59,6 +67,11 @@ export function PurchaseOrderFormLineItemsCard({
   taxPercent,
   taxAmount,
   total,
+  headerAction,
+  budgetSummary,
+  isBudgetLoading,
+  isBudgetError,
+  onRetryBudget,
 }: PurchaseOrderFormLineItemsCardProps) {
   return (
     <LineItems
@@ -81,6 +94,7 @@ export function PurchaseOrderFormLineItemsCard({
       defaultItem={defaultLineItem}
       rootError={rootError?.root}
       showLineTotal
+      headerAction={headerAction}
     >
       <PurchaseOrderFormTotalsFooter
         control={control}
@@ -91,6 +105,10 @@ export function PurchaseOrderFormLineItemsCard({
         negotiatedDiscountName="negotiatedDiscount"
         shippingHandlingFeeName="shippingHandlingFee"
         taxPercentName="taxPercent"
+        budgetSummary={budgetSummary}
+        isBudgetLoading={isBudgetLoading}
+        isBudgetError={isBudgetError}
+        onRetryBudget={onRetryBudget}
       />
     </LineItems>
   );

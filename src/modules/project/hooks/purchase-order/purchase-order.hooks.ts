@@ -1,9 +1,8 @@
-import posthog from 'posthog-js';
-
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import { poApi } from '@/modules/project/api/purchase-order';
+import { projectKeys } from '@/modules/project/constants/project.keys';
 import { poKeys } from '@/modules/project/constants/purchase-order';
 import { scoKeys } from '@/modules/project/constants/sub-change-order';
 import { invalidateProjectQueries } from '@/modules/project/hooks/shared';
@@ -14,13 +13,15 @@ import type {
   POLineItemInput,
 } from '@/modules/project/schemas/purchase-order';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import posthog from 'posthog-js';
 import { toast } from 'sonner';
 
-function invalidatePOQueries(queryClient: QueryClient, poId?: string) {
-  return invalidateProjectQueries(
-    queryClient,
-    poId ? [poKeys.all, poKeys.detail(poId)] : [poKeys.all]
-  );
+function invalidatePOQueries(queryClient: QueryClient, poId?: string, projectId?: string) {
+  return invalidateProjectQueries(queryClient, [
+    poKeys.all,
+    ...(poId ? [poKeys.detail(poId)] : []),
+    ...(projectId ? [projectKeys.budgets(projectId)] : []),
+  ]);
 }
 
 /* ---- queries ---- */
@@ -90,8 +91,11 @@ export const useCreatePOMutation = () => {
   return useMutation({
     mutationFn: (data: CreatePOInput) => poApi.create(data),
     onSuccess: async (created) => {
-      posthog.capture('purchase_order_created', { purchase_order_id: created.id, project_id: created.projectId });
-      await invalidatePOQueries(qc);
+      posthog.capture('purchase_order_created', {
+        purchase_order_id: created.id,
+        project_id: created.projectId,
+      });
+      await invalidatePOQueries(qc, created.id, created.projectId);
     },
     onError: (err) => toastApiError(err, 'Failed to create purchase order.'),
   });
@@ -103,7 +107,7 @@ export const useUpdatePOMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: Partial<CreatePOInput> }) =>
       poApi.update(id, data),
     onSuccess: async (updated) => {
-      await invalidatePOQueries(qc, updated.id);
+      await invalidatePOQueries(qc, updated.id, updated.projectId);
     },
     onError: (err) => toastApiError(err, 'Failed to update purchase order.'),
   });
@@ -114,9 +118,12 @@ export const useIssuePOMutation = () => {
   return useMutation({
     mutationFn: ({ id, emailVendor }: { id: string; emailVendor?: boolean }) =>
       poApi.issue(id, { emailVendor }),
-    onSuccess: async (_, { id, emailVendor }) => {
-      posthog.capture('purchase_order_issued', { purchase_order_id: id, email_vendor: emailVendor ?? false });
-      await invalidatePOQueries(qc, id);
+    onSuccess: async (updated, { id, emailVendor }) => {
+      posthog.capture('purchase_order_issued', {
+        purchase_order_id: id,
+        email_vendor: emailVendor ?? false,
+      });
+      await invalidatePOQueries(qc, id, updated.projectId);
     },
     onError: (err) => toastApiError(err, 'Failed to issue purchase order.'),
   });
@@ -135,8 +142,13 @@ export const useCancelPOMutation = () => {
       confirmInvoices?: boolean;
       confirmSCOs?: boolean;
     }) => poApi.cancel(id, data),
-    onSuccess: async (_, { id }) => {
-      await invalidateProjectQueries(qc, [poKeys.all, poKeys.detail(id), scoKeys.all]);
+    onSuccess: async (updated, { id }) => {
+      await invalidateProjectQueries(qc, [
+        poKeys.all,
+        poKeys.detail(id),
+        scoKeys.all,
+        projectKeys.budgets(updated.projectId),
+      ]);
     },
     onError: (err) => toastApiError(err, 'Failed to cancel purchase order.'),
   });
@@ -147,8 +159,8 @@ export const useRecordDeliveryMutation = () => {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: string; deliveryDate: string; notes?: string }) =>
       poApi.recordDelivery(id, data),
-    onSuccess: async (_, { id }) => {
-      await invalidatePOQueries(qc, id);
+    onSuccess: async (updated, { id }) => {
+      await invalidatePOQueries(qc, id, updated.projectId);
     },
     onError: (err) => toastApiError(err, 'Failed to record delivery.'),
   });
