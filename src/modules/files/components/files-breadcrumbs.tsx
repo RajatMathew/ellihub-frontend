@@ -18,6 +18,8 @@ export interface FilesBreadcrumbEntry {
 interface FilesBreadcrumbsProps {
   breadcrumbs: FilesBreadcrumbEntry[];
   rootLabel?: string;
+  /** Lets embedders drop the page-level bottom margin when inlining this. */
+  className?: string;
   onBreadcrumbClick: (folderId?: string) => void;
 }
 
@@ -26,6 +28,7 @@ const MAX_VISIBLE_ENTRIES = 2;
 export function FilesBreadcrumbs({
   breadcrumbs,
   rootLabel = 'Files',
+  className,
   onBreadcrumbClick,
 }: FilesBreadcrumbsProps) {
   if (breadcrumbs.length === 0) return null;
@@ -35,7 +38,7 @@ export function FilesBreadcrumbs({
   const visibleEntries = breadcrumbs.slice(visibleStartIndex);
 
   return (
-    <Breadcrumb className="mb-4 w-full min-w-0 max-w-full overflow-hidden">
+    <Breadcrumb className={cn('mb-4 w-full min-w-0 max-w-full overflow-hidden', className)}>
       <BreadcrumbList className="w-full min-w-0 flex-nowrap overflow-hidden">
         <BreadcrumbItem className="min-w-0 shrink-0">
           <BreadcrumbLink asChild>

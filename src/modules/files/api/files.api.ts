@@ -7,8 +7,10 @@ import {
   folderDetailSchema,
   type FileExportJob,
   type FileFolderRenameInput,
+  type FileImportUrlInput,
   type FileItem,
   type FileSearchResponse,
+  type FileTransferInput,
   type FileUploadInput,
   type FolderCreateInput,
   type FolderDetail,
@@ -460,6 +462,31 @@ export const filesApi = {
     }
 
     return uploadedFiles;
+  },
+
+  /**
+   * Requires `POST /file/import-url` on the API. The server owns the fetch so
+   * the user's session is never sent to a third-party host, and so SSRF,
+   * redirect and size limits can be enforced.
+   */
+  async importFromUrl(data: FileImportUrlInput): Promise<FileItem> {
+    const res = await api.post(`${BASE}/import-url`, data, { timeout: 0 });
+
+    return parseUploadedFile(res.data?.data ?? res.data, 'filesApi.importFromUrl');
+  },
+
+  /** Requires `POST /file/:id/copy` on the API. */
+  async copyFile({ id, ...data }: FileTransferInput): Promise<FileItem> {
+    const res = await api.post(`${BASE}/${id}/copy`, data);
+
+    return parseUploadedFile(res.data?.data ?? res.data, 'filesApi.copyFile');
+  },
+
+  /** Requires `POST /file/:id/move` on the API. */
+  async moveFile({ id, ...data }: FileTransferInput): Promise<FileItem> {
+    const res = await api.post(`${BASE}/${id}/move`, data);
+
+    return parseUploadedFile(res.data?.data ?? res.data, 'filesApi.moveFile');
   },
 
   async getDownloadLink(id: string): Promise<string> {

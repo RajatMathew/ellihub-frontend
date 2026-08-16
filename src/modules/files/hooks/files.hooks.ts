@@ -6,7 +6,13 @@ import {
   type FileUploadPayload,
 } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import type { FileFolderRenameInput, FolderCreateInput } from '@/modules/files/schemas/file.schema';
+import type {
+  FileFolderRenameInput,
+  FileImportUrlInput,
+  FileItem,
+  FileTransferInput,
+  FolderCreateInput,
+} from '@/modules/files/schemas/file.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const PREVIEW_STALE_TIME = 5 * 60 * 1000;
@@ -105,6 +111,40 @@ export const useUploadFilesMutation = () => {
     onError: (error) => toastApiError(error, 'Failed to upload files.'),
   });
 };
+
+const useFolderScopedMutation = <TInput extends { parentId: string }>(
+  mutationFn: (input: TInput) => Promise<FileItem>,
+  errorMessage: string
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+    onSuccess: (_, { parentId }) => {
+      queryClient.invalidateQueries({ queryKey: filesKeys.all });
+      queryClient.invalidateQueries({ queryKey: filesKeys.folderDetail(parentId) });
+    },
+    onError: (error) => toastApiError(error, errorMessage),
+  });
+};
+
+export const useImportFileFromUrlMutation = () =>
+  useFolderScopedMutation<FileImportUrlInput>(
+    (data) => filesApi.importFromUrl(data),
+    'Failed to import the file from that link.'
+  );
+
+export const useCopyFileMutation = () =>
+  useFolderScopedMutation<FileTransferInput>(
+    (data) => filesApi.copyFile(data),
+    'Failed to copy the file.'
+  );
+
+export const useMoveFileMutation = () =>
+  useFolderScopedMutation<FileTransferInput>(
+    (data) => filesApi.moveFile(data),
+    'Failed to move the file.'
+  );
 
 export const useRenameMutation = () => {
   const queryClient = useQueryClient();

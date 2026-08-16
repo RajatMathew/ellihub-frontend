@@ -155,3 +155,26 @@ export const fileFolderRenameInputSchema = z.object({
 });
 
 export type FileFolderRenameInput = z.infer<typeof fileFolderRenameInputSchema>;
+
+/**
+ * Server-side import of a third-party URL. The browser cannot fetch an
+ * arbitrary vendor host (CORS), so the API downloads it and applies the same
+ * extension/MIME allowlist the client enforces for direct uploads.
+ */
+export const fileImportUrlInputSchema = z.object({
+  url: z.string().url('Enter a valid URL'),
+  parentId: z.string(),
+  name: z.string().min(1).optional(),
+  mimeType: z.string().optional(),
+});
+
+export type FileImportUrlInput = z.infer<typeof fileImportUrlInputSchema>;
+
+/** Server-side copy/move of a file that already lives in Files. */
+export const fileTransferInputSchema = z.object({
+  id: z.string(),
+  parentId: z.string(),
+  name: z.string().min(1).optional(),
+});
+
+export type FileTransferInput = z.infer<typeof fileTransferInputSchema>;
