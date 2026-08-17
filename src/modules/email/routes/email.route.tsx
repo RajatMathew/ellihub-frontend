@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
-
 import { NotFound } from '@/app/components/error/not-found';
 import { SharedMailboxDiscoveryFlow } from '@/app/components/shared-mailbox-discovery-flow';
+import { EmailConnectErrorDialog } from '@/modules/email/components/email-connect-error-dialog';
 import {
   EmailAccountEmptyState,
   EmailAccountsErrorState,
@@ -11,12 +10,11 @@ import { useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hook
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 export default function EmailRoutes() {
   return (
     <>
-      <EmailAuthResultToast />
+      <EmailAuthResultBanner />
       <SharedMailboxDiscoveryFlow />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
@@ -29,32 +27,29 @@ export default function EmailRoutes() {
   );
 }
 
-function EmailAuthResultToast() {
+function EmailAuthResultBanner() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const handledAuthResultRef = useRef<string | null>(null);
+  const result = searchParams.get('emailAuth');
+  const message = searchParams.get('message') || 'Email account connection failed.';
+  const requestId = searchParams.get('requestId') || '';
+  const isError = result === 'error';
 
-  useEffect(() => {
-    const result = searchParams.get('emailAuth');
-    if (!result) return;
-
-    const message = searchParams.get('message') || 'Email account connection failed.';
-    const requestId = searchParams.get('requestId') || '';
-    const toastKey = `${result}:${message}:${requestId}`;
-    if (handledAuthResultRef.current === toastKey) return;
-    handledAuthResultRef.current = toastKey;
-
-    if (result === 'error') {
-      toast.error(message);
-    }
-
+  const handleClose = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('emailAuth');
     next.delete('message');
     next.delete('requestId');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  };
 
-  return null;
+  return (
+    <EmailConnectErrorDialog
+      open={isError}
+      message={message}
+      requestId={requestId || undefined}
+      onClose={handleClose}
+    />
+  );
 }
 
 function EmailIndexRoute() {
