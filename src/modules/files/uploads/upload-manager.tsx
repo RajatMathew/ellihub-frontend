@@ -19,6 +19,19 @@ import { toast } from 'sonner';
 
 const MAX_PARALLEL_UPLOADS = 2;
 
+/**
+ * Uploading into an entity's folder attaches the file to that entity. Saying so
+ * is what tells the user the file will show up on the RFQ, purchase order or
+ * vendor page and not only in Files.
+ */
+function getUploadSuccessMessage(fileName: string, uploadedFile: FileItem): string {
+  const autoLink = uploadedFile.autoLink;
+
+  return autoLink?.status === 'linked' && autoLink.ownerLabel
+    ? `${fileName} uploaded and attached to ${autoLink.ownerLabel}.`
+    : `${fileName} uploaded.`;
+}
+
 type UploadTaskStatus = 'queued' | 'uploading' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
 type UploadFailureStage = 'upload' | 'finalizing';
 
@@ -274,7 +287,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
           },
         });
         entry.completion?.resolve(uploadedFile);
-        toast.success(`${entry.payload.file.name} uploaded.`);
+        toast.success(getUploadSuccessMessage(entry.payload.file.name, uploadedFile));
       } catch (error) {
         if (controller?.signal.aborted || isUploadCancellation(error)) {
           dispatch({

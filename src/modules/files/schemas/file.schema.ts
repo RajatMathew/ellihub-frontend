@@ -46,6 +46,20 @@ export const fileLinkSchema = z.object({
 
 export type FileLink = z.infer<typeof fileLinkSchema>;
 
+/**
+ * What happened to the entity link when this file was created. Uploading into
+ * an entity's folder attaches the file to that entity, so the upload response
+ * says which record picked it up — `none` for an ordinary folder.
+ */
+export const fileAutoLinkSchema = z.object({
+  status: z.enum(['none', 'linked', 'already-linked']),
+  linkKey: z.string().optional(),
+  ownerId: z.string().optional(),
+  ownerLabel: z.string().optional(),
+});
+
+export type FileAutoLink = z.infer<typeof fileAutoLinkSchema>;
+
 // --- Main model ---
 
 export const fileSchema = z
@@ -73,6 +87,8 @@ export const fileSchema = z
     // Separate from isDeletable: a referenced file cannot be deleted, but can
     // still be renamed, since entities link to it by id rather than by name.
     isLinked: z.boolean().optional(),
+    // Only present on create responses (upload, import, copy).
+    autoLink: fileAutoLinkSchema.optional(),
     createdBy: z.string().nullable().optional(),
     createdByUser: z
       .object({
