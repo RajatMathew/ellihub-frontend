@@ -145,6 +145,34 @@ export const generalContractorSchema = z
 
 export type GeneralContractor = z.infer<typeof generalContractorSchema>;
 
+// --- Documents ---
+
+const gcDocumentFileSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    displayName: z.string().nullable().optional(),
+    mimeType: z.string().nullable().optional(),
+    size: z.number().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
+
+export const gcDocumentSchema = z
+  .object({
+    id: z.string(),
+    fileId: z.string(),
+    gcId: z.string(),
+    expiresOn: z.string().nullable().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+    file: gcDocumentFileSchema.optional().nullable(),
+  })
+  .passthrough();
+
+export type GCDocument = z.infer<typeof gcDocumentSchema>;
+
 // --- Detail (includes contactLinks with nested contact, and projects) ---
 
 export const generalContractorDetailSchema = z
@@ -168,6 +196,7 @@ export const generalContractorDetailSchema = z
     contactLinks: z.array(gcContactLinkSchema).optional().default([]),
     contacts: z.array(gcContactLinkContactSchema).optional().default([]),
     projects: z.array(gcProjectSchema).optional().default([]),
+    documents: z.array(gcDocumentSchema).optional().default([]),
   })
   .passthrough();
 

@@ -1,4 +1,5 @@
 export { DirectoryActivityPanel } from './directory-activity-panel';
+export { formatDirectoryDate } from './directory-format';
 export { DirectoryDetailLoading } from './directory-detail-loading';
 export { DirectoryFormLoading } from './directory-form-loading';
 export { DeferredSectionCard } from './deferred-section-card';

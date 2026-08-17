@@ -70,6 +70,9 @@ export const fileSchema = z
       .nullable()
       .optional(),
     links: z.array(fileLinkSchema).optional(),
+    // Separate from isDeletable: a referenced file cannot be deleted, but can
+    // still be renamed, since entities link to it by id rather than by name.
+    isLinked: z.boolean().optional(),
     createdBy: z.string().nullable().optional(),
     createdByUser: z
       .object({

@@ -104,6 +104,7 @@ export function GCDetailPage() {
         <GCDetailSidebar
           open={sidebarOpen}
           contacts={contacts}
+          documents={gc?.documents ?? []}
           activityItems={activity.items}
           isActivityLoading={activity.isLoading}
           isActivityError={activity.isError}

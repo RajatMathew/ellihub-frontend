@@ -178,13 +178,14 @@ export function useFilesColumns({
         cell: ({ row }) => {
           const isFile = row.original.type === 'FILE';
           const isFolder = row.original.type === 'FOLDER';
+          // Renaming stays available on a referenced file; only deleting is
+          // withheld, and only while something still points at it.
           const canRenameItem = canRename && row.original.isDeletable;
-          const canDeleteItem = canDelete && row.original.isDeletable;
-          // Delete is withheld because something still points at this file, as
-          // opposed to the user simply lacking the permission. Say so rather
-          // than letting the action disappear without explanation.
+          const canDeleteItem = canDelete && row.original.isDeletable && !row.original.isLinked;
+          // Distinguish "held by an attachment" from "you lack the permission",
+          // so the missing action can explain itself.
           const blockedReason =
-            canDelete && !canDeleteItem
+            canDelete && row.original.isDeletable && row.original.isLinked
               ? getFileLinkBlockedReason(getBlockingFileLinks(row.original))
               : null;
           const canPin = canPinPrimeContract?.(row.original) ?? false;

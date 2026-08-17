@@ -7,11 +7,15 @@ import {
   type DirectoryActivityItem,
   type DirectoryContactSnapshot,
 } from '@/modules/directory/components/shared';
-import { ShieldCheck, UserMinus } from 'lucide-react';
+import type { GCDocument } from '@/modules/directory/schemas/gc.schema';
+import { UserMinus } from 'lucide-react';
+
+import { GCDocumentsCard } from './gc-documents-card';
 
 interface GCDetailSidebarProps {
   open: boolean;
   contacts: DirectoryContactSnapshot[];
+  documents: GCDocument[];
   activityItems: DirectoryActivityItem[];
   isActivityLoading: boolean;
   isActivityError: boolean;
@@ -23,6 +27,7 @@ interface GCDetailSidebarProps {
 export function GCDetailSidebar({
   open,
   contacts,
+  documents,
   activityItems,
   isActivityLoading,
   isActivityError,
@@ -75,16 +80,7 @@ export function GCDetailSidebar({
           <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Compliance & Safety Docs
           </div>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex flex-col items-center gap-2 py-4 text-center">
-                <ShieldCheck className="size-8 text-muted-foreground/40" />
-                <p className="text-xs text-muted-foreground">
-                  Compliance document tracking will be available in a future update.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <GCDocumentsCard documents={documents} />
         </div>
       </div>
     </DetailSidebar>
