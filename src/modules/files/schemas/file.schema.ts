@@ -31,6 +31,21 @@ export const fileExportStatusSchema = z.enum([
   'CANCELLED',
 ]);
 
+/**
+ * A record that references this file — an RFQ attachment, a vendor document, a
+ * pinned prime contract. A file with any link whose owner is still live cannot
+ * be deleted from Files.
+ */
+export const fileLinkSchema = z.object({
+  linkKey: z.string(),
+  linkLabel: z.string(),
+  ownerId: z.string(),
+  ownerLabel: z.string(),
+  ownerDeleted: z.boolean(),
+});
+
+export type FileLink = z.infer<typeof fileLinkSchema>;
+
 // --- Main model ---
 
 export const fileSchema = z
@@ -54,6 +69,7 @@ export const fileSchema = z
       })
       .nullable()
       .optional(),
+    links: z.array(fileLinkSchema).optional(),
     createdBy: z.string().nullable().optional(),
     createdByUser: z
       .object({

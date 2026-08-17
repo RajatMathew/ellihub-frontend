@@ -4,10 +4,12 @@ import { Card, CardContent } from '@/app/components/ui/card';
 import { formatDateTime } from '@/app/lib/helpers';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
+import { getBlockingFileLinks } from '@/modules/files/lib/file-links';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { Download, FolderTree, Pin, Star, StarOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import { FileLinkBadge } from './file-link-badge';
 import { getFileLocationLabel } from './file-location';
 import { FileTypeIcon } from './file-type-icon';
 
@@ -58,6 +60,7 @@ export function FilesGridView({
         const canSetPrimary = canSetPrimeContractPrimary?.(item) ?? false;
         const isPrimary = item.primeContract?.isPrimary === true;
         const canExportFolder = isFolder && canExport;
+        const hasLinks = getBlockingFileLinks(item).length > 0;
         const showActions = canPin || canSetPrimary || !isFolder || canExportFolder;
         const itemName = getFileDisplayNameWithExtension(item);
 
@@ -92,7 +95,7 @@ export function FilesGridView({
                   >
                     {itemName}
                   </span>
-                  {(item.primeContract?.isPinned || item.primeContract?.isPrimary) && (
+                  {(item.primeContract?.isPinned || item.primeContract?.isPrimary || hasLinks) && (
                     <span className="flex max-w-full flex-wrap justify-center gap-1">
                       {item.primeContract?.isPinned && (
                         <Badge variant="secondary" appearance="light" size="sm">
@@ -104,6 +107,7 @@ export function FilesGridView({
                           Primary
                         </Badge>
                       )}
+                      <FileLinkBadge file={item} />
                     </span>
                   )}
                   {location && (

@@ -15,6 +15,7 @@ import { formatDateTime } from '@/app/lib/helpers';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
 import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
+import { getBlockingFileLinks, getFileLinkBlockedReason } from '@/modules/files/lib/file-links';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -29,6 +30,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { FileLinkBadge } from './file-link-badge';
 import { getFileLocationLabel } from './file-location';
 import { FileTypeIcon } from './file-type-icon';
 
@@ -107,6 +109,7 @@ export function useFilesColumns({
                       Primary
                     </Badge>
                   )}
+                  <FileLinkBadge file={row.original} />
                 </div>
                 {location && (
                   <span className="mt-1 flex min-w-0 max-w-full items-center gap-1 text-xs text-muted-foreground">
@@ -177,12 +180,25 @@ export function useFilesColumns({
           const isFolder = row.original.type === 'FOLDER';
           const canRenameItem = canRename && row.original.isDeletable;
           const canDeleteItem = canDelete && row.original.isDeletable;
+          // Delete is withheld because something still points at this file, as
+          // opposed to the user simply lacking the permission. Say so rather
+          // than letting the action disappear without explanation.
+          const blockedReason =
+            canDelete && !canDeleteItem
+              ? getFileLinkBlockedReason(getBlockingFileLinks(row.original))
+              : null;
           const canPin = canPinPrimeContract?.(row.original) ?? false;
           const canSetPrimary = canSetPrimeContractPrimary?.(row.original) ?? false;
           const isPrimary = row.original.primeContract?.isPrimary === true;
           const canExportFolder = isFolder && canExport;
           const showMenu =
-            isFile || canExportFolder || canRenameItem || canDeleteItem || canPin || canSetPrimary;
+            isFile ||
+            canExportFolder ||
+            canRenameItem ||
+            canDeleteItem ||
+            canPin ||
+            canSetPrimary ||
+            !!blockedReason;
 
           return (
             <div
@@ -272,9 +288,8 @@ export function useFilesColumns({
                         {isPrimary ? 'Remove Primary' : 'Mark Primary'}
                       </DropdownMenuItem>
                     )}
-                    {canDeleteItem && (canRenameItem || canPin || canSetPrimary) && (
-                      <DropdownMenuSeparator />
-                    )}
+                    {(canDeleteItem || blockedReason) &&
+                      (canRenameItem || canPin || canSetPrimary) && <DropdownMenuSeparator />}
                     {canDeleteItem && (
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
@@ -283,6 +298,17 @@ export function useFilesColumns({
                         <Trash2 className="size-3.5" />
                         Delete
                       </DropdownMenuItem>
+                    )}
+                    {!canDeleteItem && blockedReason && (
+                      <div className="px-2 py-1.5">
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Trash2 className="size-3.5 shrink-0" />
+                          Delete unavailable
+                        </p>
+                        <p className="mt-1 max-w-64 text-xs text-muted-foreground">
+                          {blockedReason}
+                        </p>
+                      </div>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
