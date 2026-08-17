@@ -5,6 +5,10 @@ import { toast } from 'sonner';
 const sharedMailboxKeys = {
   all: ['settings', 'shared-mailboxes'] as const,
   vendorConnections: ['settings', 'shared-mailboxes', 'vendor-connections'] as const,
+  pendingDiscovery: (id: string | null) =>
+    ['settings', 'shared-mailboxes', 'pending-discovery', id] as const,
+  batchSyncStatus: (accountIds: string[]) =>
+    ['settings', 'shared-mailboxes', 'batch-sync-status', [...accountIds].sort().join(',')] as const,
 };
 
 export const useSharedMailboxesQuery = (enabled = true) =>
@@ -90,4 +94,54 @@ export const useConnectSharedMailboxMutation = () =>
       window.location.assign(authorizationUrl);
     },
     onError: () => toast.error('Failed to start common mailbox connection.'),
+  });
+
+export const usePendingDiscoveryQuery = (pendingId: string | null) =>
+  useQuery({
+    queryKey: sharedMailboxKeys.pendingDiscovery(pendingId),
+    queryFn: () => sharedMailboxesApi.getPendingDiscovery(pendingId!),
+    enabled: !!pendingId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'discovering' ? 2_000 : false;
+    },
+    refetchOnWindowFocus: false,
+    gcTime: 0,
+  });
+
+export const useConfirmPendingDiscoveryMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pendingId, emailAddresses }: { pendingId: string; emailAddresses: string[] }) =>
+      sharedMailboxesApi.confirmPendingDiscovery(pendingId, emailAddresses),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.all });
+      void queryClient.invalidateQueries({ queryKey: sharedMailboxKeys.vendorConnections });
+      void queryClient.invalidateQueries({ queryKey: ['connected-email', 'accounts'] });
+    },
+    onError: () => toast.error('Could not add the selected mailboxes. Try again.'),
+  });
+};
+
+export const useCancelPendingDiscoveryMutation = () =>
+  useMutation({
+    mutationFn: sharedMailboxesApi.cancelPendingDiscovery,
+  });
+
+export const useBatchSyncStatusQuery = (accountIds: string[], enabled: boolean) =>
+  useQuery({
+    queryKey: sharedMailboxKeys.batchSyncStatus(accountIds),
+    queryFn: () => sharedMailboxesApi.listBatchSyncStatus(accountIds),
+    enabled: enabled && accountIds.length > 0,
+    refetchInterval: (query) => {
+      const anyInFlight = (query.state.data ?? []).some(
+        (row) =>
+          row.inFlight ||
+          row.lastSyncStatus === 'SYNCING' ||
+          row.lastSyncStatus === 'PARTIAL' ||
+          row.lastSyncStatus === null
+      );
+      return anyInFlight ? 3_000 : false;
+    },
+    refetchOnWindowFocus: false,
   });

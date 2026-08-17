@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { NotFound } from '@/app/components/error/not-found';
+import { SharedMailboxDiscoveryFlow } from '@/app/components/shared-mailbox-discovery-flow';
 import {
   EmailAccountEmptyState,
   EmailAccountsErrorState,
@@ -16,6 +17,7 @@ export default function EmailRoutes() {
   return (
     <>
       <EmailAuthResultToast />
+      <SharedMailboxDiscoveryFlow />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
         <Route path="add-account" element={<EmailAddAccountRoute />} />
