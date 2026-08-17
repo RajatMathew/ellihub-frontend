@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
-
 import { NotFound } from '@/app/components/error/not-found';
-import type { SharedMailboxKey } from '@/modules/email/api';
+import { SharedMailboxDiscoveryFlow } from '@/app/components/shared-mailbox-discovery-flow';
+import { EmailConnectErrorDialog } from '@/modules/email/components/email-connect-error-dialog';
 import {
   EmailAccountEmptyState,
   EmailAccountsErrorState,
@@ -11,26 +10,14 @@ import { useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hook
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
-
-const SHARED_MAILBOX_LABELS: Record<SharedMailboxKey, string> = {
-  procurement: 'Procurement',
-  requisitions: 'Requisitions',
-  contracts: 'Contracts',
-};
 
 export default function EmailRoutes() {
   return (
     <>
-      <EmailAuthResultToast />
+      <EmailAuthResultBanner />
+      <SharedMailboxDiscoveryFlow />
       <Routes>
         <Route index element={<EmailIndexRoute />} />
-        <Route path="procurement" element={<SharedMailboxRoute sharedMailboxKey="procurement" />} />
-        <Route
-          path="requisitions"
-          element={<SharedMailboxRoute sharedMailboxKey="requisitions" />}
-        />
-        <Route path="contracts" element={<SharedMailboxRoute sharedMailboxKey="contracts" />} />
         <Route path="add-account" element={<EmailAddAccountRoute />} />
         <Route path="accounts" element={<EmailAccountsPage />} />
         <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
@@ -40,36 +27,44 @@ export default function EmailRoutes() {
   );
 }
 
-function EmailAuthResultToast() {
+function EmailAuthResultBanner() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const handledAuthResultRef = useRef<string | null>(null);
+  const result = searchParams.get('emailAuth');
+  const message = searchParams.get('message') || 'Email account connection failed.';
+  const requestId = searchParams.get('requestId') || '';
+  const isError = result === 'error';
 
-  useEffect(() => {
-    const result = searchParams.get('emailAuth');
-    if (!result) return;
-
-    const message = searchParams.get('message') || 'Email account connection failed.';
-    const requestId = searchParams.get('requestId') || '';
-    const toastKey = `${result}:${message}:${requestId}`;
-    if (handledAuthResultRef.current === toastKey) return;
-    handledAuthResultRef.current = toastKey;
-
-    if (result === 'error') {
-      toast.error(message);
-    }
-
+  const handleClose = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('emailAuth');
     next.delete('message');
     next.delete('requestId');
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  };
 
-  return null;
+  return (
+    <EmailConnectErrorDialog
+      open={isError}
+      message={message}
+      requestId={requestId || undefined}
+      onClose={handleClose}
+    />
+  );
 }
 
 function EmailIndexRoute() {
-  return <Navigate to="procurement" replace />;
+  const accountsQuery = useEmailAccountsQuery();
+
+  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
+  if (accountsQuery.isError) {
+    return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
+  }
+
+  const firstAccount = accountsQuery.data?.[0];
+  if (firstAccount) {
+    return <Navigate to={`accounts/${firstAccount.id}`} replace />;
+  }
+  return <Navigate to="add-account" replace />;
 }
 
 function EmailAddAccountRoute() {
@@ -92,29 +87,6 @@ function EmailAddAccountRoute() {
   }
 
   return <EmailAccountEmptyState />;
-}
-
-function SharedMailboxRoute({ sharedMailboxKey }: { sharedMailboxKey: SharedMailboxKey }) {
-  const accountsQuery = useEmailAccountsQuery();
-  const account = accountsQuery.data?.find(
-    (candidate) => candidate.sharedMailboxKey === sharedMailboxKey
-  );
-  const label = SHARED_MAILBOX_LABELS[sharedMailboxKey];
-
-  if (accountsQuery.isLoading) return <EmailAccountsLoadingState />;
-  if (accountsQuery.isError) {
-    return <EmailAccountsErrorState onRetry={() => void accountsQuery.refetch()} />;
-  }
-
-  if (account) return <MailboxPage accountSlug={account.id} />;
-
-  return (
-    <EmailAccountEmptyState
-      sharedMailboxKey={sharedMailboxKey}
-      title={`Connect ${label}`}
-      description={`Connect the ${label.toLowerCase()} mailbox for the team. After connecting, choose the short name that appears in the shared mailbox list.`}
-    />
-  );
 }
 
 function ConnectedMailboxRoute() {

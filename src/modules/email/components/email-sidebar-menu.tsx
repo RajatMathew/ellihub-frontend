@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import { SidebarGroupMenu } from '@/app/components/sidebar/sidebar-menu-group';
 import type { MenuConfig } from '@/app/config/types';
-import { emailApi, type EmailAccount, type SharedMailboxKey } from '@/modules/email/api';
+import { emailApi, type EmailAccount } from '@/modules/email/api';
 import { EmailAliasLabel } from '@/modules/email/components/email-alias-label';
 import {
   EMAIL_CONNECTED_ACCOUNTS_STORAGE_KEY,
@@ -17,12 +17,6 @@ type StoredEmailAccount = Pick<
   EmailAccount,
   'id' | 'slug' | 'mailboxAddress' | 'provider' | 'email' | 'displayName'
 >;
-
-const SHARED_MAILBOXES: Array<{ key: SharedMailboxKey; title: string; path: string }> = [
-  { key: 'procurement', title: 'Procurement', path: '../email/procurement' },
-  { key: 'requisitions', title: 'Requisitions', path: '../email/requisitions' },
-  { key: 'contracts', title: 'Contracts', path: '../email/contracts' },
-];
 
 export function EmailSidebarMenu() {
   const queryClient = useQueryClient();
@@ -88,13 +82,10 @@ export function EmailSidebarMenu() {
         collapse: false,
         children: [
           { type: 'separator', title: 'Common' },
-          ...SHARED_MAILBOXES.map((mailbox) => {
-            const account = sharedAccounts.find(
-              (candidate) => candidate.sharedMailboxKey === mailbox.key
-            );
+          ...sharedAccounts.map((account) => {
             return {
-              title: account?.displayName || mailbox.title,
-              path: mailbox.path,
+              title: account.displayName || account.mailboxAddress,
+              path: `../email/accounts/${getEmailAccountSlug(account)}`,
               icon: Mail,
             };
           }),

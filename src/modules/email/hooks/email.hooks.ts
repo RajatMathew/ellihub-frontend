@@ -24,7 +24,6 @@ import {
   shouldRetryEmailRequest,
 } from '@/modules/email/lib/email-errors';
 import {
-  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -123,16 +122,18 @@ export const useEmailMessagesQuery = (
   folder: { key?: EmailFolderKey; id?: string },
   pagination?: { size?: number; search?: string; projectId?: string; classification?: 'other' },
   enabled = true
-) =>
-  useInfiniteQuery({
-    queryKey: emailKeys.messages(
-      accountId,
-      folder.id ?? folder.key,
-      pagination?.size,
-      pagination?.search,
-      pagination?.projectId,
-      pagination?.classification
-    ),
+) => {
+  const currentKey = emailKeys.messages(
+    accountId,
+    folder.id ?? folder.key,
+    pagination?.size,
+    pagination?.search,
+    pagination?.projectId,
+    pagination?.classification
+  );
+
+  return useInfiniteQuery({
+    queryKey: currentKey,
     queryFn: ({ pageParam, signal }) =>
       emailApi.listMessages({
         accountId: accountId!,
@@ -150,12 +151,27 @@ export const useEmailMessagesQuery = (
     enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
-    placeholderData: keepPreviousData,
+    // Keep the previous list on smooth transitions (search debounce, page-size
+    // changes) but clear immediately on hard context switches (account, folder,
+    // project filter, classification). Prevents the "ghost mailbox" flash when
+    // a user picks a different inbox in the sidebar.
+    placeholderData: (previousData, previousQuery) => {
+      if (!previousData || !previousQuery) return undefined;
+      const previousKey = previousQuery.queryKey as readonly unknown[];
+      const sameAccount = previousKey[2] === currentKey[2];
+      const sameFolder = previousKey[3] === currentKey[3];
+      const sameProject = previousKey[6] === currentKey[6];
+      const sameClassification = previousKey[7] === currentKey[7];
+      return sameAccount && sameFolder && sameProject && sameClassification
+        ? previousData
+        : undefined;
+    },
     retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
+};
 
 export const useEmailReferenceProjectsQuery = (accountId?: string, enabled = true) =>
   useQuery<EmailReferenceProject[]>({
@@ -174,8 +190,15 @@ export const useRefreshEmailMessagesMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { accountId: string; daysWithin?: number }) => {
-      return emailApi.syncAccount(payload.accountId, payload.daysWithin);
+    mutationFn: async (payload: { accountId: string; daysWithin?: number }) => {
+      let result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+      let steps = 0;
+      while (result.hasMore && steps < 1000) {
+        steps += 1;
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+        result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
+      }
+      return result;
     },
     onSuccess: (result, payload) => {
       void Promise.allSettled([
@@ -193,9 +216,7 @@ export const useRefreshEmailMessagesMutation = () => {
         }),
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
-      if (result.hasMore) {
-        toast.info('Recent email changes are still catching up. Refresh again to continue.');
-      }
+      if (result.hasMore) toast.info('Email sync is still in progress. Refresh to continue.');
     },
     onError: (error) => {
       if (isEmailReconnectRequiredError(error)) return;
