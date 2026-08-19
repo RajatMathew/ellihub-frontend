@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { EmailMeetingEvent, EmailThreadClassification } from '@/modules/email/api';
@@ -91,6 +92,17 @@ interface EmailRowCardProps {
   onPrefetch?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  /**
+   * Bulk-selection state (separate from `selected`, which tracks the row
+   * currently open in the reading pane).
+   */
+  isChecked?: boolean;
+  /** Undefined disables the bulk-select checkbox entirely. */
+  onCheckedChange?: (next: boolean) => void;
+  /** When true, at least one row in the list is checked — show every row's
+   *  checkbox permanently instead of only on hover, so the user has a clear
+   *  visual affordance for extending the selection. */
+  bulkSelectActive?: boolean;
 }
 
 export function EmailRowCard({
@@ -100,8 +112,12 @@ export function EmailRowCard({
   onPrefetch,
   onArchive,
   onDelete,
+  isChecked = false,
+  onCheckedChange,
+  bulkSelectActive = false,
 }: EmailRowCardProps) {
   const isSelected = selected ?? Boolean(email.selected);
+  const isCheckable = Boolean(onCheckedChange);
   const cardRef = useRef<HTMLElement>(null);
   const visibleTags = (email.keywords ?? []).slice(0, 2);
   const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
@@ -129,12 +145,37 @@ export function EmailRowCard({
         email.unread && 'bg-muted/25',
         isSelected
           ? 'border-primary/80 bg-primary/10 shadow-sm ring-1 ring-primary/15'
-          : 'border-border hover:border-foreground/25 hover:shadow-xs'
+          : 'border-border hover:border-foreground/25 hover:shadow-xs',
+        isChecked && 'border-primary/70 bg-primary/5 ring-1 ring-primary/20'
       )}
     >
+      {isCheckable && (
+        <span
+          className={cn(
+            'absolute left-2 top-2 z-10 flex size-6 items-center justify-center rounded-md',
+            'motion-safe:transition-opacity motion-safe:duration-100',
+            isChecked || bulkSelectActive
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+          )}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Checkbox
+            checked={isChecked}
+            onCheckedChange={(next) => onCheckedChange?.(next === true)}
+            aria-label={
+              isChecked ? `Deselect email from ${email.senderName}` : `Select email from ${email.senderName}`
+            }
+          />
+        </span>
+      )}
       <button
         type="button"
-        className="w-full cursor-pointer px-3.5 py-3.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className={cn(
+          'w-full cursor-pointer px-3.5 py-3.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+          isCheckable && (isChecked || bulkSelectActive) && 'pl-10'
+        )}
         aria-current={isSelected ? 'true' : undefined}
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
         onPointerEnter={onPrefetch}

@@ -117,6 +117,7 @@ export function EmailReadingPane({
   onToggleTag,
   onCreateTag,
   onArchive,
+  onDelete,
   isSendingReply = false,
   onReply,
   isRespondingToMeeting = false,
@@ -317,6 +318,7 @@ export function EmailReadingPane({
                 : undefined
             }
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
+            onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
           />
           {onOpenAgent && (
             <Button
@@ -511,22 +513,26 @@ function EmailReadingPaneShortcuts({
   agentActionKey,
   onReply,
   onArchive,
+  onDelete,
 }: {
   mailboxActionKey: 'a' | 'u';
   mailboxActionLabel: 'archive' | 'unarchive';
   agentActionKey?: 'e';
   onReply?: () => void;
   onArchive?: () => void;
+  onDelete?: () => void;
 }) {
   const onReplyRef = useRef(onReply);
   const onArchiveRef = useRef(onArchive);
+  const onDeleteRef = useRef(onDelete);
   const mailboxActionKeyRef = useRef(mailboxActionKey);
 
   useLayoutEffect(() => {
     onReplyRef.current = onReply;
     onArchiveRef.current = onArchive;
+    onDeleteRef.current = onDelete;
     mailboxActionKeyRef.current = mailboxActionKey;
-  }, [mailboxActionKey, onArchive, onReply]);
+  }, [mailboxActionKey, onArchive, onDelete, onReply]);
 
   useLayoutEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -555,6 +561,10 @@ function EmailReadingPaneShortcuts({
         event.preventDefault();
         onArchiveRef.current();
       }
+      if (key === 'd' && onDeleteRef.current) {
+        event.preventDefault();
+        onDeleteRef.current();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
@@ -580,6 +590,15 @@ function EmailReadingPaneShortcuts({
         {mailboxActionKey.toUpperCase()}
       </kbd>
       <span>{mailboxActionLabel}</span>
+      {onDelete ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
+            D
+          </kbd>
+          <span>delete</span>
+        </>
+      ) : null}
       {agentActionKey ? (
         <>
           <span aria-hidden="true">·</span>

@@ -27,7 +27,7 @@ import type {
   EmailReferenceProject,
 } from '@/modules/email/api';
 import { EMAIL_FOLDERS } from '@/modules/email/constants/email-folders';
-import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, Tag, X } from 'lucide-react';
+import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, Tag, Trash2, X } from 'lucide-react';
 
 export type EmailListFilter = 'all' | 'unread' | 'attachments' | 'other';
 
@@ -51,6 +51,12 @@ interface EmailMailToolbarProps {
   onRefresh?: () => void;
   onCompose?: () => void;
   onCreateFolder?: (name: string) => void;
+  /**
+   * Present when the current folder can be emptied wholesale (Deleted Items /
+   * Junk). Clicking triggers a destructive confirm in the caller.
+   */
+  onEmptyFolder?: () => void;
+  emptyFolderDisabled?: boolean;
 }
 
 export function EmailMailToolbar({
@@ -73,6 +79,8 @@ export function EmailMailToolbar({
   onRefresh,
   onCompose,
   onCreateFolder,
+  onEmptyFolder,
+  emptyFolderDisabled = false,
 }: EmailMailToolbarProps) {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
@@ -314,6 +322,22 @@ export function EmailMailToolbar({
                 aria-hidden="true"
                 className={cn('size-4', isRefreshing && 'motion-safe:animate-spin')}
               />
+            </Button>
+          )}
+
+          {onEmptyFolder && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 min-h-10 gap-1.5 text-destructive hover:text-destructive sm:h-9 sm:min-h-9"
+              disabled={emptyFolderDisabled}
+              aria-label="Empty folder"
+              title="Permanently delete every message in this folder"
+              onClick={onEmptyFolder}
+            >
+              <Trash2 aria-hidden="true" className="size-3.5" />
+              Empty
             </Button>
           )}
 

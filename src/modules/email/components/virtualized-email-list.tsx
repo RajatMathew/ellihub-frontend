@@ -15,6 +15,9 @@ interface VirtualizedEmailListProps {
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  checkedIds?: Set<string>;
+  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  bulkSelectActive?: boolean;
 }
 
 const ESTIMATED_EMAIL_ROW_HEIGHT = 154;
@@ -29,6 +32,9 @@ export function VirtualizedEmailList({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
 }: VirtualizedEmailListProps) {
   if (groupByMonth) {
     return (
@@ -40,6 +46,9 @@ export function VirtualizedEmailList({
         onPrefetchEmail={onPrefetchEmail}
         onArchiveEmail={onArchiveEmail}
         onDeleteEmail={onDeleteEmail}
+        checkedIds={checkedIds}
+        onToggleChecked={onToggleChecked}
+        bulkSelectActive={bulkSelectActive}
       />
     );
   }
@@ -53,6 +62,9 @@ export function VirtualizedEmailList({
       onPrefetchEmail={onPrefetchEmail}
       onArchiveEmail={onArchiveEmail}
       onDeleteEmail={onDeleteEmail}
+      checkedIds={checkedIds}
+      onToggleChecked={onToggleChecked}
+      bulkSelectActive={bulkSelectActive}
     />
   );
 }
@@ -65,6 +77,9 @@ function VirtualizedFlatEmailList({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
   // TanStack Virtual owns mutable measurement state; React Compiler must not memoize this hook.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -104,6 +119,11 @@ function VirtualizedFlatEmailList({
               onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
               onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
               onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+              isChecked={checkedIds?.has(email.id) ?? false}
+              onCheckedChange={
+                onToggleChecked ? (next) => onToggleChecked(email, next) : undefined
+              }
+              bulkSelectActive={bulkSelectActive}
             />
           </div>
         );
@@ -120,6 +140,9 @@ function VirtualizedMonthGroups({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
 }: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
   const [collapsedMonthKeys, setCollapsedMonthKeys] = useState<ReadonlySet<string>>(
     () => new Set()
@@ -167,6 +190,9 @@ function VirtualizedMonthGroups({
               onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
+              checkedIds={checkedIds}
+              onToggleChecked={onToggleChecked}
+              bulkSelectActive={bulkSelectActive}
               onToggle={() =>
                 setCollapsedMonthKeys((current) => {
                   const next = new Set(current);
@@ -194,6 +220,9 @@ function MonthGroupSection({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
   onToggle,
 }: {
   group: EmailMonthGroup;
@@ -203,6 +232,9 @@ function MonthGroupSection({
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  checkedIds?: Set<string>;
+  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  bulkSelectActive?: boolean;
   onToggle: () => void;
 }) {
   const emailCountLabel = `${group.emails.length} ${group.emails.length === 1 ? 'email' : 'emails'}`;
@@ -251,6 +283,11 @@ function MonthGroupSection({
                   onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
                   onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
                   onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+                  isChecked={checkedIds?.has(email.id) ?? false}
+                  onCheckedChange={
+                    onToggleChecked ? (next) => onToggleChecked(email, next) : undefined
+                  }
+                  bulkSelectActive={bulkSelectActive}
                 />
               </div>
             ))}

@@ -568,6 +568,18 @@ export const emailApi = {
     await api.delete(`${BASE}/accounts/${accountId}/messages/${messageId}/permanent`);
   },
 
+  async emptyFolder(
+    accountId: string,
+    folderId: string
+  ): Promise<{ deleted: number; failed: number }> {
+    const res = await api.post(`${BASE}/accounts/${accountId}/folders/${folderId}/empty`);
+    const payload = unwrapData<{ deleted?: number; failed?: number }>(res.data);
+    return {
+      deleted: payload.deleted ?? 0,
+      failed: payload.failed ?? 0,
+    };
+  },
+
   async updateMessageTags(
     accountId: string,
     messageId: string,

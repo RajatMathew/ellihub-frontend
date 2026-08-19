@@ -408,11 +408,26 @@ export function EmailAgentPanel({
     window.addEventListener('pointerup', handlePointerUp);
   };
 
+  const runBulkAgent = useCallback(
+    async <T,>(ids: string[], perId: (messageId: string) => Promise<T>) => {
+      // Small concurrency: fast enough for a few dozen, gentle on the provider.
+      const CONCURRENCY = 4;
+      for (let index = 0; index < ids.length; index += CONCURRENCY) {
+        const batch = ids.slice(index, index + CONCURRENCY);
+        await Promise.all(batch.map((id) => perId(id)));
+      }
+    },
+    []
+  );
+
   const executeAction = useCallback(
     async (action: MockAgentAction) => {
       if (!accountId) throw new Error('Connect a mailbox before running an action.');
-      const messageId = action.messageIds[0];
-      if (!messageId) throw new Error('The agent did not identify an email.');
+      const messageIds = action.messageIds ?? [];
+      if (messageIds.length === 0) throw new Error('The agent did not identify any emails.');
+      const primaryMessageId = messageIds[0]!;
+      // Suffix appended when bulk actions succeed across many messages.
+      const bulkSuffix = messageIds.length > 1 ? ` (${messageIds.length} emails)` : '';
 
       let shouldDisableActions = actionsDisabled;
       if (shouldDisableActions === null) {
@@ -428,12 +443,12 @@ export function EmailAgentPanel({
 
       if (shouldDisableActions) {
         if (action.action === 'reply') return 'Reply simulated successfully.';
-        if (action.action === 'archive') return 'Email archive simulated successfully.';
-        if (action.action === 'move') return `Email move to ${action.targetFolderName ?? 'the target folder'} simulated successfully.`;
-        if (action.action === 'tag') return `Adding ${(action.tagNames ?? []).join(', ') || 'the requested tags'} simulated successfully.`;
+        if (action.action === 'archive') return `Email archive simulated successfully${bulkSuffix}.`;
+        if (action.action === 'move') return `Email move to ${action.targetFolderName ?? 'the target folder'} simulated successfully${bulkSuffix}.`;
+        if (action.action === 'tag') return `Adding ${(action.tagNames ?? []).join(', ') || 'the requested tags'} simulated successfully${bulkSuffix}.`;
         if (action.action === 'set_status') return `Thread status change to ${action.status ?? 'open'} simulated successfully.`;
-        if (action.action === 'mark_read') return 'Mark-as-read simulated successfully.';
-        return 'Delete simulated successfully.';
+        if (action.action === 'mark_read') return `Mark-as-read simulated successfully${bulkSuffix}.`;
+        return `Delete simulated successfully${bulkSuffix}.`;
       }
 
       if (action.action === 'archive' || action.action === 'move' || action.action === 'delete') {
@@ -441,9 +456,10 @@ export function EmailAgentPanel({
       }
 
       if (action.action === 'reply') {
+        // Reply is per-message — always use the first messageId.
         await replyMutation.mutateAsync({
           accountId,
-          messageId,
+          messageId: primaryMessageId,
           body: action.body ?? '',
           bodyType: 'html',
           subject: action.subject,
@@ -453,12 +469,11 @@ export function EmailAgentPanel({
         return 'Reply sent successfully.';
       }
       if (action.action === 'archive') {
-        await archiveMutation.mutateAsync({
-          accountId,
-          messageId,
-          targetFolderId: folders.find((folder) => folder.key === 'archive')?.id,
-        });
-        return 'Email archived successfully.';
+        const targetFolderId = folders.find((folder) => folder.key === 'archive')?.id;
+        await runBulkAgent(messageIds, (messageId) =>
+          archiveMutation.mutateAsync({ accountId, messageId, targetFolderId })
+        );
+        return `Email archived successfully${bulkSuffix}.`;
       }
       if (action.action === 'move') {
         const target = folders.find(
@@ -467,50 +482,73 @@ export function EmailAgentPanel({
             folder.name.toLowerCase() === action.targetFolderName?.toLowerCase()
         );
         if (!target) throw new Error(`I could not find the ${action.targetFolderName ?? 'target'} folder.`);
-        await moveMutation.mutateAsync({ accountId, messageId, folderId: target.id });
-        return `Email moved to ${target.name}.`;
+        await runBulkAgent(messageIds, (messageId) =>
+          moveMutation.mutateAsync({ accountId, messageId, folderId: target.id })
+        );
+        return `Email moved to ${target.name}${bulkSuffix}.`;
       }
       if (action.action === 'tag') {
         const matchedTags = tags.filter((tag) =>
           (action.tagNames ?? []).some((name) => name.toLowerCase() === tag.name.toLowerCase())
         );
         if (!matchedTags.length) throw new Error('I could not match the requested tag.');
-        await tagsMutation.mutateAsync({
-          accountId,
-          messageId,
-          add: matchedTags.map((tag) => tag.providerId),
-        });
-        return `Added ${matchedTags.map((tag) => tag.name).join(', ')}.`;
+        const add = matchedTags.map((tag) => tag.providerId);
+        await runBulkAgent(messageIds, (messageId) =>
+          tagsMutation.mutateAsync({ accountId, messageId, add })
+        );
+        return `Added ${matchedTags.map((tag) => tag.name).join(', ')}${bulkSuffix}.`;
       }
       if (action.action === 'set_status') {
-        const targetEmail = (email ? [email, ...contextEmails] : contextEmails).find(
-          (item) =>
-            getMessageId(item) === messageId ||
-            item.conversationKey === action.conversationKey ||
-            item.threadId === action.conversationKey
-        ) ?? email;
-        const conversationKey = action.conversationKey ?? targetEmail?.conversationKey ?? targetEmail?.threadId;
-        if (!conversationKey) throw new Error('I could not identify the email thread.');
+        // set_status is per-conversation — dedupe by conversationKey so multi-
+        // message selections in the same thread don't fire the mutation twice.
+        const candidateEmails = email ? [email, ...contextEmails] : contextEmails;
+        const uniqueTargets = new Map<
+          string,
+          { conversationKey: string; threadId: string | null; references: unknown }
+        >();
+        for (const id of messageIds) {
+          const targetEmail =
+            candidateEmails.find(
+              (item) =>
+                getMessageId(item) === id ||
+                item.conversationKey === action.conversationKey ||
+                item.threadId === action.conversationKey
+            ) ?? email;
+          const key =
+            action.conversationKey ?? targetEmail?.conversationKey ?? targetEmail?.threadId;
+          if (!key) continue;
+          if (uniqueTargets.has(key)) continue;
+          uniqueTargets.set(key, {
+            conversationKey: key,
+            threadId: targetEmail?.threadId ?? null,
+            references: targetEmail?.classification?.references ?? [],
+          });
+        }
+        if (uniqueTargets.size === 0) throw new Error('I could not identify the email thread.');
         const nextStatus = action.status ?? 'open';
-        await classificationMutation.mutateAsync({
-          accountId,
-          conversationKey,
-          threadId: targetEmail?.threadId ?? null,
-          status: nextStatus,
-          references: targetEmail?.classification?.references ?? [],
-        });
-        return `Thread marked ${nextStatus}.`;
+        for (const target of uniqueTargets.values()) {
+          await classificationMutation.mutateAsync({
+            accountId,
+            conversationKey: target.conversationKey,
+            threadId: target.threadId,
+            status: nextStatus,
+            references: (target.references as never[]) ?? [],
+          });
+        }
+        const suffix = uniqueTargets.size > 1 ? ` (${uniqueTargets.size} threads)` : '';
+        return `Thread marked ${nextStatus}${suffix}.`;
       }
       if (action.action === 'mark_read') {
-        await statusMutation.mutateAsync({ accountId, messageId, unread: false });
-        return 'Email marked as read.';
+        await runBulkAgent(messageIds, (messageId) =>
+          statusMutation.mutateAsync({ accountId, messageId, unread: false })
+        );
+        return `Email marked as read${bulkSuffix}.`;
       }
-      await deleteMutation.mutateAsync({
-        accountId,
-        messageId,
-        targetFolderId: folders.find((folder) => folder.key === 'deleted')?.id,
-      });
-      return 'Email moved to deleted items.';
+      const targetFolderId = folders.find((folder) => folder.key === 'deleted')?.id;
+      await runBulkAgent(messageIds, (messageId) =>
+        deleteMutation.mutateAsync({ accountId, messageId, targetFolderId })
+      );
+      return `Email moved to deleted items${bulkSuffix}.`;
     },
     [accountId, actionsDisabled, archiveMutation, classificationMutation, contextEmails, deleteMutation, email, folders, moveMutation, replyMutation, statusMutation, tags, tagsMutation]
   );
