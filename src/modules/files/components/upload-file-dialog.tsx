@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect -- reset() is a dialog lifecycle helper, not external synchronization */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -116,6 +116,16 @@ export function UploadFileDialog({
   ...props
 }: UploadFileDialogProps) {
   const [drafts, setDrafts] = useState<UploadDraft[]>([]);
+  /**
+   * Most callers hand the file to the background upload tray and close this
+   * dialog themselves, so there is no pending state to disable the button
+   * with — and the dialog stays mounted and clickable for the length of its
+   * close animation. The second click of a double click landed in that window
+   * and queued the file again. A ref rather than state: it latches
+   * synchronously, so it cannot lose the race the disabled prop lost.
+   */
+  const hasSubmittedRef = useRef(false);
+  const wasSubmittingRef = useRef(isSubmitting);
   const isMultiple = props.multiple === true;
   const accept = props.accept ?? FILE_UPLOAD_ACCEPT;
   const maxSize = props.maxSize ?? DEFAULT_UPLOAD_MAX_BYTES;
@@ -134,8 +144,17 @@ export function UploadFileDialog({
   };
 
   useEffect(() => {
-    if (open) reset();
+    if (!open) return;
+    hasSubmittedRef.current = false;
+    reset();
   }, [open]);
+
+  // Callers that await the upload keep this dialog open while it runs, so a
+  // failed upload has to stay retryable without closing and reopening.
+  useEffect(() => {
+    if (wasSubmittingRef.current && !isSubmitting) hasSubmittedRef.current = false;
+    wasSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next && isSubmitting) return;
@@ -168,7 +187,9 @@ export function UploadFileDialog({
   };
 
   const handleUpload = () => {
-    if (!canUpload) return;
+    if (!canUpload || hasSubmittedRef.current) return;
+
+    hasSubmittedRef.current = true;
 
     const payloads = drafts.map((draft) => toUploadPayload(draft, parentId));
 
