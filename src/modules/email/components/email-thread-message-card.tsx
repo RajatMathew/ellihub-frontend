@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
@@ -20,7 +20,9 @@ import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-att
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
-import { ChevronUp, Forward, Mail, Reply, Star } from 'lucide-react';
+import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
+import { ChevronUp, FolderPlus, Forward, Mail, Reply, Star } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -34,6 +36,12 @@ interface EmailThreadMessageCardProps {
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
   onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
+  /**
+   * Optional folder subtree that the "Save to Files" picker scopes to. When
+   * omitted the picker falls back to the org root (admin-only).
+   */
+  saveToFilesRootFolderId?: string;
+  saveToFilesRootLabel?: string;
 }
 
 export function EmailThreadMessageCard({
@@ -48,6 +56,8 @@ export function EmailThreadMessageCard({
   onCancelReply,
   onOpenAttachment,
   onLoadAttachment,
+  saveToFilesRootFolderId,
+  saveToFilesRootLabel,
 }: EmailThreadMessageCardProps) {
   const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
   const attachments = message.attachments ?? [];
@@ -193,12 +203,14 @@ export function EmailThreadMessageCard({
             aria-label="Message attachments"
           >
             {visibleAttachments.map((attachment) => (
-              <EmailAttachmentHoverCard
+              <EmailAttachmentChip
                 key={attachment.id}
                 attachment={attachment}
                 messageId={message.id}
-                loadAttachment={onLoadAttachment}
-                onOpen={() => onOpenAttachment?.(attachment)}
+                onLoadAttachment={onLoadAttachment}
+                onOpenAttachment={onOpenAttachment}
+                saveToFilesRootFolderId={saveToFilesRootFolderId}
+                saveToFilesRootLabel={saveToFilesRootLabel}
               />
             ))}
           </div>
@@ -368,4 +380,66 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('');
+}
+
+function EmailAttachmentChip({
+  attachment,
+  messageId,
+  onLoadAttachment,
+  onOpenAttachment,
+  saveToFilesRootFolderId,
+  saveToFilesRootLabel,
+}: {
+  attachment: EmailAttachment;
+  messageId: string;
+  onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
+  onOpenAttachment?: (attachment: EmailAttachment) => void;
+  saveToFilesRootFolderId?: string;
+  saveToFilesRootLabel?: string;
+}) {
+  const resolveAttachment = useCallback(async (): Promise<Blob> => {
+    if (!onLoadAttachment) {
+      throw new Error('This attachment cannot be downloaded right now.');
+    }
+    return onLoadAttachment(messageId, attachment.id);
+  }, [attachment.id, messageId, onLoadAttachment]);
+
+  const canSaveToFiles = Boolean(onLoadAttachment);
+
+  return (
+    <div className="inline-flex max-w-full items-center gap-1">
+      <EmailAttachmentHoverCard
+        attachment={attachment}
+        messageId={messageId}
+        loadAttachment={onLoadAttachment}
+        onOpen={() => onOpenAttachment?.(attachment)}
+      />
+      {canSaveToFiles && (
+        <SaveToFilesTrigger
+          asChild
+          source={{
+            kind: 'lazy',
+            fileName: attachment.name,
+            mimeType: attachment.mimeType ?? undefined,
+            resolve: resolveAttachment,
+          }}
+          rootFolderId={saveToFilesRootFolderId}
+          rootLabel={saveToFilesRootLabel ?? 'Project Files'}
+          onSaved={() => toast.success(`Saved ${attachment.name} to Files.`)}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            mode="icon"
+            size="sm"
+            className="size-8 shrink-0"
+            aria-label={`Save ${attachment.name} to Files`}
+            title="Save to Files"
+          >
+            <FolderPlus aria-hidden="true" className="size-3.5" />
+          </Button>
+        </SaveToFilesTrigger>
+      )}
+    </div>
+  );
 }

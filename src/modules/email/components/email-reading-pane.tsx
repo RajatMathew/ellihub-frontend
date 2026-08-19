@@ -50,7 +50,9 @@ import {
   FilePreviewDialog,
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
+import { useProjectFolderQuery } from '@/modules/project/hooks';
 import { ArrowLeft, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface EmailReadingPaneProps {
   email: EmailListItem | null;
@@ -214,6 +216,18 @@ export function EmailReadingPane({
   useEffect(() => {
     attachmentBlobCacheRef.current.clear();
   }, [accountId, email?.id]);
+
+  // Route "Save to Files" into the project's folder subtree when the email is
+  // classified to a project; otherwise the picker falls back to the org root
+  // (admin-only). Non-admins without a project classification simply won't get
+  // the scoped picker and will see the picker error state.
+  const projectReference = email?.classification?.references?.find(
+    (reference) => reference.type === 'project' && reference.entityId
+  );
+  const savedRootProjectId = projectReference?.entityId ?? undefined;
+  const projectFolderQuery = useProjectFolderQuery(savedRootProjectId);
+  const savedRootFolderId = projectFolderQuery.data ?? undefined;
+  const savedRootLabel = projectReference?.label ?? 'Project Files';
 
   if (isLoading) {
     return <EmailReadingPaneSkeleton />;
@@ -450,6 +464,8 @@ export function EmailReadingPane({
                     : undefined
                 }
                 onLoadAttachment={accountId ? loadEmailAttachment : undefined}
+                saveToFilesRootFolderId={savedRootFolderId}
+                saveToFilesRootLabel={savedRootLabel}
               />
             ))}
           </div>
@@ -474,6 +490,16 @@ export function EmailReadingPane({
             : null
         }
         loadFile={loadPreviewAttachment}
+        saveToFiles={
+          previewAttachment
+            ? {
+                rootFolderId: savedRootFolderId,
+                rootLabel: savedRootLabel,
+                onSaved: () =>
+                  toast.success(`Saved ${previewAttachment.attachment.name} to Files.`),
+              }
+            : null
+        }
       />
     </section>
   );
