@@ -14,8 +14,9 @@ import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { FILE_TEXT_PREVIEW_BYTES, filesApi } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile, useTextContentQuery } from '@/modules/files/hooks/files.hooks';
+import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { Download, Eye, Loader2, X } from 'lucide-react';
+import { Download, Eye, FolderPlus, Loader2, X } from 'lucide-react';
 
 import { FileTypeIcon } from './file-type-icon';
 
@@ -306,6 +307,15 @@ interface FilePreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   file: FilePreviewItem | null;
   loadFile?: (file: FilePreviewItem) => Promise<Blob>;
+  /**
+   * Opt-in "Save to Files" action in the header. Requires `loadFile` so the
+   * lazy source can fetch the bytes once the user picks a destination folder.
+   */
+  saveToFiles?: {
+    rootFolderId?: string;
+    rootLabel?: string;
+    onSaved?: (savedFile: FileItem) => void;
+  } | null;
 }
 
 function PreviewActions({
@@ -447,7 +457,13 @@ function SpreadsheetPreview({ rows }: { rows: string[][] }) {
   );
 }
 
-export function FilePreviewDialog({ open, onOpenChange, file, loadFile }: FilePreviewDialogProps) {
+export function FilePreviewDialog({
+  open,
+  onOpenChange,
+  file,
+  loadFile,
+  saveToFiles,
+}: FilePreviewDialogProps) {
   const isFile = open && !!file && file.type !== 'FOLDER';
   const previewType = file ? getPreviewType(file) : 'generic';
   const previewTypeLabel = getPreviewTypeLabel(previewType);
@@ -540,6 +556,35 @@ export function FilePreviewDialog({ open, onOpenChange, file, loadFile }: FilePr
             </span>
           </DialogTitle>
           <div className="flex shrink-0 items-center gap-1.5">
+            {saveToFiles && file && loadFile && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SaveToFilesTrigger
+                    asChild
+                    source={{
+                      kind: 'lazy',
+                      fileName: getDisplayNameWithExtension(file) || 'download',
+                      mimeType: file.mimeType ?? undefined,
+                      resolve: () => loadFile(file),
+                    }}
+                    rootFolderId={saveToFiles.rootFolderId}
+                    rootLabel={saveToFiles.rootLabel ?? 'Project Files'}
+                    onSaved={(savedFile) => saveToFiles.onSaved?.(savedFile)}
+                  >
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="sm"
+                      className="size-9 rounded-sm border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label="Save to Files"
+                    >
+                      <FolderPlus className="size-4" />
+                    </Button>
+                  </SaveToFilesTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Save to Files</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip open={downloadTooltipOpen}>
               <TooltipTrigger asChild>
                 <Button
