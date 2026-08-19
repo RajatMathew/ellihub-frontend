@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { PendingDiscovery } from '@/modules/settings/api/shared-mailboxes.api';
 import { AlertCircle, LoaderCircle, Mailbox } from 'lucide-react';
@@ -301,7 +300,7 @@ function CandidateList({
             : `${candidates.length} connected`}
         </span>
       </div>
-      <ScrollArea className="max-h-80">
+      <div className="max-h-[26rem] overflow-y-auto">
         <ul className="divide-y divide-border">
           {candidates.map((candidate) => {
             const inputId = `discovery-candidate-${candidate.emailAddress}`;
@@ -351,7 +350,7 @@ function CandidateList({
             );
           })}
         </ul>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
