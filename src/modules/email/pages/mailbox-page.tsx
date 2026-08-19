@@ -8,6 +8,10 @@ import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
 import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
+import {
+  EmailBulkProgressPanel,
+  type EmailBulkOperationState,
+} from '@/modules/email/components/email-bulk-progress-panel';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import {
   EmailMailToolbar,
@@ -59,6 +63,7 @@ import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { PanelLeftOpen } from 'lucide-react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -111,6 +116,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
   );
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ messageId: string } | null>(
+    null
+  );
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
@@ -119,6 +127,10 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [mobilePane, setMobilePane] = useState<'list' | 'reading'>('list');
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
+  const [checkedMessageIds, setCheckedMessageIds] = useState<Set<string>>(() => new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState<{ count: number } | null>(null);
+  const [emptyFolderConfirm, setEmptyFolderConfirm] = useState<{ folderId: string } | null>(null);
+  const [bulkOperation, setBulkOperation] = useState<EmailBulkOperationState | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<{
     viewKey: string;
     folder: string;
@@ -341,6 +353,181 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     connectedAccount,
     selectedTarget?.emailId,
   ]);
+  const requestDelete = useCallback((messageId: string) => {
+    setDeleteConfirmation({ messageId });
+  }, []);
+  const confirmDelete = useCallback(() => {
+    if (!connectedAccount || !deleteConfirmation) return;
+    if (selectedTarget?.emailId === deleteConfirmation.messageId) setSelectedTarget(null);
+    deleteMessageMutation.mutate(
+      {
+        accountId: connectedAccount.id,
+        messageId: deleteConfirmation.messageId,
+        targetFolderId: deletedFolderId,
+      },
+      { onSettled: () => setDeleteConfirmation(null) }
+    );
+  }, [
+    connectedAccount,
+    deleteConfirmation,
+    deleteMessageMutation,
+    deletedFolderId,
+    selectedTarget?.emailId,
+  ]);
+
+  const toggleChecked = useCallback((email: EmailListItem, next: boolean) => {
+    setCheckedMessageIds((current) => {
+      const nextSet = new Set(current);
+      if (next) nextSet.add(email.id);
+      else nextSet.delete(email.id);
+      return nextSet;
+    });
+  }, []);
+  const clearChecked = useCallback(() => setCheckedMessageIds(() => new Set()), []);
+  const isBulkOperationRunning = Boolean(bulkOperation?.isRunning);
+
+  const runBulkPerId = useCallback(
+    async (
+      kind: EmailBulkOperationState['kind'],
+      ids: string[],
+      perId: (messageId: string) => Promise<unknown>
+    ) => {
+      if (ids.length === 0) return;
+      setBulkOperation({ kind, total: ids.length, done: 0, failed: 0, isRunning: true });
+      // Small concurrency keeps things quick without hammering the provider.
+      const CONCURRENCY = 4;
+      for (let index = 0; index < ids.length; index += CONCURRENCY) {
+        const batch = ids.slice(index, index + CONCURRENCY);
+        const results = await Promise.allSettled(batch.map((id) => perId(id)));
+        setBulkOperation((current) => {
+          if (!current) return current;
+          const doneAdd = results.filter((result) => result.status === 'fulfilled').length;
+          const failedAdd = results.length - doneAdd;
+          return {
+            ...current,
+            done: current.done + doneAdd,
+            failed: current.failed + failedAdd,
+          };
+        });
+      }
+      setBulkOperation((current) => (current ? { ...current, isRunning: false } : current));
+    },
+    []
+  );
+  const invalidateAfterBulk = useCallback(
+    (accountId: string) => {
+      void queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(accountId) });
+      void queryClient.invalidateQueries({ queryKey: emailKeys.folders(accountId) });
+      void queryClient.invalidateQueries({ queryKey: emailKeys.accounts() });
+    },
+    [queryClient]
+  );
+  const runBulkArchive = useCallback(() => {
+    if (!connectedAccount || checkedMessageIds.size === 0) return;
+    const accountId = connectedAccount.id;
+    const ids = Array.from(checkedMessageIds);
+    // Skip the per-item mutation toast: our progress panel handles feedback.
+    void runBulkPerId('archive', ids, (messageId) => emailApi.archiveMessage(accountId, messageId))
+      .then(() => {
+        setCheckedMessageIds(() => new Set());
+        if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+        invalidateAfterBulk(accountId);
+      });
+  }, [checkedMessageIds, connectedAccount, invalidateAfterBulk, runBulkPerId, selectedTarget]);
+  const runBulkRestore = useCallback(() => {
+    if (!connectedAccount || checkedMessageIds.size === 0 || !inboxFolderId) return;
+    const accountId = connectedAccount.id;
+    const ids = Array.from(checkedMessageIds);
+    void runBulkPerId('archive', ids, (messageId) =>
+      emailApi.moveMessage(accountId, messageId, inboxFolderId)
+    ).then(() => {
+      setCheckedMessageIds(() => new Set());
+      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      invalidateAfterBulk(accountId);
+    });
+  }, [
+    checkedMessageIds,
+    connectedAccount,
+    inboxFolderId,
+    invalidateAfterBulk,
+    runBulkPerId,
+    selectedTarget,
+  ]);
+  const runBulkDelete = useCallback(() => {
+    if (!connectedAccount || checkedMessageIds.size === 0) return;
+    const accountId = connectedAccount.id;
+    const ids = Array.from(checkedMessageIds);
+    // Backend picks the right delete stage from the message's current folder:
+    //   Inbox / other → Deleted Items
+    //   Deleted Items → Recoverable Items (soft purge)
+    // Matches Outlook's own semantics, so anything we do here reflects there.
+    void runBulkPerId('delete', ids, (messageId) => emailApi.deleteMessage(accountId, messageId))
+      .then(() => {
+        setCheckedMessageIds(() => new Set());
+        if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+        invalidateAfterBulk(accountId);
+      });
+    setBulkDeleteConfirm(null);
+  }, [
+    checkedMessageIds,
+    connectedAccount,
+    invalidateAfterBulk,
+    runBulkPerId,
+    selectedTarget,
+  ]);
+  const runEmptyFolder = useCallback(async () => {
+    if (!connectedAccount || !emptyFolderConfirm) return;
+    const folderId = emptyFolderConfirm.folderId;
+    setEmptyFolderConfirm(null);
+    const totalGuess = providerTotalCount ?? folderEmails.length ?? 0;
+    setBulkOperation({
+      kind: 'empty',
+      total: Math.max(totalGuess, 1),
+      done: 0,
+      failed: 0,
+      isRunning: true,
+    });
+    try {
+      const result = await emailApi.emptyFolder(connectedAccount.id, folderId);
+      setBulkOperation({
+        kind: 'empty',
+        total: result.deleted + result.failed || 1,
+        done: result.deleted,
+        failed: result.failed,
+        isRunning: false,
+      });
+      setCheckedMessageIds(() => new Set());
+      setSelectedTarget(null);
+      void queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(connectedAccount.id) });
+      void queryClient.invalidateQueries({ queryKey: emailKeys.folders(connectedAccount.id) });
+      if (result.failed === 0) {
+        toast.success(
+          result.deleted === 0
+            ? 'Folder was already empty.'
+            : `Emptied folder (${result.deleted} message${result.deleted === 1 ? '' : 's'}).`
+        );
+      } else {
+        toast.warning(
+          `Emptied ${result.deleted}, ${result.failed} could not be deleted. Try again.`
+        );
+      }
+    } catch (error) {
+      setBulkOperation((current) => (current ? { ...current, isRunning: false } : current));
+      toast.error('Could not empty the folder.');
+    }
+  }, [
+    connectedAccount,
+    emptyFolderConfirm,
+    folderEmails.length,
+    providerTotalCount,
+    queryClient,
+  ]);
+
+  useEffect(() => {
+    // Reset selection whenever the folder / account / project context changes.
+    setCheckedMessageIds(() => new Set());
+  }, [connectedAccount?.id, selectedFolder, selectedProjectId, mailFilter]);
+
   const activeFreshness = messagesQuery.data?.pages[0]?.freshness ?? connectedAccount?.freshness;
   const hasCachedMessages = loadedEmailPages.some((page) => page.records.length > 0);
   const showEmailSyncIndicator = useBoundedEmailSyncIndicator(
@@ -651,6 +838,68 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       onConfirm={confirmArchive}
     />
   );
+  const deleteDialog = (
+    <ConfirmDialog
+      open={Boolean(deleteConfirmation)}
+      onOpenChange={(open) => {
+        if (!deleteMessageMutation.isPending && !open) setDeleteConfirmation(null);
+      }}
+      title="Delete this email?"
+      description={
+        isDeletedFolder
+          ? 'The email will move from Deleted Items to Recoverable Items in your mailbox — it stays recoverable for the retention window your admin sets (usually 30 days).'
+          : 'The email will move to Deleted Items.'
+      }
+      confirmLabel={isDeletedFolder ? 'Delete' : 'Move to Deleted Items'}
+      variant="destructive"
+      isPending={deleteMessageMutation.isPending}
+      autoFocusConfirm
+      onConfirm={confirmDelete}
+    />
+  );
+  const bulkDeleteDialog = (
+    <ConfirmDialog
+      open={Boolean(bulkDeleteConfirm)}
+      onOpenChange={(open) => {
+        if (!isBulkOperationRunning && !open) setBulkDeleteConfirm(null);
+      }}
+      title={
+        bulkDeleteConfirm?.count === 1
+          ? 'Delete 1 email?'
+          : `Delete ${bulkDeleteConfirm?.count ?? 0} emails?`
+      }
+      description={
+        selectedFolderKey === 'deleted'
+          ? 'The selected emails will be moved to Recoverable Items in your mailbox. They stay recoverable there for the retention window your admin sets (usually 30 days).'
+          : 'The selected emails will be moved to Deleted Items.'
+      }
+      confirmLabel={selectedFolderKey === 'deleted' ? 'Delete' : 'Move to Deleted Items'}
+      variant="destructive"
+      isPending={isBulkOperationRunning}
+      onConfirm={runBulkDelete}
+    />
+  );
+  const emptyFolderDialog = (
+    <ConfirmDialog
+      open={Boolean(emptyFolderConfirm)}
+      onOpenChange={(open) => {
+        if (!isBulkOperationRunning && !open) setEmptyFolderConfirm(null);
+      }}
+      title="Empty Deleted Items?"
+      description="Every message in Deleted Items will be moved to Recoverable Items in your mailbox. Your Outlook / Microsoft admin retention policy decides how long they stay recoverable."
+      confirmLabel="Empty folder"
+      variant="destructive"
+      isPending={isBulkOperationRunning}
+      keepOpenOnConfirm
+      onConfirm={() => void runEmptyFolder()}
+    />
+  );
+  const bulkProgressPanel = (
+    <EmailBulkProgressPanel
+      operation={bulkOperation}
+      onDismiss={() => setBulkOperation(null)}
+    />
+  );
 
   if (!accountsQuery.isLoading && !accountsQuery.isError && !connectedAccount) {
     return <Navigate to="/app/email/add-account" replace />;
@@ -699,6 +948,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         </div>
         {nicknameDialog}
         {disconnectDialog}
+        {bulkProgressPanel}
       </>
     );
   }
@@ -777,6 +1027,15 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                     )
                 : undefined
             }
+            onEmptyFolder={
+              connectedAccount &&
+              isDeletedFolder &&
+              deletedFolderId &&
+              checkedMessageIds.size === 0
+                ? () => setEmptyFolderConfirm({ folderId: deletedFolderId })
+                : undefined
+            }
+            emptyFolderDisabled={isBulkOperationRunning || folderEmails.length === 0}
           />
 
           <div className="flex min-h-0 flex-1 gap-3 bg-muted p-3 lg:gap-4 lg:p-4">
@@ -843,6 +1102,42 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                           })
                       : undefined
                   }
+                  checkedIds={checkedMessageIds}
+                  onToggleChecked={connectedAccount ? toggleChecked : undefined}
+                  onToggleCheckedAll={
+                    connectedAccount
+                      ? () => {
+                          const allChecked =
+                            folderEmails.length > 0 &&
+                            folderEmails.every((email) => checkedMessageIds.has(email.id));
+                          setCheckedMessageIds(
+                            () =>
+                              new Set(allChecked ? [] : folderEmails.map((email) => email.id))
+                          );
+                        }
+                      : undefined
+                  }
+                  onClearChecked={clearChecked}
+                  onBulkArchive={
+                    connectedAccount
+                      ? isDeletedFolder
+                        ? inboxFolderId
+                          ? runBulkRestore
+                          : undefined
+                        : !isArchiveFolder
+                          ? runBulkArchive
+                          : undefined
+                      : undefined
+                  }
+                  onBulkDelete={
+                    connectedAccount
+                      ? () => setBulkDeleteConfirm({ count: checkedMessageIds.size })
+                      : undefined
+                  }
+                  isBulkMutating={isBulkOperationRunning}
+                  bulkArchiveLabel={isDeletedFolder ? 'Restore' : 'Archive'}
+                  bulkArchiveVariant={isDeletedFolder ? 'restore' : 'archive'}
+                  bulkDeleteLabel="Delete"
                 />
               </div>
             )}
@@ -925,20 +1220,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                       }
                     : undefined
                 }
-                onDelete={
-                  connectedAccount && !isDeletedFolder
-                    ? (messageId) => {
-                        deleteMessageMutation.mutate(
-                          {
-                            accountId: connectedAccount.id,
-                            messageId,
-                            targetFolderId: deletedFolderId,
-                          },
-                          { onSuccess: () => setSelectedTarget(null) }
-                        );
-                      }
-                    : undefined
-                }
+                onDelete={connectedAccount && !isDeletedFolder ? requestDelete : undefined}
                 onPermanentDelete={
                   connectedAccount && isDeletedFolder
                     ? async (messageId) => {
@@ -1129,6 +1411,10 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       {nicknameDialog}
       {disconnectDialog}
       {archiveDialog}
+      {deleteDialog}
+      {bulkDeleteDialog}
+      {emptyFolderDialog}
+      {bulkProgressPanel}
     </div>
   );
 }

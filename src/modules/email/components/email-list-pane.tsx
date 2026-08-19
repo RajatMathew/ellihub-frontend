@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
-import { Inbox, RefreshCcw } from 'lucide-react';
+import { Archive, ArchiveRestore, Inbox, RefreshCcw, Trash2, X } from 'lucide-react';
 
 interface EmailListPaneProps {
   mailbox: string;
@@ -28,6 +29,25 @@ interface EmailListPaneProps {
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+
+  /**
+   * Bulk-selection wiring. When any callback is provided the list renders
+   * checkboxes on each row and shows the bulk-action bar at the top.
+   */
+  checkedIds?: Set<string>;
+  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  onToggleCheckedAll?: () => void;
+  onClearChecked?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
+  isBulkMutating?: boolean;
+  /**
+   * Bulk-action labels. Callers viewing Deleted Items pass "Restore" and
+   * "Delete forever" so the button copy matches the destructive intent.
+   */
+  bulkArchiveLabel?: string;
+  bulkDeleteLabel?: string;
+  bulkArchiveVariant?: 'archive' | 'restore';
 }
 
 export function EmailListPane({
@@ -51,6 +71,16 @@ export function EmailListPane({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  checkedIds,
+  onToggleChecked,
+  onToggleCheckedAll,
+  onClearChecked,
+  onBulkArchive,
+  onBulkDelete,
+  isBulkMutating = false,
+  bulkArchiveLabel = 'Archive',
+  bulkDeleteLabel = 'Delete',
+  bulkArchiveVariant = 'archive',
 }: EmailListPaneProps) {
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
@@ -101,6 +131,11 @@ export function EmailListPane({
     return () => observer.disconnect();
   }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore, scrollContainer]);
 
+  const checkedCount = checkedIds?.size ?? 0;
+  const isBulkActive = checkedCount > 0;
+  const allInViewChecked =
+    isBulkActive && filteredEmails.length > 0 && filteredEmails.every((email) => checkedIds?.has(email.id));
+
   return (
     <section
       className="relative flex h-full min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background lg:w-96"
@@ -109,6 +144,68 @@ export function EmailListPane({
       <div className="sr-only" aria-live="polite">
         {emailCountLabel}
       </div>
+
+      {isBulkActive && onToggleChecked && (
+        <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/30 px-2 py-2">
+          <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
+            <Checkbox
+              checked={allInViewChecked}
+              onCheckedChange={() => onToggleCheckedAll?.()}
+              disabled={isBulkMutating}
+              aria-label={allInViewChecked ? 'Deselect all visible' : 'Select all visible'}
+            />
+            {checkedCount}
+          </label>
+          <div className="ml-auto flex items-center gap-0.5">
+            {onBulkArchive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 gap-1 whitespace-nowrap px-1.5 text-xs"
+                onClick={onBulkArchive}
+                disabled={isBulkMutating}
+                title={bulkArchiveLabel}
+              >
+                {bulkArchiveVariant === 'restore' ? (
+                  <ArchiveRestore aria-hidden="true" className="size-3.5" />
+                ) : (
+                  <Archive aria-hidden="true" className="size-3.5" />
+                )}
+                {bulkArchiveLabel}
+              </Button>
+            )}
+            {onBulkDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 gap-1 whitespace-nowrap px-1.5 text-xs text-destructive hover:text-destructive"
+                onClick={onBulkDelete}
+                disabled={isBulkMutating}
+                title={bulkDeleteLabel}
+              >
+                <Trash2 aria-hidden="true" className="size-3.5" />
+                {bulkDeleteLabel}
+              </Button>
+            )}
+            {onClearChecked && (
+              <Button
+                type="button"
+                variant="ghost"
+                mode="icon"
+                size="sm"
+                className="size-8 shrink-0"
+                onClick={onClearChecked}
+                disabled={isBulkMutating}
+                aria-label="Clear selection"
+              >
+                <X aria-hidden="true" className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div ref={setScrollContainer} className="kt-scrollable-y-auto min-h-0 flex-1">
         {isLoading && <EmailListSkeleton />}
@@ -134,6 +231,9 @@ export function EmailListPane({
             onPrefetchEmail={onPrefetchEmail}
             onArchiveEmail={onArchiveEmail}
             onDeleteEmail={onDeleteEmail}
+            checkedIds={checkedIds}
+            onToggleChecked={onToggleChecked}
+            bulkSelectActive={isBulkActive}
           />
         )}
 
