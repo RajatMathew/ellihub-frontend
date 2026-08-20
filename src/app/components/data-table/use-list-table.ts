@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import {
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
@@ -39,10 +40,19 @@ export interface UseListTableOptions<
 > {
   state: ListState<TDefs, TField>;
   columns: ColumnDef<TData>[];
-  /** Rows for the current page, as returned by the API. */
+  /**
+   * In `server` mode, the rows for the current page. In `client` mode, the whole
+   * collection — sorting and pagination are then applied in memory.
+   */
   rows: TData[];
-  /** Server-reported total across all pages. */
-  totalCount: number;
+  /** Server-reported total across all pages. Ignored in `client` mode. */
+  totalCount?: number;
+  /**
+   * `server` (default): the API paginates and sorts; the URL drives the request.
+   * `client`: the query returns everything at once and the table does the work.
+   * Do not mix — a client-mode table must not send page/sort to its API.
+   */
+  mode?: 'server' | 'client';
   query: ListQueryStatus;
   /** Stable business id. Strongly preferred over the row index. */
   getRowId?: (row: TData) => string;
@@ -79,11 +89,13 @@ export function useListTable<
   state,
   columns,
   rows,
-  totalCount,
+  totalCount = 0,
   query,
   getRowId,
   initialColumnVisibility,
+  mode = 'server',
 }: UseListTableOptions<TData, TDefs, TField>): ListTable<TData> {
+  const isClient = mode === 'client';
   const { page, size, sortBy, sortOrder, setPage, setSize, setSort } = state;
 
   // Client-side filters run here rather than in the request. A filter opts in by
@@ -107,7 +119,7 @@ export function useListTable<
   }, [rawValues, rows, state.filters]);
 
   const hasClientFilter = filteredRows !== rows;
-  const effectiveTotal = hasClientFilter ? filteredRows.length : totalCount;
+  const effectiveTotal = isClient || hasClientFilter ? filteredRows.length : totalCount;
   const pageCount = Math.max(1, Math.ceil(effectiveTotal / size));
 
   const sorting = useMemo<SortingState>(
@@ -126,11 +138,12 @@ export function useListTable<
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getRowId,
+    getSortedRowModel: isClient ? getSortedRowModel() : undefined,
     initialState: initialColumnVisibility
       ? { columnVisibility: initialColumnVisibility }
       : undefined,
-    manualPagination: true,
-    manualSorting: true,
+    manualPagination: !isClient,
+    manualSorting: !isClient,
     onPaginationChange: (updater) => {
       const previous = { pageIndex: page - 1, pageSize: size };
       const next = typeof updater === 'function' ? updater(previous) : updater;

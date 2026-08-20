@@ -34,6 +34,12 @@ export interface DataTableProps<
   title?: ReactNode;
   /** Extra header controls appended after the schema-driven ones. */
   headerActions?: ReactNode;
+  /**
+   * Rendered in place of the table body and pagination. For states where the
+   * list cannot exist at all — an unconnected integration, say — rather than
+   * for an empty result, which `empty` already covers.
+   */
+  replaceBody?: ReactNode;
   /** Card-per-row rendering below the breakpoint. Omit for a scrolling table. */
   mobileItem?: (row: TData) => ReactNode;
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
@@ -63,6 +69,7 @@ export function DataTable<
   error,
   title,
   headerActions,
+  replaceBody,
   mobileItem,
   mobileBreakpoint,
   mobileSkeleton,
@@ -75,27 +82,29 @@ export function DataTable<
     <Card className={className}>
       <DataTableFilters actions={headerActions} state={state} title={title} />
 
-      <DataGridSection
-        emptyAction={empty.action}
-        emptyDescription={empty.description}
-        emptyIcon={empty.icon}
-        emptyTitle={empty.title}
-        errorDescription={error.description}
-        errorTitle={error.title}
-        isError={list.isError}
-        isLoading={list.isInitialLoading}
-        isRefreshing={list.isRefreshing}
-        mobileBreakpoint={mobileBreakpoint}
-        mobileItem={mobileItem}
-        mobileSkeleton={mobileSkeleton}
-        refreshIndicator={refreshIndicator}
-        table={list.table}
-        tableAriaLabel={ariaLabel}
-        tableClassNames={tableClassNames}
-        tableLayout={tableLayout}
-        totalCount={list.totalCount}
-        onRetry={list.retry}
-      />
+      {replaceBody ?? (
+        <DataGridSection
+          emptyAction={empty.action}
+          emptyDescription={empty.description}
+          emptyIcon={empty.icon}
+          emptyTitle={empty.title}
+          errorDescription={error.description}
+          errorTitle={error.title}
+          isError={list.isError}
+          isLoading={list.isInitialLoading}
+          isRefreshing={list.isRefreshing}
+          mobileBreakpoint={mobileBreakpoint}
+          mobileItem={mobileItem}
+          mobileSkeleton={mobileSkeleton}
+          refreshIndicator={refreshIndicator}
+          table={list.table}
+          tableAriaLabel={ariaLabel}
+          tableClassNames={tableClassNames}
+          tableLayout={tableLayout}
+          totalCount={list.totalCount}
+          onRetry={list.retry}
+        />
+      )}
     </Card>
   );
 }
