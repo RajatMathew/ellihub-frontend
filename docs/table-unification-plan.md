@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 8 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 8.
+**Status: 9 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 7.
 
 ## Legend
 
@@ -37,6 +37,8 @@ needed it, never speculatively.
 - [x] Required `ariaLabel` on `DataTable`
 - [x] `f.infiniteSelect` — a picker backed by its own paginated query
 - [x] `onClear` on every filter — resets companion local state the URL cannot see
+- [x] `filters` render override on `DataTable` — same keys, live data attached, for
+      controls whose options depend on the query results
 
 ### Defects killed by construction
 
@@ -78,7 +80,7 @@ needed it, never speculatively.
 Lookup grew because its inline column definitions moved to their own file, matching
 every other module. Across both files it still shrank, 317 → 259.
 
-**15 files deleted:** 7 table cards, 6 list params hooks, 2 filter/table components.
+**18 files deleted:** 7 table cards, 7 list params hooks, 4 filter/table components.
 
 ### Next — the project group
 
@@ -88,18 +90,18 @@ around an escape hatch.
 - [x] **`f.infiniteSelect`** — `InfiniteSearchSelect` appears in invoice and
       purchase-order filters. Four `f.custom` calls would have tripped the health
       signal below, so it became a first-class kind.
-- [ ] ⛔ **Selected-option label cycle** — blocks invoice and purchase-order.
-      A picker's trigger shows a name rather than a raw id by looking the label up
-      in the rows on screen. That creates a cycle: picker → label → rows → query →
-      state → schema → picker. Fix is a small id→label cache filled as rows arrive,
-      so the lookup no longer depends on the current page. Dropping the recovery
-      instead would regress deep-linked filters to showing bare ids.
+- [x] **Selected-option label cycle** — a picker's trigger shows a name rather than
+      a raw id by looking the label up in the rows on screen, which put the picker
+      after the query and the query after the schema. Solved by declaring the picker
+      keys up front with no live data: `useListState` only reads `key`/`apiKey`, so
+      the request params and `clearFilters` work from the shell, and the loaded
+      options are attached afterwards via `DataTable`'s `filters` prop.
 - [ ] **Merge the two tab components** — `ProjectFilterTabs` and
       `TableCardHeaderTabs` render near-identically (same mono/xs/uppercase/tracking,
       same active underline); they differ only in mobile wrapping. Four project pages
       use one, three use the other.
-- [ ] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers ⛔ blocked on the label cycle
-- [ ] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + pickers + mobile card + `columnVisibility` ⛔ same label cycle
+- [x] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers · 202 → 190
+- [ ] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + pickers + mobile card + `columnVisibility` (pickers now unblocked)
 - [ ] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card
 - [ ] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — custom scroll-arrow tabs + client-side `trackFilter`
 
