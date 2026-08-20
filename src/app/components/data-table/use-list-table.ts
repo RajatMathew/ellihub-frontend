@@ -56,7 +56,11 @@ export interface UseListTableOptions<
   query: ListQueryStatus;
   /** Stable business id. Strongly preferred over the row index. */
   getRowId?: (row: TData) => string;
-  initialColumnVisibility?: VisibilityState;
+  /**
+   * Controlled, not initial: a column's visibility often depends on the rows
+   * themselves — hide a column no row on this page populates.
+   */
+  columnVisibility?: VisibilityState;
   /**
    * Another query the list cannot be rendered without — an integration's sync
    * status, say. Counted as initial loading so the header and the body agree,
@@ -98,7 +102,7 @@ export function useListTable<
   totalCount = 0,
   query,
   getRowId,
-  initialColumnVisibility,
+  columnVisibility,
   extraLoading = false,
   mode = 'server',
 }: UseListTableOptions<TData, TDefs, TField>): ListTable<TData> {
@@ -147,9 +151,6 @@ export function useListTable<
     getPaginationRowModel: getPaginationRowModel(),
     getRowId,
     getSortedRowModel: isClient ? getSortedRowModel() : undefined,
-    initialState: initialColumnVisibility
-      ? { columnVisibility: initialColumnVisibility }
-      : undefined,
     manualPagination: !isClient,
     manualSorting: !isClient,
     onPaginationChange: (updater) => {
@@ -176,6 +177,7 @@ export function useListTable<
     // In client mode TanStack derives this from the row count itself.
     pageCount: isClient ? undefined : pageCount,
     state: {
+      columnVisibility,
       pagination: { pageIndex: page - 1, pageSize: size },
       sorting,
     },

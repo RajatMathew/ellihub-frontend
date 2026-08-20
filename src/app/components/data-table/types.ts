@@ -105,6 +105,18 @@ export interface InfiniteSelectFilterDef<
   className?: string;
 }
 
+/**
+ * A filter with no control of its own. Arrives by deep link, participates in the
+ * request params and in `clearFilters`, and renders nothing.
+ */
+export interface HiddenFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
+  TKey,
+  string,
+  TData
+> {
+  kind: 'hidden';
+}
+
 export interface CustomFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
   TKey,
   string,
@@ -125,6 +137,7 @@ export type AnyFilterDef<TData = unknown> =
   | SelectFilterDef<string, string, TData>
   | TabsFilterDef<string, string, TData>
   | InfiniteSelectFilterDef<string, TData>
+  | HiddenFilterDef<string, TData>
   | CustomFilterDef<string, TData>;
 
 type FilterValueOf<TDef> = TDef extends FilterBase<string, infer TValue, unknown> ? TValue : never;

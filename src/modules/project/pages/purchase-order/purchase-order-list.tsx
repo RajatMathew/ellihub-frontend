@@ -1,246 +1,231 @@
 import { useMemo, useState } from 'react';
 
-import { Card } from '@/app/components/ui/card';
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import {
   getPurchaseOrderRfqLabel,
   PurchaseOrderCancelDialog,
-  PurchaseOrderListFilters,
   PurchaseOrderListHeader,
   PurchaseOrderListStats,
-  PurchaseOrderListTable,
+  PurchaseOrderMobileCard,
   usePurchaseOrderListColumns,
 } from '@/modules/project/components/purchase-order';
 import {
-  isPurchaseOrderSortByField,
+  PO_STATUS_OPTIONS,
   PURCHASE_ORDER_DEFAULT_PAGE_SIZE,
+  PURCHASE_ORDER_SORT_BY_OPTIONS,
 } from '@/modules/project/constants/purchase-order';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
   useCancelPOMutation,
   usePOsQuery,
   usePOStatsQuery,
-  usePurchaseOrderListParams,
   usePurchaseOrderVendorFilterOptions,
-  type PurchaseOrderListParamPatch,
 } from '@/modules/project/hooks/purchase-order';
 import type { ListPOsParams, POListItem } from '@/modules/project/schemas/purchase-order';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
+import { ClipboardList, ListFilterPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+
+const noop = () => {};
+
+const STATUS_TABS = f.tabs({ key: 'status', options: [...PO_STATUS_OPTIONS] });
+const SEARCH_FILTER = f.search({ className: 'sm:w-60', placeholder: 'Search POs...' });
+
+/**
+ * Declared without live data so `useListState` can produce the request params
+ * before the vendor picker exists — the picker's trigger label is recovered from
+ * the rows, which only arrive after the request. See invoice-list for the same
+ * pattern.
+ */
+const VENDOR_SHELL = f.infiniteSelect({
+  className: 'w-full sm:w-52',
+  emptyMessage: 'No vendors found.',
+  key: 'vendorId',
+  onSearchChange: noop,
+  options: [],
+  placeholder: 'All Vendors',
+  search: '',
+  searchPlaceholder: 'Search vendors...',
+});
+
+/** Arrives by deep link from an RFQ; no control of its own. */
+const RFQ_FILTER = f.hidden({ key: 'rfqId' });
 
 export default function ProjectPOs() {
   const { projectId = '' } = useParams<{ projectId: string }>();
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    statusFilter,
-    tradeCategoryFilter,
-    vendorFilter,
-    rfqFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = usePurchaseOrderListParams();
 
   const [vendorSearch, setVendorSearch] = useState('');
-
-  const filters: ListPOsParams = {
-    projectId,
-    page,
-    size,
-    sortBy,
-    sortOrder,
-    search: searchQuery || undefined,
-    status: statusFilter,
-    tradeCategoryId: tradeCategoryFilter,
-    vendorId: vendorFilter,
-    rfqId: rfqFilter,
-  };
-
-  const hasActiveFilters =
-    !!searchQuery || !!statusFilter || !!tradeCategoryFilter || !!vendorFilter || !!rfqFilter;
-
-  const purchaseOrdersQuery = usePOsQuery(filters);
-  const statsQuery = usePOStatsQuery(projectId);
-  const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
-  const cancelMutation = useCancelPOMutation();
   const [cancelTarget, setCancelTarget] = useState<POListItem | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const hasListData = purchaseOrdersQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    purchaseOrdersQuery.isLoading || (purchaseOrdersQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && purchaseOrdersQuery.isFetching && !showListInitialLoader;
+
+  const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
+
+  const tradeFilter = useMemo(
+    () =>
+      f.select({
+        className: 'sm:w-48',
+        icon: ListFilterPlus,
+        key: 'tradeCategoryId',
+        options: (tradeCategories ?? []).map((option) => ({
+          label: option.label ?? option.name ?? option.id,
+          value: option.id,
+        })),
+        placeholder: 'All Trades',
+      }),
+    [tradeCategories]
+  );
+
+  const filters = useMemo(
+    () => [STATUS_TABS, SEARCH_FILTER, VENDOR_SHELL, tradeFilter, RFQ_FILTER],
+    [tradeFilter]
+  );
+
+  const state = useListState({
+    filters,
+    pageSize: PURCHASE_ORDER_DEFAULT_PAGE_SIZE,
+    sort: { by: 'createdAt', fields: PURCHASE_ORDER_SORT_BY_OPTIONS, order: 'desc' },
+  });
+
+  const purchaseOrdersQuery = usePOsQuery({
+    ...state.apiParams,
+    projectId,
+  } as ListPOsParams);
+  const statsQuery = usePOStatsQuery(projectId);
+  const cancelMutation = useCancelPOMutation();
 
   const listData = useMemo(
     () => purchaseOrdersQuery.data?.data ?? [],
     [purchaseOrdersQuery.data?.data]
   );
-  const totalCount = purchaseOrdersQuery.data?.pagination?.totalItems ?? 0;
-  const hasReadableRfq = listData.some((po) => !!getPurchaseOrderRfqLabel(po));
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
-  const tradeCategoryLabelById = useMemo(
-    () => new Map((tradeCategories ?? []).map((cat) => [cat.id, cat.label ?? cat.name ?? cat.id])),
-    [tradeCategories]
-  );
+  const vendorFilter = state.values.vendorId;
+
   const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
     if (!vendorFilter) return undefined;
+
     const po = listData.find(
       (item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter
     );
-    return {
-      value: vendorFilter,
-      label: po?.vendor?.name ?? vendorFilter,
-    };
+
+    return { label: po?.vendor?.name ?? vendorFilter, value: vendorFilter };
   }, [listData, vendorFilter]);
+
   const vendorPicker = usePurchaseOrderVendorFilterOptions({
     search: vendorSearch,
     selectedOption: selectedVendorOption,
   });
 
+  const renderFilters = useMemo(
+    () => [
+      STATUS_TABS,
+      SEARCH_FILTER,
+      withVendorData(vendorPicker, vendorSearch, setVendorSearch),
+      tradeFilter,
+      RFQ_FILTER,
+    ],
+    [tradeFilter, vendorPicker, vendorSearch]
+  );
+
+  const tradeCategoryLabelById = useMemo(
+    () => new Map((tradeCategories ?? []).map((cat) => [cat.id, cat.label ?? cat.name ?? cat.id])),
+    [tradeCategories]
+  );
+
+  const handleCancel = (po: POListItem) => {
+    setCancelTarget(po);
+    setCancelReason('');
+  };
+
   const columns = usePurchaseOrderListColumns({
+    onCancel: handleCancel,
     projectId,
     tradeCategoryLabelById,
-    onCancel: (po) => {
-      setCancelTarget(po);
-      setCancelReason('');
-    },
   });
-  const pageCount = Math.max(1, Math.ceil(totalCount / size));
 
-  const table = useReactTable({
-    data: listData,
+  // The RFQ column only earns its width when some row on this page has one.
+  const hasReadableRfq = listData.some((po) => Boolean(getPurchaseOrderRfqLabel(po)));
+
+  const list = useListTable({
     columns,
-    pageCount,
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-      columnVisibility: {
-        rfqId: hasReadableRfq,
-      },
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const prev = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const patches: PurchaseOrderListParamPatch = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === PURCHASE_ORDER_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const newSortBy = isPurchaseOrderSortByField(column.id) ? column.id : 'createdAt';
-      const newSortOrder = column.desc ? 'desc' : 'asc';
-      updateParams({
-        sortBy: newSortBy === 'createdAt' ? undefined : newSortBy,
-        sortOrder: newSortOrder === 'desc' ? undefined : newSortOrder,
-        page: undefined,
-      });
-    },
+    columnVisibility: { rfqId: hasReadableRfq },
+    getRowId: (po) => po.id,
+    query: purchaseOrdersQuery,
+    rows: listData,
+    state,
+    totalCount: purchaseOrdersQuery.data?.pagination?.totalItems ?? 0,
   });
 
-  const handleClearFilters = () => {
-    setVendorSearch('');
-    clearFilters();
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+
+  const closeCancelDialog = () => {
+    setCancelTarget(null);
+    setCancelReason('');
   };
 
   return (
     <>
       <div className="container-fluid py-7.5">
         <PurchaseOrderListHeader
-          hasActiveFilters={hasActiveFilters}
-          totalCount={totalCount}
-          isLoading={showListInitialLoader}
+          hasActiveFilters={state.hasActiveFilters}
+          isLoading={list.isInitialLoading}
+          totalCount={list.totalCount}
         />
-        <PurchaseOrderListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
+        <PurchaseOrderListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 
-        <Card className="overflow-hidden">
-          <PurchaseOrderListFilters
-            statusFilter={statusFilter}
-            tradeCategoryFilter={tradeCategoryFilter}
-            vendorFilter={vendorFilter}
-            hasActiveFilters={hasActiveFilters}
-            searchInput={searchInput}
-            vendorSearch={vendorSearch}
-            vendorPicker={vendorPicker}
-            tradeCategories={tradeCategories}
-            onSearchChange={handleSearchChange}
-            onVendorSearchChange={setVendorSearch}
-            onUpdateParams={updateParams}
-            onClearFilters={handleClearFilters}
-          />
-          <PurchaseOrderListTable
-            table={table}
-            totalCount={totalCount}
-            isLoading={showListInitialLoader}
-            isRefreshing={isRefreshingList}
-            isError={purchaseOrdersQuery.isError}
-            onRetry={() => void purchaseOrdersQuery.refetch()}
-            onCancel={(po) => {
-              setCancelTarget(po);
-              setCancelReason('');
-            }}
-          />
-        </Card>
+        <DataTable
+          ariaLabel="Purchase orders"
+          className="overflow-hidden"
+          empty={{
+            description: 'Purchase orders will appear here once created.',
+            icon: <ClipboardList className="size-10 text-muted-foreground/50" />,
+            title: 'No purchase orders yet',
+          }}
+          error={{ title: 'Failed to load purchase orders' }}
+          filters={renderFilters}
+          list={list}
+          mobileItem={(po) => <PurchaseOrderMobileCard onCancel={handleCancel} po={po} />}
+          state={state}
+          tableClassNames={{ base: 'min-w-full' }}
+          tableLayout={{ dense: true, width: 'auto' }}
+        />
       </div>
 
       <PurchaseOrderCancelDialog
-        open={!!cancelTarget}
+        isPending={cancelMutation.isPending}
+        open={Boolean(cancelTarget)}
         purchaseOrderLabel={cancelTarget?.poNumber ?? 'this PO'}
         reason={cancelReason}
-        isPending={cancelMutation.isPending}
-        onOpenChange={(open) => {
-          if (!open) {
-            setCancelTarget(null);
-            setCancelReason('');
-          }
-        }}
-        onReasonChange={setCancelReason}
         onConfirm={() => {
           if (!cancelTarget) return;
+
           cancelMutation.mutate(
             { id: cancelTarget.id, reason: cancelReason.trim() },
-            {
-              onSuccess: () => {
-                setCancelTarget(null);
-                setCancelReason('');
-              },
-            }
+            { onSuccess: closeCancelDialog }
           );
         }}
+        onOpenChange={(open) => {
+          if (!open) closeCancelDialog();
+        }}
+        onReasonChange={setCancelReason}
       />
     </>
   );
+}
+
+function withVendorData(
+  picker: ReturnType<typeof usePurchaseOrderVendorFilterOptions>,
+  search: string,
+  onSearchChange: (value: string) => void
+): typeof VENDOR_SHELL {
+  return {
+    ...VENDOR_SHELL,
+    hasNextPage: picker.hasNextPage,
+    isFetchingNextPage: picker.isFetchingNextPage,
+    isLoading: picker.isLoading,
+    onClear: () => onSearchChange(''),
+    onFetchNextPage: picker.fetchNextPage,
+    onSearchChange,
+    options: picker.options,
+    search,
+  };
 }

@@ -147,6 +147,7 @@ export function DataTableFilters<
               );
             }
 
+            // 'hidden' filters deliberately render nothing.
             return null;
           })}
 

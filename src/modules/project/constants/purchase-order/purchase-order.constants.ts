@@ -5,7 +5,6 @@ import type {
 } from '@/modules/project/schemas/purchase-order';
 
 export const PURCHASE_ORDER_DEFAULT_PAGE_SIZE = 25;
-export const PURCHASE_ORDER_SEARCH_DEBOUNCE_MS = 300;
 
 export const PURCHASE_ORDER_SORT_BY_OPTIONS = [
   'poNumber',
@@ -17,16 +16,6 @@ export const PURCHASE_ORDER_SORT_BY_OPTIONS = [
 ] as const;
 
 export type PurchaseOrderSortByField = (typeof PURCHASE_ORDER_SORT_BY_OPTIONS)[number];
-
-export function isPurchaseOrderSortByField(
-  value: string | null
-): value is PurchaseOrderSortByField {
-  return PURCHASE_ORDER_SORT_BY_OPTIONS.includes(value as PurchaseOrderSortByField);
-}
-
-export function isValidPOStatus(value: string | null): value is POStatusName {
-  return value === 'DRAFT' || value === 'ISSUED' || value === 'DELIVERED' || value === 'CANCELLED';
-}
 
 export const PO_FORM_SECTIONS = [
   { id: 'po-details', label: 'PO Details' },
