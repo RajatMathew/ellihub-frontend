@@ -1,13 +1,12 @@
-import { z } from 'zod';
-
 import api from '@/app/api';
 import {
-  lookupSchema,
   lookupListSchema,
+  lookupSchema,
   type Lookup,
   type LookupCreate,
   type LookupUpdate,
 } from '@/modules/lookup/schemas/lookup.schema';
+import { z } from 'zod';
 
 const BASE = '/lookup';
 

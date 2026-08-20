@@ -1,6 +1,4 @@
 import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -20,6 +18,8 @@ import {
   type LookupCreate,
   type LookupUpdate,
 } from '@/modules/lookup/schemas/lookup.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 
 type LookupFormValues = LookupCreate | LookupUpdate;
 

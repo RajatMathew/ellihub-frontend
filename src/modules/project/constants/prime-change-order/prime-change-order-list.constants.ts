@@ -1,7 +1,6 @@
 import type { PrimeChangeOrderStatus } from '@/modules/project/schemas/prime-change-order';
 
 export const PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE = 25;
-export const PRIME_CHANGE_ORDER_SEARCH_DEBOUNCE_MS = 300;
 
 export const PRIME_CHANGE_ORDER_SORT_BY_OPTIONS = [
   'referenceNumber',
@@ -14,14 +13,7 @@ export const PRIME_CHANGE_ORDER_SORT_BY_OPTIONS = [
   'lastSyncedAt',
 ] as const;
 
-export type PrimeChangeOrderSortByField =
-  (typeof PRIME_CHANGE_ORDER_SORT_BY_OPTIONS)[number];
-
-export function isPrimeChangeOrderSortByField(
-  value: string | null,
-): value is PrimeChangeOrderSortByField {
-  return PRIME_CHANGE_ORDER_SORT_BY_OPTIONS.includes(value as PrimeChangeOrderSortByField);
-}
+export type PrimeChangeOrderSortByField = (typeof PRIME_CHANGE_ORDER_SORT_BY_OPTIONS)[number];
 
 export const PRIME_CHANGE_ORDER_STATUS_DOT_CLASS: Record<PrimeChangeOrderStatus, string> = {
   Draft: 'bg-fieldwire-status-draft',
