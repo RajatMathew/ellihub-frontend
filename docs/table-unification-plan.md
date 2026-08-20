@@ -3,7 +3,12 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 16 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 0 (only `DataTable` uses it now). Files is the last one, and it never used it.
+**Status: complete.** All 17 resource lists are on the shared kit — 16 through
+`DataTable`, and `files` at the state layer only. `DataGridSection` has one consumer:
+`DataTable`.
+
+The API contract lives in [`docs/resource-list-tables.md`](./resource-list-tables.md).
+What remains below is history: what was found, what was decided, and why.
 
 ## Legend
 
@@ -130,7 +135,19 @@ around an escape hatch.
 - [x] [activity-log](../src/modules/activity-log/pages/activity-log-list.tsx) — 2 selects + date range · 234 → 205
 - [x] [categories](../src/modules/catalog/pages/categories.tsx) — self-contained, second client-mode table · 145 → 166 page, card deleted
 
-### Last — files
+### Last — files ✅ state layer only
+
+Scoped before writing anything, and it failed the bar for `DataTable`: three render
+hatches (body swaps table ↔ card grid, row-click navigation, error outside the grid)
+plus a header sharing no controls with the schema — a date popover with presets, sort
+via a select, a view toggle, search in the page toolbar. So it stops at `useListState`
+/ `useListTable` and renders its own body, using **zero** hatches.
+
+It still gained the fixes: its sort control had the hardcoded `'updatedAt'`
+default-omission literal, which is Defect A alive in the one file the migration had
+not touched.
+
+Original scoping notes:
 
 Deliberately last. Needs `renderRows`, `onRowClick`, sectioned grouping,
 `motion/react` row animation, a date-range popover and a list/grid toggle at once.
@@ -146,22 +163,23 @@ document it as a sanctioned exception. Bending the kit for one screen is how kit
 
 ---
 
-## Cleanup — after the last migration
+## Cleanup — done
 
-All verified zero-consumer today.
+All verified zero-consumer before deletion. **980 lines removed.**
 
-- [ ] [`section-table.tsx`](../src/core/ui/components/sections/section-table.tsx) — 287 LOC, demo page only
-- [ ] Its exports in [`sections/index.ts`](../src/core/ui/components/sections/index.ts)
-- [ ] Its usage in [`core/ui/pages/page.tsx`](../src/core/ui/pages/page.tsx) — replace with a `DataTable` demo
-- [ ] [`data-grid-table-dnd.tsx`](../src/app/components/ui/data-grid-table-dnd.tsx) — 194 LOC, 0 importers
-- [ ] [`data-grid-table-dnd-rows.tsx`](../src/app/components/ui/data-grid-table-dnd-rows.tsx) — 158 LOC, 0 importers
-- [ ] `expandedContent` in `ColumnMeta` — declared, never read
-- [ ] Duplicate `XListParamPatch` aliases
-- [ ] `useResourceListParams` — once the last consumer moves
-- [ ] `no-restricted-imports` for `@tanstack/react-table` scoped to `src/modules/**`
+- [x] [`section-table.tsx`](../src/core/ui/components/sections/section-table.tsx) — 287 LOC, demo page only
+- [x] Its exports in [`sections/index.ts`](../src/core/ui/components/sections/index.ts)
+- [x] Its usage in [`core/ui/pages/page.tsx`](../src/core/ui/pages/page.tsx) — replace with a `DataTable` demo
+- [x] [`data-grid-table-dnd.tsx`](../src/app/components/ui/data-grid-table-dnd.tsx) — 194 LOC, 0 importers
+- [x] [`data-grid-table-dnd-rows.tsx`](../src/app/components/ui/data-grid-table-dnd-rows.tsx) — 158 LOC, 0 importers
+- [x] `expandedContent` — **kept.** It is declared on `ColumnMeta` *and* read by
+      `DataGridTable`, so it is an unused capability, not dead code. An earlier note
+      here claiming it was never read was wrong.
+- [x] Duplicate `XListParamPatch` aliases
+- [x] `useResourceListParams` — its last consumer moved to `useListState`
+- [x] `no-restricted-imports` for `@tanstack/react-table` scoped to `src/modules/**`
       (must still allow `type { ColumnDef }` until column factories land)
-- [ ] Rewrite [`table-card-header-pattern.md`](./table-card-header-pattern.md) — it
-      documents the pattern this kit replaces
+- [x] Rewrote the pattern doc as [`resource-list-tables.md`](./resource-list-tables.md)
 
 ---
 
@@ -204,8 +222,8 @@ It is a matrix editor, not a list. Share only `TableCardHeader` and the filter s
 
 Hand-rolled 6-column CSS grid, no TanStack, most-used screen in the app.
 
-- [ ] **Decide:** port to the kit (uniform, loses the custom row design) or keep as
-      a deliberate card list. Do not leave undecided.
+- [ ] **Still undecided.** Port to the kit (uniform, loses the custom row design) or
+      keep as a deliberate card list. It was never in the 17.
 
 ---
 
