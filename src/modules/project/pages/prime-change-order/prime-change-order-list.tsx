@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import {
   Alert,
   AlertContent,
@@ -7,167 +6,131 @@ import {
   AlertIcon,
   AlertTitle,
 } from '@/app/components/ui/alert';
-import { Card } from '@/app/components/ui/card';
+import { Input } from '@/app/components/ui/input';
 import {
-  PrimeChangeOrderListFilters,
   PrimeChangeOrderListHeader,
-  PrimeChangeOrderListTable,
   PrimeChangeOrderNotConnected,
   PrimeChangeOrderStatusSummary,
   usePrimeChangeOrderListColumns,
 } from '@/modules/project/components/prime-change-order';
 import {
-  isPrimeChangeOrderSortByField,
   PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+  PRIME_CHANGE_ORDER_SORT_BY_OPTIONS,
 } from '@/modules/project/constants/prime-change-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
-  usePrimeChangeOrderListParams,
   usePrimeChangeOrdersQuery,
   usePrimeChangeOrderStatusSummaryQuery,
   usePrimeChangeOrderSyncStatusQuery,
   useSyncPrimeChangeOrdersMutation,
-  type PrimeChangeOrderListParamPatch,
 } from '@/modules/project/hooks/prime-change-order';
-import type { ListPrimeChangeOrderParams } from '@/modules/project/schemas/prime-change-order';
 import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { AlertCircle } from 'lucide-react';
+  PRIME_CHANGE_ORDER_STATUSES,
+  type ListPrimeChangeOrderParams,
+} from '@/modules/project/schemas/prime-change-order';
+import { AlertCircle, DatabaseZap, ListFilterPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+
+const costInputClassName =
+  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 placeholder:text-table-card-header-foreground/75 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-32';
+
+/**
+ * Min/max cost use `f.custom` rather than a dedicated filter kind: this is the
+ * only list in the app with a numeric range. Promote it to `f.numberRange` if a
+ * second one appears.
+ */
+function costBoundFilter(key: 'totalCostMin' | 'totalCostMax', label: string) {
+  return f.custom({
+    key,
+    render: ({ value, setValue }) => (
+      <Input
+        aria-label={label}
+        className={costInputClassName}
+        min={0}
+        placeholder={label}
+        step="0.01"
+        type="number"
+        value={value ?? ''}
+        onChange={(event) => setValue(event.target.value || undefined)}
+      />
+    ),
+  });
+}
+
+const PRIME_CHANGE_ORDER_FILTERS = [
+  f.search({ className: 'sm:w-64', placeholder: 'Search change orders...' }),
+  f.select({
+    icon: ListFilterPlus,
+    key: 'statusName',
+    options: PRIME_CHANGE_ORDER_STATUSES.map((status) => ({ label: status, value: status })),
+    placeholder: 'All Statuses',
+  }),
+  costBoundFilter('totalCostMin', 'Min cost'),
+  costBoundFilter('totalCostMax', 'Max cost'),
+];
 
 export function PrimeChangeOrderListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
-  const {
-    page,
-    size,
-    searchQuery,
-    statusFilter,
-    totalCostMin,
-    totalCostMax,
-    sortBy,
-    sortOrder,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = usePrimeChangeOrderListParams();
 
-  const filters: ListPrimeChangeOrderParams = {
+  const state = useListState({
+    filters: PRIME_CHANGE_ORDER_FILTERS,
+    pageSize: PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+    sort: {
+      by: 'fieldwireUpdatedAt',
+      fields: PRIME_CHANGE_ORDER_SORT_BY_OPTIONS,
+      order: 'desc',
+    },
+  });
+
+  const primeChangeOrdersQuery = usePrimeChangeOrdersQuery({
+    ...state.apiParams,
     projectId,
-    page,
-    size,
-    sortBy,
-    sortOrder,
-    search: searchQuery || undefined,
-    statusName: statusFilter,
-    totalCostMin,
-    totalCostMax,
-  };
-
-  const hasActiveFilters = !!searchQuery || !!statusFilter || !!totalCostMin || !!totalCostMax;
-  const primeChangeOrdersQuery = usePrimeChangeOrdersQuery(filters);
+  } as ListPrimeChangeOrderParams);
   const { data: projectDetail } = useProjectDetailQuery(projectId);
   const statusSummaryQuery = usePrimeChangeOrderStatusSummaryQuery(projectId);
   const syncStatusQuery = usePrimeChangeOrderSyncStatusQuery(projectId);
   const syncMutation = useSyncPrimeChangeOrdersMutation();
-  const hasListData = primeChangeOrdersQuery.data !== undefined;
+
+  const columns = usePrimeChangeOrderListColumns();
+
+  const syncStatusQueryLoading = syncStatusQuery.isLoading;
+
+  const list = useListTable({
+    columns,
+    extraLoading: syncStatusQueryLoading,
+    getRowId: (changeOrder) => changeOrder.id,
+    query: primeChangeOrdersQuery,
+    rows: primeChangeOrdersQuery.data?.data ?? [],
+    state,
+    totalCount: primeChangeOrdersQuery.data?.pagination?.totalItems ?? 0,
+  });
+
   const hasStatusSummaryData = statusSummaryQuery.data !== undefined;
-  const showListInitialLoader =
-    syncStatusQuery.isLoading ||
-    primeChangeOrdersQuery.isLoading ||
-    (primeChangeOrdersQuery.isFetching && !hasListData);
   const showStatusSummaryInitialLoader =
     statusSummaryQuery.isLoading || (statusSummaryQuery.isFetching && !hasStatusSummaryData);
-  const isRefreshingList =
-    hasListData && primeChangeOrdersQuery.isFetching && !showListInitialLoader;
-  const listData = useMemo(
-    () => primeChangeOrdersQuery.data?.data ?? [],
-    [primeChangeOrdersQuery.data?.data]
-  );
-  const totalCount = primeChangeOrdersQuery.data?.pagination?.totalItems ?? 0;
+
   const syncStatus = syncStatusQuery.data;
-  const isMapped = !!syncStatus?.fieldwireProjectId;
+  const isMapped = Boolean(syncStatus?.fieldwireProjectId);
   const syncDisabled = !isMapped || syncMutation.isPending || syncStatusQuery.isLoading;
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
-  const columns = usePrimeChangeOrderListColumns();
-  const pageCount = Math.max(1, Math.ceil(totalCount / size));
-
-  const table = useReactTable({
-    data: listData,
-    columns,
-    pageCount,
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const prev = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const patches: PrimeChangeOrderListParamPatch = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === PRIME_CHANGE_ORDER_DEFAULT_PAGE_SIZE
-            ? undefined
-            : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isPrimeChangeOrderSortByField(column.id)
-        ? column.id
-        : 'fieldwireUpdatedAt';
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-      updateParams({
-        sortBy: nextSortBy === 'fieldwireUpdatedAt' ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === 'desc' ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
-  });
 
   return (
     <div className="container-fluid py-7.5">
       <div>
         <PrimeChangeOrderListHeader
-          projectId={projectId}
-          totalCount={totalCount}
-          hasActiveFilters={hasActiveFilters}
-          isLoading={showListInitialLoader}
-          isMapped={isMapped}
           fieldwireProjectName={projectDetail?.fieldwireProjectName}
-          syncStatus={syncStatus}
+          hasActiveFilters={state.hasActiveFilters}
+          isLoading={list.isInitialLoading}
+          isMapped={isMapped}
           isSyncDisabled={syncDisabled}
           isSyncPending={syncMutation.isPending}
+          projectId={projectId}
+          syncStatus={syncStatus}
+          totalCount={list.totalCount}
           onSync={() => syncMutation.mutate(projectId)}
         />
 
         {syncStatus?.syncStatus.lastSyncError && (
-          <Alert variant="destructive" appearance="light" className="mb-5">
+          <Alert appearance="light" className="mb-5" variant="destructive">
             <AlertIcon>
               <AlertCircle className="size-5" />
             </AlertIcon>
@@ -179,42 +142,36 @@ export function PrimeChangeOrderListPage() {
         )}
 
         <PrimeChangeOrderStatusSummary
-          statusFilter={statusFilter}
-          statusSummary={statusSummaryQuery.data}
           isLoading={showStatusSummaryInitialLoader}
-          onStatusChange={(statusName) =>
-            updateParams({
-              statusName,
-              page: undefined,
-            })
-          }
+          statusFilter={state.values.statusName}
+          statusSummary={statusSummaryQuery.data}
+          onStatusChange={(statusName) => state.setFilterValue('statusName', statusName)}
         />
 
-        <Card className="overflow-hidden">
-          <PrimeChangeOrderListFilters
-            searchInput={searchInput}
-            statusFilter={statusFilter}
-            totalCostMin={totalCostMin}
-            totalCostMax={totalCostMax}
-            hasActiveFilters={hasActiveFilters}
-            onSearchChange={handleSearchChange}
-            onUpdateParams={updateParams}
-            onClearFilters={clearFilters}
-          />
-
-          {!isMapped && !syncStatusQuery.isLoading ? (
-            <PrimeChangeOrderNotConnected projectId={projectId} />
-          ) : (
-            <PrimeChangeOrderListTable
-              table={table}
-              totalCount={totalCount}
-              isLoading={showListInitialLoader}
-              isRefreshing={isRefreshingList}
-              isError={primeChangeOrdersQuery.isError}
-              onRetry={() => void primeChangeOrdersQuery.refetch()}
-            />
-          )}
-        </Card>
+        <DataTable
+          ariaLabel="Prime change orders"
+          className="overflow-hidden"
+          empty={{
+            description: 'Sync this project to pull Prime Change Orders from Fieldwire.',
+            icon: <DatabaseZap className="size-10 text-muted-foreground/50" />,
+            title: 'No Fieldwire change orders',
+          }}
+          error={{ title: 'Failed to load change orders' }}
+          list={list}
+          replaceBody={
+            !isMapped && !syncStatusQuery.isLoading ? (
+              <PrimeChangeOrderNotConnected projectId={projectId} />
+            ) : undefined
+          }
+          state={state}
+          tableClassNames={{ base: 'min-w-full' }}
+          tableLayout={{ width: 'auto' }}
+          title={
+            <span className="flex items-center font-mono text-xs font-semibold uppercase tracking-[0.08em] !text-table-card-header-foreground">
+              Prime Change Orders
+            </span>
+          }
+        />
       </div>
     </div>
   );

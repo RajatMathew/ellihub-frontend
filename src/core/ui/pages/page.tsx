@@ -14,9 +14,7 @@ import {
   InfoList,
   PageHeader,
   SectionHeader,
-  SectionTable,
   StatsRow,
-  type SectionTableColumn,
 } from '@core/ui/components/sections';
 
 function DirectoryPage() {
@@ -217,13 +215,11 @@ function DirectoryPage() {
 
               {/* PROJECTS Tab */}
               <TabsContent value="projects" className="mt-6 space-y-0">
-                <SectionTable
-                  title="Project Assignments"
-                  columns={projectColumns}
-                  data={projectData}
-                  getRowKey={(row) => row.jobNumber}
-                  searchPlaceholder="Search projects..."
-                />
+                <div className="rounded-sm border border-gray-200 bg-white p-8 shadow-sm">
+                  <p className="text-[13px] text-gray-500">
+                    Resource lists use the shared data-table kit. See src/app/components/data-table.
+                  </p>
+                </div>
               </TabsContent>
 
               <TabsContent value="purchase-orders" className="mt-6">
@@ -415,234 +411,8 @@ function DirectoryPage() {
 
 /* ---- Status Badge helper ---- */
 
-function StatusBadge({
-  label,
-  variant,
-}: {
-  label: string;
-  variant: 'success' | 'warning' | 'danger' | 'info' | 'default';
-}) {
-  const styles = {
-    success:
-      'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400',
-    warning: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400',
-    danger: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400',
-    info: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400',
-    default: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
-  };
-
-  return (
-    <span
-      className={`inline-block rounded-sm border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase ${styles[variant]}`}
-    >
-      {label}
-    </span>
-  );
-}
-
 /* ---- Helpers ---- */
 
-function getPaymentVariant(status: string): 'success' | 'warning' | 'danger' | 'info' | 'default' {
-  switch (status) {
-    case 'FULLY PAID':
-      return 'success';
-    case 'ONGOING':
-      return 'warning';
-    case 'PAID':
-      return 'success';
-    default:
-      return 'default';
-  }
-}
-
-function getRetainageVariant(
-  status: string
-): 'success' | 'warning' | 'danger' | 'info' | 'default' {
-  switch (status) {
-    case 'PAID':
-      return 'success';
-    case 'ONGOING':
-      return 'warning';
-    case 'RETAINAGE PENDING':
-      return 'danger';
-    default:
-      return 'default';
-  }
-}
-
 /* ---- Project Data ---- */
-
-const projectData = [
-  {
-    jobNumber: '14120',
-    name: 'P.S. 397B',
-    gc: 'Navillus',
-    manager: 'John Martinez',
-    terms: 'NET 30',
-    payment: 'ONGOING',
-    retainage: 'ONGOING',
-    retainageHeld: '$15,420',
-    value: '$154,200',
-  },
-  {
-    jobNumber: '14121',
-    name: 'P.S. 158Q',
-    gc: 'MPCC',
-    manager: 'Sarah Wilson',
-    terms: 'NET 45',
-    payment: 'ONGOING',
-    retainage: 'RETAINAGE PENDING',
-    retainageHeld: '$8,500',
-    value: '$85,000',
-  },
-  {
-    jobNumber: '14122',
-    name: 'I.S. 238K',
-    gc: 'Triton',
-    manager: 'Mike Ross',
-    terms: 'NET 30',
-    payment: 'FULLY PAID',
-    retainage: 'PAID',
-    retainageHeld: '$0',
-    value: '$125,000',
-  },
-  {
-    jobNumber: '14125',
-    name: 'HIGH SCHOOL 455',
-    gc: 'Skanska',
-    manager: 'David Chen',
-    terms: 'N/A',
-    payment: 'ACTIVE',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14126',
-    name: 'J.H.S. 189',
-    gc: 'Judlau',
-    manager: 'Robert Fox',
-    terms: 'N/A',
-    payment: 'ACTIVE',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14127',
-    name: 'P.S. 122M',
-    gc: 'Turner',
-    manager: 'Amanda Lee',
-    terms: 'N/A',
-    payment: 'ACTIVE',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14128',
-    name: 'P.S. 135R',
-    gc: 'Gilbane',
-    manager: 'Steve Wright',
-    terms: 'N/A',
-    payment: 'TENDERING',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14129',
-    name: 'I.S. 318K',
-    gc: 'Lendlease',
-    manager: 'Jessica Brown',
-    terms: 'N/A',
-    payment: 'ACTIVE',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14130',
-    name: 'P.S. 201Q',
-    gc: 'Plaza',
-    manager: 'Kevin Hart',
-    terms: 'N/A',
-    payment: 'PROSPECT',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-  {
-    jobNumber: '14131',
-    name: 'BANCROFT HALL',
-    gc: 'Pavarini',
-    manager: 'Chris Evans',
-    terms: 'N/A',
-    payment: 'TENDERING',
-    retainage: 'ONGOING',
-    retainageHeld: '$0',
-    value: '$0',
-  },
-];
-
-/* ---- Project Columns ---- */
-
-type ProjectRow = (typeof projectData)[number];
-
-const projectColumns: SectionTableColumn<ProjectRow>[] = [
-  {
-    key: 'jobNumber',
-    header: 'Job #',
-    render: (row) => <span className="text-[13px] text-gray-500">{row.jobNumber}</span>,
-  },
-  {
-    key: 'name',
-    header: 'Project Name',
-    textOverflow: 'truncate',
-    tooltip: (row) => row.name,
-    render: (row) => <span className="text-[13px] font-bold text-gray-900">{row.name}</span>,
-  },
-  {
-    key: 'gc',
-    header: 'GC',
-    render: (row) => <span className="text-[13px] text-gray-700">{row.gc}</span>,
-  },
-  {
-    key: 'manager',
-    header: 'Manager',
-    render: (row) => <span className="text-[13px] text-gray-700">{row.manager}</span>,
-  },
-  {
-    key: 'terms',
-    header: 'Terms',
-    render: (row) => <span className="text-[13px] font-medium text-gray-700">{row.terms}</span>,
-  },
-  {
-    key: 'payment',
-    header: 'Payment',
-    render: (row) => <StatusBadge label={row.payment} variant={getPaymentVariant(row.payment)} />,
-  },
-  {
-    key: 'retainage',
-    header: 'Retainage',
-    render: (row) => (
-      <StatusBadge label={row.retainage} variant={getRetainageVariant(row.retainage)} />
-    ),
-  },
-  {
-    key: 'retainageHeld',
-    header: 'Retainage Held',
-    align: 'right',
-    render: (row) => (
-      <span className="text-[13px] font-bold text-orange-500">{row.retainageHeld}</span>
-    ),
-  },
-  {
-    key: 'value',
-    header: 'Value',
-    align: 'right',
-    render: (row) => <span className="text-[13px] font-bold text-gray-900">{row.value}</span>,
-  },
-];
 
 export default DirectoryPage;

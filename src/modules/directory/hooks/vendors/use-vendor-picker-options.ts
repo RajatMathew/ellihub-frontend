@@ -71,7 +71,7 @@ export function useVendorPickerOptions({
       query.data?.pages.flatMap((page) =>
         page.data
           .map(toVendorPickerOption)
-          .filter((option) => !excluded.has(option.value) || selectedIds.has(option.value)),
+          .filter((option) => !excluded.has(option.value) || selectedIds.has(option.value))
       ) ?? [];
 
     return dedupeOptions([...fetched, ...selectedOptions]);

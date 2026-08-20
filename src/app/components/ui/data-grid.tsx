@@ -9,7 +9,6 @@ import type { ColumnFiltersState, RowData, SortingState, Table } from '@tanstack
 import { cn } from '@app/lib/utils';
 
 declare module '@tanstack/react-table' {
-   
   interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
     headerClassName?: string;
@@ -58,6 +57,8 @@ export interface DataGridProps<TData extends object> {
   className?: string;
   table?: Table<TData>;
   recordCount: number;
+  /** Accessible name for the rendered <table>. Required by rules/accessibility.md. */
+  tableAriaLabel?: string;
   children?: ReactNode;
   onRowClick?: (row: TData) => void;
   isLoading?: boolean;

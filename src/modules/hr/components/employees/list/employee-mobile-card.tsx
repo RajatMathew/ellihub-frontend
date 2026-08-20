@@ -1,96 +1,15 @@
 import type { ReactNode } from 'react';
 
-import { DataGridSection } from '@/app/components/data-grid-section';
-import {
-  TableCardHeader,
-  TableCardHeaderClearButton,
-  TableCardHeaderSearch,
-  TableCardHeaderToolbar,
-} from '@/app/components/table-card-header';
-import { Button } from '@/app/components/ui/button';
-import { Card } from '@/app/components/ui/card';
 import { formatDate, getInitials } from '@/app/lib/helpers';
 import {
   EmployeeActionsCell,
   EmployeeStatusCell,
 } from '@/modules/hr/components/employees/list/employee-list-column-cells';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
-import type { Table } from '@tanstack/react-table';
-import { Building2, CalendarDays, Mail, Phone, Plus, Users } from 'lucide-react';
+import { Building2, CalendarDays, Mail, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface EmployeesTableCardProps {
-  table: Table<Employee>;
-  totalCount: number;
-  isLoading: boolean;
-  isRefreshing?: boolean;
-  isError: boolean;
-  isRefetching: boolean;
-  searchInput: string;
-  searchQuery: string;
-  onDelete: (employee: { id: string; name: string }) => void;
-  onSearchChange: (value: string) => void;
-  onClearSearch: () => void;
-  onRetry: () => void;
-}
-
-export function EmployeesTableCard({
-  table,
-  totalCount,
-  isLoading,
-  isRefreshing,
-  isError,
-  searchInput,
-  searchQuery,
-  onDelete,
-  onSearchChange,
-  onClearSearch,
-  onRetry,
-}: EmployeesTableCardProps) {
-  return (
-    <Card className="min-w-0 max-w-full overflow-hidden">
-      <TableCardHeader
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            All Employees
-          </span>
-        }
-        actions={
-          <TableCardHeaderToolbar>
-            <TableCardHeaderSearch
-              value={searchInput}
-              placeholder="Search employees..."
-              onChange={onSearchChange}
-              className="min-w-0 sm:w-72"
-            />
-            <TableCardHeaderClearButton active={Boolean(searchQuery)} onClick={onClearSearch} />
-          </TableCardHeaderToolbar>
-        }
-      />
-
-      <DataGridSection
-        table={table}
-        totalCount={totalCount}
-        isLoading={isLoading || Boolean(isRefreshing)}
-        refreshIndicator="none"
-        isError={isError}
-        errorTitle="Failed to load employees."
-        emptyIcon={<Users className="size-10 text-muted-foreground/40" />}
-        emptyTitle="No employees found"
-        emptyDescription="Add your first employee to start managing the workforce."
-        onRetry={onRetry}
-        tableLayout={{
-          width: 'fixed',
-        }}
-        mobileBreakpoint="xl"
-        mobileItem={(employee) => <EmployeeMobileCard employee={employee} onDelete={onDelete} />}
-        emptyAction={<NewEmployeeButton />}
-      />
-    </Card>
-  );
-}
-
-function EmployeeMobileCard({
+export function EmployeeMobileCard({
   employee,
   onDelete,
 }: {
@@ -179,16 +98,5 @@ function EmployeeMobileMetric({
         content
       )}
     </div>
-  );
-}
-
-function NewEmployeeButton(): ReactNode {
-  return (
-    <Button variant="outline" size="sm" className="mt-4" asChild>
-      <Link to="create">
-        <Plus className="size-4" />
-        New Employee
-      </Link>
-    </Button>
   );
 }

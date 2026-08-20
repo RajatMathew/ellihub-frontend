@@ -97,6 +97,8 @@ export function FilesExplorer({
     viewMode,
     dateFrom,
     dateTo,
+    setSort,
+    setDateRange,
     clearFilters,
   } = listParams;
   const { rootFolder, currentFolderId, folderDetail, allChildren, isLoading, isError, refetch } =
@@ -148,7 +150,7 @@ export function FilesExplorer({
   const totalCount = isSearchActive
     ? (fileSearchQuery.data?.pagination.totalItems ?? 0)
     : folderDisplayData.totalCount;
-  const hasActiveFilters = isSearchActive || !!dateFrom || !!dateTo;
+  const hasActiveFilters = isSearchActive || listParams.hasActiveFilters;
   const isDataLoading = isLoading || (isSearchActive && fileSearchQuery.isLoading);
   const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
   const navigationRootId = rootFolderId ?? rootFolder?.id;
@@ -251,17 +253,30 @@ export function FilesExplorer({
     [handleFolderClick]
   );
 
+  // Loading and error are combined from the folder and search queries, and the
+  // error state is rendered outside the grid, so the kit only ever needs the
+  // table instance back.
+  const tableQueryStatus = useMemo(
+    () => ({
+      isError: isDataError,
+      isFetching: isDataLoading,
+      isLoading: isDataLoading,
+      refetch: () => {
+        void refetch();
+        if (isSearchActive) void fileSearchQuery.refetch();
+      },
+    }),
+    [fileSearchQuery, isDataError, isDataLoading, isSearchActive, refetch]
+  );
+
   const { table, columns } = useFilesTable({
     sectionedData,
     totalCount,
-    page,
-    size,
-    sortBy,
-    sortOrder,
+    state: listParams,
+    query: tableQueryStatus,
     showLocation: showResultLocation,
     locationRootId: navigationRootId,
     locationRootLabel: rootLabel,
-    updateParams,
     onPreview: setPreviewItem,
     onRename: setRenameItem,
     onDelete: setDeleteItem,
@@ -307,14 +322,10 @@ export function FilesExplorer({
           hasActiveFilters={hasActiveFilters}
           dateFrom={dateFrom}
           dateTo={dateTo}
-          onSortChange={(value) =>
-            updateParams({ sortBy: value === 'updatedAt' ? undefined : value, page: undefined })
-          }
+          onSortChange={(value) => setSort(value, sortOrder)}
           onViewChange={(view) => updateParams({ view: view === 'list' ? undefined : view })}
           onClearFilters={clearFilters}
-          onDateRangeChange={(from, to) =>
-            updateParams({ dateFrom: from, dateTo: to, page: undefined })
-          }
+          onDateRangeChange={setDateRange}
         />
 
         {isDataError ? (

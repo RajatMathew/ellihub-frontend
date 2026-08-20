@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { LookupFormDialog } from '@/modules/lookup/components/lookup-form-dialog';
-import { LookupTableCard } from '@/modules/lookup/components/lookup-table-card';
+import { useLookupListColumns } from '@/modules/lookup/components/lookup-list-columns';
 import {
   useCreateLookupMutation,
   useDeleteLookupMutation,
@@ -11,118 +13,145 @@ import {
   useUpdateLookupMutation,
 } from '@/modules/lookup/hooks';
 import type { Lookup, LookupCreate, LookupUpdate } from '@/modules/lookup/schemas/lookup.schema';
-import { Plus } from 'lucide-react';
+import { ListFilterPlus, Plus, Tag } from 'lucide-react';
+
+const LOOKUP_SORT_BY_OPTIONS = ['type', 'label'] as const;
+
+function matchesLookupSearch(lookup: Lookup, query: string) {
+  const needle = query.toLowerCase();
+
+  return (
+    lookup.type.toLowerCase().includes(needle) ||
+    (lookup.label ?? '').toLowerCase().includes(needle)
+  );
+}
 
 export function LookupListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLookup, setEditingLookup] = useState<Lookup | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lookup | null>(null);
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
-  /* ---- Queries & Mutations ---- */
   const lookupsQuery = useLookupsQuery();
   const createMutation = useCreateLookupMutation();
   const updateMutation = useUpdateLookupMutation();
   const deleteMutation = useDeleteLookupMutation();
-  const lookups = lookupsQuery.data ?? [];
-  const hasLookupsData = lookupsQuery.data !== undefined;
-  const showLookupsInitialLoader =
-    lookupsQuery.isLoading || (lookupsQuery.isFetching && !hasLookupsData);
-  const isRefreshingLookups =
-    hasLookupsData && lookupsQuery.isFetching && !showLookupsInitialLoader;
+
+  const lookups = useMemo(() => lookupsQuery.data ?? [], [lookupsQuery.data]);
+  const allTypes = useMemo(
+    () => [...new Set(lookups.map((lookup) => lookup.type))].sort(),
+    [lookups]
+  );
+
+  // The whole collection arrives in one query, so both filters run in memory.
+  // Options depend on the data, so the schema is memoized rather than hoisted.
+  const filters = useMemo(
+    () => [
+      f.select<'type', string, Lookup>({
+        clientPredicate: (lookup, value) => lookup.type === value,
+        icon: ListFilterPlus,
+        key: 'type',
+        options: allTypes.map((type) => ({ label: type, value: type })),
+        placeholder: 'All Types',
+      }),
+      f.search<Lookup>({
+        clientPredicate: matchesLookupSearch,
+        placeholder: 'Search lookups...',
+      }),
+    ],
+    [allTypes]
+  );
+
+  const state = useListState({
+    filters,
+    sort: { by: 'type', fields: LOOKUP_SORT_BY_OPTIONS, order: 'asc' },
+  });
+
+  const columns = useLookupListColumns({
+    onDelete: setDeleteTarget,
+    onEdit: (lookup) => {
+      setEditingLookup(lookup);
+      setDialogOpen(true);
+    },
+  });
+
+  const list = useListTable({
+    columns,
+    getRowId: (lookup) => lookup.id,
+    mode: 'client',
+    query: lookupsQuery,
+    rows: lookups,
+    state,
+  });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const typeFilter = state.values.type;
 
-  /* ---- Derived: unique types (sorted) ---- */
-  const allTypes = useMemo(() => {
-    const types = [...new Set(lookups.map((l) => l.type))];
-    return types.sort();
-  }, [lookups]);
-
-  /* ---- Filtering: by type first, then by search ---- */
-  const filteredLookups = useMemo(() => {
-    let result = lookups;
-    if (typeFilter) {
-      result = result.filter((l) => l.type === typeFilter);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (l) => l.type.toLowerCase().includes(q) || (l.label ?? '').toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [lookups, typeFilter, search]);
-
-  /* ---- Handlers ---- */
   const handleSubmit = (data: LookupCreate | LookupUpdate) => {
+    const onSuccess = () => {
+      setDialogOpen(false);
+      setEditingLookup(null);
+    };
+
     if ('id' in data && data.id) {
-      updateMutation.mutate(data as LookupUpdate, {
-        onSuccess: () => {
-          setDialogOpen(false);
-          setEditingLookup(null);
-        },
-      });
-    } else {
-      createMutation.mutate(data as LookupCreate, {
-        onSuccess: () => {
-          setDialogOpen(false);
-          setEditingLookup(null);
-        },
-      });
+      updateMutation.mutate(data as LookupUpdate, { onSuccess });
+      return;
     }
-  };
 
-  const handleEdit = (lookup: Lookup) => {
-    setEditingLookup(lookup);
-    setDialogOpen(true);
-  };
-
-  const openCreate = () => {
-    setEditingLookup(null);
-    setDialogOpen(true);
+    createMutation.mutate(data as LookupCreate, { onSuccess });
   };
 
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Lookups"
-        totalCount={filteredLookups.length}
-        hasActiveFilters={!!search || !!typeFilter}
-        isLoading={showLookupsInitialLoader}
-        addLabel="Add Lookup"
         addIcon={<Plus className="size-4" />}
-        onAdd={openCreate}
+        addLabel="Add Lookup"
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        title="Lookups"
+        totalCount={list.totalCount}
+        onAdd={() => {
+          setEditingLookup(null);
+          setDialogOpen(true);
+        }}
       />
 
-      <LookupTableCard
-        lookups={filteredLookups}
-        allTypes={allTypes}
-        typeFilter={typeFilter}
-        isLoading={showLookupsInitialLoader}
-        isRefreshing={isRefreshingLookups}
-        isError={lookupsQuery.isError}
-        refetch={lookupsQuery.refetch}
-        search={search}
-        onSearchChange={setSearch}
-        onTypeChange={setTypeFilter}
-        onEdit={handleEdit}
-        onDelete={setDeleteTarget}
+      <DataTable
+        ariaLabel="Lookups"
+        empty={{
+          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          title: 'No lookups found',
+        }}
+        error={{
+          description: 'There was an error fetching the data. Please try again.',
+          title: 'Failed to load lookups',
+        }}
+        list={list}
+        state={state}
+        title={
+          list.isInitialLoading ? (
+            <span className="flex items-center">
+              <Skeleton className="h-4 w-40" />
+            </span>
+          ) : (
+            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+              {typeFilter
+                ? `${typeFilter} (${list.totalCount})`
+                : `All Lookups (${list.totalCount})`}
+            </span>
+          )
+        }
       />
 
       <LookupFormDialog
+        isSubmitting={isSubmitting}
+        lookup={editingLookup}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        lookup={editingLookup}
         onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
       />
 
       <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Lookup"
+        confirmLabel="Delete"
         description={
           <>
             This will permanently delete{' '}
@@ -130,13 +159,16 @@ export function LookupListPage() {
             lookup value may need to be updated.
           </>
         }
-        confirmLabel="Delete"
-        onConfirm={() => {
-          if (deleteTarget)
-            deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
-        }}
-        variant="destructive"
         isPending={deleteMutation.isPending}
+        open={Boolean(deleteTarget)}
+        title="Delete Lookup"
+        variant="destructive"
+        onConfirm={() => {
+          if (!deleteTarget) return;
+
+          deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
       />
     </div>
   );

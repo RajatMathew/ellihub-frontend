@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
@@ -8,14 +9,15 @@ import { useAccess } from '@/app/contexts/access-context';
 import { MemberFormDialog } from '@/modules/settings/components/member-form-dialog';
 import { MemberResetPasswordDialog } from '@/modules/settings/components/member-reset-password-dialog';
 import { MemberSuspendDialog } from '@/modules/settings/components/member-suspend-dialog';
-import { MembersTableCard } from '@/modules/settings/components/members-table-card';
 import { useMemberListColumns } from '@/modules/settings/components/use-member-list-columns';
 import {
-  isMembersSortByField,
+  MEMBER_EMAIL_STATUS_LABELS,
   MEMBER_ROLE_LABELS,
+  MEMBER_STATUS_LABELS,
   MEMBERS_DEFAULT_PAGE_SIZE,
   MEMBERS_DEFAULT_SORT_BY,
   MEMBERS_DEFAULT_SORT_ORDER,
+  MEMBERS_SORT_BY_FIELDS,
 } from '@/modules/settings/constants/members-list.constants';
 import {
   useCreateMemberMutation,
@@ -28,20 +30,42 @@ import {
   useUpdateMemberMutation,
   useUpdateMemberRoleMutation,
 } from '@/modules/settings/hooks/members.hooks';
-import { useMemberListParams } from '@/modules/settings/hooks/use-member-list-params';
-import type { MemberRole, MemberUser } from '@/modules/settings/schemas/members.schema';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import type {
+  MemberRole,
+  MembersListParams,
+  MemberUser,
+} from '@/modules/settings/schemas/members.schema';
+import { ListFilterPlus, Plus, UserRound } from 'lucide-react';
+
+const toOptions = (labels: Record<string, string>) =>
+  Object.entries(labels).map(([value, label]) => ({ label, value }));
+
+const MEMBER_FILTERS = [
+  f.search({ className: 'sm:w-72', placeholder: 'Search members...' }),
+  f.select({
+    className: 'sm:w-36',
+    icon: ListFilterPlus,
+    key: 'role',
+    options: toOptions(MEMBER_ROLE_LABELS),
+    placeholder: 'All Roles',
+  }),
+  f.select({
+    className: 'sm:w-40',
+    key: 'status',
+    options: toOptions(MEMBER_STATUS_LABELS),
+    placeholder: 'All Statuses',
+  }),
+  f.select({
+    className: 'sm:w-40',
+    key: 'emailStatus',
+    options: toOptions(MEMBER_EMAIL_STATUS_LABELS),
+    placeholder: 'All Emails',
+  }),
+];
 
 export default function MembersPage() {
   const { access, isAdmin, isLoading: isAccessLoading } = useAccess();
   const currentUserId = access?.userId;
-  const listParams = useMemberListParams();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberUser | null>(null);
@@ -57,7 +81,17 @@ export default function MembersPage() {
     enabled: boolean;
   } | null>(null);
 
-  const membersQuery = useMembersQuery(listParams.params, isAdmin);
+  const state = useListState({
+    filters: MEMBER_FILTERS,
+    pageSize: MEMBERS_DEFAULT_PAGE_SIZE,
+    sort: {
+      by: MEMBERS_DEFAULT_SORT_BY,
+      fields: MEMBERS_SORT_BY_FIELDS,
+      order: MEMBERS_DEFAULT_SORT_ORDER,
+    },
+  });
+
+  const membersQuery = useMembersQuery(state.apiParams as MembersListParams, isAdmin);
   const createMutation = useCreateMemberMutation();
   const updateMutation = useUpdateMemberMutation();
   const updateRoleMutation = useUpdateMemberRoleMutation();
@@ -67,87 +101,31 @@ export default function MembersPage() {
   const unsuspendMutation = useUnsuspendMemberMutation();
   const removeMutation = useRemoveMemberMutation();
 
-  const members = membersQuery.data?.data ?? [];
-  const totalCount = membersQuery.data?.pagination.totalItems ?? 0;
-  const hasMembersData = membersQuery.data !== undefined;
-  const showMembersInitialLoader =
-    membersQuery.isLoading || (membersQuery.isFetching && !hasMembersData);
-  const isRefreshingMembers =
-    hasMembersData && membersQuery.isFetching && !showMembersInitialLoader;
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
-  const hasActiveFilters = Boolean(
-    listParams.searchQuery ||
-    listParams.roleFilter ||
-    listParams.statusFilter ||
-    listParams.emailStatusFilter
-  );
-
   const columns = useMemberListColumns({
     currentUserId,
+    onCheckingRegisterAccessChange: (member, enabled) =>
+      setCheckingRegisterAccessTarget({ enabled, member }),
     onEdit: (member) => {
       setEditingMember(member);
       setDialogOpen(true);
     },
-    onRoleChange: (member, role) => setRoleTarget({ member, role }),
-    onCheckingRegisterAccessChange: (member, enabled) =>
-      setCheckingRegisterAccessTarget({ member, enabled }),
+    onRemove: setRemoveTarget,
     onResetPassword: setResetPasswordTarget,
+    onRoleChange: (member, role) => setRoleTarget({ member, role }),
     onSuspend: setSuspendTarget,
     onUnsuspend: setUnsuspendTarget,
-    onRemove: setRemoveTarget,
   });
-  const sorting = useMemo<SortingState>(
-    () => [{ id: listParams.sortBy, desc: listParams.sortOrder === 'desc' }],
-    [listParams.sortBy, listParams.sortOrder]
-  );
-  const table = useReactTable({
-    data: members,
+
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / listParams.size)),
-    state: {
-      pagination: { pageIndex: listParams.page - 1, pageSize: listParams.size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const previous = { pageIndex: listParams.page - 1, pageSize: listParams.size };
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      const patches: Record<string, string | undefined> = {};
-
-      if (next.pageIndex + 1 !== listParams.page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-
-      if (next.pageSize !== listParams.size) {
-        patches.size =
-          next.pageSize === MEMBERS_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      listParams.updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        listParams.updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isMembersSortByField(column.id) ? column.id : MEMBERS_DEFAULT_SORT_BY;
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-
-      listParams.updateParams({
-        sortBy: nextSortBy === MEMBERS_DEFAULT_SORT_BY ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === MEMBERS_DEFAULT_SORT_ORDER ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
+    getRowId: (member) => member.id,
+    query: membersQuery,
+    rows: membersQuery.data?.data ?? [],
+    state,
+    totalCount: membersQuery.data?.pagination.totalItems ?? 0,
   });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   if (isAccessLoading) {
     return (
@@ -174,43 +152,40 @@ export default function MembersPage() {
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Members & Roles"
-        totalCount={totalCount}
-        resultLabel="members"
-        hasActiveFilters={hasActiveFilters}
-        isLoading={showMembersInitialLoader}
-        addLabel="Add Member"
         addIcon={<Plus className="size-4" />}
+        addLabel="Add Member"
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        resultLabel="members"
+        title="Members & Roles"
+        totalCount={list.totalCount}
         onAdd={openCreateDialog}
       />
 
-      <MembersTableCard
-        table={table}
-        totalCount={totalCount}
-        searchInput={listParams.searchInput}
-        roleFilter={listParams.roleFilter}
-        statusFilter={listParams.statusFilter}
-        emailStatusFilter={listParams.emailStatusFilter}
-        isLoading={showMembersInitialLoader}
-        isRefreshing={isRefreshingMembers}
-        isError={membersQuery.isError}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={listParams.handleSearchChange}
-        onRoleFilterChange={(role) => listParams.updateParams({ role, page: undefined })}
-        onStatusFilterChange={(status) => listParams.updateParams({ status, page: undefined })}
-        onEmailStatusFilterChange={(emailStatus) =>
-          listParams.updateParams({ emailStatus, page: undefined })
+      <DataTable
+        ariaLabel="Members"
+        empty={{
+          description: 'Create a member or adjust the current filters.',
+          icon: <UserRound className="size-10 text-muted-foreground/50" />,
+          title: 'No members found',
+        }}
+        error={{ title: 'Failed to load members' }}
+        list={list}
+        state={state}
+        tableClassNames={{ base: 'min-w-full' }}
+        tableLayout={{ width: 'auto' }}
+        title={
+          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+            All Members
+          </span>
         }
-        onClearFilters={listParams.clearFilters}
-        onRetry={() => void membersQuery.refetch()}
       />
 
       <MemberFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        member={editingMember}
         currentUserId={currentUserId}
         isSubmitting={isSubmitting}
+        member={editingMember}
+        open={dialogOpen}
         onCreate={(input) =>
           createMutation.mutate(input, {
             onSuccess: () => {
@@ -219,6 +194,7 @@ export default function MembersPage() {
             },
           })
         }
+        onOpenChange={setDialogOpen}
         onUpdate={(input) =>
           updateMutation.mutate(input, {
             onSuccess: () => {
@@ -230,77 +206,69 @@ export default function MembersPage() {
       />
 
       <MemberResetPasswordDialog
-        open={!!resetPasswordTarget}
-        onOpenChange={(open) => !open && setResetPasswordTarget(null)}
-        member={resetPasswordTarget}
         isSubmitting={resetPasswordMutation.isPending}
+        member={resetPasswordTarget}
+        open={Boolean(resetPasswordTarget)}
+        onOpenChange={(open) => !open && setResetPasswordTarget(null)}
         onReset={(input) =>
-          resetPasswordMutation.mutate(input, {
-            onSuccess: () => setResetPasswordTarget(null),
-          })
+          resetPasswordMutation.mutate(input, { onSuccess: () => setResetPasswordTarget(null) })
         }
       />
 
       <MemberSuspendDialog
-        open={!!suspendTarget}
-        onOpenChange={(open) => !open && setSuspendTarget(null)}
-        member={suspendTarget}
         isSubmitting={suspendMutation.isPending}
+        member={suspendTarget}
+        open={Boolean(suspendTarget)}
+        onOpenChange={(open) => !open && setSuspendTarget(null)}
         onSuspend={(input) =>
-          suspendMutation.mutate(input, {
-            onSuccess: () => setSuspendTarget(null),
-          })
+          suspendMutation.mutate(input, { onSuccess: () => setSuspendTarget(null) })
         }
       />
 
       <ConfirmDialog
-        open={!!unsuspendTarget}
-        onOpenChange={(open) => !open && setUnsuspendTarget(null)}
-        title="Unsuspend Member"
+        confirmLabel="Unsuspend"
         description={
           <>
             Restore access for <strong>{unsuspendTarget?.name}</strong>?
           </>
         }
-        confirmLabel="Unsuspend"
+        isPending={unsuspendMutation.isPending}
+        open={Boolean(unsuspendTarget)}
+        title="Unsuspend Member"
         onConfirm={() => {
           if (!unsuspendTarget) return;
+
           unsuspendMutation.mutate(unsuspendTarget.id, {
             onSuccess: () => setUnsuspendTarget(null),
           });
         }}
-        isPending={unsuspendMutation.isPending}
+        onOpenChange={(open) => !open && setUnsuspendTarget(null)}
       />
 
       <ConfirmDialog
-        open={!!roleTarget}
-        onOpenChange={(open) => !open && setRoleTarget(null)}
-        title="Update Role"
+        confirmLabel="Update"
         description={
           <>
             Change <strong>{roleTarget?.member.name}</strong> to{' '}
             <strong>{roleTarget?.role ? MEMBER_ROLE_LABELS[roleTarget.role] : 'User'}</strong>?
           </>
         }
-        confirmLabel="Update"
+        isPending={updateRoleMutation.isPending}
+        open={Boolean(roleTarget)}
+        title="Update Role"
         onConfirm={() => {
           if (!roleTarget) return;
+
           updateRoleMutation.mutate(
-            { userId: roleTarget.member.id, role: roleTarget.role },
+            { role: roleTarget.role, userId: roleTarget.member.id },
             { onSuccess: () => setRoleTarget(null) }
           );
         }}
-        isPending={updateRoleMutation.isPending}
+        onOpenChange={(open) => !open && setRoleTarget(null)}
       />
 
       <ConfirmDialog
-        open={!!checkingRegisterAccessTarget}
-        onOpenChange={(open) => !open && setCheckingRegisterAccessTarget(null)}
-        title={
-          checkingRegisterAccessTarget?.enabled
-            ? 'Grant Checking Register Access'
-            : 'Remove Checking Register Access'
-        }
+        confirmLabel={checkingRegisterAccessTarget?.enabled ? 'Grant Access' : 'Remove Access'}
         description={
           checkingRegisterAccessTarget?.enabled ? (
             <>
@@ -314,39 +282,45 @@ export default function MembersPage() {
             </>
           )
         }
-        confirmLabel={checkingRegisterAccessTarget?.enabled ? 'Grant Access' : 'Remove Access'}
+        isPending={updateCheckingRegisterAccessMutation.isPending}
+        open={Boolean(checkingRegisterAccessTarget)}
+        title={
+          checkingRegisterAccessTarget?.enabled
+            ? 'Grant Checking Register Access'
+            : 'Remove Checking Register Access'
+        }
         variant={checkingRegisterAccessTarget?.enabled ? 'default' : 'destructive'}
         onConfirm={() => {
           if (!checkingRegisterAccessTarget) return;
+
           updateCheckingRegisterAccessMutation.mutate(
             {
-              userId: checkingRegisterAccessTarget.member.id,
               enabled: checkingRegisterAccessTarget.enabled,
+              userId: checkingRegisterAccessTarget.member.id,
             },
-            {
-              onSuccess: () => setCheckingRegisterAccessTarget(null),
-            }
+            { onSuccess: () => setCheckingRegisterAccessTarget(null) }
           );
         }}
-        isPending={updateCheckingRegisterAccessMutation.isPending}
+        onOpenChange={(open) => !open && setCheckingRegisterAccessTarget(null)}
       />
 
       <ConfirmDialog
-        open={!!removeTarget}
-        onOpenChange={(open) => !open && setRemoveTarget(null)}
-        title="Remove Member"
+        confirmLabel="Remove"
         description={
           <>
             This will permanently remove <strong>{removeTarget?.name}</strong>.
           </>
         }
-        confirmLabel="Remove"
+        isPending={removeMutation.isPending}
+        open={Boolean(removeTarget)}
+        title="Remove Member"
+        variant="destructive"
         onConfirm={() => {
           if (!removeTarget) return;
+
           removeMutation.mutate(removeTarget.id, { onSuccess: () => setRemoveTarget(null) });
         }}
-        variant="destructive"
-        isPending={removeMutation.isPending}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
       />
     </div>
   );

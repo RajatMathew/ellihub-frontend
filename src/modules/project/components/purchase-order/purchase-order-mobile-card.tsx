@@ -1,4 +1,3 @@
-import { DataGridSection } from '@/app/components/data-grid-section';
 import { Badge } from '@/app/components/ui/badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import {
@@ -6,8 +5,6 @@ import {
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
-import type { Table } from '@tanstack/react-table';
-import { ClipboardList } from 'lucide-react';
 
 import { getSubChangeOrderTotalAmount } from '../sub-change-order/sub-change-order-list-utils';
 import {
@@ -23,50 +20,7 @@ import {
 } from './purchase-order-list-utils';
 import { calculateEffectivePurchaseOrderTotals } from './purchase-order-totals';
 
-interface PurchaseOrderListTableProps {
-  table: Table<POListItem>;
-  totalCount: number;
-  isLoading: boolean;
-  isRefreshing?: boolean;
-  isError: boolean;
-  onRetry: () => void;
-  onCancel: (po: POListItem) => void;
-}
-
-export function PurchaseOrderListTable({
-  table,
-  totalCount,
-  isLoading,
-  isRefreshing,
-  isError,
-  onRetry,
-  onCancel,
-}: PurchaseOrderListTableProps) {
-  return (
-    <DataGridSection
-      table={table}
-      totalCount={totalCount}
-      isLoading={isLoading || Boolean(isRefreshing)}
-      refreshIndicator="none"
-      isError={isError}
-      errorTitle="Failed to load purchase orders"
-      emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}
-      emptyTitle="No purchase orders yet"
-      emptyDescription="Purchase orders will appear here once created."
-      onRetry={onRetry}
-      tableLayout={{
-        dense: true,
-        width: 'auto',
-      }}
-      tableClassNames={{
-        base: 'min-w-full',
-      }}
-      mobileItem={(po) => <PurchaseOrderMobileCard po={po} onCancel={onCancel} />}
-    />
-  );
-}
-
-function PurchaseOrderMobileCard({
+export function PurchaseOrderMobileCard({
   po,
   onCancel,
 }: {

@@ -1,79 +1,34 @@
 import { useMemo } from 'react';
 
-import { Card } from '@/app/components/ui/card';
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import {
-  SubChangeOrderListFilters,
   SubChangeOrderListHeader,
   SubChangeOrderListStats,
-  SubChangeOrderListTable,
+  SubChangeOrderMobileCard,
   useSubChangeOrderListColumns,
 } from '@/modules/project/components/sub-change-order';
 import {
-  isSubChangeOrderSortByField,
+  SCO_STATUS_OPTIONS,
   SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+  SUB_CHANGE_ORDER_SORT_BY_OPTIONS,
 } from '@/modules/project/constants/sub-change-order';
 import {
   useSCOChangeTypesQuery,
   useSCOsQuery,
   useSCOStatsQuery,
-  useSubChangeOrderListParams,
-  type SubChangeOrderListParamPatch,
 } from '@/modules/project/hooks/sub-change-order';
 import type { ListSCOsParams } from '@/modules/project/schemas/sub-change-order';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
+import { ClipboardList, ListFilterPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+
+const STATUS_TABS = f.tabs({ key: 'status', options: [...SCO_STATUS_OPTIONS] });
+const SEARCH_FILTER = f.search({ className: 'sm:w-60', placeholder: 'Search SCOs...' });
 
 export function SubChangeOrderListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    statusFilter,
-    changeTypeFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = useSubChangeOrderListParams();
 
-  const filters: ListSCOsParams = {
-    projectId,
-    page,
-    size,
-    sortBy,
-    sortOrder,
-    search: searchQuery || undefined,
-    status: statusFilter,
-    changeTypeId: changeTypeFilter,
-  };
-
-  const subChangeOrdersQuery = useSCOsQuery(filters);
-  const statsQuery = useSCOStatsQuery(projectId);
   const { data: changeTypes } = useSCOChangeTypesQuery();
-  const hasListData = subChangeOrdersQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    subChangeOrdersQuery.isLoading || (subChangeOrdersQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && subChangeOrdersQuery.isFetching && !showListInitialLoader;
-  const listData = useMemo(
-    () => subChangeOrdersQuery.data?.data ?? [],
-    [subChangeOrdersQuery.data?.data]
-  );
-  const totalCount = subChangeOrdersQuery.data?.pagination?.totalItems ?? 0;
-  const hasActiveFilters = !!searchQuery || !!statusFilter || !!changeTypeFilter;
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
+
   const changeTypeLabelById = useMemo(
     () =>
       new Map(
@@ -85,86 +40,73 @@ export function SubChangeOrderListPage() {
     [changeTypes]
   );
 
-  const columns = useSubChangeOrderListColumns({ projectId, changeTypeLabelById });
-  const pageCount = Math.max(1, Math.ceil(totalCount / size));
+  const filters = useMemo(
+    () => [
+      STATUS_TABS,
+      SEARCH_FILTER,
+      f.select({
+        className: 'sm:w-48',
+        icon: ListFilterPlus,
+        key: 'changeTypeId',
+        options: [...changeTypeLabelById].map(([value, label]) => ({ label, value })),
+        placeholder: 'All Change Types',
+      }),
+    ],
+    [changeTypeLabelById]
+  );
 
-  const table = useReactTable({
-    data: listData,
-    columns,
-    pageCount,
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const prev = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const patches: SubChangeOrderListParamPatch = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const newSortBy = isSubChangeOrderSortByField(column.id) ? column.id : 'createdAt';
-      const newSortOrder = column.desc ? 'desc' : 'asc';
-      updateParams({
-        sortBy: newSortBy === 'createdAt' ? undefined : newSortBy,
-        sortOrder: newSortOrder === 'desc' ? undefined : newSortOrder,
-        page: undefined,
-      });
-    },
+  const state = useListState({
+    filters,
+    pageSize: SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE,
+    sort: { by: 'createdAt', fields: SUB_CHANGE_ORDER_SORT_BY_OPTIONS, order: 'desc' },
   });
+
+  const subChangeOrdersQuery = useSCOsQuery({
+    ...state.apiParams,
+    projectId,
+  } as ListSCOsParams);
+  const statsQuery = useSCOStatsQuery(projectId);
+
+  const columns = useSubChangeOrderListColumns({ changeTypeLabelById, projectId });
+
+  const list = useListTable({
+    columns,
+    getRowId: (sco) => sco.id,
+    query: subChangeOrdersQuery,
+    rows: subChangeOrdersQuery.data?.data ?? [],
+    state,
+    totalCount: subChangeOrdersQuery.data?.pagination?.totalItems ?? 0,
+  });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
 
   return (
     <div className="container-fluid py-7.5">
       <SubChangeOrderListHeader
-        hasActiveFilters={hasActiveFilters}
-        totalCount={totalCount}
-        isLoading={showListInitialLoader}
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        totalCount={list.totalCount}
       />
-      <SubChangeOrderListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
+      <SubChangeOrderListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 
-      <Card className="overflow-hidden">
-        <SubChangeOrderListFilters
-          statusFilter={statusFilter}
-          changeTypeFilter={changeTypeFilter}
-          hasActiveFilters={hasActiveFilters}
-          searchInput={searchInput}
-          changeTypes={changeTypes}
-          onSearchChange={handleSearchChange}
-          onUpdateParams={updateParams}
-          onClearFilters={clearFilters}
-        />
-        <SubChangeOrderListTable
-          table={table}
-          totalCount={totalCount}
-          isLoading={showListInitialLoader}
-          isRefreshing={isRefreshingList}
-          isError={subChangeOrdersQuery.isError}
-          onRetry={() => void subChangeOrdersQuery.refetch()}
-          changeTypeLabelById={changeTypeLabelById}
-        />
-      </Card>
+      <DataTable
+        ariaLabel="Sub change orders"
+        className="overflow-hidden"
+        empty={{
+          description: 'Sub change orders will appear here once created.',
+          icon: <ClipboardList className="size-10 text-muted-foreground/50" />,
+          title: 'No sub change orders yet',
+        }}
+        error={{ title: 'Failed to load sub change orders' }}
+        list={list}
+        mobileItem={(sco) => (
+          <SubChangeOrderMobileCard changeTypeLabelById={changeTypeLabelById} sco={sco} />
+        )}
+        state={state}
+        tableClassNames={{ base: 'min-w-full' }}
+        tableLayout={{ dense: true, width: 'auto' }}
+      />
     </div>
   );
 }

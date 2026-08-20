@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { CategoriesTableCard } from '@/modules/catalog/components/categories-table-card';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
+import { useCategoryListColumns } from '@/modules/catalog/components/category-list-columns';
 import {
   useCostCodeCategoriesQuery,
   useCreateCostCodeCategoryMutation,
@@ -12,134 +14,150 @@ import {
   useUpdateCostCodeCategoryMutation,
 } from '@/modules/catalog/hooks';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
-import { Plus } from 'lucide-react';
+import { Plus, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const CATEGORY_SORT_BY_OPTIONS = ['name', 'description'] as const;
+
+function matchesCategorySearch(category: CostCodeCategory, query: string) {
+  const needle = query.toLowerCase();
+
+  return (
+    category.name.toLowerCase().includes(needle) ||
+    (category.description ?? '').toLowerCase().includes(needle)
+  );
+}
+
+// The query returns every category at once, so search runs in memory.
+const CATEGORY_FILTERS = [
+  f.search<CostCodeCategory>({
+    clientPredicate: matchesCategorySearch,
+    placeholder: 'Search categories...',
+  }),
+];
 
 export function CostCodeCategoriesListPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CostCodeCategory | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCodeCategory | null>(null);
-  const [search, setSearch] = useState('');
 
-  /* ---- Queries & Mutations ---- */
   const categoriesQuery = useCostCodeCategoriesQuery();
   const createMutation = useCreateCostCodeCategoryMutation();
   const updateMutation = useUpdateCostCodeCategoryMutation();
   const deleteMutation = useDeleteCostCodeCategoryMutation();
-  const categories = categoriesQuery.data ?? [];
-  const hasCategoriesData = categoriesQuery.data !== undefined;
-  const showCategoriesInitialLoader =
-    categoriesQuery.isLoading || (categoriesQuery.isFetching && !hasCategoriesData);
-  const isRefreshingCategories =
-    hasCategoriesData && categoriesQuery.isFetching && !showCategoriesInitialLoader;
+
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+
+  const state = useListState({
+    filters: CATEGORY_FILTERS,
+    sort: { by: 'name', fields: CATEGORY_SORT_BY_OPTIONS, order: 'asc' },
+  });
+
+  const columns = useCategoryListColumns({
+    onDelete: setDeleteTarget,
+    onEdit: (category) => {
+      setEditingCategory(category);
+      setDialogOpen(true);
+    },
+  });
+
+  const list = useListTable({
+    columns,
+    getRowId: (category) => category.id,
+    mode: 'client',
+    query: categoriesQuery,
+    rows: categories,
+    state,
+  });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  /* ---- Handlers ---- */
-  const filteredCategories = useMemo(
-    () =>
-      search
-        ? categories.filter(
-            (c) =>
-              c.name.toLowerCase().includes(search.toLowerCase()) ||
-              (c.description ?? '').toLowerCase().includes(search.toLowerCase())
-          )
-        : categories,
-    [categories, search]
-  );
-
   const handleSubmit = (data: { id?: string; name: string; description?: string | null }) => {
-    const payload = {
-      name: data.name,
-      description: data.description ?? null,
+    const payload = { description: data.description ?? null, name: data.name };
+    const onSuccess = () => {
+      setDialogOpen(false);
+      setEditingCategory(null);
     };
 
-    if ('id' in data && data.id) {
-      updateMutation.mutate(
-        { ...payload, id: data.id },
-        {
-          onSuccess: () => {
-            setDialogOpen(false);
-            setEditingCategory(null);
-          },
-        }
-      );
-    } else {
-      createMutation.mutate(payload, {
-        onSuccess: () => {
-          setDialogOpen(false);
-          setEditingCategory(null);
-        },
-      });
+    if (data.id) {
+      updateMutation.mutate({ ...payload, id: data.id }, { onSuccess });
+      return;
     }
-  };
 
-  const handleEdit = (cat: CostCodeCategory) => {
-    setEditingCategory(cat);
-    setDialogOpen(true);
-  };
-
-  const openCreate = () => {
-    setEditingCategory(null);
-    setDialogOpen(true);
+    createMutation.mutate(payload, { onSuccess });
   };
 
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Cost Code Categories"
-        totalCount={categories.length}
-        hasActiveFilters={!!search}
-        isLoading={showCategoriesInitialLoader}
         actions={
-          <>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/app/catalog/cost-codes">Back to Cost Codes</Link>
-            </Button>
-          </>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/app/catalog/cost-codes">Back to Cost Codes</Link>
+          </Button>
         }
-        addLabel="Add Category"
         addIcon={<Plus className="size-4" />}
-        onAdd={openCreate}
+        addLabel="Add Category"
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        title="Cost Code Categories"
+        totalCount={list.totalCount}
+        onAdd={() => {
+          setEditingCategory(null);
+          setDialogOpen(true);
+        }}
       />
 
-      <CategoriesTableCard
-        categories={filteredCategories}
-        isLoading={showCategoriesInitialLoader}
-        isRefreshing={isRefreshingCategories}
-        isError={categoriesQuery.isError}
-        refetch={categoriesQuery.refetch}
-        search={search}
-        onSearchChange={setSearch}
-        onEdit={handleEdit}
-        onDelete={setDeleteTarget}
+      <DataTable
+        ariaLabel="Cost code categories"
+        empty={{
+          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          title: 'No categories found',
+        }}
+        error={{
+          description: 'There was an error fetching the data. Please try again.',
+          title: 'Failed to load categories',
+        }}
+        list={list}
+        state={state}
+        title={
+          list.isInitialLoading ? (
+            <span className="flex items-center">
+              <Skeleton className="h-4 w-40" />
+            </span>
+          ) : (
+            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+              All Categories ({list.totalCount})
+            </span>
+          )
+        }
       />
 
       <CategoryFormDialog
+        category={editingCategory}
+        isSubmitting={isSubmitting}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        category={editingCategory}
         onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
       />
 
       <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Category"
+        confirmLabel="Delete"
         description={
           <>
             This will permanently delete <strong>{deleteTarget?.name}</strong>. Cost codes in this
             category may need to be reassigned.
           </>
         }
-        confirmLabel="Delete"
-        onConfirm={() => {
-          if (deleteTarget)
-            deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
-        }}
-        variant="destructive"
         isPending={deleteMutation.isPending}
+        open={Boolean(deleteTarget)}
+        title="Delete Category"
+        variant="destructive"
+        onConfirm={() => {
+          if (!deleteTarget) return;
+
+          deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
       />
     </div>
   );

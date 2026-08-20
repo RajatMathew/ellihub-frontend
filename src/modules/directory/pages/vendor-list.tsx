@@ -1,15 +1,14 @@
 import { useCallback, useMemo } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
+import { useVendorListColumns, VendorStatsCards } from '@/modules/directory/components/vendors';
+import { getVendorTypeOptionLabel } from '@/modules/directory/components/vendors/vendor-list-utils';
 import {
-  useVendorListColumns,
-  VendorsTableCard,
-  VendorStatsCards,
-} from '@/modules/directory/components/vendors';
-import {
-  isVendorsSortByField,
+  VENDOR_STATUS_LABELS,
   VENDORS_DEFAULT_PAGE_SIZE,
+  VENDORS_SORT_BY_OPTIONS,
 } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import {
   useDeleteVendorMutation,
@@ -17,67 +16,55 @@ import {
   useVendorStatsQuery,
   useVendorTypesQuery,
 } from '@/modules/directory/hooks/vendors.hooks';
-import { useVendorListParams } from '@/modules/directory/hooks/vendors/use-vendor-list-params';
 import type { ListVendorsParams } from '@/modules/directory/schemas/vendor.schema';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { ListFilterPlus, Package, Plus } from 'lucide-react';
+
+const VENDOR_STATUS_OPTIONS = Object.entries(VENDOR_STATUS_LABELS).map(([value, label]) => ({
+  label,
+  value,
+}));
 
 export function VendorListPage() {
   const { can } = useAccess();
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    typeFilter,
-    statusFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = useVendorListParams();
 
-  const filters = useMemo<ListVendorsParams>(
-    () => ({
-      page,
-      limit: size,
-      sortBy,
-      sortOrder,
-      search: searchQuery || undefined,
-      type: typeFilter,
-      status: statusFilter,
-    }),
-    [page, searchQuery, size, sortBy, sortOrder, statusFilter, typeFilter]
+  const { data: typeTabs = [], isLoading: isTypesLoading } = useVendorTypesQuery();
+
+  const filters = useMemo(
+    () => [
+      f.tabs({
+        isLoading: isTypesLoading,
+        key: 'type',
+        options: typeTabs.map((tab) => ({ label: getVendorTypeOptionLabel(tab), value: tab.id })),
+      }),
+      f.search({ placeholder: 'Search vendors...' }),
+      f.select({
+        icon: ListFilterPlus,
+        key: 'status',
+        options: VENDOR_STATUS_OPTIONS,
+        placeholder: 'All Statuses',
+      }),
+    ],
+    [isTypesLoading, typeTabs]
   );
 
+  const state = useListState({
+    apiKeys: { size: 'limit' },
+    filters,
+    pageSize: VENDORS_DEFAULT_PAGE_SIZE,
+    sort: { by: 'name', fields: VENDORS_SORT_BY_OPTIONS, order: 'asc' },
+  });
+
+  const vendorsQuery = useVendorsQuery(state.apiParams as ListVendorsParams);
   const statsQuery = useVendorStatsQuery();
-  const { data: typeTabs = [], isLoading: isTypesLoading } = useVendorTypesQuery();
-  const vendorsQuery = useVendorsQuery(filters);
   const deleteMutation = useDeleteVendorMutation();
-  const hasListData = vendorsQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader = vendorsQuery.isLoading || (vendorsQuery.isFetching && !hasListData);
-  const showListTableSkeleton =
-    showListInitialLoader || (hasListData && vendorsQuery.isFetching);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
 
-  const listData = vendorsQuery.data?.data ?? [];
-  const totalCount = vendorsQuery.data?.pagination?.totalItems ?? 0;
-  const hasActiveFilters = Boolean(searchQuery || typeFilter || statusFilter);
-  const totalCommitted = statsQuery.data?.totalCommitted ?? 0;
-
-  const totalVendors = statsQuery.data?.totalVendors ?? totalCount;
   const typeLabels = useMemo(() => {
     const labels = new Map<string, string>();
+
     for (const type of typeTabs) {
       labels.set(type.id, type.label || type.code || type.id);
     }
+
     return labels;
   }, [typeTabs]);
 
@@ -89,103 +76,58 @@ export function VendorListPage() {
   );
 
   const columns = useVendorListColumns({
-    typeLabels,
-    canUpdate: can('vendor', 'update'),
     canDelete: can('vendor', 'delete'),
+    canUpdate: can('vendor', 'update'),
     onDelete: handleDelete,
+    typeLabels,
   });
 
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
-
-  const table = useReactTable({
-    data: listData,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / size)),
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const previous = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      const patches: Record<string, string | undefined> = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === VENDORS_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isVendorsSortByField(column.id) ? column.id : 'name';
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-
-      updateParams({
-        sortBy: nextSortBy === 'name' ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === 'asc' ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
+    getRowId: (vendor) => vendor.id,
+    query: vendorsQuery,
+    rows: vendorsQuery.data?.data ?? [],
+    state,
+    totalCount: vendorsQuery.data?.pagination?.totalItems ?? 0,
   });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const canCreate = can('vendor', 'create');
 
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="Vendors"
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
+        addIcon={canCreate ? <Plus className="size-4" /> : undefined}
+        addLabel={canCreate ? 'Add Vendor' : undefined}
+        addTo={canCreate ? 'create' : undefined}
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
         resultLabel="Vendors"
-        isLoading={showListInitialLoader}
-        addLabel={can('vendor', 'create') ? 'Add Vendor' : undefined}
-        addTo={can('vendor', 'create') ? 'create' : undefined}
-        addIcon={can('vendor', 'create') ? <Plus className="size-4" /> : undefined}
+        title="Vendors"
+        totalCount={list.totalCount}
       />
 
       <VendorStatsCards
-        totalVendors={totalVendors}
-        totalCommitted={totalCommitted}
-        totalPaid={statsQuery.data?.totalPaid ?? 0}
-        outstandingBalance={statsQuery.data?.outstandingBalance ?? 0}
         isLoading={showStatsInitialLoader}
+        outstandingBalance={statsQuery.data?.outstandingBalance ?? 0}
+        totalCommitted={statsQuery.data?.totalCommitted ?? 0}
+        totalPaid={statsQuery.data?.totalPaid ?? 0}
+        totalVendors={statsQuery.data?.totalVendors ?? list.totalCount}
       />
 
-      <VendorsTableCard
-        table={table}
-        typeTabs={typeTabs}
-        typeFilter={typeFilter}
-        statusFilter={statusFilter}
-        searchInput={searchInput}
-        isLoading={showListTableSkeleton}
-        isTypesLoading={isTypesLoading}
-        isError={vendorsQuery.isError}
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={handleSearchChange}
-        onTypeChange={(typeId) => updateParams({ type: typeId, page: undefined })}
-        onStatusChange={(status) => updateParams({ status, page: undefined })}
-        onClearFilters={clearFilters}
-        onRetry={() => void vendorsQuery.refetch()}
+      <DataTable
+        ariaLabel="Vendors"
+        empty={{
+          description: 'Click "+ Add Vendor" to get started.',
+          icon: <Package className="size-10 text-muted-foreground/50" />,
+          title: 'No vendors yet',
+        }}
+        error={{ title: 'Failed to load vendors' }}
+        list={list}
+        state={state}
+        tableClassNames={{ base: 'min-w-full' }}
+        tableLayout={{ width: 'auto' }}
       />
     </div>
   );

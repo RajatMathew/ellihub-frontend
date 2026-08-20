@@ -10,7 +10,6 @@ import {
 } from '@/app/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input } from '@/app/components/ui/input';
-import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   Select,
   SelectContent,
@@ -18,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   VENDOR_STATUS_OPTIONS,
   VENDOR_TYPE_OPTIONS,

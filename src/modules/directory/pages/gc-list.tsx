@@ -1,11 +1,14 @@
 import { useCallback, useMemo } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
-import { GCStatsCards, GCTableCard, useGCListColumns } from '@/modules/directory/components/gc';
+import { GCStatsCards, useGCListColumns } from '@/modules/directory/components/gc';
+import { getGCTypeOptionLabel } from '@/modules/directory/components/gc/gc-list-utils';
 import {
+  GC_STATUS_LABELS,
   GCS_DEFAULT_PAGE_SIZE,
-  isGCsSortByField,
+  GCS_SORT_BY_OPTIONS,
 } from '@/modules/directory/constants/gc/gc-list.constants';
 import {
   useDeleteGCMutation,
@@ -13,68 +16,60 @@ import {
   useGCStatsQuery,
   useGCTypesQuery,
 } from '@/modules/directory/hooks/gc.hooks';
-import { useGCListParams } from '@/modules/directory/hooks/gc/use-gc-list-params';
 import type { ListGCsParams } from '@/modules/directory/schemas/gc.schema';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { Building2, ListFilterPlus, Plus } from 'lucide-react';
+
+const GC_STATUS_OPTIONS = Object.entries(GC_STATUS_LABELS).map(([value, label]) => ({
+  label,
+  value,
+}));
 
 export function GCListPage() {
   const { can } = useAccess();
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    gcTypeIdFilter,
-    statusFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = useGCListParams();
-
-  const filters = useMemo<ListGCsParams>(
-    () => ({
-      page,
-      limit: size,
-      sortBy,
-      sortOrder,
-      search: searchQuery || undefined,
-      gcTypeId: gcTypeIdFilter,
-      status: statusFilter,
-    }),
-    [gcTypeIdFilter, page, searchQuery, size, sortBy, sortOrder, statusFilter]
-  );
 
   const { data: typeTabs = [], isLoading: isTypesLoading } = useGCTypesQuery();
-  const generalContractorsQuery = useGCsQuery(filters);
+
+  const filters = useMemo(
+    () => [
+      f.tabs({
+        isLoading: isTypesLoading,
+        key: 'gcTypeId',
+        options: typeTabs.map((tab) => ({ label: getGCTypeOptionLabel(tab), value: tab.id })),
+      }),
+      f.search({ placeholder: 'Search GCs...' }),
+      f.select({
+        icon: ListFilterPlus,
+        key: 'status',
+        options: GC_STATUS_OPTIONS,
+        placeholder: 'All Statuses',
+      }),
+    ],
+    [isTypesLoading, typeTabs]
+  );
+
+  const state = useListState({
+    apiKeys: { size: 'limit' },
+    filters,
+    pageSize: GCS_DEFAULT_PAGE_SIZE,
+    sort: { by: 'name', fields: GCS_SORT_BY_OPTIONS, order: 'asc' },
+  });
+
+  const generalContractorsQuery = useGCsQuery(state.apiParams as ListGCsParams);
   const statsQuery = useGCStatsQuery();
   const deleteMutation = useDeleteGCMutation();
-  const hasListData = generalContractorsQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    generalContractorsQuery.isLoading || (generalContractorsQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList =
-    hasListData && generalContractorsQuery.isFetching && !showListInitialLoader;
 
-  const listData = generalContractorsQuery.data?.data ?? [];
-  const totalCount = generalContractorsQuery.data?.pagination?.totalItems ?? 0;
-  const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
-  const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
-  const hasActiveFilters = Boolean(searchQuery || gcTypeIdFilter || statusFilter);
+  const listData = useMemo(
+    () => generalContractorsQuery.data?.data ?? [],
+    [generalContractorsQuery.data?.data]
+  );
 
   const typeLabels = useMemo(() => {
     const labels = new Map<string, string>();
+
     for (const type of typeTabs) {
       labels.set(type.id, type.label || type.name || type.code || type.id);
     }
+
     return labels;
   }, [typeTabs]);
 
@@ -86,102 +81,61 @@ export function GCListPage() {
   );
 
   const columns = useGCListColumns({
-    typeLabels,
-    canUpdate: can('generalContractor', 'update'),
     canDelete: can('generalContractor', 'delete'),
+    canUpdate: can('generalContractor', 'update'),
     onDelete: handleDelete,
+    typeLabels,
   });
 
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
-
-  const table = useReactTable({
-    data: listData,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / size)),
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const previous = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      const patches: Record<string, string | undefined> = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-
-      if (next.pageSize !== size) {
-        patches.size = next.pageSize === GCS_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isGCsSortByField(column.id) ? column.id : 'name';
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-
-      updateParams({
-        sortBy: nextSortBy === 'name' ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === 'asc' ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
+    getRowId: (gc) => gc.id,
+    query: generalContractorsQuery,
+    rows: listData,
+    state,
+    totalCount: generalContractorsQuery.data?.pagination?.totalItems ?? 0,
   });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
+  const canCreate = can('generalContractor', 'create');
+
+  // Stats fall back to what is visible when the summary endpoint has no value.
+  const visibleActiveProjects = listData.reduce((sum, gc) => sum + (gc.activeProjects ?? 0), 0);
+  const visibleCommitted = listData.reduce((sum, gc) => sum + (gc.totalCommitted ?? 0), 0);
 
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
-        title="General Contractors"
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
+        addIcon={canCreate ? <Plus className="size-4" /> : undefined}
+        addLabel={canCreate ? 'Add GC' : undefined}
+        addTo={canCreate ? 'create' : undefined}
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
         resultLabel="GCs"
-        isLoading={showListInitialLoader}
-        addLabel={can('generalContractor', 'create') ? 'Add GC' : undefined}
-        addTo={can('generalContractor', 'create') ? 'create' : undefined}
-        addIcon={can('generalContractor', 'create') ? <Plus className="size-4" /> : undefined}
+        title="General Contractors"
+        totalCount={list.totalCount}
       />
 
       <GCStatsCards
-        totalGCs={statsQuery.data?.totalGCs ?? totalCount}
         activeProjects={statsQuery.data?.activeProjects ?? visibleActiveProjects}
-        totalCommitted={statsQuery.data?.totalCommitted ?? visibleCommitted}
         isLoading={showStatsInitialLoader}
+        totalCommitted={statsQuery.data?.totalCommitted ?? visibleCommitted}
+        totalGCs={statsQuery.data?.totalGCs ?? list.totalCount}
       />
 
-      <GCTableCard
-        table={table}
-        typeTabs={typeTabs}
-        gcTypeIdFilter={gcTypeIdFilter}
-        statusFilter={statusFilter}
-        searchInput={searchInput}
-        isLoading={showListInitialLoader}
-        isRefreshing={isRefreshingList}
-        isTypesLoading={isTypesLoading}
-        isError={generalContractorsQuery.isError}
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={handleSearchChange}
-        onTypeChange={(typeId) => updateParams({ gcTypeId: typeId, page: undefined })}
-        onStatusChange={(status) => updateParams({ status, page: undefined })}
-        onClearFilters={clearFilters}
-        onRetry={() => void generalContractorsQuery.refetch()}
+      <DataTable
+        ariaLabel="General contractors"
+        empty={{
+          description: 'Click "+ Add GC" to get started.',
+          icon: <Building2 className="size-10 text-muted-foreground/50" />,
+          title: 'No general contractors yet',
+        }}
+        error={{ title: 'Failed to load general contractors' }}
+        list={list}
+        state={state}
+        tableClassNames={{ base: 'min-w-full' }}
+        tableLayout={{ width: 'auto' }}
       />
     </div>
   );
