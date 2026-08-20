@@ -1,6 +1,7 @@
 import type {
   AnyFilterDef,
   CustomFilterDef,
+  DateRangeFilterDef,
   HiddenFilterDef,
   InfiniteSelectFilterDef,
   SearchFilterDef,
@@ -47,6 +48,12 @@ function infiniteSelect<TKey extends string, TData = unknown>(
   return { ...def, kind: 'infiniteSelect' };
 }
 
+function dateRange<TKey extends string, TData = unknown>(
+  def: Omit<DateRangeFilterDef<TKey, TData>, 'kind'>
+): DateRangeFilterDef<TKey, TData> {
+  return { ...def, kind: 'dateRange' };
+}
+
 function hidden<TKey extends string, TData = unknown>(
   def: Omit<HiddenFilterDef<TKey, TData>, 'kind'>
 ): HiddenFilterDef<TKey, TData> {
@@ -59,14 +66,11 @@ function custom<TKey extends string, TData = unknown>(
   return { ...def, kind: 'custom' };
 }
 
-export const f = { custom, hidden, infiniteSelect, search, select, tabs };
+export const f = { custom, dateRange, hidden, infiniteSelect, search, select, tabs };
 
-/**
- * Every URL key a filter owns. A single key today; kept as an array so a future
- * multi-key filter (a date range, say) does not change every call site.
- */
+/** Every URL key a filter owns. A date range owns two. */
 export function filterUrlKeys(def: AnyFilterDef<never>): string[] {
-  return [def.key];
+  return def.kind === 'dateRange' ? [def.key, def.toKey] : [def.key];
 }
 
 /** The API request key for a filter, falling back to its URL key. */

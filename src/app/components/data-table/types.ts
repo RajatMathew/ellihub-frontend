@@ -111,6 +111,21 @@ export interface InfiniteSelectFilterDef<
 }
 
 /**
+ * A from/to pair owning two URL keys. `key` holds the start, `toKey` the end.
+ */
+export interface DateRangeFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, string, TData> {
+  kind: 'dateRange';
+  toKey: string;
+  toApiKey?: string;
+  fromLabel?: string;
+  toLabel?: string;
+  className?: string;
+}
+
+/**
  * A filter with no control of its own. Arrives by deep link, participates in the
  * request params and in `clearFilters`, and renders nothing.
  */
@@ -142,6 +157,7 @@ export type AnyFilterDef<TData = unknown> =
   | SelectFilterDef<string, string, TData>
   | TabsFilterDef<string, string, TData>
   | InfiniteSelectFilterDef<string, TData>
+  | DateRangeFilterDef<string, TData>
   | HiddenFilterDef<string, TData>
   | CustomFilterDef<string, TData>;
 

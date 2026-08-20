@@ -6,61 +6,54 @@ import {
   ActivityRevisionBadge,
   stripActivityRevisionSuffix,
 } from '@/app/components/activity-revision-badge';
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
 import { useActivityLogQuery } from '@/app/hooks/use-activity-log';
-import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
 import {
   ActivityActionBadge,
+  ActivityEmptyIcon,
   ActivityEntityBadge,
-  ActivityLogTable,
-} from '@/modules/activity-log/components/activity-log-table';
-import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
+} from '@/modules/activity-log/components/activity-log-cells';
+import {
+  ACTIVITY_ACTION_OPTIONS,
+  ACTIVITY_ENTITY_OPTIONS,
+} from '@/modules/activity-log/constants/activity-log.constants';
 import type { ColumnDef } from '@tanstack/react-table';
+import { ListFilterPlus } from 'lucide-react';
 
 const DEFAULT_PAGE_SIZE = 25;
-const SEARCH_DEBOUNCE_MS = 300;
+const ACTIVITY_SORT_BY_OPTIONS = ['createdAt'] as const;
 
-function isActivitySortBy(value: string | null): value is 'createdAt' {
-  return value === 'createdAt';
-}
+const ACTIVITY_FILTERS = [
+  f.search({ className: 'sm:w-64', placeholder: 'Search activity...' }),
+  f.select({
+    className: 'sm:w-48',
+    icon: ListFilterPlus,
+    key: 'entityType',
+    options: [...ACTIVITY_ENTITY_OPTIONS],
+    placeholder: 'All Entities',
+  }),
+  f.select({
+    className: 'sm:w-40',
+    icon: ListFilterPlus,
+    key: 'action',
+    options: [...ACTIVITY_ACTION_OPTIONS],
+    placeholder: 'All Actions',
+  }),
+  f.dateRange({ fromLabel: 'Activity from', key: 'from', toKey: 'to', toLabel: 'Activity to' }),
+];
 
 export default function ActivityLogListPage() {
   const access = useAccess();
-  const { page, size, searchQuery, searchInput, searchParams, updateParams, handleSearchChange } =
-    useResourceListParams({
-      defaultPageSize: DEFAULT_PAGE_SIZE,
-      defaultSortBy: 'createdAt',
-      defaultSortOrder: 'desc',
-      searchDebounceMs: SEARCH_DEBOUNCE_MS,
-      isSortBy: isActivitySortBy,
-    });
 
-  const entityType = searchParams.get('entityType') ?? undefined;
-  const action = searchParams.get('action') ?? undefined;
-  const from = searchParams.get('from') ?? undefined;
-  const to = searchParams.get('to') ?? undefined;
-
-  const activityQuery = useActivityLogQuery({
-    page,
-    size,
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-    search: searchQuery || undefined,
-    entityType,
-    action,
-    from,
-    to,
+  const state = useListState({
+    filters: ACTIVITY_FILTERS,
+    pageSize: DEFAULT_PAGE_SIZE,
+    sort: { by: 'createdAt', fields: ACTIVITY_SORT_BY_OPTIONS, order: 'desc' },
   });
 
-  const rows = activityQuery.data?.data ?? [];
-  const totalCount = activityQuery.data?.pagination.totalItems ?? 0;
-  const hasActivityData = activityQuery.data !== undefined;
-  const showActivityInitialLoader =
-    activityQuery.isLoading || (activityQuery.isFetching && !hasActivityData);
-  const isRefreshingActivity =
-    hasActivityData && activityQuery.isFetching && !showActivityInitialLoader;
-  const hasActiveFilters = Boolean(searchQuery || entityType || action || from || to);
+  const activityQuery = useActivityLogQuery(state.apiParams);
 
   const columns = useMemo<ColumnDef<ActivityLogItem>[]>(
     () => [
@@ -124,35 +117,21 @@ export default function ActivityLogListPage() {
     []
   );
 
-  const table = useReactTable({
-    data: rows,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, activityQuery.data?.pagination.totalPages ?? 1),
-    state: { pagination: { pageIndex: page - 1, pageSize: size } },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    onPaginationChange: (updater) => {
-      const prev = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const patches: Record<string, string | undefined> = {};
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-      if (next.pageSize !== size) {
-        patches.size = next.pageSize === DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-      updateParams(patches);
-    },
+    getRowId: (log) => log.id,
+    query: activityQuery,
+    rows: activityQuery.data?.data ?? [],
+    state,
+    totalCount: activityQuery.data?.pagination.totalItems ?? 0,
   });
 
   return (
     <div className="container-fluid py-7.5">
       <ResourcePageHeader
         title="Activity Log"
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
+        totalCount={list.totalCount}
+        hasActiveFilters={state.hasActiveFilters}
         resultLabel="activity logs"
         description={
           <span className="text-sm text-muted-foreground">
@@ -163,34 +142,29 @@ export default function ActivityLogListPage() {
         }
       />
 
-      <ActivityLogTable
-        table={table}
-        totalCount={totalCount}
-        searchInput={searchInput}
-        entityType={entityType}
-        action={action}
-        from={from}
-        to={to}
-        isLoading={showActivityInitialLoader}
-        isRefreshing={isRefreshingActivity}
-        isError={activityQuery.isError}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={handleSearchChange}
-        onEntityTypeChange={(value) => updateParams({ entityType: value, page: undefined })}
-        onActionChange={(value) => updateParams({ action: value, page: undefined })}
-        onFromChange={(value) => updateParams({ from: value, page: undefined })}
-        onToChange={(value) => updateParams({ to: value, page: undefined })}
-        onClearFilters={() =>
-          updateParams({
-            search: undefined,
-            entityType: undefined,
-            action: undefined,
-            from: undefined,
-            to: undefined,
-            page: undefined,
-          })
+      <DataTable
+        ariaLabel="Activity log"
+        empty={{
+          description: state.hasActiveFilters
+            ? 'Try adjusting the filters.'
+            : 'Activity will appear here once users make changes.',
+          icon: <ActivityEmptyIcon />,
+          title: 'No activity found',
+        }}
+        error={{ title: 'Failed to load activity logs' }}
+        list={list}
+        state={state}
+        tableLayout={{ dense: true, headerBackground: true, rowBorder: true }}
+        title={
+          <div className="flex flex-col justify-center gap-1">
+            <span className="text-xs font-semibold tracking-normal text-table-card-header-foreground">
+              Event Stream
+            </span>
+            <span className="text-xs text-table-card-header-foreground/75">
+              {list.totalCount} log entr{list.totalCount === 1 ? 'y' : 'ies'}
+            </span>
+          </div>
         }
-        onRetry={() => void activityQuery.refetch()}
       />
     </div>
   );

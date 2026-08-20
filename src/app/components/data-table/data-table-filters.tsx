@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 
 import {
   TableCardHeader,
@@ -9,6 +9,7 @@ import {
   TableCardHeaderToolbar,
 } from '@/app/components/table-card-header';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
+import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 import type { AnyFilterDef } from './types';
@@ -24,6 +25,9 @@ const dataTableFilterTriggerClassName =
   'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
 
 const dataTableFilterPlaceholderClassName = '!text-table-card-header-foreground/75';
+
+const dataTableDateInputClassName =
+  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-36';
 
 interface DataTableFiltersProps<
   TDefs extends readonly AnyFilterDef<never>[],
@@ -116,6 +120,27 @@ export function DataTableFilters<
                     setFilterValue(def.key, value === allValue ? undefined : value)
                   }
                 />
+              );
+            }
+
+            if (def.kind === 'dateRange') {
+              return (
+                <Fragment key={def.key}>
+                  <Input
+                    aria-label={def.fromLabel ?? 'From date'}
+                    className={def.className ?? dataTableDateInputClassName}
+                    type="date"
+                    value={rawValues[def.key] ?? ''}
+                    onChange={(event) => setFilterValue(def.key, event.target.value || undefined)}
+                  />
+                  <Input
+                    aria-label={def.toLabel ?? 'To date'}
+                    className={def.className ?? dataTableDateInputClassName}
+                    type="date"
+                    value={rawValues[def.toKey] ?? ''}
+                    onChange={(event) => setFilterValue(def.toKey, event.target.value || undefined)}
+                  />
+                </Fragment>
               );
             }
 

@@ -155,6 +155,12 @@ export function useListState<
       // Client-side filters never reach the API.
       if (def.clientPredicate) continue;
 
+      if (def.kind === 'dateRange') {
+        params[filterApiKey(def)] = raw[def.key];
+        params[def.toApiKey ?? def.toKey] = raw[def.toKey];
+        continue;
+      }
+
       const value = raw[def.key];
 
       params[filterApiKey(def)] =

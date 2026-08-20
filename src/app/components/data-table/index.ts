@@ -6,6 +6,7 @@ export type {
   AnyFilterDef,
   CustomFilterDef,
   CustomFilterRenderContext,
+  DateRangeFilterDef,
   FilterOption,
   FilterValues,
   HiddenFilterDef,
