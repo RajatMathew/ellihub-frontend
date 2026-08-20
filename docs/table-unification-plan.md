@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 10 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 6.
+**Status: 11 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 5.
 
 ## Legend
 
@@ -41,6 +41,7 @@ needed it, never speculatively.
       controls whose options depend on the query results
 - [x] `f.hidden` — a filter with no control, arriving by deep link
 - [x] Controlled `columnVisibility` — a column's visibility can depend on the rows
+- [x] `toApiValue` — URL values are strings; a request may want a boolean or number
 
 ### Defects killed by construction
 
@@ -57,6 +58,12 @@ needed it, never speculatively.
       all 16 tables. `tableAriaLabel` threaded through the grid stack.
 - [x] **Cost codes' sorting was decorative** — headers were built with
       `DataGridColumnHeader` but no sorting state was ever wired.
+- [x] **Filter values reached the API as strings** — `isPaid` is declared as a
+      boolean but the URL carries `"true"`, and the cast to the params type hid it.
+      `toApiValue` converts; the other migrated lists were swept and take only strings.
+- [x] **Clearing all filters left picker search boxes populated** — `onClear` lives
+      on the schema copy carrying live data, but `clearFilters` walked the copy held
+      in state. The rendered schema now drives clearing.
 - [x] **Refetch showed no feedback** — the cards the kit replaced redrew the whole
       grid as skeletons on every background refetch; the first migrations then
       reported only the initial load, so a refetch showed nothing. Both replaced by
@@ -82,7 +89,7 @@ needed it, never speculatively.
 Lookup grew because its inline column definitions moved to their own file, matching
 every other module. Across both files it still shrank, 317 → 259.
 
-**21 files deleted:** 7 table cards, 8 list params hooks, 6 filter/table components.
+**24 files deleted:** 7 table cards, 9 list params hooks, 8 filter/table components.
 
 ### Next — the project group
 
@@ -104,13 +111,12 @@ around an escape hatch.
       use one, three use the other.
 - [x] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers · 202 → 190
 - [x] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + picker + mobile card + `columnVisibility` · 246 → 232
-- [ ] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card
+- [x] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card · 170 → 110
 - [ ] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — custom scroll-arrow tabs + client-side `trackFilter`
 
-⚠️ The remaining two mobile cards are defined **inline inside** the table components
-being deleted — extract each first: `employees-table-card.tsx:93` and
-`sub-change-order-list-table.tsx:66`. Purchase order's is already extracted to
-`purchase-order-mobile-card.tsx`.
+⚠️ One mobile card left inline in a component due for deletion:
+`employees-table-card.tsx:93`. Purchase order's and sub change order's are already
+extracted to their own files.
 
 ### Then — the remainder
 
