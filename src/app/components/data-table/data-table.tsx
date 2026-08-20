@@ -30,6 +30,11 @@ export interface DataTableProps<
   ariaLabel: string;
   empty: DataTableEmptyState;
   error: { title: string; description?: string };
+  /**
+   * Render these filter definitions instead of `state.filters` — same keys, live
+   * data attached. See `DataTableFilters`.
+   */
+  filters?: readonly AnyFilterDef<never>[];
   /** Overrides the schema-driven title slot (tabs, by default). */
   title?: ReactNode;
   /** Extra header controls appended after the schema-driven ones. */
@@ -65,6 +70,7 @@ export function DataTable<
   list,
   state,
   ariaLabel,
+  filters,
   empty,
   error,
   title,
@@ -80,7 +86,7 @@ export function DataTable<
 }: DataTableProps<TData, TDefs, TField>) {
   return (
     <Card className={className}>
-      <DataTableFilters actions={headerActions} state={state} title={title} />
+      <DataTableFilters actions={headerActions} filters={filters} state={state} title={title} />
 
       {replaceBody ?? (
         <DataGridSection

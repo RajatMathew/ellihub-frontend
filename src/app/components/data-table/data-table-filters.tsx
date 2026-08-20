@@ -30,6 +30,12 @@ interface DataTableFiltersProps<
   TField extends string,
 > {
   state: ListState<TDefs, TField>;
+  /**
+   * Render these definitions instead of `state.filters`. Same keys, but with live
+   * data attached — for controls whose options depend on the query results, which
+   * cannot exist until after `useListState` has produced the request params.
+   */
+  filters?: readonly AnyFilterDef<never>[];
   /** Rendered to the left of the controls. Tabs take this slot automatically. */
   title?: ReactNode;
   /** Extra controls appended after the schema-driven ones. */
@@ -46,11 +52,10 @@ interface DataTableFiltersProps<
 export function DataTableFilters<
   TDefs extends readonly AnyFilterDef<never>[],
   TField extends string,
->({ state, title, actions }: DataTableFiltersProps<TDefs, TField>) {
-  const { filters, hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } =
-    state;
+>({ state, filters, title, actions }: DataTableFiltersProps<TDefs, TField>) {
+  const { hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } = state;
 
-  const schema = filters as readonly AnyFilterDef<never>[];
+  const schema = (filters ?? state.filters) as readonly AnyFilterDef<never>[];
   const tabsDef = schema.find((def) => def.kind === 'tabs');
   const controls = schema.filter((def) => def.kind !== 'tabs');
 
