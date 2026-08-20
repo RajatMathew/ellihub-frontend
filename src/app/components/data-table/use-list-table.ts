@@ -71,8 +71,6 @@ export interface UseListTableOptions<
 
 export interface ListTable<TData extends object> {
   table: Table<TData>;
-  /** Rows after any client-side filters have been applied. */
-  rows: TData[];
   /** Total to display: the client-filtered count when a client filter is active. */
   totalCount: number;
   /** First load, or a refetch with nothing to show yet. Render skeletons. */
@@ -197,7 +195,6 @@ export function useListTable<
     isInitialLoading,
     isRefreshing,
     retry: query.refetch,
-    rows: filteredRows,
     table,
     totalCount: effectiveTotal,
   };

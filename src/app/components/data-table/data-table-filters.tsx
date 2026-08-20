@@ -42,8 +42,6 @@ interface DataTableFiltersProps<
   filters?: readonly AnyFilterDef<never>[];
   /** Rendered to the left of the controls. Tabs take this slot automatically. */
   title?: ReactNode;
-  /** Extra controls appended after the schema-driven ones. */
-  actions?: ReactNode;
 }
 
 /**
@@ -56,7 +54,7 @@ interface DataTableFiltersProps<
 export function DataTableFilters<
   TDefs extends readonly AnyFilterDef<never>[],
   TField extends string,
->({ state, filters, title, actions }: DataTableFiltersProps<TDefs, TField>) {
+>({ state, filters, title }: DataTableFiltersProps<TDefs, TField>) {
   const { hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } = state;
 
   const schema = (filters ?? state.filters) as readonly AnyFilterDef<never>[];
@@ -182,8 +180,6 @@ export function DataTableFilters<
             // 'hidden' filters deliberately render nothing.
             return null;
           })}
-
-          {actions}
 
           <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearAll} />
         </TableCardHeaderToolbar>

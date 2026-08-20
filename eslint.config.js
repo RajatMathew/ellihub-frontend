@@ -46,5 +46,25 @@ export default defineConfig([
       'prefer-const': 'warn',
     },
   },
+  {
+    // Resource lists go through the shared kit in src/app/components/data-table.
+    // Type-only imports stay allowed so column files can annotate ColumnDef.
+    files: ['src/modules/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@tanstack/react-table',
+              allowTypeImports: true,
+              message:
+                'Build lists with useListState/useListTable from @/app/components/data-table. Reach for the raw table via list.table if you genuinely need it.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   eslintConfigPrettier,
 ]);

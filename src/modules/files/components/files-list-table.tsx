@@ -18,6 +18,10 @@ import { FilesEmptyState } from '@/modules/files/components/files-empty-state';
 import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
 import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
+// Files is the one list that renders its own body: rows are grouped into
+// sections and animated, so it composes the grid primitives directly rather
+// than going through DataTable. See use-files-list-params for the rationale.
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports
 import { flexRender, type Cell, type ColumnDef, type Row, type Table } from '@tanstack/react-table';
 import { motion } from 'motion/react';
 

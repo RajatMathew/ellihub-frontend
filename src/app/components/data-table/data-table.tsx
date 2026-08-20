@@ -37,8 +37,6 @@ export interface DataTableProps<
   filters?: readonly AnyFilterDef<never>[];
   /** Overrides the schema-driven title slot (tabs, by default). */
   title?: ReactNode;
-  /** Extra header controls appended after the schema-driven ones. */
-  headerActions?: ReactNode;
   /**
    * Rendered in place of the table body and pagination. For states where the
    * list cannot exist at all — an unconnected integration, say — rather than
@@ -48,7 +46,6 @@ export interface DataTableProps<
   /** Card-per-row rendering below the breakpoint. Omit for a scrolling table. */
   mobileItem?: (row: TData) => ReactNode;
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
-  mobileSkeleton?: ReactNode;
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
   className?: string;
@@ -73,18 +70,16 @@ export function DataTable<
   empty,
   error,
   title,
-  headerActions,
   replaceBody,
   mobileItem,
   mobileBreakpoint,
-  mobileSkeleton,
   tableLayout,
   tableClassNames,
   className,
 }: DataTableProps<TData, TDefs, TField>) {
   return (
     <Card className={className}>
-      <DataTableFilters actions={headerActions} filters={filters} state={state} title={title} />
+      <DataTableFilters filters={filters} state={state} title={title} />
 
       {replaceBody ?? (
         <DataGridSection
@@ -99,7 +94,6 @@ export function DataTable<
           isRefreshing={list.isRefreshing}
           mobileBreakpoint={mobileBreakpoint}
           mobileItem={mobileItem}
-          mobileSkeleton={mobileSkeleton}
           table={list.table}
           tableAriaLabel={ariaLabel}
           tableClassNames={tableClassNames}
