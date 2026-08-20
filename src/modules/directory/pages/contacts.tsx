@@ -1,17 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
 import {
   ContactListStats,
   ContactsPageHeader,
-  ContactsTableCard,
   useContactListColumns,
 } from '@/modules/directory/components/contacts';
 import { getContactLinkedEntities } from '@/modules/directory/components/contacts/contact-list-utils';
 import {
   CONTACTS_DEFAULT_PAGE_SIZE,
-  isContactsSortByField,
+  CONTACTS_SORT_BY_OPTIONS,
 } from '@/modules/directory/constants/contacts/contact-list.constants';
 import {
   useContactsQuery,
@@ -19,70 +19,58 @@ import {
   useDirectoryKpisQuery,
   useProfessionalRolesQuery,
 } from '@/modules/directory/hooks';
-import { useContactListParams } from '@/modules/directory/hooks/contacts/use-contact-list-params';
 import type { Contact, ListContactsParams } from '@/modules/directory/schemas/contact.schema';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
+import { ListFilterPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyVendorNames = new Map<string, string>();
 
 export function ContactsListPage() {
   const { can } = useAccess();
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    roleFilter,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearFilters,
-  } = useContactListParams();
+  const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
 
-  const filters = useMemo<ListContactsParams>(
-    () => ({
-      page,
-      size,
-      sortBy,
-      sortOrder,
-      search: searchQuery || undefined,
-      professionalRoleId: roleFilter,
-    }),
-    [page, roleFilter, searchQuery, size, sortBy, sortOrder]
+  const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
+
+  // Options come from their own query, so the schema is memoized rather than
+  // module-level. Without this every render would hand `useListState` a new array.
+  const filters = useMemo(
+    () => [
+      f.select({
+        icon: ListFilterPlus,
+        isLoading: isRolesLoading,
+        key: 'professionalRoleId',
+        options: professionalRoles.map((role) => ({
+          label: role.label || role.name || role.id,
+          value: role.id,
+        })),
+        placeholder: 'All Roles',
+      }),
+      f.search({ placeholder: 'Search contacts...' }),
+    ],
+    [isRolesLoading, professionalRoles]
   );
 
-  const contactsQuery = useContactsQuery(filters);
-  const statsQuery = useDirectoryKpisQuery();
-  const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
-  const deleteMutation = useDeleteContactMutation();
-  const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
-  const hasListData = contactsQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    contactsQuery.isLoading || (contactsQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && contactsQuery.isFetching && !showListInitialLoader;
+  const state = useListState({
+    filters,
+    pageSize: CONTACTS_DEFAULT_PAGE_SIZE,
+    sort: { by: 'fullName', fields: CONTACTS_SORT_BY_OPTIONS, order: 'asc' },
+  });
 
-  const listData = contactsQuery.data?.data ?? [];
-  const totalCount = contactsQuery.data?.pagination?.totalItems ?? 0;
-  const hasActiveFilters = !!searchQuery || !!roleFilter;
+  const contactsQuery = useContactsQuery(state.apiParams as ListContactsParams);
+  const statsQuery = useDirectoryKpisQuery();
+  const deleteMutation = useDeleteContactMutation();
 
   const vendorNames = emptyVendorNames;
 
   const handleDelete = useCallback(
     (contact: Contact) => {
       const links = getContactLinkedEntities(contact, vendorNames);
+
       if (links.length > 0) {
         const linkedNames = links
           .map((link) => `${link.type === 'GC' ? 'GC' : 'vendor'} ${link.name}`)
           .join(', ');
+
         toast.error(
           `Cannot delete this contact because it is linked to ${linkedNames}. Unlink it before deleting.`
         );
@@ -95,114 +83,76 @@ export function ContactsListPage() {
   );
 
   const columns = useContactListColumns({
-    vendorNames,
-    canUpdate: can('contact', 'update'),
     canDelete: can('contact', 'delete'),
+    canUpdate: can('contact', 'update'),
     onDelete: handleDelete,
+    vendorNames,
   });
 
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
-
-  const table = useReactTable({
-    data: listData,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / size)),
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const previous = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      const patches: Record<string, string | undefined> = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === CONTACTS_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isContactsSortByField(column.id) ? column.id : 'fullName';
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-
-      updateParams({
-        sortBy: nextSortBy === 'fullName' ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === 'asc' ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
+    getRowId: (contact) => contact.id,
+    query: contactsQuery,
+    rows: contactsQuery.data?.data ?? [],
+    state,
+    totalCount: contactsQuery.data?.pagination?.totalItems ?? 0,
   });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
 
   return (
     <div className="container-fluid py-7.5">
       <ContactsPageHeader
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
         canCreate={can('contact', 'create')}
-        isLoading={showListInitialLoader}
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        totalCount={list.totalCount}
       />
-      <ContactListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
+      <ContactListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 
-      <ContactsTableCard
-        table={table}
-        professionalRoles={professionalRoles}
-        roleFilter={roleFilter}
-        searchInput={searchInput}
-        isLoading={showListInitialLoader}
-        isRefreshing={isRefreshingList}
-        isRolesLoading={isRolesLoading}
-        isError={contactsQuery.isError}
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={handleSearchChange}
-        onRoleChange={(roleId) => updateParams({ professionalRoleId: roleId, page: undefined })}
-        onClearFilters={clearFilters}
-        onRetry={() => void contactsQuery.refetch()}
+      <DataTable
+        ariaLabel="Contacts"
+        empty={{
+          description: 'Click "+ Add Contact" to get started.',
+          icon: <Users className="size-10 text-muted-foreground/50" />,
+          title: 'No contacts yet',
+        }}
+        error={{ title: 'Failed to load contacts' }}
+        list={list}
+        refreshIndicator="none"
+        state={state}
+        tableClassNames={{ base: 'min-w-full' }}
+        tableLayout={{ width: 'auto' }}
+        title={
+          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+            Contact Directory
+          </span>
+        }
       />
 
       <ConfirmDialog
-        open={Boolean(pendingDeleteContact)}
-        onOpenChange={(open) => {
-          if (!open) setPendingDeleteContact(null);
-        }}
-        title="Delete Contact Permanently"
+        confirmLabel="Delete Permanently"
         description={
           <>
             This action cannot be undone. This will permanently delete{' '}
             <strong>{pendingDeleteContact?.fullName ?? 'this contact'}</strong>.
           </>
         }
-        confirmLabel="Delete Permanently"
+        isPending={deleteMutation.isPending}
+        open={Boolean(pendingDeleteContact)}
+        title="Delete Contact Permanently"
+        variant="destructive"
         onConfirm={() => {
           if (!pendingDeleteContact) return;
+
           deleteMutation.mutate(pendingDeleteContact.id, {
             onSuccess: () => setPendingDeleteContact(null),
           });
         }}
-        variant="destructive"
-        isPending={deleteMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteContact(null);
+        }}
       />
     </div>
   );

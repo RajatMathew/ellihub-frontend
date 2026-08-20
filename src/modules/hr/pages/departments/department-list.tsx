@@ -1,126 +1,64 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import { Button } from '@/app/components/ui/button';
 import {
   DepartmentDeleteDialog,
   DepartmentListStats,
   DepartmentListToolbar,
-  DepartmentsTableCard,
   useDepartmentListColumns,
 } from '@/modules/hr/components/departments/list';
 import {
   DEPARTMENT_DEFAULT_PAGE_SIZE,
-  isDepartmentSortByField,
+  DEPARTMENT_SORT_FIELDS,
 } from '@/modules/hr/constants/departments/department-list.constants';
 import {
   useDeleteDepartmentMutation,
   useDepartmentsQuery,
   useDepartmentStatsQuery,
 } from '@/modules/hr/hooks/departments.hooks';
-import { useDepartmentListParams } from '@/modules/hr/hooks/departments/use-department-list-params';
 import type { ListDepartmentsParams } from '@/modules/hr/schemas/department.schema';
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
+import { Building2, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
+const DEPARTMENT_FILTERS = [
+  f.search({ className: 'sm:w-72', placeholder: 'Search departments...' }),
+];
+
+interface DepartmentDeleteTarget {
+  id: string;
+  name: string;
+  employeeCount?: number;
+}
 
 export default function DepartmentListPage() {
-  const {
-    page,
-    size,
-    searchQuery,
-    sortBy,
-    sortOrder,
-    searchInput,
-    updateParams,
-    handleSearchChange,
-    clearSearch,
-  } = useDepartmentListParams();
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    name: string;
-    employeeCount?: number;
-  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DepartmentDeleteTarget | null>(null);
 
-  const filters = useMemo<ListDepartmentsParams>(
-    () => ({
-      page,
-      size,
-      sortBy,
-      sortOrder,
-      search: searchQuery || undefined,
-    }),
-    [page, searchQuery, size, sortBy, sortOrder]
-  );
+  const state = useListState({
+    filters: DEPARTMENT_FILTERS,
+    pageSize: DEPARTMENT_DEFAULT_PAGE_SIZE,
+    sort: { by: 'name', fields: DEPARTMENT_SORT_FIELDS, order: 'asc' },
+  });
 
-  const departmentsQuery = useDepartmentsQuery(filters);
+  const departmentsQuery = useDepartmentsQuery(state.apiParams as ListDepartmentsParams);
   const statsQuery = useDepartmentStatsQuery();
   const deleteMutation = useDeleteDepartmentMutation();
-  const hasListData = departmentsQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    departmentsQuery.isLoading || (departmentsQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && departmentsQuery.isFetching && !showListInitialLoader;
-  const listData = departmentsQuery.data?.data ?? [];
-  const totalCount = departmentsQuery.data?.pagination.totalItems ?? 0;
-  const sorting = useMemo<SortingState>(
-    () => [{ id: sortBy, desc: sortOrder === 'desc' }],
-    [sortBy, sortOrder]
-  );
 
   const columns = useDepartmentListColumns(
-    useCallback((department) => setDeleteTarget(department), [])
+    useCallback((department: DepartmentDeleteTarget) => setDeleteTarget(department), [])
   );
 
-  const table = useReactTable({
-    data: listData,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / size)),
-    state: {
-      pagination: { pageIndex: page - 1, pageSize: size },
-      sorting,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualSorting: true,
-    onPaginationChange: (updater) => {
-      const previous = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(previous) : updater;
-      const patches: Record<string, string | undefined> = {};
-
-      if (next.pageIndex + 1 !== page) {
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      }
-
-      if (next.pageSize !== size) {
-        patches.size =
-          next.pageSize === DEPARTMENT_DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-
-      updateParams(patches);
-    },
-    onSortingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(sorting) : updater;
-      const column = next[0];
-
-      if (!column) {
-        updateParams({ sortBy: undefined, sortOrder: undefined, page: undefined });
-        return;
-      }
-
-      const nextSortBy = isDepartmentSortByField(column.id) ? column.id : 'name';
-      const nextSortOrder = column.desc ? 'desc' : 'asc';
-      updateParams({
-        sortBy: nextSortBy === 'name' ? undefined : nextSortBy,
-        sortOrder: nextSortOrder === 'asc' ? undefined : nextSortOrder,
-        page: undefined,
-      });
-    },
+    getRowId: (department) => department.id,
+    query: departmentsQuery,
+    rows: departmentsQuery.data?.data ?? [],
+    state,
+    totalCount: departmentsQuery.data?.pagination.totalItems ?? 0,
   });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
 
   const handleConfirmDelete = useCallback(() => {
     if (!deleteTarget) return;
@@ -134,32 +72,48 @@ export default function DepartmentListPage() {
   return (
     <div className="container-fluid py-7.5">
       <DepartmentListToolbar
-        totalCount={totalCount}
-        searchQuery={searchQuery}
-        isLoading={showListInitialLoader}
+        isLoading={list.isInitialLoading}
+        searchQuery={state.values.search ?? ''}
+        totalCount={list.totalCount}
       />
-      <DepartmentListStats stats={statsQuery.data} isLoading={showStatsInitialLoader} />
+      <DepartmentListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 
-      <DepartmentsTableCard
-        table={table}
-        totalCount={totalCount}
-        isLoading={showListInitialLoader}
-        isRefreshing={isRefreshingList}
-        isError={departmentsQuery.isError}
-        isRefetching={isRefreshingList}
-        searchInput={searchInput}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        onClearSearch={clearSearch}
-        onRetry={() => void departmentsQuery.refetch()}
+      <DataTable
+        ariaLabel="Departments"
+        empty={{
+          action: <NewDepartmentButton />,
+          description: 'Create your first department to start organizing your team.',
+          icon: <Building2 className="size-10 text-muted-foreground/40" />,
+          title: 'No departments found',
+        }}
+        error={{ title: 'Failed to load departments.' }}
+        list={list}
+        refreshIndicator="none"
+        state={state}
+        title={
+          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
+            All Departments
+          </span>
+        }
       />
 
       <DepartmentDeleteDialog
-        target={deleteTarget}
         isPending={deleteMutation.isPending}
+        target={deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />
     </div>
+  );
+}
+
+function NewDepartmentButton() {
+  return (
+    <Button asChild className="mt-4" size="sm" variant="outline">
+      <Link to="create">
+        <Plus className="size-4" />
+        New Department
+      </Link>
+    </Button>
   );
 }
