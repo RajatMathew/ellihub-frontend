@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 9 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 7.
+**Status: 10 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 6.
 
 ## Legend
 
@@ -39,6 +39,8 @@ needed it, never speculatively.
 - [x] `onClear` on every filter — resets companion local state the URL cannot see
 - [x] `filters` render override on `DataTable` — same keys, live data attached, for
       controls whose options depend on the query results
+- [x] `f.hidden` — a filter with no control, arriving by deep link
+- [x] Controlled `columnVisibility` — a column's visibility can depend on the rows
 
 ### Defects killed by construction
 
@@ -80,7 +82,7 @@ needed it, never speculatively.
 Lookup grew because its inline column definitions moved to their own file, matching
 every other module. Across both files it still shrank, 317 → 259.
 
-**18 files deleted:** 7 table cards, 7 list params hooks, 4 filter/table components.
+**21 files deleted:** 7 table cards, 8 list params hooks, 6 filter/table components.
 
 ### Next — the project group
 
@@ -101,14 +103,14 @@ around an escape hatch.
       same active underline); they differ only in mobile wrapping. Four project pages
       use one, three use the other.
 - [x] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers · 202 → 190
-- [ ] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + pickers + mobile card + `columnVisibility` (pickers now unblocked)
+- [x] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + picker + mobile card + `columnVisibility` · 246 → 232
 - [ ] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card
 - [ ] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — custom scroll-arrow tabs + client-side `trackFilter`
 
-⚠️ All three mobile cards are defined **inline inside** the table components being
-deleted — extract each first:
-`employees-table-card.tsx:93`, `purchase-order-list-table.tsx:69`,
-`sub-change-order-list-table.tsx:66`.
+⚠️ The remaining two mobile cards are defined **inline inside** the table components
+being deleted — extract each first: `employees-table-card.tsx:93` and
+`sub-change-order-list-table.tsx:66`. Purchase order's is already extracted to
+`purchase-order-mobile-card.tsx`.
 
 ### Then — the remainder
 
