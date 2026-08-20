@@ -95,11 +95,14 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions
 ): string {
   const date = new Date(input);
-  return date.toLocaleDateString('en-US', options || {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return date.toLocaleDateString(
+    'en-US',
+    options || {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }
+  );
 }
 
 export function formatDateTime(input: Date | string | number): string {
@@ -148,9 +151,16 @@ export function parsePageParam(v: string | null): number {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
+/**
+ * The only page sizes a list URL accepts. `DataGridPagination`'s size selector
+ * must offer exactly these — if the two drift, the selector offers a size this
+ * parser silently rejects.
+ */
+export const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
+
 export function parseSizeParam(v: string | null, defaultSize = 10): number {
   const n = Number(v);
-  return [5, 10, 25, 50, 100].includes(n) ? n : defaultSize;
+  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? n : defaultSize;
 }
 export function getContrastColor(hexColor: string | undefined): string {
   if (!hexColor) return '#ffffff';
