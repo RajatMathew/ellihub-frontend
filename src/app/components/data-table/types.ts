@@ -28,6 +28,11 @@ interface FilterBase<TKey extends string, TValue, TData> {
   parse?: (raw: string | null) => TValue | undefined;
   /** Serialize back to a URL value. Return `undefined` to drop the param entirely. */
   serialize?: (value: TValue) => string | undefined;
+  /**
+   * Convert the URL string into whatever the API expects. URL values are always
+   * strings; a request body may want a boolean or a number.
+   */
+  toApiValue?: (value: TValue) => unknown;
   /** Treated as unset: omitted from the URL, the API request and `hasActiveFilters`. */
   defaultValue?: TValue;
   /**

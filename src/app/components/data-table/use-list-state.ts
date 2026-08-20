@@ -28,8 +28,8 @@ export interface ListState<TDefs extends readonly AnyFilterDef<never>[], TField 
   rawValues: Record<string, string | undefined>;
   /** Draft search text. Debounced into the URL; never used for requests. */
   searchInput: string;
-  /** Ready-to-spread request params, with `apiKey` renames already applied. */
-  apiParams: Record<string, string | number | undefined>;
+  /** Ready-to-spread request params, with `apiKey` renames and value conversion applied. */
+  apiParams: Record<string, unknown>;
   hasActiveFilters: boolean;
   filters: TDefs;
   setSearchInput: (value: string) => void;
@@ -143,7 +143,7 @@ export function useListState<
   const hasActiveFilters = useMemo(() => Object.values(rawValues).some(Boolean), [rawValues]);
 
   const apiParams = useMemo(() => {
-    const params: Record<string, string | number | undefined> = {
+    const params: Record<string, unknown> = {
       [pageKey]: page,
       [sizeKey]: size,
       [sortByKey]: sortBy,
@@ -155,7 +155,10 @@ export function useListState<
       // Client-side filters never reach the API.
       if (def.clientPredicate) continue;
 
-      params[filterApiKey(def)] = raw[def.key];
+      const value = raw[def.key];
+
+      params[filterApiKey(def)] =
+        value !== undefined && def.toApiValue ? def.toApiValue(value) : value;
     }
 
     return params;

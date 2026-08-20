@@ -56,6 +56,13 @@ export function DataTableFilters<
   const { hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } = state;
 
   const schema = (filters ?? state.filters) as readonly AnyFilterDef<never>[];
+
+  // Fire onClear from the *rendered* schema: when a page attaches live data via
+  // the `filters` override, that copy is the one holding the real callbacks.
+  const clearAll = () => {
+    for (const def of schema) def.onClear?.();
+    state.clearFilters();
+  };
   const tabsDef = schema.find((def) => def.kind === 'tabs');
   const controls = schema.filter((def) => def.kind !== 'tabs');
 
@@ -139,7 +146,7 @@ export function DataTableFilters<
               return (
                 <span key={def.key}>
                   {def.render({
-                    clearAll: state.clearFilters,
+                    clearAll,
                     setValue: (value) => setFilterValue(def.key, value),
                     value: rawValues[def.key],
                   })}
@@ -153,7 +160,7 @@ export function DataTableFilters<
 
           {actions}
 
-          <TableCardHeaderClearButton active={hasActiveFilters} onClick={state.clearFilters} />
+          <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearAll} />
         </TableCardHeaderToolbar>
       }
     />

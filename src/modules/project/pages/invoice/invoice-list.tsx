@@ -72,7 +72,12 @@ function withPickerData(
   };
 }
 
-const PAYMENT_TAB_FILTER = f.tabs({ key: 'isPaid', options: PAYMENT_TABS });
+// The URL carries 'true'/'false'; the API expects a real boolean.
+const PAYMENT_TAB_FILTER = f.tabs({
+  key: 'isPaid',
+  options: PAYMENT_TABS,
+  toApiValue: (value) => value === 'true',
+});
 const SEARCH_FILTER = f.search({ className: 'sm:w-60', placeholder: 'Search invoices...' });
 const VENDOR_SHELL = pickerShell('vendorId');
 const PURCHASE_ORDER_SHELL = pickerShell('purchaseOrderId');
