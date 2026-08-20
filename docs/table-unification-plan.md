@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 12 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 4.
+**Status: 13 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 3.
 
 ## Legend
 
@@ -118,13 +118,13 @@ around an escape hatch.
 - [x] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card · 170 → 110
 - [x] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — scroll-arrow tabs in the title slot + client-side `track` · 222 → 205
 
-⚠️ One mobile card left inline in a component due for deletion:
-`employees-table-card.tsx:93`. Purchase order's and sub change order's are already
-extracted to their own files.
+✅ All three mobile cards are now extracted to their own files
+(`purchase-order-mobile-card.tsx`, `sub-change-order-mobile-card.tsx`,
+`employee-mobile-card.tsx`), so none was lost with its host.
 
 ### Then — the remainder
 
-- [ ] [employees](../src/modules/hr/pages/employees/employee-list.tsx) — search only, mobile card
+- [x] [employees](../src/modules/hr/pages/employees/employee-list.tsx) — search only, mobile card · 129 → 118
 - [ ] [members](../src/modules/settings/pages/members-page.tsx) — 3 selects
 - [ ] [activity-log](../src/modules/activity-log/pages/activity-log-list.tsx) — 2 selects; calls `useResourceListParams` directly, no wrapper hook
 - [ ] [categories](../src/modules/catalog/components/categories-table-card.tsx) — self-contained, search only
@@ -252,15 +252,15 @@ const sortBy = query.sortBy && allowedSortFields.includes(query.sortBy)
 `allowedSortFields` defaults to `[]`, and `[].includes(x)` is always false — so any
 module that omits the option pins every request to its `defaultSortBy`.
 
-Only **vendor** and **prime-change-order** declared it. Nine endpoints now do:
-gc, contact, department, pto, cost-code, invoice, po, sco and rfq. Every field was
+Only **vendor** and **prime-change-order** declared it. Ten endpoints now do:
+gc, contact, department, pto, cost-code, invoice, po, sco, rfq and employee. Every field was
 checked against its Prisma model first, since an unknown key reaches `orderBy`
 directly and throws. Deliberately excluded: `po.documents` and
-`rfq.estimatedBudget` (not columns). `pto.employee.name` gained a nested
-special-case in its service instead, matching how GC handles `type` and departments
-handle `employeeCount`.
+`rfq.estimatedBudget` (not columns). `pto.employee.name` and `employee.department.name` gained
+nested special-cases in their services instead, matching how GC handles `type` and
+departments handle `employeeCount`.
 
-Activity-log and employee were left alone — neither has a sorting UI.
+Activity-log was left alone — it has no sorting UI.
 
 Vendor has a narrower version of the same issue: the frontend lists `type` as a sort
 option while the API allows `typeId`. Dormant, because that column sets
