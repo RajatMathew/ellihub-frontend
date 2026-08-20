@@ -1,0 +1,180 @@
+import { useEffect, useMemo } from 'react';
+
+import {
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+  type Table,
+  type VisibilityState,
+} from '@tanstack/react-table';
+
+import type { AnyFilterDef } from './types';
+import type { ListState } from './use-list-state';
+
+/**
+ * Filter values are always strings at the URL layer, but each `FilterDef` narrows
+ * its own value type. Reading the predicate off the union collapses its parameter
+ * to `never` through contravariance, so predicates are collected through this
+ * widened shape — the schema guarantees the value belongs to that filter.
+ */
+type ClientPredicate<TData> = (row: TData, value: string) => boolean;
+
+/**
+ * The slice of a React Query result this hook needs. Kept structural so callers
+ * can pass a query result directly without the kit depending on React Query.
+ */
+export interface ListQueryStatus {
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+export interface UseListTableOptions<
+  TData extends object,
+  TDefs extends readonly AnyFilterDef<never>[],
+  TField extends string,
+> {
+  state: ListState<TDefs, TField>;
+  columns: ColumnDef<TData>[];
+  /** Rows for the current page, as returned by the API. */
+  rows: TData[];
+  /** Server-reported total across all pages. */
+  totalCount: number;
+  query: ListQueryStatus;
+  /** Stable business id. Strongly preferred over the row index. */
+  getRowId?: (row: TData) => string;
+  initialColumnVisibility?: VisibilityState;
+}
+
+export interface ListTable<TData extends object> {
+  table: Table<TData>;
+  /** Rows after any client-side filters have been applied. */
+  rows: TData[];
+  /** Total to display: the client-filtered count when a client filter is active. */
+  totalCount: number;
+  /** First load, or a refetch with nothing to show yet. Render skeletons. */
+  isInitialLoading: boolean;
+  /** Background refetch with rows already on screen. Keep the rows, show progress. */
+  isRefreshing: boolean;
+  isError: boolean;
+  retry: () => void;
+}
+
+/**
+ * Wires a `useListState` schema to a TanStack table.
+ *
+ * Replaces the ~48 lines of pagination/sorting boilerplate currently repeated in
+ * thirteen list pages. Everything it derives — page count, sorting state, both
+ * change handlers, the loading flags, the page clamp — was previously hand-written
+ * per page, with the inconsistencies that implies.
+ */
+export function useListTable<
+  TData extends object,
+  TDefs extends readonly AnyFilterDef<never>[],
+  TField extends string,
+>({
+  state,
+  columns,
+  rows,
+  totalCount,
+  query,
+  getRowId,
+  initialColumnVisibility,
+}: UseListTableOptions<TData, TDefs, TField>): ListTable<TData> {
+  const { page, size, sortBy, sortOrder, setPage, setSize, setSort } = state;
+
+  // Client-side filters run here rather than in the request. A filter opts in by
+  // supplying `clientPredicate`; nothing else about it changes.
+  const { rawValues } = state;
+
+  const filteredRows = useMemo(() => {
+    const active: { predicate: ClientPredicate<TData>; value: string }[] = [];
+
+    for (const def of state.filters as readonly AnyFilterDef<TData>[]) {
+      const value = rawValues[def.key];
+
+      if (def.clientPredicate && value !== undefined) {
+        active.push({ predicate: def.clientPredicate as ClientPredicate<TData>, value });
+      }
+    }
+
+    if (active.length === 0) return rows;
+
+    return rows.filter((row) => active.every(({ predicate, value }) => predicate(row, value)));
+  }, [rawValues, rows, state.filters]);
+
+  const hasClientFilter = filteredRows !== rows;
+  const effectiveTotal = hasClientFilter ? filteredRows.length : totalCount;
+  const pageCount = Math.max(1, Math.ceil(effectiveTotal / size));
+
+  const sorting = useMemo<SortingState>(
+    () => [{ desc: sortOrder === 'desc', id: sortBy }],
+    [sortBy, sortOrder]
+  );
+
+  const isInitialLoading = query.isLoading || (query.isFetching && rows.length === 0);
+  // Rows must actually be on screen for this to mean anything — otherwise the
+  // "Refreshing" indicator would sit on top of an empty state.
+  const isRefreshing = rows.length > 0 && query.isFetching && !isInitialLoading;
+
+  const table = useReactTable({
+    columns,
+    data: filteredRows,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getRowId,
+    initialState: initialColumnVisibility
+      ? { columnVisibility: initialColumnVisibility }
+      : undefined,
+    manualPagination: true,
+    manualSorting: true,
+    onPaginationChange: (updater) => {
+      const previous = { pageIndex: page - 1, pageSize: size };
+      const next = typeof updater === 'function' ? updater(previous) : updater;
+
+      if (next.pageSize !== size) {
+        setSize(next.pageSize);
+        return;
+      }
+      if (next.pageIndex + 1 !== page) setPage(next.pageIndex + 1);
+    },
+    onSortingChange: (updater) => {
+      const next = typeof updater === 'function' ? updater(sorting) : updater;
+      const column = next[0];
+
+      if (!column) {
+        state.resetSort();
+        return;
+      }
+
+      setSort(column.id, column.desc ? 'desc' : 'asc');
+    },
+    pageCount,
+    state: {
+      pagination: { pageIndex: page - 1, pageSize: size },
+      sorting,
+    },
+  });
+
+  // Deleting the last row of the last page, or a filter shrinking the total,
+  // can strand the user on a page that no longer exists.
+  useEffect(() => {
+    if (isInitialLoading || query.isError) return;
+
+    const lastPage = effectiveTotal === 0 ? 1 : Math.ceil(effectiveTotal / size);
+    if (page > lastPage) setPage(lastPage);
+  }, [effectiveTotal, isInitialLoading, page, query.isError, setPage, size]);
+
+  return {
+    isError: query.isError,
+    isInitialLoading,
+    isRefreshing,
+    retry: query.refetch,
+    rows: filteredRows,
+    table,
+    totalCount: effectiveTotal,
+  };
+}
