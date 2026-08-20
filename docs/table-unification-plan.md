@@ -35,6 +35,8 @@ needed it, never speculatively.
 - [x] `replaceBody` — for states where the list cannot exist (unconnected integration)
 - [x] `extraLoading` — a dependency query the list cannot render without
 - [x] Required `ariaLabel` on `DataTable`
+- [x] `f.infiniteSelect` — a picker backed by its own paginated query
+- [x] `onClear` on every filter — resets companion local state the URL cannot see
 
 ### Defects killed by construction
 
@@ -51,6 +53,10 @@ needed it, never speculatively.
       all 16 tables. `tableAriaLabel` threaded through the grid stack.
 - [x] **Cost codes' sorting was decorative** — headers were built with
       `DataGridColumnHeader` but no sorting state was ever wired.
+- [x] **Refetch showed no feedback** — the cards the kit replaced redrew the whole
+      grid as skeletons on every background refetch; the first migrations then
+      reported only the initial load, so a refetch showed nothing. Both replaced by
+      the shared inline indicator.
 
 ---
 
@@ -79,15 +85,21 @@ every other module. Across both files it still shrank, 317 → 259.
 These four share two dependencies, so they move together rather than each bending
 around an escape hatch.
 
-- [ ] **`f.infiniteSelect`** — `InfiniteSearchSelect` appears in invoice and
-      purchase-order filters. Four `f.custom` calls would trip the health signal
-      below, so it earns a first-class kind.
+- [x] **`f.infiniteSelect`** — `InfiniteSearchSelect` appears in invoice and
+      purchase-order filters. Four `f.custom` calls would have tripped the health
+      signal below, so it became a first-class kind.
+- [ ] ⛔ **Selected-option label cycle** — blocks invoice and purchase-order.
+      A picker's trigger shows a name rather than a raw id by looking the label up
+      in the rows on screen. That creates a cycle: picker → label → rows → query →
+      state → schema → picker. Fix is a small id→label cache filled as rows arrive,
+      so the lookup no longer depends on the current page. Dropping the recovery
+      instead would regress deep-linked filters to showing bare ids.
 - [ ] **Merge the two tab components** — `ProjectFilterTabs` and
       `TableCardHeaderTabs` render near-identically (same mono/xs/uppercase/tracking,
       same active underline); they differ only in mobile wrapping. Four project pages
       use one, three use the other.
-- [ ] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers
-- [ ] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + pickers + mobile card + `columnVisibility`
+- [ ] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers ⛔ blocked on the label cycle
+- [ ] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + pickers + mobile card + `columnVisibility` ⛔ same label cycle
 - [ ] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card
 - [ ] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — custom scroll-arrow tabs + client-side `trackFilter`
 
@@ -207,6 +219,8 @@ Hand-rolled 6-column CSS grid, no TanStack, most-used screen in the app.
 - **Health signal:** if `f.custom` or `renderRows` is reached for more than twice,
   the schema is too narrow — widen it rather than accumulating exceptions.
   (This is what moved `InfiniteSearchSelect` to a first-class kind.)
+- Prettier only the files you touched. Running it across a whole module tree once
+  swept 111 files into a 9-file commit.
 - `DataTable` composes `DataGridSection`; it does not override it. Body changes
   belong in `DataGridSection` itself.
 
