@@ -93,8 +93,11 @@ export function PrimeChangeOrderListPage() {
 
   const columns = usePrimeChangeOrderListColumns();
 
+  const syncStatusQueryLoading = syncStatusQuery.isLoading;
+
   const list = useListTable({
     columns,
+    extraLoading: syncStatusQueryLoading,
     getRowId: (changeOrder) => changeOrder.id,
     query: primeChangeOrdersQuery,
     rows: primeChangeOrdersQuery.data?.data ?? [],
@@ -109,7 +112,6 @@ export function PrimeChangeOrderListPage() {
   const syncStatus = syncStatusQuery.data;
   const isMapped = Boolean(syncStatus?.fieldwireProjectId);
   const syncDisabled = !isMapped || syncMutation.isPending || syncStatusQuery.isLoading;
-  const isHeaderLoading = list.isInitialLoading || syncStatusQuery.isLoading;
 
   return (
     <div className="container-fluid py-7.5">
@@ -117,7 +119,7 @@ export function PrimeChangeOrderListPage() {
         <PrimeChangeOrderListHeader
           fieldwireProjectName={projectDetail?.fieldwireProjectName}
           hasActiveFilters={state.hasActiveFilters}
-          isLoading={isHeaderLoading}
+          isLoading={list.isInitialLoading}
           isMapped={isMapped}
           isSyncDisabled={syncDisabled}
           isSyncPending={syncMutation.isPending}

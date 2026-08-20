@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,7 @@ export function useLookupListColumns({ onEdit, onDelete }: UseLookupListColumnsO
         cell: ({ row }) => (
           <div className="text-sm font-bold text-foreground">{row.original.type}</div>
         ),
-        header: 'Type',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
         meta: {
           skeleton: <Skeleton className="h-4 w-32" />,
           textOverflow: 'truncate',
@@ -37,7 +38,7 @@ export function useLookupListColumns({ onEdit, onDelete }: UseLookupListColumnsO
         cell: ({ row }) => (
           <div className="text-sm text-foreground">{row.original.label ?? '—'}</div>
         ),
-        header: 'Label',
+        header: ({ column }) => <DataGridColumnHeader column={column} title="Label" />,
         meta: {
           skeleton: <Skeleton className="h-4 w-40" />,
           textOverflow: 'truncate',

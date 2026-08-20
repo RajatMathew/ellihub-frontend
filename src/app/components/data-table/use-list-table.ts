@@ -57,6 +57,12 @@ export interface UseListTableOptions<
   /** Stable business id. Strongly preferred over the row index. */
   getRowId?: (row: TData) => string;
   initialColumnVisibility?: VisibilityState;
+  /**
+   * Another query the list cannot be rendered without — an integration's sync
+   * status, say. Counted as initial loading so the header and the body agree,
+   * rather than the body briefly rendering against data that is not ready.
+   */
+  extraLoading?: boolean;
 }
 
 export interface ListTable<TData extends object> {
@@ -93,6 +99,7 @@ export function useListTable<
   query,
   getRowId,
   initialColumnVisibility,
+  extraLoading = false,
   mode = 'server',
 }: UseListTableOptions<TData, TDefs, TField>): ListTable<TData> {
   const isClient = mode === 'client';
@@ -127,7 +134,8 @@ export function useListTable<
     [sortBy, sortOrder]
   );
 
-  const isInitialLoading = query.isLoading || (query.isFetching && rows.length === 0);
+  const isInitialLoading =
+    extraLoading || query.isLoading || (query.isFetching && rows.length === 0);
   // Rows must actually be on screen for this to mean anything — otherwise the
   // "Refreshing" indicator would sit on top of an empty state.
   const isRefreshing = rows.length > 0 && query.isFetching && !isInitialLoading;
