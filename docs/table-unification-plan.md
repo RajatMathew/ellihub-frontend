@@ -58,9 +58,12 @@ needed it, never speculatively.
       all 16 tables. `tableAriaLabel` threaded through the grid stack.
 - [x] **Cost codes' sorting was decorative** — headers were built with
       `DataGridColumnHeader` but no sorting state was ever wired.
-- [x] **Filter values reached the API as strings** — `isPaid` is declared as a
-      boolean but the URL carries `"true"`, and the cast to the params type hid it.
-      `toApiValue` converts; the other migrated lists were swept and take only strings.
+- [x] **Filter value types** — `toApiValue` converts a URL string into whatever the
+      request wants. Applied to invoices' `isPaid`, which the frontend schema
+      declares as a boolean. **Not a live defect:** verified against the API, which
+      accepts either form (`invoice/service.ts`: `isPaid === 'true' || isPaid === true`),
+      and both serialise identically over a query string. The conversion is correctness
+      against the declared type, not a fix.
 - [x] **Clearing all filters left picker search boxes populated** — `onClear` lives
       on the schema copy carrying live data, but `clearFilters` walked the copy held
       in state. The rendered schema now drives clearing.
@@ -218,6 +221,45 @@ Hand-rolled 6-column CSS grid, no TanStack, most-used screen in the app.
       Content is correct (identical trees). Cleaning it needs a force-push.
 
 ---
+
+## Verified against the API
+
+Checked in `elli-core` rather than inferred from the frontend Zod schemas.
+
+**Confirmed correct:**
+
+- `apiKeys: { size: 'limit' }` for vendors and GCs — their API layer remaps
+  `limit` → `size` on the wire, which is what `paginationMiddleware` reads.
+- `apiKey: 'costCodeCategoryId'` for cost codes — matches the module's query schema.
+- `f.hidden({ key: 'rfqId' })` for purchase orders — an accepted service filter.
+- Prime change order's eight sort fields match `primeChangeOrderSortFields` exactly.
+- The paginated response shape (`totalItems`, `totalPages`, `hasNextPage`) comes from
+  the shared middleware, so it is uniform by construction.
+
+**⛔ Pre-existing product bug — server-side sorting is inert on most lists.**
+
+`paginationMiddleware` validates the requested sort field against `allowedSortFields`:
+
+```ts
+const sortBy = query.sortBy && allowedSortFields.includes(query.sortBy)
+    ? query.sortBy
+    : defaultSortBy;
+```
+
+`allowedSortFields` defaults to `[]`, and `[].includes(x)` is always false — so any
+module that omits the option pins every request to its `defaultSortBy`.
+
+Only **vendor** and **prime-change-order** declare it. These do not:
+gc, contact, department, pto, cost-code, invoice, po, sco, activity-log, employee.
+
+On those lists a sortable header changes the URL and refetches, and the rows come
+back in the same order every time. This predates the migration — the original code
+sent the same parameter to the same endpoint — and it is a backend fix
+(`elli-core/src/modules/*/routes.ts`), not a kit one.
+
+Vendor has a narrower version of the same issue: the frontend lists `type` as a sort
+option while the API allows `typeId`. Dormant, because that column sets
+`enableSorting: false`, so it cannot be triggered.
 
 ## Rules the kit enforces
 
