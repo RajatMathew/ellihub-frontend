@@ -10,8 +10,10 @@ import { cn } from '@/app/lib/utils';
 import type { Table } from '@tanstack/react-table';
 import { AlertCircle, Loader2, RefreshCcw } from 'lucide-react';
 
-interface DataGridSectionProps<TData extends object> {
+export interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
+  /** Accessible name for the rendered <table>. */
+  tableAriaLabel?: string;
   totalCount: number;
   isLoading: boolean;
   isRefreshing?: boolean;
@@ -50,6 +52,7 @@ const responsiveListClasses = {
 
 export function DataGridSection<TData extends object>({
   table,
+  tableAriaLabel,
   totalCount,
   isLoading,
   isRefreshing = false,
@@ -105,6 +108,7 @@ export function DataGridSection<TData extends object>({
     <DataGrid
       table={table}
       recordCount={totalCount}
+      tableAriaLabel={tableAriaLabel}
       isLoading={isLoading}
       emptyMessage={emptyState}
       tableLayout={{

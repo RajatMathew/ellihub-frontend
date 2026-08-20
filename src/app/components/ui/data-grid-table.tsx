@@ -62,6 +62,7 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
     <table
       data-slot="data-grid-table"
       aria-busy={isLoading}
+      aria-label={props.tableAriaLabel}
       className={cn(
         'w-full align-middle caption-bottom text-left rtl:text-right text-foreground font-normal text-sm',
         !props.tableLayout?.columnsDraggable && 'border-separate border-spacing-0',
