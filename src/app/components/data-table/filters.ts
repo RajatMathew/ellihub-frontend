@@ -1,6 +1,7 @@
 import type {
   AnyFilterDef,
   CustomFilterDef,
+  InfiniteSelectFilterDef,
   SearchFilterDef,
   SelectFilterDef,
   TabsFilterDef,
@@ -39,13 +40,19 @@ function tabs<TKey extends string, TValue extends string = string, TData = unkno
   return { ...def, kind: 'tabs' };
 }
 
+function infiniteSelect<TKey extends string, TData = unknown>(
+  def: Omit<InfiniteSelectFilterDef<TKey, TData>, 'kind'>
+): InfiniteSelectFilterDef<TKey, TData> {
+  return { ...def, kind: 'infiniteSelect' };
+}
+
 function custom<TKey extends string, TData = unknown>(
   def: Omit<CustomFilterDef<TKey, TData>, 'kind'>
 ): CustomFilterDef<TKey, TData> {
   return { ...def, kind: 'custom' };
 }
 
-export const f = { custom, search, select, tabs };
+export const f = { custom, infiniteSelect, search, select, tabs };
 
 /**
  * Every URL key a filter owns. A single key today; kept as an array so a future

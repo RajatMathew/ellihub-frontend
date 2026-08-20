@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 
+import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import type { LucideProps } from 'lucide-react';
 
 export type SortOrder = 'asc' | 'desc';
@@ -35,6 +36,12 @@ interface FilterBase<TKey extends string, TValue, TData> {
    * control can be client-side.
    */
   clientPredicate?: (row: TData, value: TValue) => boolean;
+  /**
+   * Called when this filter is cleared, individually or by `clearFilters`. For
+   * controls that keep companion local state — a picker's own search box, say —
+   * which the URL knows nothing about.
+   */
+  onClear?: () => void;
 }
 
 export interface SearchFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
@@ -74,6 +81,30 @@ export interface TabsFilterDef<
   isLoading?: boolean;
 }
 
+/**
+ * A picker backed by its own paginated query. The definition carries the query's
+ * state and callbacks rather than owning them, so the page keeps control of how
+ * the options are fetched.
+ */
+export interface InfiniteSelectFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, string, TData> {
+  kind: 'infiniteSelect';
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyMessage: string;
+  options: InfiniteSearchSelectOption[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  isLoading?: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onFetchNextPage?: () => void;
+  /** Width wrapper, e.g. `w-full sm:w-52`. */
+  className?: string;
+}
+
 export interface CustomFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
   TKey,
   string,
@@ -93,6 +124,7 @@ export type AnyFilterDef<TData = unknown> =
   | SearchFilterDef<string, TData>
   | SelectFilterDef<string, string, TData>
   | TabsFilterDef<string, string, TData>
+  | InfiniteSelectFilterDef<string, TData>
   | CustomFilterDef<string, TData>;
 
 type FilterValueOf<TDef> = TDef extends FilterBase<string, infer TValue, unknown> ? TValue : never;

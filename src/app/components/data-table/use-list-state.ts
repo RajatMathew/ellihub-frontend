@@ -208,6 +208,8 @@ export function useListState<
 
       // Search owns a draft value, so it routes through the debounced setter
       // rather than writing to the URL immediately.
+      if (value === undefined) def.onClear?.();
+
       if (def.kind === 'search') {
         setSearchInput(value ?? '');
         return;
@@ -227,6 +229,7 @@ export function useListState<
 
     const patch: Record<string, undefined> = { page: undefined };
     for (const def of filters) {
+      def.onClear?.();
       for (const key of filterUrlKeys(def)) patch[key] = undefined;
     }
 

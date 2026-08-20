@@ -8,6 +8,7 @@ export type {
   CustomFilterRenderContext,
   FilterOption,
   FilterValues,
+  InfiniteSelectFilterDef,
   ListStateConfig,
   SearchFilterDef,
   SelectFilterDef,

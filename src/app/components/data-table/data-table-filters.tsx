@@ -8,12 +8,22 @@ import {
   TableCardHeaderTabs,
   TableCardHeaderToolbar,
 } from '@/app/components/table-card-header';
+import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
 
 const ALL_VALUE = 'all';
+
+/**
+ * Shared trigger styling so pickers sit flush with the other header controls
+ * instead of each page restating the same class string.
+ */
+const dataTableFilterTriggerClassName =
+  'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+
+const dataTableFilterPlaceholderClassName = '!text-table-card-header-foreground/75';
 
 interface DataTableFiltersProps<
   TDefs extends readonly AnyFilterDef<never>[],
@@ -94,6 +104,29 @@ export function DataTableFilters<
                     setFilterValue(def.key, value === allValue ? undefined : value)
                   }
                 />
+              );
+            }
+
+            if (def.kind === 'infiniteSelect') {
+              return (
+                <div className={def.className ?? 'w-full sm:w-52'} key={def.key}>
+                  <InfiniteSearchSelect
+                    emptyMessage={def.emptyMessage}
+                    hasNextPage={def.hasNextPage}
+                    isFetchingNextPage={def.isFetchingNextPage}
+                    isLoading={def.isLoading}
+                    options={def.options}
+                    placeholder={def.placeholder}
+                    placeholderClassName={dataTableFilterPlaceholderClassName}
+                    search={def.search}
+                    searchPlaceholder={def.searchPlaceholder}
+                    triggerClassName={dataTableFilterTriggerClassName}
+                    value={rawValues[def.key] ?? null}
+                    onFetchNextPage={def.onFetchNextPage}
+                    onSearchChange={def.onSearchChange}
+                    onValueChange={(value) => setFilterValue(def.key, value ?? undefined)}
+                  />
+                </div>
               );
             }
 
