@@ -115,7 +115,14 @@ export function ScheduleTrackerCard({
   };
 
   const handleAddEntry = async () => {
-    if (isEntrySaveInFlightRef.current || !newEntry.date || !newEntry.description.trim()) return;
+    if (
+      isEntrySaveInFlightRef.current ||
+      !newEntry.date ||
+      !newEntry.description.trim() ||
+      !newEntry.fileId
+    ) {
+      return;
+    }
 
     isEntrySaveInFlightRef.current = true;
 
@@ -126,7 +133,7 @@ export function ScheduleTrackerCard({
         description: newEntry.description.trim(),
         adjustedFinishDate: newEntry.adjustedFinishDate || undefined,
         notes: newEntry.notes || undefined,
-        fileId: newEntry.fileId || undefined,
+        fileId: newEntry.fileId,
         primeChangeOrderId: newEntry.primeChangeOrderId || undefined,
       });
       resetNewEntry();

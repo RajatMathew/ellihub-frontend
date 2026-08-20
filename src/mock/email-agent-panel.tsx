@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent as ReactChangeEvent,
   type PointerEvent as ReactPointerEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
@@ -21,15 +22,19 @@ import {
   Archive,
   ArrowRight,
   ArrowUp,
+  CalendarClock,
   Check,
   CircleCheck,
   Clock3,
+  FileText,
   FolderInput,
   GripVertical,
   LoaderCircle,
   Mail,
+  Paperclip,
   PanelRightClose,
   PanelRightOpen,
+  Pencil,
   Plus,
   Search,
   Send,
@@ -40,6 +45,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/app/api';
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { Button } from '@/app/components/ui/button';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
@@ -53,7 +59,15 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { emailApi } from '@/modules/email/api';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
+import {
+  useCreateScheduleEntryMutation,
+  useDeleteScheduleEntryMutation,
+  useUpdateScheduleEntryMutation,
+} from '@/modules/project/hooks';
+import { filesApi } from '@/modules/files/api/files.api';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { Conversation, ConversationContent } from './ai-elements/conversation';
 import { Message, MessageContent, MessageResponse } from './ai-elements/message';
 import {
@@ -87,6 +101,50 @@ type MockAgentAction = {
   status?: 'open' | 'closed';
   conversationKey?: string;
 };
+
+type ScheduleAttachmentSelection =
+  | {
+      source: 'email_attachment';
+      /**
+       * Which mailbox the file lives in. Optional for back-compat: legacy
+       * schedule proposals only know about the currently-opened thread and omit
+       * this — the materializer falls back to the panel's `accountId`.
+       */
+      accountId?: string;
+      messageId: string;
+      attachmentId: string;
+      attachmentName: string;
+    }
+  | { source: 'existing_file'; fileId: string; fileName: string };
+
+type ScheduleActionBaseFields = {
+  projectId: string;
+  projectName?: string;
+  date: string;
+  description: string;
+  adjustedFinishDate?: string | null;
+  notes?: string | null;
+  primeChangeOrderId?: string | null;
+  primeChangeOrderLabel?: string | null;
+  attachment?: ScheduleAttachmentSelection | null;
+};
+
+type ScheduleAgentAction =
+  | ({ action: 'add_schedule'; summary: string } & ScheduleActionBaseFields)
+  | ({
+      action: 'update_schedule';
+      scheduleId: string;
+      summary: string;
+    } & ScheduleActionBaseFields)
+  | {
+      action: 'remove_schedule';
+      scheduleId: string;
+      projectId: string;
+      projectName?: string;
+      scheduleDescription?: string;
+      scheduleDate?: string;
+      summary: string;
+    };
 
 type MockAgentPanelProps = {
   open: boolean;
@@ -139,7 +197,8 @@ function getEmailContext(
   folders: ConnectedEmailFolder[],
   tags: ConnectedEmailTag[],
   mailboxAddress: string,
-  includeActiveContext: boolean
+  includeActiveContext: boolean,
+  accountId?: string
 ) {
   const selected = includeActiveContext && email ? [email, ...contextEmails.filter((item) => item.id !== email.id)] : contextEmails;
   return {
@@ -148,6 +207,7 @@ function getEmailContext(
       ? {
           messageId: getMessageId(email),
           threadId: email.threadId ?? email.conversationKey ?? null,
+          accountId: accountId ?? null,
           subject: email.subject,
           sender: { name: email.senderName, address: email.senderEmail },
           to: email.to ?? [],
@@ -155,6 +215,7 @@ function getEmailContext(
           body: email.threadMessages?.map((message) => message.body).flat() ?? email.body ?? [],
           receivedAt: email.receivedAt,
           keywords: email.keywords ?? [],
+          attachments: collectActiveThreadAttachments(email),
         }
       : null,
     availableThreads: selected.slice(0, 40).map((item) => ({
@@ -169,6 +230,43 @@ function getEmailContext(
     folders: folders.map((folder) => ({ id: folder.id, key: folder.key, name: folder.name })),
     tags: tags.map((tag) => ({ id: tag.id, providerId: tag.providerId, name: tag.name })),
   };
+}
+
+function collectActiveThreadAttachments(email: EmailListItem) {
+  const attachments: Array<{
+    messageId: string;
+    id: string;
+    name: string;
+    size?: number | null;
+    mimeType?: string | null;
+  }> = [];
+  const seen = new Set<string>();
+  const addFrom = (messageId: string, list: EmailListItem['attachments']) => {
+    if (!list?.length) return;
+    for (const attachment of list) {
+      if (attachment.inline) continue;
+      if (!attachment.id || !attachment.name) continue;
+      const key = `${messageId}::${attachment.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      attachments.push({
+        messageId,
+        id: attachment.id,
+        name: attachment.name,
+        size: attachment.sizeBytes ?? null,
+        mimeType: attachment.mimeType ?? null,
+      });
+    }
+  };
+
+  if (email.threadMessages?.length) {
+    for (const message of email.threadMessages) {
+      addFrom(message.id, message.attachments);
+    }
+  } else {
+    addFrom(getMessageId(email), email.attachments);
+  }
+  return attachments;
 }
 
 function ContextChip({ email, current = false, onRemove }: { email: EmailListItem; current?: boolean; onRemove: () => void }) {
@@ -223,6 +321,7 @@ export function EmailAgentPanel({
   const [draftMentionContextIds, setDraftMentionContextIds] = useState<string[]>([]);
   const [includeActiveContext, setIncludeActiveContext] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, MockAgentAction>>({});
+  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, ScheduleAgentAction>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [history, setHistory] = useState<ConversationSummary[]>([]);
   const [actionsDisabled, setActionsDisabled] = useState<boolean | null>(null);
@@ -252,8 +351,8 @@ export function EmailAgentPanel({
   );
   const contextEmailsForAgent = contextEmails.filter((item) => contextIdsForAgent.includes(item.id));
   const context = useMemo(
-    () => getEmailContext(email, contextEmailsForAgent, folders, tags, mailboxAddress, includeActiveContext),
-    [contextEmailsForAgent, email, folders, includeActiveContext, mailboxAddress, tags]
+    () => getEmailContext(email, contextEmailsForAgent, folders, tags, mailboxAddress, includeActiveContext, accountId),
+    [accountId, contextEmailsForAgent, email, folders, includeActiveContext, mailboxAddress, tags]
   );
   useEffect(() => {
     contextRef.current = context;
@@ -326,6 +425,10 @@ export function EmailAgentPanel({
   const statusMutation = useUpdateEmailMessageStatusMutation();
   const tagsMutation = useUpdateEmailMessageTagsMutation();
   const classificationMutation = useSaveEmailThreadClassificationMutation();
+  const createScheduleMutation = useCreateScheduleEntryMutation();
+  const updateScheduleMutation = useUpdateScheduleEntryMutation();
+  const deleteScheduleMutation = useDeleteScheduleEntryMutation();
+  const uploadManager = useUploadManager();
 
   useEffect(() => {
     onLayoutChange({ open, width, pushesContent, hidesEmailList });
@@ -347,6 +450,7 @@ export function EmailAgentPanel({
         setDraftMentionContextIds([]);
         setIncludeActiveContext(true);
         setDrafts({});
+        setScheduleDrafts({});
         setContextOpen(false);
         setHistoryOpen(false);
       }
@@ -375,6 +479,7 @@ export function EmailAgentPanel({
       );
       setDraftMentionContextIds([]);
       setDrafts({});
+      setScheduleDrafts({});
       setHistoryOpen(false);
     } finally {
       setLoadingConversationId(null);
@@ -388,6 +493,7 @@ export function EmailAgentPanel({
     conversationIdRef.current = null;
     setDraftMentionContextIds([]);
     setDrafts({});
+    setScheduleDrafts({});
     setHistoryOpen(false);
   };
 
@@ -593,6 +699,171 @@ export function EmailAgentPanel({
     [addToolOutput, executeAction]
   );
 
+  const materializeScheduleAttachment = useCallback(
+    async (
+      attachment: ScheduleAttachmentSelection | null | undefined,
+      projectId: string
+    ): Promise<string | undefined> => {
+      if (!attachment) return undefined;
+      if (attachment.source === 'existing_file') return attachment.fileId;
+      if (attachment.source !== 'email_attachment') return undefined;
+      const sourceAccountId = attachment.accountId ?? accountId;
+      if (!sourceAccountId) throw new Error('Connect a mailbox before attaching an email file.');
+
+      const attachmentName = attachment.attachmentName;
+      try {
+        const folderId = await filesApi.getProjectSubFolderId(projectId, 'SCHEDULE');
+        const blob = await emailApi.getAttachment(
+          sourceAccountId,
+          attachment.messageId,
+          attachment.attachmentId
+        );
+        const file = new File([blob], attachmentName, {
+          type: blob.type || 'application/octet-stream',
+        });
+        const uploaded = await uploadManager.enqueueUploadsAndWait(
+          [
+            {
+              file,
+              data: {
+                name: attachmentName,
+                parentId: folderId,
+                mimeType: file.type || undefined,
+                size: file.size,
+              },
+            },
+          ],
+          { label: `Schedule attachment: ${attachmentName}` }
+        );
+        const [fileItem] = uploaded;
+        if (!fileItem?.id) {
+          throw new Error('The attachment upload finished without a file id.');
+        }
+        return fileItem.id;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'unknown error';
+        throw new Error(
+          `Couldn't attach ${attachmentName} from email (${reason}). The schedule entry was not created. Try again without an attachment, then use the Attach button on the card to upload the file from your computer.`
+        );
+      }
+    },
+    [accountId, uploadManager]
+  );
+
+  const uploadLocalFileForSchedule = useCallback(
+    async (
+      file: File,
+      projectId: string
+    ): Promise<{ fileId: string; fileName: string }> => {
+      const folderId = await filesApi.getProjectSubFolderId(projectId, 'SCHEDULE');
+      const uploaded = await uploadManager.enqueueUploadsAndWait(
+        [
+          {
+            file,
+            data: {
+              name: file.name,
+              parentId: folderId,
+              mimeType: file.type || undefined,
+              size: file.size,
+            },
+          },
+        ],
+        { label: `Schedule attachment: ${file.name}` }
+      );
+      const [fileItem] = uploaded;
+      if (!fileItem?.id) throw new Error('The file could not be uploaded.');
+      return { fileId: fileItem.id, fileName: file.name };
+    },
+    [uploadManager]
+  );
+
+  const executeScheduleAction = useCallback(
+    async (action: ScheduleAgentAction): Promise<string> => {
+      if (action.action === 'remove_schedule') {
+        await deleteScheduleMutation.mutateAsync({
+          projectId: action.projectId,
+          id: action.scheduleId,
+        });
+        return `Schedule entry removed from ${action.projectName ?? 'the project'}.`;
+      }
+
+      const fileId = await materializeScheduleAttachment(action.attachment, action.projectId);
+
+      if (action.action === 'add_schedule') {
+        if (!fileId) {
+          // The card disables Approve without an attachment, but guard here so
+          // the mutation type (fileId: string) is honoured and any race is
+          // caught with a clear message instead of a Zod 400 from the server.
+          throw new Error('Attach a file before creating this schedule entry.');
+        }
+        await createScheduleMutation.mutateAsync({
+          projectId: action.projectId,
+          date: action.date,
+          description: action.description,
+          adjustedFinishDate: action.adjustedFinishDate ?? undefined,
+          notes: action.notes ?? undefined,
+          fileId,
+          primeChangeOrderId: action.primeChangeOrderId ?? undefined,
+        });
+        return `Schedule entry added to ${action.projectName ?? 'the project'}.`;
+      }
+
+      await updateScheduleMutation.mutateAsync({
+        projectId: action.projectId,
+        id: action.scheduleId,
+        date: action.date,
+        description: action.description,
+        adjustedFinishDate: action.adjustedFinishDate ?? undefined,
+        notes: action.notes ?? undefined,
+        fileId: fileId ?? undefined,
+        primeChangeOrderId: action.primeChangeOrderId ?? null,
+      });
+      return `Schedule entry updated in ${action.projectName ?? 'the project'}.`;
+    },
+    [createScheduleMutation, deleteScheduleMutation, materializeScheduleAttachment, updateScheduleMutation]
+  );
+
+  const handleScheduleApproval = useCallback(
+    async (toolCallId: string, action: ScheduleAgentAction, approved: boolean) => {
+      setPendingApproval({ id: toolCallId, approved });
+      try {
+        if (!approved) {
+          addToolOutput({
+            tool: 'proposeProjectScheduleAction',
+            toolCallId,
+            state: 'output-available',
+            output: 'REJECTED: No schedule change was made.',
+          });
+          return;
+        }
+        const result = await executeScheduleAction(action);
+        addToolOutput({
+          tool: 'proposeProjectScheduleAction',
+          toolCallId,
+          state: 'output-available',
+          output: `SUCCESS: ${result}`,
+        });
+      } catch (actionError) {
+        // Prefer an axios-derived message (e.g. server 400 payload) — falls back
+        // to the Error message for our own thrown strings.
+        const message =
+          actionError instanceof Error && actionError.message.startsWith("Couldn't attach ")
+            ? actionError.message
+            : getApiErrorMessage(actionError, 'The schedule action failed.');
+        toast.error(message);
+        addToolOutput({
+          tool: 'proposeProjectScheduleAction',
+          toolCallId,
+          state: 'output-error',
+          errorText: message,
+        });
+      } finally {
+        setPendingApproval(null);
+      }
+    },
+    [addToolOutput, executeScheduleAction]
+  );
+
   const handleSubmit = ({ text }: { text: string }) => {
     const nextPrompt = text.trim();
     if (!nextPrompt || status === 'submitted' || status === 'streaming') return;
@@ -765,8 +1036,10 @@ export function EmailAgentPanel({
             </div>
             ) : (
             <div className="space-y-5" aria-live="polite">
-              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} /></div>)}
-              {status === 'submitted' ? <ThinkingIndicator /> : null}
+              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onScheduleUploadFile={uploadLocalFileForSchedule} /></div>)}
+              {shouldShowThinkingIndicator({ status, messages }) ? (
+                <ThinkingIndicator label={getCurrentActivityLabel(messages[messages.length - 1])} />
+              ) : null}
             </div>
             )}
             {error ? <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">elliot could not complete that request. Check the agent configuration and try again.</div> : null}
@@ -880,15 +1153,26 @@ function AgentMessage({
   message,
   mentionLabels,
   drafts,
+  scheduleDrafts,
   onDraftChange,
+  onScheduleDraftChange,
   onApprove,
+  onScheduleApprove,
+  onScheduleUploadFile,
   pendingApproval,
 }: {
   message: UIMessage;
   mentionLabels: string[];
   drafts: Record<string, MockAgentAction>;
+  scheduleDrafts: Record<string, ScheduleAgentAction>;
   onDraftChange: (id: string, draft: MockAgentAction) => void;
+  onScheduleDraftChange: (id: string, draft: ScheduleAgentAction) => void;
   onApprove: (id: string, action: MockAgentAction, approved: boolean) => Promise<void>;
+  onScheduleApprove: (id: string, action: ScheduleAgentAction, approved: boolean) => Promise<void>;
+  onScheduleUploadFile: (
+    file: File,
+    projectId: string
+  ) => Promise<{ fileId: string; fileName: string }>;
   pendingApproval: { id: string; approved: boolean } | null;
 }) {
   const renderedParts: ReactNode[] = [];
@@ -905,21 +1189,68 @@ function AgentMessage({
       return;
     }
     flushText();
-    if (part.type !== 'tool-proposeEmailAction' || !('toolCallId' in part)) return;
-    const toolPart = part as unknown as { toolCallId: string; state: string; input?: MockAgentAction; output?: string; errorText?: string };
-    const action = drafts[toolPart.toolCallId] ?? toolPart.input;
-    if (!action) {
-      renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing an action for review…</div>);
+    if (part.type === 'tool-proposeEmailAction' && 'toolCallId' in part) {
+      const toolPart = part as unknown as { toolCallId: string; state: string; input?: MockAgentAction; output?: string; errorText?: string };
+      const action = drafts[toolPart.toolCallId] ?? toolPart.input;
+      if (!action) {
+        renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing an action for review…</div>);
+        return;
+      }
+      renderedParts.push(<ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />);
       return;
     }
-    renderedParts.push(<ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />);
+    if (part.type === 'tool-proposeProjectScheduleAction' && 'toolCallId' in part) {
+      const toolPart = part as unknown as { toolCallId: string; state: string; input?: ScheduleAgentAction; output?: string; errorText?: string };
+      const action = scheduleDrafts[toolPart.toolCallId] ?? toolPart.input;
+      if (!action) {
+        renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing a schedule action for review…</div>);
+        return;
+      }
+      renderedParts.push(
+        <ScheduleActionCard
+          key={toolPart.toolCallId}
+          action={action}
+          state={toolPart.state}
+          output={toolPart.output}
+          errorText={toolPart.errorText}
+          processing={pendingApproval?.id === toolPart.toolCallId}
+          processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined}
+          onChange={(next) => onScheduleDraftChange(toolPart.toolCallId, next)}
+          onApprove={(approved) => onScheduleApprove(toolPart.toolCallId, action, approved)}
+          onUploadFile={onScheduleUploadFile}
+        />
+      );
+    }
   });
   flushText();
   return <div className="space-y-2" aria-live={message.role === 'assistant' ? 'polite' : undefined}>{renderedParts}</div>;
 }
 
 function MessageBubble({ from, children, mentionLabels }: { from: UIMessage['role']; children: string; mentionLabels: string[] }) {
-  return <Message from={from}><MessageContent className={cn('text-sm leading-6', from === 'user' ? 'ml-auto' : '')}>{from === 'user' ? <div className="whitespace-pre-wrap break-words"><HighlightedMentions text={children} labels={mentionLabels} /></div> : <MessageResponse className="prose prose-sm max-w-none leading-6 dark:prose-invert">{children}</MessageResponse>}</MessageContent></Message>;
+  return (
+    <Message from={from}>
+      <MessageContent className={cn('text-sm leading-6', from === 'user' ? 'ml-auto' : '')}>
+        {from === 'user' ? (
+          <div className="whitespace-pre-wrap break-words">
+            <HighlightedMentions text={children} labels={mentionLabels} />
+          </div>
+        ) : (
+          <MessageResponse
+            className={cn(
+              'prose prose-sm max-w-none leading-6 dark:prose-invert',
+              // Trim the aggressive default prose spacing on the first / last
+              // block so the assistant bubble doesn't have a big empty gap
+              // above the first paragraph or below the last one.
+              'prose-p:my-1.5 prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
+              '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+            )}
+          >
+            {children}
+          </MessageResponse>
+        )}
+      </MessageContent>
+    </Message>
+  );
 }
 
 function HighlightedMentions({ text, labels }: { text: string; labels: string[] }) {
@@ -936,8 +1267,83 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function ThinkingIndicator() {
-  return <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground" role="status" aria-live="polite"><LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" /><span>elliot is thinking</span><span className="inline-flex gap-0.5" aria-hidden="true"><span className="animate-pulse">.</span><span className="animate-pulse [animation-delay:150ms]">.</span><span className="animate-pulse [animation-delay:300ms]">.</span></span></div>;
+const TOOL_ACTIVITY_LABELS: Record<string, string> = {
+  lookupProjects: 'looking up projects',
+  lookupPrimeChangeOrders: 'searching change orders',
+  lookupScheduleEntries: 'checking existing schedule entries',
+  lookupEmailAttachments: 'looking at attachments on this email',
+  lookupCrossInboxAttachments: 'searching your mailboxes',
+};
+
+function isPendingToolPart(part: UIMessage['parts'][number]): boolean {
+  if (!part || typeof part !== 'object' || !('type' in part)) return false;
+  if (typeof part.type !== 'string' || !part.type.startsWith('tool-')) return false;
+  const state = (part as { state?: string }).state;
+  // Anything that hasn't produced an output-available/output-error result yet
+  // is still in flight from the user's perspective.
+  return state !== 'output-available' && state !== 'output-error';
+}
+
+function messageHasVisibleContent(message: UIMessage): boolean {
+  return message.parts.some((part) => {
+    if (!part || typeof part !== 'object' || !('type' in part)) return false;
+    if (part.type === 'text') {
+      const text = (part as { text?: string }).text;
+      return !!text && text.length > 0;
+    }
+    return (
+      part.type === 'tool-proposeEmailAction' ||
+      part.type === 'tool-proposeProjectScheduleAction'
+    );
+  });
+}
+
+function getCurrentActivityLabel(message: UIMessage | undefined): string {
+  if (!message || message.role !== 'assistant') return 'thinking';
+  for (let index = message.parts.length - 1; index >= 0; index -= 1) {
+    const part = message.parts[index];
+    if (!isPendingToolPart(part)) continue;
+    const toolName = (part as { type: string }).type.replace(/^tool-/, '');
+    return TOOL_ACTIVITY_LABELS[toolName] ?? 'thinking';
+  }
+  return 'thinking';
+}
+
+function shouldShowThinkingIndicator({
+  status,
+  messages,
+}: {
+  status: 'submitted' | 'streaming' | 'ready' | 'error';
+  messages: UIMessage[];
+}): boolean {
+  if (status === 'ready' || status === 'error') return false;
+  if (status === 'submitted') return true;
+  // status === 'streaming' — show the indicator until the current assistant
+  // message has something visible on screen (text, or a proposal card). Tool
+  // lookups don't render anything themselves, so the bubble would otherwise
+  // stay empty while elliot chains lookupProjects → lookupAttachments → …
+  const last = messages[messages.length - 1];
+  if (!last) return true;
+  if (last.role === 'user') return true;
+  return !messageHasVisibleContent(last);
+}
+
+function ThinkingIndicator({ label = 'thinking' }: { label?: string }) {
+  return (
+    <div
+      className="flex items-center gap-2 px-1 py-1 text-xs text-muted-foreground"
+      role="status"
+      aria-live="polite"
+    >
+      <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+      <span>elliot is {label}</span>
+      <span className="inline-flex gap-0.5" aria-hidden="true">
+        <span className="animate-pulse">.</span>
+        <span className="animate-pulse [animation-delay:150ms]">.</span>
+        <span className="animate-pulse [animation-delay:300ms]">.</span>
+      </span>
+    </div>
+  );
 }
 
 function ActionCard({
@@ -972,6 +1378,308 @@ function ActionCard({
       {errorText ? <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{errorText}</p> : null}
       {isWaiting ? <div className="mt-3 flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" size="sm" disabled={processing} onClick={() => void onApprove(false)}><X className="size-3.5" /> {processing && processingApproved === false ? 'Working…' : 'Reject'}</Button><Button type="button" variant="primary" size="sm" disabled={processing} onClick={() => void onApprove(true)}><Check className="size-3.5" /> {processing && processingApproved === true ? 'Working…' : 'Approve'}</Button></div> : null}
       {state === 'output-available' && output ? <p className={cn('mt-3 flex items-center gap-2 text-xs font-medium', isRejected ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-400')}><Check className="size-3.5" />{action.action === 'reply' ? (isRejected ? 'Reply rejected. No email was sent.' : 'Reply approved successfully.') : output}</p> : null}
+    </div>
+  );
+}
+
+function ScheduleActionCard({
+  action,
+  state,
+  output,
+  errorText,
+  processing,
+  processingApproved,
+  onChange,
+  onApprove,
+  onUploadFile,
+}: {
+  action: ScheduleAgentAction;
+  state: string;
+  output?: string;
+  errorText?: string;
+  processing: boolean;
+  processingApproved?: boolean;
+  onChange: (action: ScheduleAgentAction) => void;
+  onApprove: (approved: boolean) => Promise<void>;
+  onUploadFile: (
+    file: File,
+    projectId: string
+  ) => Promise<{ fileId: string; fileName: string }>;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const canAttach = action.action !== 'remove_schedule';
+  const projectIdForUpload = canAttach ? action.projectId : '';
+  const handleFileChange = async (event: ReactChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || action.action === 'remove_schedule') return;
+    setUploadingFile(true);
+    try {
+      const { fileId, fileName } = await onUploadFile(file, action.projectId);
+      onChange({
+        ...action,
+        attachment: { source: 'existing_file', fileId, fileName },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The file could not be uploaded.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+  const isWaiting = state === 'input-available' || processing;
+  const isRejected = output?.startsWith('REJECTED:') === true;
+  const isRemove = action.action === 'remove_schedule';
+  const projectLabel = action.projectName ?? action.projectId;
+
+  const actionLabel =
+    action.action === 'add_schedule'
+      ? 'Add schedule entry'
+      : action.action === 'update_schedule'
+        ? 'Update schedule entry'
+        : 'Remove schedule entry';
+  const successLabel =
+    action.action === 'add_schedule'
+      ? 'Schedule entry created.'
+      : action.action === 'update_schedule'
+        ? 'Schedule entry updated.'
+        : 'Schedule entry removed.';
+  const rejectedLabel = 'Schedule change rejected. No entry was changed.';
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-md bg-background',
+            isRemove ? 'text-destructive' : 'text-primary'
+          )}
+        >
+          {isRemove ? <Trash2 className="size-4" aria-hidden="true" /> : <CalendarClock className="size-4" aria-hidden="true" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Review action
+          </p>
+          <p className="mt-1 text-sm font-medium">{action.summary}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {actionLabel} · <span className="font-medium text-foreground/80">{projectLabel}</span>
+          </p>
+        </div>
+      </div>
+
+      {action.action !== 'remove_schedule' && isWaiting ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            <span className="text-muted-foreground">Date</span>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={action.date}
+              onChange={(event) => onChange({ ...action, date: event.target.value })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            <span className="text-muted-foreground">Adjusted finish</span>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={action.adjustedFinishDate ?? ''}
+              onChange={(event) =>
+                onChange({ ...action, adjustedFinishDate: event.target.value || null })
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+            <span className="text-muted-foreground">Description</span>
+            <input
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={action.description}
+              onChange={(event) => onChange({ ...action, description: event.target.value })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+            <span className="text-muted-foreground">Notes</span>
+            <Textarea
+              rows={3}
+              value={action.notes ?? ''}
+              onChange={(event) => onChange({ ...action, notes: event.target.value || null })}
+            />
+          </label>
+          {action.primeChangeOrderLabel && (
+            <div className="sm:col-span-2 flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs">
+              <Pencil className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">
+                <span className="text-muted-foreground">Prime CO: </span>
+                <span className="font-medium">{action.primeChangeOrderLabel}</span>
+              </span>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                aria-label="Clear prime change order"
+                onClick={() =>
+                  onChange({ ...action, primeChangeOrderId: null, primeChangeOrderLabel: null })
+                }
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+          <div className="sm:col-span-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-background/60 px-2.5 py-1.5 text-xs">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="sr-only"
+              onChange={(event) => void handleFileChange(event)}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+            {action.attachment ? (
+              <>
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="text-muted-foreground">Attachment: </span>
+                  <span className="font-medium">
+                    {action.attachment.source === 'email_attachment'
+                      ? action.attachment.attachmentName
+                      : action.attachment.fileName}
+                  </span>
+                  {action.attachment.source === 'email_attachment' && (
+                    <span className="ml-1 text-muted-foreground">(from email)</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1"
+                  aria-label="Replace attachment"
+                  disabled={uploadingFile || !projectIdForUpload}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingFile ? (
+                    <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  aria-label="Remove attachment"
+                  onClick={() => onChange({ ...action, attachment: null })}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1 text-muted-foreground">
+                  {action.action === 'add_schedule'
+                    ? 'Attachment required. Attach a file to create this entry.'
+                    : 'No attachment.'}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingFile || !projectIdForUpload}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingFile ? (
+                    <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Paperclip className="size-3.5" aria-hidden="true" />
+                  )}
+                  {uploadingFile ? 'Uploading…' : 'Attach file'}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {action.action !== 'remove_schedule' && !isWaiting ? (
+        <div className="mt-3 rounded-md bg-background p-3 text-sm text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">{action.description}</span>
+            {' · '}
+            <span>{action.date}</span>
+            {action.adjustedFinishDate ? <span> → {action.adjustedFinishDate}</span> : null}
+          </p>
+          {action.notes ? <p className="mt-1 whitespace-pre-wrap">{action.notes}</p> : null}
+          {action.attachment ? (
+            <p className="mt-1">
+              Attached:{' '}
+              <span className="font-medium">
+                {action.attachment.source === 'email_attachment'
+                  ? action.attachment.attachmentName
+                  : action.attachment.fileName}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {action.action === 'remove_schedule' && (
+        <div className="mt-3 rounded-md bg-background p-3 text-sm text-muted-foreground">
+          <p>
+            Remove{' '}
+            <span className="font-medium text-foreground">
+              {action.scheduleDescription ?? 'this schedule entry'}
+            </span>
+            {action.scheduleDate ? <span> · {action.scheduleDate}</span> : null}
+          </p>
+        </div>
+      )}
+
+      {errorText ? (
+        <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{errorText}</p>
+      ) : null}
+
+      {action.action === 'add_schedule' && !action.attachment && isWaiting ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Every schedule entry needs an attached file. Use the Attach button above to add one before creating this entry.
+        </p>
+      ) : null}
+
+      {isWaiting ? (
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" disabled={processing} onClick={() => void onApprove(false)}>
+            <X className="size-3.5" /> {processing && processingApproved === false ? 'Working…' : 'Reject'}
+          </Button>
+          <Button
+            type="button"
+            variant={isRemove ? 'destructive' : 'primary'}
+            size="sm"
+            disabled={
+              processing ||
+              (action.action === 'add_schedule' && !action.attachment)
+            }
+            onClick={() => void onApprove(true)}
+          >
+            <Check className="size-3.5" />{' '}
+            {processing && processingApproved === true
+              ? 'Working…'
+              : isRemove
+                ? 'Remove'
+                : action.action === 'update_schedule'
+                  ? 'Save changes'
+                  : 'Create entry'}
+          </Button>
+        </div>
+      ) : null}
+
+      {state === 'output-available' && output ? (
+        <p
+          className={cn(
+            'mt-3 flex items-center gap-2 text-xs font-medium',
+            isRejected ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-400'
+          )}
+        >
+          <Check className="size-3.5" />
+          {isRejected ? rejectedLabel : successLabel}
+        </p>
+      ) : null}
     </div>
   );
 }

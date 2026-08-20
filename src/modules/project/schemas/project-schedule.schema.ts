@@ -54,7 +54,10 @@ export const createScheduleEntryInputSchema = z.object({
   description: z.string().min(1, 'Description is required').max(500),
   adjustedFinishDate: z.string().optional(),
   notes: z.string().max(2000).optional(),
-  fileId: z.string().optional(),
+  // Every new schedule entry needs an attached file — the backend requires it
+  // on AddScheduleSchema and the UIs disable the submit button until one is
+  // present.
+  fileId: z.string().min(1, 'An attachment is required'),
   primeChangeOrderId: z.string().optional(),
 });
 

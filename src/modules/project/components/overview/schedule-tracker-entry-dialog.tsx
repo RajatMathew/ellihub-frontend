@@ -58,7 +58,14 @@ export function ScheduleTrackerEntryDialog({
   onChange,
   onSave,
 }: ScheduleTrackerEntryDialogProps) {
-  const canSave = !!draft.date && !!draft.description.trim() && !isSaving;
+  // Attachments are mandatory when creating a new entry (backend enforces
+  // fileId on AddScheduleSchema). Edits may keep the existing file or clear it.
+  const hasAttachment = !!draft.fileId;
+  const canSave =
+    !!draft.date &&
+    !!draft.description.trim() &&
+    !isSaving &&
+    (mode === 'edit' || hasAttachment);
   const selectedPrimeChangeOrderOption =
     draft.primeChangeOrderId && draft.primeChangeOrderLabel
       ? {
@@ -210,7 +217,9 @@ export function ScheduleTrackerEntryDialog({
               </Field>
 
               <Field className="sm:col-span-2">
-                <FieldLabel className={FIELD_LABEL_CLASS}>Attachment</FieldLabel>
+                <FieldLabel className={FIELD_LABEL_CLASS}>
+                  Attachment{mode === 'add' ? ' *' : ''}
+                </FieldLabel>
                 <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground">
@@ -224,6 +233,11 @@ export function ScheduleTrackerEntryDialog({
                       <p className="truncate text-sm font-medium">
                         {draft.fileName || 'No file attached'}
                       </p>
+                      {mode === 'add' && !draft.fileName && parentFolderId && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Attach a file to create this entry.
+                        </p>
+                      )}
                       {!parentFolderId && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           Project folder is not available.
