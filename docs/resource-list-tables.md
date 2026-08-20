@@ -92,6 +92,18 @@ Each exists because a real screen needed it. In order of preference:
 | `filters` prop | Render definitions with live data attached, when options depend on query results. |
 | `replaceBody` | The list cannot exist at all (an unconnected integration, say). Not for an empty result. |
 
+## What this kit is not for
+
+It covers **paginated resource lists**. Two screens sit outside it deliberately:
+
+- **`project-list`** loads by infinite scroll with a kanban board as a second view
+  mode. It has no pagination at all, so `useListTable` has nothing to drive.
+- **`monthly-bills`** is a matrix editor — grouped by project, inline-editable, with
+  bulk save. It is not a list.
+
+Neither is a gap to close. Adding an infinite-scroll mode for one consumer would be
+the same mistake as bending `DataTable` around `files`.
+
 ## The one exception
 
 `files` uses the kit for state only and renders its own body. Its body swaps between

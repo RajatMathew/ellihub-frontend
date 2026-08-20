@@ -222,8 +222,25 @@ It is a matrix editor, not a list. Share only `TableCardHeader` and the filter s
 
 Hand-rolled 6-column CSS grid, no TanStack, most-used screen in the app.
 
-- [ ] **Still undecided.** Port to the kit (uniform, loses the custom row design) or
-      keep as a deliberate card list. It was never in the 17.
+- [x] **Decided: not ported.** It is not a paginated resource list.
+
+      `project-list` loads through `useInfiniteProjectsQuery` with an
+      `IntersectionObserver`, 100 rows at a time, appending — there is no pagination
+      UI at all. It also has a second view mode, a kanban board grouped by division,
+      and sorts through a controls component rather than column headers.
+
+      The kit is built for paginated lists: `useListTable` sets `manualPagination`
+      around a page and size and renders a pagination footer. Supporting this screen
+      would mean adding an infinite-scroll mode for exactly one consumer, which is
+      the failure mode every other decision here has avoided.
+
+      Nothing is lost by leaving it. It already compares `sortOrder` against the
+      field's own default rather than a literal, so it never had Defect A — it was
+      one of only two pages that got that right. Its `PROJECT_LIST_SORT_FIELDS` also
+      matches the backend's `projectSortFields` exactly, so its sorting works.
+
+      If a second infinite-scrolling list ever appears, revisit — two consumers is
+      the bar for widening the kit, and that rule has been applied consistently.
 
 ---
 
