@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 11 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 5.
+**Status: 12 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 4.
 
 ## Legend
 
@@ -42,6 +42,7 @@ needed it, never speculatively.
 - [x] `f.hidden` — a filter with no control, arriving by deep link
 - [x] Controlled `columnVisibility` — a column's visibility can depend on the rows
 - [x] `toApiValue` — URL values are strings; a request may want a boolean or number
+- [x] `setSort` ignores column ids that are not declared sort fields
 
 ### Defects killed by construction
 
@@ -115,7 +116,7 @@ around an escape hatch.
 - [x] [invoice](../src/modules/project/pages/invoice/invoice-list.tsx) — tabs + 2 infinite pickers · 202 → 190
 - [x] [purchase-order](../src/modules/project/pages/purchase-order/purchase-order-list.tsx) — tabs + picker + mobile card + `columnVisibility` · 246 → 232
 - [x] [sub-change-order](../src/modules/project/pages/sub-change-order/sub-change-order-list.tsx) — tabs + mobile card · 170 → 110
-- [ ] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — custom scroll-arrow tabs + client-side `trackFilter`
+- [x] [rfq](../src/modules/project/pages/rfq/rfq-list.tsx) — scroll-arrow tabs in the title slot + client-side `track` · 222 → 205
 
 ⚠️ One mobile card left inline in a component due for deletion:
 `employees-table-card.tsx:93`. Purchase order's and sub change order's are already
@@ -236,7 +237,9 @@ Checked in `elli-core` rather than inferred from the frontend Zod schemas.
 - The paginated response shape (`totalItems`, `totalPages`, `hasNextPage`) comes from
   the shared middleware, so it is uniform by construction.
 
-**⛔ Pre-existing product bug — server-side sorting is inert on most lists.**
+**✅ Fixed on `elli-core` branch `fix/list-sort-fields`.** Originally reported as:
+
+**Pre-existing product bug — server-side sorting was inert on most lists.**
 
 `paginationMiddleware` validates the requested sort field against `allowedSortFields`:
 
@@ -249,13 +252,15 @@ const sortBy = query.sortBy && allowedSortFields.includes(query.sortBy)
 `allowedSortFields` defaults to `[]`, and `[].includes(x)` is always false — so any
 module that omits the option pins every request to its `defaultSortBy`.
 
-Only **vendor** and **prime-change-order** declare it. These do not:
-gc, contact, department, pto, cost-code, invoice, po, sco, activity-log, employee.
+Only **vendor** and **prime-change-order** declared it. Nine endpoints now do:
+gc, contact, department, pto, cost-code, invoice, po, sco and rfq. Every field was
+checked against its Prisma model first, since an unknown key reaches `orderBy`
+directly and throws. Deliberately excluded: `po.documents` and
+`rfq.estimatedBudget` (not columns). `pto.employee.name` gained a nested
+special-case in its service instead, matching how GC handles `type` and departments
+handle `employeeCount`.
 
-On those lists a sortable header changes the URL and refetches, and the rows come
-back in the same order every time. This predates the migration — the original code
-sent the same parameter to the same endpoint — and it is a backend fix
-(`elli-core/src/modules/*/routes.ts`), not a kit one.
+Activity-log and employee were left alone — neither has a sorting UI.
 
 Vendor has a narrower version of the same issue: the frontend lists `type` as a sort
 option while the API allows `typeId`. Dormant, because that column sets
