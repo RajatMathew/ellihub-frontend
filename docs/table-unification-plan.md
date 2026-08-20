@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 13 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 3.
+**Status: 15 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 1.
 
 ## Legend
 
@@ -43,6 +43,7 @@ needed it, never speculatively.
 - [x] Controlled `columnVisibility` — a column's visibility can depend on the rows
 - [x] `toApiValue` — URL values are strings; a request may want a boolean or number
 - [x] `setSort` ignores column ids that are not declared sort fields
+- [x] `f.dateRange` — a from/to pair owning two URL keys
 
 ### Defects killed by construction
 
@@ -125,8 +126,8 @@ around an escape hatch.
 ### Then — the remainder
 
 - [x] [employees](../src/modules/hr/pages/employees/employee-list.tsx) — search only, mobile card · 129 → 118
-- [ ] [members](../src/modules/settings/pages/members-page.tsx) — 3 selects
-- [ ] [activity-log](../src/modules/activity-log/pages/activity-log-list.tsx) — 2 selects; calls `useResourceListParams` directly, no wrapper hook
+- [x] [members](../src/modules/settings/pages/members-page.tsx) — 3 selects · 353 → 300
+- [x] [activity-log](../src/modules/activity-log/pages/activity-log-list.tsx) — 2 selects + date range · 234 → 205
 - [ ] [categories](../src/modules/catalog/components/categories-table-card.tsx) — self-contained, search only
 
 ### Last — files
@@ -138,7 +139,6 @@ Only consumer of the `DataGridTableBase` sub-primitives and the only direct
 
 - [ ] `renderRows` hatch
 - [ ] `onRowClick` hatch
-- [ ] `f.dateRange` — removed from the kit until something implements it; files is that something
 - [ ] [files-explorer](../src/modules/files/components/files-explorer.tsx) + [use-files-table](../src/modules/files/hooks/use-files-table.tsx) + [files-list-table](../src/modules/files/components/files-list-table.tsx)
 
 ⛔ **If a third hatch is needed, stop.** Leave files on its custom render and
