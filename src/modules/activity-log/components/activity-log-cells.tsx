@@ -1,8 +1,15 @@
+import type { ActivityLogItem } from '@/app/api/activity-log.api';
+import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
+import {
+  ActivityRevisionBadge,
+  stripActivityRevisionSuffix,
+} from '@/app/components/activity-revision-badge';
 import { Badge } from '@/app/components/ui/badge';
 import {
   getActivityActionMeta,
   getActivityEntityLabel,
 } from '@/modules/activity-log/constants/activity-log.constants';
+import { formatActivityDate } from '@/modules/activity-log/lib/activity-log-utils';
 import { Search } from 'lucide-react';
 
 export function ActivityActionBadge({ action }: { action: string }) {
@@ -26,6 +33,32 @@ export function ActivityEmptyIcon() {
   return (
     <div className="flex size-10 items-center justify-center rounded-md border bg-muted/30">
       <Search className="size-5 text-muted-foreground/60" />
+    </div>
+  );
+}
+
+export function ActivityLogDescriptionCell({ log }: { log: ActivityLogItem }) {
+  const { date, time } = formatActivityDate(log.createdAt);
+  const displayDescription = stripActivityRevisionSuffix(log.description, log.revision);
+
+  return (
+    <div className="max-w-xl">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-medium">
+        <span className="min-w-0 break-words">{displayDescription}</span>
+        <ActivityRevisionBadge revision={log.revision} />
+      </div>
+      {log.note && (
+        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{log.note}</div>
+      )}
+      {log.details && (
+        <ActivityChangeDetailsButton
+          details={log.details}
+          summary={displayDescription}
+          actor={log.user?.name ?? 'System'}
+          timestamp={`${date} ${time}`}
+          className="mt-1 px-0 hover:bg-transparent"
+        />
+      )}
     </div>
   );
 }

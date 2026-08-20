@@ -49,7 +49,6 @@ export interface DataTableProps<
   mobileItem?: (row: TData) => ReactNode;
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
   mobileSkeleton?: ReactNode;
-  refreshIndicator?: 'inline' | 'none';
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
   className?: string;
@@ -79,7 +78,6 @@ export function DataTable<
   mobileItem,
   mobileBreakpoint,
   mobileSkeleton,
-  refreshIndicator = 'inline',
   tableLayout,
   tableClassNames,
   className,
@@ -102,7 +100,6 @@ export function DataTable<
           mobileBreakpoint={mobileBreakpoint}
           mobileItem={mobileItem}
           mobileSkeleton={mobileSkeleton}
-          refreshIndicator={refreshIndicator}
           table={list.table}
           tableAriaLabel={ariaLabel}
           tableClassNames={tableClassNames}

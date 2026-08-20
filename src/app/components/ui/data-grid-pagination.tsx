@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@app/components/ui/select';
 import { Skeleton } from '@app/components/ui/skeleton';
+import { PAGE_SIZE_OPTIONS } from '@app/lib/helpers';
 import { cn } from '@app/lib/utils';
 
 interface DataGridPaginationProps {
@@ -31,7 +32,9 @@ function DataGridPagination(props: DataGridPaginationProps) {
   const { table, recordCount, isLoading } = useDataGrid();
 
   const defaultProps: Partial<DataGridPaginationProps> = {
-    sizes: [5, 10, 25, 50, 100],
+    // Must match what parseSizeParam accepts, or the selector offers a size the
+    // URL silently rejects.
+    sizes: [...PAGE_SIZE_OPTIONS],
     sizesLabel: 'Show',
     sizesDescription: 'per page',
     sizesSkeleton: <Skeleton className="h-8 w-44" />,
