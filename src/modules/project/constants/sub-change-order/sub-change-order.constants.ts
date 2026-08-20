@@ -1,7 +1,6 @@
 import type { SCOStatusName } from '@/modules/project/schemas/sub-change-order';
 
 export const SUB_CHANGE_ORDER_DEFAULT_PAGE_SIZE = 25;
-export const SUB_CHANGE_ORDER_SEARCH_DEBOUNCE_MS = 300;
 
 export const SUB_CHANGE_ORDER_SORT_BY_OPTIONS = [
   'createdAt',
@@ -11,14 +10,7 @@ export const SUB_CHANGE_ORDER_SORT_BY_OPTIONS = [
   'date',
 ] as const;
 
-export type SubChangeOrderSortByField =
-  (typeof SUB_CHANGE_ORDER_SORT_BY_OPTIONS)[number];
-
-export function isSubChangeOrderSortByField(
-  value: string | null,
-): value is SubChangeOrderSortByField {
-  return SUB_CHANGE_ORDER_SORT_BY_OPTIONS.includes(value as SubChangeOrderSortByField);
-}
+export type SubChangeOrderSortByField = (typeof SUB_CHANGE_ORDER_SORT_BY_OPTIONS)[number];
 
 export const SCO_STATUS_BADGE_VARIANTS: Record<
   string,

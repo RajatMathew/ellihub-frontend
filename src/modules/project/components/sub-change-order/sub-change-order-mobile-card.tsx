@@ -1,10 +1,7 @@
-import { DataGridSection } from '@/app/components/data-grid-section';
 import { Badge } from '@/app/components/ui/badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
-import type { Table } from '@tanstack/react-table';
-import { ClipboardList } from 'lucide-react';
 
 import {
   SubChangeOrderActionsCell,
@@ -18,52 +15,7 @@ import {
   getSubChangeOrderTypeLabel,
 } from './sub-change-order-list-utils';
 
-interface SubChangeOrderListTableProps {
-  table: Table<SCOListItem>;
-  totalCount: number;
-  isLoading: boolean;
-  isRefreshing?: boolean;
-  isError: boolean;
-  onRetry: () => void;
-  changeTypeLabelById: Map<string, string>;
-}
-
-export function SubChangeOrderListTable({
-  table,
-  totalCount,
-  isLoading,
-  isRefreshing,
-  isError,
-  onRetry,
-  changeTypeLabelById,
-}: SubChangeOrderListTableProps) {
-  return (
-    <DataGridSection
-      table={table}
-      totalCount={totalCount}
-      isLoading={isLoading || Boolean(isRefreshing)}
-      refreshIndicator="none"
-      isError={isError}
-      errorTitle="Failed to load sub change orders"
-      emptyIcon={<ClipboardList className="size-10 text-muted-foreground/50" />}
-      emptyTitle="No sub change orders yet"
-      emptyDescription="Sub change orders will appear here once created."
-      onRetry={onRetry}
-      tableLayout={{
-        dense: true,
-        width: 'auto',
-      }}
-      tableClassNames={{
-        base: 'min-w-full',
-      }}
-      mobileItem={(sco) => (
-        <SubChangeOrderMobileCard sco={sco} changeTypeLabelById={changeTypeLabelById} />
-      )}
-    />
-  );
-}
-
-function SubChangeOrderMobileCard({
+export function SubChangeOrderMobileCard({
   sco,
   changeTypeLabelById,
 }: {
