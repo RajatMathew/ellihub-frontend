@@ -189,13 +189,19 @@ export function useListState<
   // Defect A, fixed structurally: both params are compared against *this list's*
   // configured defaults rather than a literal typed into the page component.
   const setSort = useCallback(
-    (field: string, order: SortOrder) =>
+    (field: string, order: SortOrder) => {
+      // A column whose id is not a declared sort field cannot be sorted by the
+      // API, so keep it out of the URL rather than writing a value that reads
+      // back as the default anyway.
+      if (!sort.fields.includes(field as TField)) return;
+
       updateParams({
         page: undefined,
         sortBy: field === sort.by ? undefined : field,
         sortOrder: order === defaultSortOrder ? undefined : order,
-      }),
-    [defaultSortOrder, sort.by, updateParams]
+      });
+    },
+    [defaultSortOrder, sort.by, sort.fields, updateParams]
   );
 
   const resetSort = useCallback(
