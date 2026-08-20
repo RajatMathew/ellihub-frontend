@@ -125,7 +125,6 @@ export function VendorListPage() {
         }}
         error={{ title: 'Failed to load vendors' }}
         list={list}
-        refreshIndicator="none"
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}

@@ -133,7 +133,6 @@ export function GCListPage() {
         }}
         error={{ title: 'Failed to load general contractors' }}
         list={list}
-        refreshIndicator="none"
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}

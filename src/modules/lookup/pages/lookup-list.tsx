@@ -126,7 +126,6 @@ export function LookupListPage() {
           title: 'Failed to load lookups',
         }}
         list={list}
-        refreshIndicator="none"
         state={state}
         title={
           list.isInitialLoading ? (

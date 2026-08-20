@@ -110,7 +110,6 @@ export default function PTOListPage() {
           }}
           error={{ title: 'Failed to load time off requests.' }}
           list={list}
-          refreshIndicator="none"
           state={state}
           title={
             <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">

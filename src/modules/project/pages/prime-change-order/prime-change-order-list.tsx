@@ -158,7 +158,6 @@ export function PrimeChangeOrderListPage() {
           }}
           error={{ title: 'Failed to load change orders' }}
           list={list}
-          refreshIndicator="none"
           replaceBody={
             !isMapped && !syncStatusQuery.isLoading ? (
               <PrimeChangeOrderNotConnected projectId={projectId} />

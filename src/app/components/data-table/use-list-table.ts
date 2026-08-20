@@ -173,7 +173,8 @@ export function useListTable<
 
       setSort(column.id, column.desc ? 'desc' : 'asc');
     },
-    pageCount,
+    // In client mode TanStack derives this from the row count itself.
+    pageCount: isClient ? undefined : pageCount,
     state: {
       pagination: { pageIndex: page - 1, pageSize: size },
       sorting,

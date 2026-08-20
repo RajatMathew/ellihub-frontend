@@ -103,7 +103,6 @@ export function CostCodesListPage() {
         }}
         error={{ title: 'Failed to load cost codes' }}
         list={list}
-        refreshIndicator="none"
         state={state}
       />
 

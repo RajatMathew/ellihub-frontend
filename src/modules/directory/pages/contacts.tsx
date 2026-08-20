@@ -120,7 +120,6 @@ export function ContactsListPage() {
         }}
         error={{ title: 'Failed to load contacts' }}
         list={list}
-        refreshIndicator="none"
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}

@@ -88,7 +88,6 @@ export default function DepartmentListPage() {
         }}
         error={{ title: 'Failed to load departments.' }}
         list={list}
-        refreshIndicator="none"
         state={state}
         title={
           <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
