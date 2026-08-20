@@ -3,7 +3,7 @@
 Collapsing six competing table systems into one shared kit at
 [`src/app/components/data-table/`](../src/app/components/data-table).
 
-**Status: 15 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 1.
+**Status: 16 of 17 list tables migrated.** `DataGridSection` consumers: 16 → 0 (only `DataTable` uses it now). Files is the last one, and it never used it.
 
 ## Legend
 
@@ -128,7 +128,7 @@ around an escape hatch.
 - [x] [employees](../src/modules/hr/pages/employees/employee-list.tsx) — search only, mobile card · 129 → 118
 - [x] [members](../src/modules/settings/pages/members-page.tsx) — 3 selects · 353 → 300
 - [x] [activity-log](../src/modules/activity-log/pages/activity-log-list.tsx) — 2 selects + date range · 234 → 205
-- [ ] [categories](../src/modules/catalog/components/categories-table-card.tsx) — self-contained, search only
+- [x] [categories](../src/modules/catalog/pages/categories.tsx) — self-contained, second client-mode table · 145 → 166 page, card deleted
 
 ### Last — files
 
