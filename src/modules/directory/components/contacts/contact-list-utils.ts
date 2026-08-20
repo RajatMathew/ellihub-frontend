@@ -8,7 +8,7 @@ export interface ContactLinkedEntity {
 
 export function getContactLinkedEntities(
   contact: Contact,
-  vendorNames: Map<string, string>,
+  vendorNames: Map<string, string>
 ): ContactLinkedEntity[] {
   const links: ContactLinkedEntity[] = [];
 

@@ -76,9 +76,7 @@ export function useContactAssociations({
       next.type === 'VENDOR' ? [{ vendorId: next.id, isPrimary: true, name: next.name }] : []
     );
     setGCLinks(
-      next.type === 'GC'
-        ? [{ generalContractorId: next.id, isPrimary: true, name: next.name }]
-        : []
+      next.type === 'GC' ? [{ generalContractorId: next.id, isPrimary: true, name: next.name }] : []
     );
   };
 

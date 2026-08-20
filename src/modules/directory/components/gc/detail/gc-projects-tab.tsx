@@ -103,7 +103,9 @@ function ProjectRow({ project }: { project: GCProject }) {
           <ProjectMeta icon={<Building2 className="size-4" />}>
             {project.jobNumber || 'No job number'}
           </ProjectMeta>
-          <ProjectMeta icon={<MapPin className="size-4" />}>{location || 'No location'}</ProjectMeta>
+          <ProjectMeta icon={<MapPin className="size-4" />}>
+            {location || 'No location'}
+          </ProjectMeta>
           <ProjectMeta icon={<CalendarDays className="size-4" />}>{dateRange}</ProjectMeta>
         </div>
       </div>

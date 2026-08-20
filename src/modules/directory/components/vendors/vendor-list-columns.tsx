@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
-import { getVendorPrimaryContact } from '@/modules/directory/components/vendors/vendor-list-utils';
 import {
   VendorActionsCell,
   VendorContactCell,
@@ -12,6 +11,7 @@ import {
   VendorNameCell,
   VendorTypeCell,
 } from '@/modules/directory/components/vendors/vendor-list-column-cells';
+import { getVendorPrimaryContact } from '@/modules/directory/components/vendors/vendor-list-utils';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
 import { type ColumnDef } from '@tanstack/react-table';
 

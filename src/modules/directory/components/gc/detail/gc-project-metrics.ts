@@ -1,7 +1,4 @@
-import type {
-  GCProject,
-  GeneralContractorDetail,
-} from '@/modules/directory/schemas/gc.schema';
+import type { GCProject, GeneralContractorDetail } from '@/modules/directory/schemas/gc.schema';
 
 export function getProjectMetricsFromProjects(projects: GCProject[]) {
   return projects.reduce(

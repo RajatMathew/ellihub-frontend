@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { formatCurrency } from '@/app/lib/helpers';
 import { Separator } from '@/app/components/ui/separator';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   GC_STATUS_COLORS,
   GC_STATUS_LABELS,

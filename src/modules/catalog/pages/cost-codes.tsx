@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { useResourceListParams } from '@/app/hooks/use-resource-list-params';
+import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
 import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
 import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
 import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
-import { CostCodesTableCard } from '@/modules/catalog/components/cost-codes-table-card';
 import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
 import {
   useCostCodeCategoriesQuery,
@@ -20,81 +19,60 @@ import type {
   CostCodeCreate,
   CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
-import { getCoreRowModel, getPaginationRowModel, useReactTable } from '@tanstack/react-table';
+import { Tag } from 'lucide-react';
 
-const DEFAULT_PAGE_SIZE = 10;
-const SEARCH_DEBOUNCE_MS = 300;
-type CostCodeSortBy = NonNullable<CostCodeFilters['sortBy']>;
-
-const isCostCodeSortBy = (value: string | null): value is CostCodeSortBy => {
-  return value === 'name' || value === 'code';
-};
+const COST_CODE_DEFAULT_PAGE_SIZE = 10;
+const COST_CODE_SORT_BY_OPTIONS = ['name', 'code'] as const;
 
 export function CostCodesListPage() {
-  const { page, size, searchQuery, searchInput, searchParams, updateParams, handleSearchChange } =
-    useResourceListParams({
-      defaultPageSize: DEFAULT_PAGE_SIZE,
-      defaultSortBy: 'name',
-      defaultSortOrder: 'asc',
-      searchDebounceMs: SEARCH_DEBOUNCE_MS,
-      isSortBy: isCostCodeSortBy,
-    });
-  const categoryFilter = searchParams.get('categoryId') ?? undefined;
-
-  const costCodesQuery = useCostCodesQuery({
-    page,
-    size,
-    sortBy: 'name',
-    sortOrder: 'asc',
-    search: searchQuery || undefined,
-    costCodeCategoryId: categoryFilter,
-  });
-  const statsQuery = useCostCodeStatsQuery();
-  const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
-  const deleteMutation = useDeleteCostCodeMutation();
-  const createMutation = useCreateCostCodeMutation();
-  const updateMutation = useUpdateCostCodeMutation();
-
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingCostCode, setEditingCostCode] = useState<CostCode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCode | null>(null);
 
-  const hasListData = costCodesQuery.data !== undefined;
-  const hasStatsData = statsQuery.data !== undefined;
-  const showListInitialLoader =
-    costCodesQuery.isLoading || (costCodesQuery.isFetching && !hasListData);
-  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
-  const isRefreshingList = hasListData && costCodesQuery.isFetching && !showListInitialLoader;
-  const listData = costCodesQuery.data?.data ?? [];
-  const totalCount = costCodesQuery.data?.count ?? 0;
-  const hasActiveFilters = !!searchQuery || !!categoryFilter;
+  const { data: categories = [], isLoading: isCategoriesLoading } = useCostCodeCategoriesQuery();
+
+  // The URL keeps the short `categoryId`; the API expects `costCodeCategoryId`.
+  const filters = useMemo(
+    () => [
+      f.tabs({
+        apiKey: 'costCodeCategoryId',
+        isLoading: isCategoriesLoading,
+        key: 'categoryId',
+        options: categories.map((category) => ({ label: category.name, value: category.id })),
+      }),
+      f.search({ placeholder: 'Search cost codes...' }),
+    ],
+    [categories, isCategoriesLoading]
+  );
+
+  const state = useListState({
+    filters,
+    pageSize: COST_CODE_DEFAULT_PAGE_SIZE,
+    sort: { by: 'name', fields: COST_CODE_SORT_BY_OPTIONS, order: 'asc' },
+  });
+
+  const costCodesQuery = useCostCodesQuery(state.apiParams as CostCodeFilters);
+  const statsQuery = useCostCodeStatsQuery();
+  const deleteMutation = useDeleteCostCodeMutation();
+  const createMutation = useCreateCostCodeMutation();
+  const updateMutation = useUpdateCostCodeMutation();
 
   const columns = useCostCodeColumns({
-    onEdit: setEditingCostCode,
     onDelete: setDeleteTarget,
+    onEdit: setEditingCostCode,
   });
 
-  const table = useReactTable({
-    data: listData,
+  const list = useListTable({
     columns,
-    pageCount: Math.max(1, Math.ceil(totalCount / size)),
-    state: { pagination: { pageIndex: page - 1, pageSize: size } },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    onPaginationChange: (updater) => {
-      const prev = { pageIndex: page - 1, pageSize: size };
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      const patches: Record<string, string | undefined> = {};
-      if (next.pageIndex + 1 !== page)
-        patches.page = next.pageIndex === 0 ? undefined : String(next.pageIndex + 1);
-      if (next.pageSize !== size) {
-        patches.size = next.pageSize === DEFAULT_PAGE_SIZE ? undefined : String(next.pageSize);
-        patches.page = undefined;
-      }
-      updateParams(patches);
-    },
+    getRowId: (costCode) => costCode.id,
+    query: costCodesQuery,
+    rows: costCodesQuery.data?.data ?? [],
+    state,
+    totalCount: costCodesQuery.data?.count ?? 0,
   });
+
+  const hasStatsData = statsQuery.data !== undefined;
+  const showStatsInitialLoader = statsQuery.isLoading || (statsQuery.isFetching && !hasStatsData);
 
   const closeModal = () => {
     setCreateModalOpen(false);
@@ -104,60 +82,60 @@ export function CostCodesListPage() {
   return (
     <div className="container-fluid py-7.5">
       <CostCodesPageHeader
-        totalCount={totalCount}
-        hasActiveFilters={hasActiveFilters}
-        isLoading={showListInitialLoader}
+        hasActiveFilters={state.hasActiveFilters}
+        isLoading={list.isInitialLoading}
+        totalCount={list.totalCount}
         onCreate={() => setCreateModalOpen(true)}
       />
 
       <CostCodesStatsBar
+        className="mb-5 lg:mb-7.5"
         isLoading={showStatsInitialLoader}
         stats={statsQuery.data}
-        className="mb-5 lg:mb-7.5"
       />
 
-      <CostCodesTableCard
-        table={table}
-        categories={categories}
-        categoryFilter={categoryFilter}
-        searchInput={searchInput}
-        isLoading={showListInitialLoader}
-        isRefreshing={isRefreshingList}
-        isCategoriesLoading={isCategoriesLoading}
-        isError={costCodesQuery.isError}
-        totalCount={totalCount}
-        onSearchChange={handleSearchChange}
-        onCategoryChange={(id) => updateParams({ categoryId: id, page: undefined })}
-        onRetry={() => void costCodesQuery.refetch()}
+      <DataTable
+        ariaLabel="Cost codes"
+        empty={{
+          description: 'Click "+ Add Cost Code" to get started.',
+          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          title: 'No cost codes found',
+        }}
+        error={{ title: 'Failed to load cost codes' }}
+        list={list}
+        refreshIndicator="none"
+        state={state}
       />
 
       <CostCodeFormDialog
+        costCode={editingCostCode}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
         key={editingCostCode?.id ?? 'create'}
         open={createModalOpen || editingCostCode != null}
         onOpenChange={(open) => {
           if (!open) closeModal();
         }}
-        costCode={editingCostCode}
         onSubmit={(formData) => {
           if ('id' in formData && formData.id) {
             updateMutation.mutate(formData as CostCode, { onSuccess: closeModal });
-          } else {
-            createMutation.mutate(formData as CostCodeCreate, { onSuccess: closeModal });
+            return;
           }
+
+          createMutation.mutate(formData as CostCodeCreate, { onSuccess: closeModal });
         }}
-        isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
 
       <CostCodeDeleteDialog
         costCode={deleteTarget}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+
+          deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        onConfirm={() => {
-          if (deleteTarget)
-            deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
-        }}
-        isPending={deleteMutation.isPending}
       />
     </div>
   );
