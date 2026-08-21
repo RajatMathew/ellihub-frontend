@@ -1,5 +1,3 @@
-export const PROTECTED_FOLDER_NAMES = ['Root', 'root', 'ROOT'] as const;
-
 export const FILE_TYPE_LABELS = {
   FILE: 'File',
   FOLDER: 'Folder',

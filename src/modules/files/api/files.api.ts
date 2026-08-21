@@ -23,16 +23,40 @@ export const FILE_TEXT_PREVIEW_BYTES = 256 * 1024;
 const CHUNKED_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024;
 const CHUNK_UPLOAD_RETRY_ATTEMPTS = 3;
 
-export type ProjectProtectedFolderType =
-  | 'INVOICE'
-  | 'RFQ'
-  | 'PURCHASE_ORDER'
-  | 'SUB_CHANGE_ORDER'
-  | 'PRIME_CONTRACT'
-  | 'MASTER_SCHEDULE'
-  | 'SCHEDULE';
-
+/**
+ * Kept as a union because callers pass these as literals and there are only
+ * four. The API validates the value, so a drifted entry is a 400 rather than a
+ * wrong folder.
+ */
 export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';
+
+/**
+ * Shape of GET /file/registry. The folder list itself is not mirrored here —
+ * that is the point — only the shape it arrives in. The API rejects a type it
+ * does not know, so an unknown value fails loudly rather than silently.
+ */
+const folderRegistrySchema = z.object({
+  projectFolders: z.array(
+    z.object({
+      type: z.string(),
+      name: z.string(),
+      displayName: z.string(),
+      parent: z.string().nullable(),
+      status: z.string(),
+      isEntityFolder: z.boolean(),
+    })
+  ),
+  directoryRoots: z.array(
+    z.object({
+      entityType: z.string(),
+      rootType: z.string(),
+      name: z.string(),
+      displayName: z.string(),
+    })
+  ),
+});
+
+export type FolderRegistry = z.infer<typeof folderRegistrySchema>;
 
 type DownloadTarget = Pick<FileItem, 'id' | 'name' | 'displayName'>;
 
@@ -378,6 +402,23 @@ export const filesApi = {
     return result.data;
   },
 
+  /**
+   * The folder areas the API declares, so this app does not keep its own copy.
+   *
+   * The mapping from a human folder name to a protected folder type used to be
+   * a table here; whenever it drifted from the server it either resolved to the
+   * wrong folder or silently fell back to matching children by name.
+   */
+  async getFolderRegistry(): Promise<FolderRegistry> {
+    const res = await api.get(`${BASE}/registry`);
+    const raw = res.data?.data ?? res.data;
+    const result = folderRegistrySchema.safeParse(raw);
+
+    if (!result.success) throw new Error('Folder registry response was not in the expected shape');
+
+    return result.data;
+  },
+
   async getProjectFolderId(projectId: string): Promise<string> {
     const res = await api.get(`${BASE}/project/${projectId}/folder`);
     const raw = res.data?.data ?? res.data;
@@ -385,10 +426,12 @@ export const filesApi = {
     return parseFolderId(raw, 'Project folder lookup');
   },
 
-  async getProjectSubFolderId(
-    projectId: string,
-    type: ProjectProtectedFolderType
-  ): Promise<string> {
+  /**
+   * `type` comes from the folder registry rather than a union kept here. The
+   * API rejects a type it does not know, so a stale value fails loudly instead
+   * of resolving to the wrong folder.
+   */
+  async getProjectSubFolderId(projectId: string, type: string): Promise<string> {
     const res = await api.get(`${BASE}/project/${projectId}/folder/${type}`);
     const raw = res.data?.data ?? res.data;
 
