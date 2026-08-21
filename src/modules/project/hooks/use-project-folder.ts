@@ -1,36 +1,63 @@
 import {
   filesApi,
+  type FolderRegistry,
   type ProjectEntityFolderType,
-  type ProjectProtectedFolderType,
 } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
-const PROJECT_SUBFOLDER_TYPES: Record<string, ProjectProtectedFolderType> = {
-  invoice: 'INVOICE',
-  rfq: 'RFQ',
-  'purchase order': 'PURCHASE_ORDER',
-  'sub change order': 'SUB_CHANGE_ORDER',
-  sco: 'SUB_CHANGE_ORDER',
-  'prime contract': 'PRIME_CONTRACT',
-  'master schedule': 'MASTER_SCHEDULE',
-  schedule: 'SCHEDULE',
-};
+/**
+ * A folder name to the protected folder type it means.
+ *
+ * Built from what the API declares rather than from a table kept here. The two
+ * used to drift, and when they did a lookup either opened the wrong folder or
+ * fell back to matching children by name.
+ */
+function buildNameIndex(registry: FolderRegistry): Map<string, string> {
+  const index = new Map<string, string>();
+
+  for (const folder of registry.projectFolders) {
+    index.set(folder.name.trim().toLowerCase(), folder.type);
+    index.set(folder.displayName.trim().toLowerCase(), folder.type);
+  }
+
+  return index;
+}
+
+/**
+ * The registry goes through the query cache like any other server data, so
+ * concurrent folder lookups share one request and a failure is not remembered.
+ * The folder list only changes when the API deploys, hence the long staleTime.
+ */
+function loadRegistry(queryClient: QueryClient): Promise<FolderRegistry> {
+  return queryClient.fetchQuery({
+    queryKey: filesKeys.registry(),
+    queryFn: () => filesApi.getFolderRegistry(),
+    staleTime: 30 * 60 * 1000,
+  });
+}
 
 /**
  * Resolves a project's file folder through the project-specific file API.
  * If `subfolderName` is omitted, returns the project root folder ID.
  */
-async function resolveProjectFolder(projectId: string, subfolderName?: string): Promise<string> {
+async function resolveProjectFolder(
+  queryClient: QueryClient,
+  projectId: string,
+  subfolderName?: string
+): Promise<string> {
   const projectFolderId = await filesApi.getProjectFolderId(projectId);
 
   if (!subfolderName) return projectFolderId;
 
-  const protectedType = PROJECT_SUBFOLDER_TYPES[subfolderName.trim().toLowerCase()];
+  const protectedType = buildNameIndex(await loadRegistry(queryClient)).get(
+    subfolderName.trim().toLowerCase()
+  );
   if (protectedType) {
     return filesApi.getProjectSubFolderId(projectId, protectedType);
   }
 
+  // Not a protected area: an ordinary folder somebody made inside the project.
   const projectFolderDetail = await filesApi.getFolderDetails(projectFolderId);
   const subfolder = projectFolderDetail.children.find(
     (c) => c.type === 'FOLDER' && (c.name || '').toLowerCase() === subfolderName.toLowerCase()
@@ -49,9 +76,11 @@ export async function resolveProjectEntityFolder(
 }
 
 export function useProjectFolderQuery(projectId: string | undefined, subfolderName?: string) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: [...filesKeys.all, 'projectFolder', projectId, subfolderName ?? '__root__'],
-    queryFn: () => resolveProjectFolder(projectId!, subfolderName),
+    queryFn: () => resolveProjectFolder(queryClient, projectId!, subfolderName),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
     retry: false,
