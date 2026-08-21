@@ -31,10 +31,18 @@ import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, Tag, Trash2, 
 
 export type EmailListFilter = 'all' | 'unread' | 'attachments' | 'other';
 
+/**
+ * Thread state filter — independent of the "show messages" filter.
+ * Unclassified threads default to "open" (matches how the row status pill
+ * renders), so the "open" filter includes them.
+ */
+export type EmailStatusFilter = 'all' | 'open' | 'closed';
+
 interface EmailMailToolbarProps {
   selectedFolder: string;
   folders?: ConnectedEmailFolder[];
   filter: EmailListFilter;
+  statusFilter?: EmailStatusFilter;
   search: string;
   projects?: EmailReferenceProject[];
   categoryTags?: ConnectedEmailTag[];
@@ -45,6 +53,7 @@ interface EmailMailToolbarProps {
   composeDisabled?: boolean;
   onSelectFolder?: (folder: string) => void;
   onFilterChange: (filter: EmailListFilter) => void;
+  onStatusFilterChange?: (statusFilter: EmailStatusFilter) => void;
   onSearchChange: (search: string) => void;
   onProjectChange?: (projectId: string | null) => void;
   onCategoryTagChange?: (tagId: string | null) => void;
@@ -63,6 +72,7 @@ export function EmailMailToolbar({
   selectedFolder,
   folders = [],
   filter,
+  statusFilter = 'all',
   search,
   projects = [],
   categoryTags = [],
@@ -73,6 +83,7 @@ export function EmailMailToolbar({
   composeDisabled = false,
   onSelectFolder,
   onFilterChange,
+  onStatusFilterChange,
   onSearchChange,
   onProjectChange,
   onCategoryTagChange,
@@ -109,13 +120,22 @@ export function EmailMailToolbar({
     attachments: 'Attachments',
     other: 'Other',
   };
-  const filterLabel = isOtherView
-    ? selectedCategoryTag
-      ? `Filters · ${selectedCategoryTag.name}`
-      : 'Filters'
-    : filter === 'all'
-      ? 'Filters'
-      : `Filters · ${filterLabels[filter]}`;
+  const statusLabels: Record<EmailStatusFilter, string> = {
+    all: 'Any status',
+    open: 'Open',
+    closed: 'Closed',
+  };
+  const filterLabelParts: string[] = [];
+  if (isOtherView) {
+    if (selectedCategoryTag) filterLabelParts.push(selectedCategoryTag.name);
+  } else if (filter !== 'all') {
+    filterLabelParts.push(filterLabels[filter]);
+  }
+  if (!isOtherView && statusFilter !== 'all') {
+    filterLabelParts.push(statusLabels[statusFilter]);
+  }
+  const filterLabel =
+    filterLabelParts.length > 0 ? `Filters · ${filterLabelParts.join(' · ')}` : 'Filters';
 
   const openOtherCategory = () => {
     onSelectFolder?.(inboxFolder?.id ?? 'inbox');
@@ -272,6 +292,22 @@ export function EmailMailToolbar({
                       With attachments
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
+                  {onStatusFilterChange && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Thread status</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={statusFilter}
+                        onValueChange={(value) =>
+                          onStatusFilterChange(value as EmailStatusFilter)
+                        }
+                      >
+                        <DropdownMenuRadioItem value="all">Any</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
