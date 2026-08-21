@@ -74,7 +74,10 @@ export const fileSchema = z
     parentId: z.string().nullable().optional(),
     type: fileTypeSchema,
     isDeletable: z.boolean(),
-    private: z.boolean(),
+    // Optional ahead of the column being dropped server-side. Parsing is strict
+    // enough that a required field would fail every upload the moment the API
+    // stops sending it, so this has to ship and deploy first.
+    private: z.boolean().optional(),
     primeContract: z
       .object({
         id: z.string(),
