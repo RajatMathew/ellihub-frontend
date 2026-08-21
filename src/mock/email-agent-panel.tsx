@@ -66,9 +66,20 @@ import {
   useDeleteScheduleEntryMutation,
   useUpdateScheduleEntryMutation,
 } from '@/modules/project/hooks';
-import { useSubmitQuoteMutation } from '@/modules/project/hooks/rfq/rfq.hooks';
+import {
+  useAddVendorMutation,
+  usePublishRFQMutation,
+  useRemoveQuoteMutation,
+  useRemoveVendorMutation,
+  useSubmitQuoteMutation,
+} from '@/modules/project/hooks/rfq/rfq.hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import {
+  InfiniteMultiSearchSelect,
+  type InfiniteMultiSearchSelectOption,
+} from '@/app/components/ui/infinite-multi-search-select';
+import { useVendorPickerOptions } from '@/modules/directory/hooks';
 import { Conversation, ConversationContent } from './ai-elements/conversation';
 import { Message, MessageContent, MessageResponse } from './ai-elements/message';
 import {
@@ -154,12 +165,40 @@ type QuoteUploadAgentAction = {
   rfqNumber: string;
   vendorName: string;
   projectId: string;
-  quotedAmount: number;
+  quotedAmount?: number | null;
   negotiationAmount?: number | null;
   leadTimeDays?: number | null;
   attachment?: ScheduleAttachmentSelection | null;
   summary: string;
 };
+
+interface RfqRemoveAgentActionBase {
+  quoteId: string;
+  rfqId: string;
+  rfqNumber: string;
+  vendorName: string;
+  summary: string;
+}
+type QuoteRemoveAgentAction = RfqRemoveAgentActionBase & { action: 'remove_quote' };
+type VendorRemoveAgentAction = RfqRemoveAgentActionBase & { action: 'remove_vendor' };
+
+type RfqPublishVendor = { vendorId: string; vendorName: string; vendorEmail?: string | null };
+
+type RfqPublishAgentAction = {
+  action: 'publish_rfq';
+  rfqId: string;
+  rfqNumber: string;
+  rfqTitle: string;
+  projectName?: string | null;
+  vendors: RfqPublishVendor[];
+  summary: string;
+};
+
+type RfqAgentAction =
+  | QuoteUploadAgentAction
+  | QuoteRemoveAgentAction
+  | VendorRemoveAgentAction
+  | RfqPublishAgentAction;
 
 type MockAgentPanelProps = {
   open: boolean;
@@ -284,6 +323,28 @@ function collectActiveThreadAttachments(email: EmailListItem) {
   return attachments;
 }
 
+/**
+ * The backend returns a 409 Conflict with the message
+ * "Vendor already added to this RFQ" when re-adding a vendor that's already
+ * on the RFQ. Treat it as a benign no-op instead of a hard failure — the
+ * desired end state (the vendor is on the RFQ) is already met.
+ */
+function isVendorAlreadyAddedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as {
+    response?: { status?: number; data?: { message?: unknown } };
+    message?: unknown;
+  };
+  const status = err.response?.status;
+  const serverMessage =
+    typeof err.response?.data?.message === 'string' ? err.response.data.message : '';
+  const errorMessage = typeof err.message === 'string' ? err.message : '';
+  const combined = `${serverMessage} ${errorMessage}`.toLowerCase();
+  if (combined.includes('already added')) return true;
+  if (status === 409 && combined.includes('vendor')) return true;
+  return false;
+}
+
 function ContextChip({ email, current = false, onRemove }: { email: EmailListItem; current?: boolean; onRemove: () => void }) {
   return (
     <span className="inline-flex max-w-52 shrink-0 items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
@@ -337,7 +398,7 @@ export function EmailAgentPanel({
   const [includeActiveContext, setIncludeActiveContext] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, MockAgentAction>>({});
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, ScheduleAgentAction>>({});
-  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, QuoteUploadAgentAction>>({});
+  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, RfqAgentAction>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [history, setHistory] = useState<ConversationSummary[]>([]);
   const [actionsDisabled, setActionsDisabled] = useState<boolean | null>(null);
@@ -445,6 +506,10 @@ export function EmailAgentPanel({
   const updateScheduleMutation = useUpdateScheduleEntryMutation();
   const deleteScheduleMutation = useDeleteScheduleEntryMutation();
   const submitQuoteMutation = useSubmitQuoteMutation();
+  const removeQuoteMutation = useRemoveQuoteMutation();
+  const removeVendorMutation = useRemoveVendorMutation();
+  const publishRfqMutation = usePublishRFQMutation();
+  const addVendorMutation = useAddVendorMutation();
   const uploadManager = useUploadManager();
 
   useEffect(() => {
@@ -877,10 +942,78 @@ export function EmailAgentPanel({
     [accountId, uploadManager]
   );
 
-  const executeQuoteUpload = useCallback(
-    async (action: QuoteUploadAgentAction): Promise<string> => {
+  const executeRfqAction = useCallback(
+    async (action: RfqAgentAction): Promise<string> => {
+      if (action.action === 'remove_quote') {
+        await removeQuoteMutation.mutateAsync({ rfqId: action.rfqId, id: action.quoteId });
+        return `Quote from ${action.vendorName} on ${action.rfqNumber} removed.`;
+      }
+      if (action.action === 'remove_vendor') {
+        await removeVendorMutation.mutateAsync({ rfqId: action.rfqId, quoteId: action.quoteId });
+        return `${action.vendorName} removed from ${action.rfqNumber}.`;
+      }
+      if (action.action === 'publish_rfq') {
+        const vendors = action.vendors ?? [];
+        if (vendors.length === 0) {
+          throw new Error('Add at least one vendor to invite before publishing.');
+        }
+        // Mirrors the existing rfq-detail Publish & Invite flow: publish
+        // first, then invite each vendor (silent so we don't fire 20 toasts).
+        // The publish step itself is a no-op when the RFQ is already
+        // PUBLISHED; if it does fail for another reason, throwing here stops
+        // the flow before we touch any vendor rows.
+        await publishRfqMutation.mutateAsync(action.rfqId);
+
+        // Use allSettled so a benign 409 ("Vendor already added to this RFQ")
+        // doesn't undo the whole approval. Split fulfilled / benign / hard
+        // failures so we can summarize accurately.
+        const results = await Promise.allSettled(
+          vendors.map((vendor) =>
+            addVendorMutation.mutateAsync({
+              rfqId: action.rfqId,
+              vendorId: vendor.vendorId,
+              silent: true,
+            })
+          )
+        );
+
+        let invited = 0;
+        let alreadyPresent = 0;
+        const hardFailures: string[] = [];
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            invited += 1;
+            return;
+          }
+          if (isVendorAlreadyAddedError(result.reason)) {
+            alreadyPresent += 1;
+            return;
+          }
+          hardFailures.push(vendors[index]?.vendorName ?? 'a vendor');
+        });
+
+        if (hardFailures.length > 0) {
+          // Publish succeeded; report both facts so the user knows the RFQ is
+          // live and which invites still need attention.
+          throw new Error(
+            `${action.rfqNumber} is published, but couldn't invite ${hardFailures.join(', ')}. Try again from the RFQ page.`
+          );
+        }
+
+        const parts: string[] = [];
+        if (invited > 0) parts.push(`${invited} vendor${invited === 1 ? '' : 's'} invited`);
+        if (alreadyPresent > 0) {
+          parts.push(`${alreadyPresent} already on the RFQ`);
+        }
+        return `${action.rfqNumber} published${parts.length ? ` — ${parts.join(', ')}` : ''}.`;
+      }
+      // upload_quote
       if (!action.attachment) {
         throw new Error('Attach a file before submitting this quote.');
+      }
+      const quotedAmount = action.quotedAmount ?? 0;
+      if (quotedAmount <= 0) {
+        throw new Error('Enter a quotation amount greater than 0 before submitting.');
       }
       const fileId = await materializeQuoteAttachment(
         action.attachment,
@@ -894,7 +1027,7 @@ export function EmailAgentPanel({
         rfqId: action.rfqId,
         data: {
           id: action.quoteId,
-          quotedAmount: action.quotedAmount,
+          quotedAmount,
           negotiationAmount: action.negotiationAmount ?? null,
           leadTime: action.leadTimeDays ? `${action.leadTimeDays} days` : undefined,
           attachments: [fileId],
@@ -902,23 +1035,38 @@ export function EmailAgentPanel({
       });
       return `Quote from ${action.vendorName} on ${action.rfqNumber} submitted.`;
     },
-    [materializeQuoteAttachment, submitQuoteMutation]
+    [
+      addVendorMutation,
+      materializeQuoteAttachment,
+      publishRfqMutation,
+      removeQuoteMutation,
+      removeVendorMutation,
+      submitQuoteMutation,
+    ]
   );
 
-  const handleQuoteUploadApproval = useCallback(
-    async (toolCallId: string, action: QuoteUploadAgentAction, approved: boolean) => {
+  const handleRfqActionApproval = useCallback(
+    async (toolCallId: string, action: RfqAgentAction, approved: boolean) => {
       setPendingApproval({ id: toolCallId, approved });
       try {
         if (!approved) {
+          const rejected =
+            action.action === 'upload_quote'
+              ? 'REJECTED: No quote was submitted.'
+              : action.action === 'remove_quote'
+                ? 'REJECTED: The quote was not removed.'
+                : action.action === 'remove_vendor'
+                  ? 'REJECTED: The vendor was not removed.'
+                  : 'REJECTED: The RFQ was not published.';
           addToolOutput({
             tool: 'proposeUploadRfqQuote',
             toolCallId,
             state: 'output-available',
-            output: 'REJECTED: No quote was submitted.',
+            output: rejected,
           });
           return;
         }
-        const result = await executeQuoteUpload(action);
+        const result = await executeRfqAction(action);
         addToolOutput({
           tool: 'proposeUploadRfqQuote',
           toolCallId,
@@ -926,10 +1074,18 @@ export function EmailAgentPanel({
           output: `SUCCESS: ${result}`,
         });
       } catch (actionError) {
+        const fallback =
+          action.action === 'upload_quote'
+            ? 'The quote submission failed.'
+            : action.action === 'remove_quote'
+              ? 'Removing the quote failed.'
+              : action.action === 'remove_vendor'
+                ? 'Removing the vendor failed.'
+                : 'Publishing the RFQ failed.';
         const message =
           actionError instanceof Error && actionError.message.startsWith("Couldn't attach ")
             ? actionError.message
-            : getApiErrorMessage(actionError, 'The quote submission failed.');
+            : getApiErrorMessage(actionError, fallback);
         toast.error(message);
         addToolOutput({
           tool: 'proposeUploadRfqQuote',
@@ -941,7 +1097,7 @@ export function EmailAgentPanel({
         setPendingApproval(null);
       }
     },
-    [addToolOutput, executeQuoteUpload]
+    [addToolOutput, executeRfqAction]
   );
 
   const executeScheduleAction = useCallback(
@@ -1203,7 +1359,7 @@ export function EmailAgentPanel({
             </div>
             ) : (
             <div className="space-y-5" aria-live="polite">
-              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onQuoteDraftChange={(id, draft) => setQuoteDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onQuoteApprove={handleQuoteUploadApproval} onScheduleUploadFile={uploadLocalFileForSchedule} onQuoteUploadFile={uploadLocalFileForQuote} quoteDrafts={quoteDrafts} /></div>)}
+              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onQuoteDraftChange={(id, draft) => setQuoteDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onQuoteApprove={handleRfqActionApproval} onScheduleUploadFile={uploadLocalFileForSchedule} onQuoteUploadFile={uploadLocalFileForQuote} quoteDrafts={quoteDrafts} /></div>)}
               {shouldShowThinkingIndicator({ status, messages }) ? (
                 <ThinkingIndicator label={getCurrentActivityLabel(messages[messages.length - 1])} />
               ) : null}
@@ -1336,13 +1492,13 @@ function AgentMessage({
   mentionLabels: string[];
   drafts: Record<string, MockAgentAction>;
   scheduleDrafts: Record<string, ScheduleAgentAction>;
-  quoteDrafts: Record<string, QuoteUploadAgentAction>;
+  quoteDrafts: Record<string, RfqAgentAction>;
   onDraftChange: (id: string, draft: MockAgentAction) => void;
   onScheduleDraftChange: (id: string, draft: ScheduleAgentAction) => void;
-  onQuoteDraftChange: (id: string, draft: QuoteUploadAgentAction) => void;
+  onQuoteDraftChange: (id: string, draft: RfqAgentAction) => void;
   onApprove: (id: string, action: MockAgentAction, approved: boolean) => Promise<void>;
   onScheduleApprove: (id: string, action: ScheduleAgentAction, approved: boolean) => Promise<void>;
-  onQuoteApprove: (id: string, action: QuoteUploadAgentAction, approved: boolean) => Promise<void>;
+  onQuoteApprove: (id: string, action: RfqAgentAction, approved: boolean) => Promise<void>;
   onScheduleUploadFile: (
     file: File,
     projectId: string
@@ -1402,14 +1558,24 @@ function AgentMessage({
       return;
     }
     if (part.type === 'tool-proposeUploadRfqQuote' && 'toolCallId' in part) {
-      const toolPart = part as unknown as { toolCallId: string; state: string; input?: QuoteUploadAgentAction; output?: string; errorText?: string };
-      const action = quoteDrafts[toolPart.toolCallId] ?? toolPart.input;
-      if (!action) {
-        renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing a quote upload for review…</div>);
+      const toolPart = part as unknown as { toolCallId: string; state: string; input?: RfqAgentAction; output?: string; errorText?: string };
+      const streamed = toolPart.input;
+      const action = quoteDrafts[toolPart.toolCallId] ?? streamed;
+      // Streaming tool inputs arrive incrementally — until the action tag and
+      // the id fields we actually need are populated, the card can't render a
+      // variant. Show a placeholder so we don't crash trying to read the shape
+      // early. publish_rfq has no quoteId; the other three do.
+      const isReady =
+        !!action &&
+        !!action.action &&
+        !!action.rfqId &&
+        (action.action === 'publish_rfq' ? true : !!(action as { quoteId?: string }).quoteId);
+      if (!isReady) {
+        renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing an RFQ action for review…</div>);
         return;
       }
       renderedParts.push(
-        <QuoteUploadActionCard
+        <RfqActionCard
           key={toolPart.toolCallId}
           action={action}
           state={toolPart.state}
@@ -1477,6 +1643,7 @@ const TOOL_ACTIVITY_LABELS: Record<string, string> = {
   lookupCrossInboxAttachments: 'searching your mailboxes',
   lookupRfqs: 'searching RFQs',
   lookupRfqVendors: 'looking up vendors on this RFQ',
+  lookupVendors: 'searching the vendor directory',
 };
 
 function isPendingToolPart(part: UIMessage['parts'][number]): boolean {
@@ -1889,7 +2056,7 @@ function ScheduleActionCard({
   );
 }
 
-function QuoteUploadActionCard({
+function RfqActionCard({
   action,
   state,
   output,
@@ -1900,13 +2067,13 @@ function QuoteUploadActionCard({
   onApprove,
   onUploadFile,
 }: {
-  action: QuoteUploadAgentAction;
+  action: RfqAgentAction;
   state: string;
   output?: string;
   errorText?: string;
   processing: boolean;
   processingApproved?: boolean;
-  onChange: (action: QuoteUploadAgentAction) => void;
+  onChange: (action: RfqAgentAction) => void;
   onApprove: (approved: boolean) => Promise<void>;
   onUploadFile: (
     file: File,
@@ -1918,12 +2085,55 @@ function QuoteUploadActionCard({
   const [uploadingFile, setUploadingFile] = useState(false);
   const isWaiting = state === 'input-available' || processing;
   const isRejected = output?.startsWith('REJECTED:') === true;
-  const canSubmit = action.quotedAmount > 0 && !!action.attachment;
+  const isUpload = action.action === 'upload_quote';
+  const isDestructive = action.action === 'remove_quote' || action.action === 'remove_vendor';
+  const isPublish = action.action === 'publish_rfq';
+  // Numeric fields on upload_quote are optional at the tool layer so elliot can
+  // propose the card early. Guard every read against undefined; the card refuses
+  // to submit until the user fills in a positive amount and attaches a file.
+  const quotedAmount = isUpload ? action.quotedAmount ?? 0 : 0;
+  const negotiationAmount = isUpload ? action.negotiationAmount ?? null : null;
+  const leadTimeDays = isUpload ? action.leadTimeDays ?? null : null;
+  const attachment = isUpload ? action.attachment ?? null : null;
+  const publishVendors = isPublish ? action.vendors ?? [] : [];
+  const canSubmit = isUpload
+    ? quotedAmount > 0 && !!attachment
+    : isPublish
+      ? publishVendors.length > 0
+      : true;
+  const actionLabel = isUpload
+    ? 'Upload quote'
+    : action.action === 'remove_quote'
+      ? 'Remove quote'
+      : action.action === 'remove_vendor'
+        ? 'Remove vendor'
+        : 'Publish RFQ';
+  const submitLabel = isUpload
+    ? 'Submit quote'
+    : action.action === 'remove_quote'
+      ? 'Remove quote'
+      : action.action === 'remove_vendor'
+        ? 'Remove vendor'
+        : 'Publish & Invite';
+  const successLabel = isUpload
+    ? 'Quote submitted.'
+    : action.action === 'remove_quote'
+      ? 'Quote removed.'
+      : action.action === 'remove_vendor'
+        ? 'Vendor removed.'
+        : 'RFQ published and vendors invited.';
+  const rejectedLabel = isUpload
+    ? 'Quote rejected. Nothing was submitted.'
+    : action.action === 'remove_quote'
+      ? 'Removal rejected. The quote is unchanged.'
+      : action.action === 'remove_vendor'
+        ? 'Removal rejected. The vendor is unchanged.'
+        : 'Publish rejected. The RFQ is still a draft.';
 
   const handleFileChange = async (event: ReactChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file || !isUpload) return;
     setUploadingFile(true);
     try {
       const { fileId, fileName } = await onUploadFile(file, action.projectId, action.rfqId);
@@ -1938,11 +2148,30 @@ function QuoteUploadActionCard({
     }
   };
 
+  const secondaryLabel = isPublish
+    ? action.rfqTitle
+    : action.action === 'upload_quote' ||
+        action.action === 'remove_quote' ||
+        action.action === 'remove_vendor'
+      ? action.vendorName
+      : null;
+
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background text-primary">
-          <FileText className="size-4" aria-hidden="true" />
+        <span
+          className={cn(
+            'flex size-8 shrink-0 items-center justify-center rounded-md bg-background',
+            isDestructive ? 'text-destructive' : 'text-primary'
+          )}
+        >
+          {isDestructive ? (
+            <Trash2 className="size-4" aria-hidden="true" />
+          ) : isPublish ? (
+            <Send className="size-4" aria-hidden="true" />
+          ) : (
+            <FileText className="size-4" aria-hidden="true" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1950,14 +2179,19 @@ function QuoteUploadActionCard({
           </p>
           <p className="mt-1 text-sm font-medium">{action.summary}</p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            Upload quote · <span className="font-medium text-foreground/80">{action.rfqNumber}</span>
-            {' · '}
-            <span className="font-medium text-foreground/80">{action.vendorName}</span>
+            {actionLabel} ·{' '}
+            <span className="font-medium text-foreground/80">{action.rfqNumber}</span>
+            {secondaryLabel ? (
+              <>
+                {' · '}
+                <span className="font-medium text-foreground/80">{secondaryLabel}</span>
+              </>
+            ) : null}
           </p>
         </div>
       </div>
 
-      {isWaiting ? (
+      {isWaiting && isUpload ? (
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-medium">
             <span className="text-muted-foreground">Quotation amount ($)</span>
@@ -1967,7 +2201,7 @@ function QuoteUploadActionCard({
               step="0.01"
               inputMode="decimal"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              value={Number.isFinite(action.quotedAmount) ? action.quotedAmount : ''}
+              value={quotedAmount || ''}
               onChange={(event) =>
                 onChange({
                   ...action,
@@ -1984,7 +2218,7 @@ function QuoteUploadActionCard({
               step="0.01"
               inputMode="decimal"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              value={action.negotiationAmount ?? ''}
+              value={negotiationAmount ?? ''}
               onChange={(event) => {
                 const raw = event.target.value;
                 onChange({
@@ -2002,7 +2236,7 @@ function QuoteUploadActionCard({
               step={1}
               inputMode="numeric"
               className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              value={action.leadTimeDays ?? ''}
+              value={leadTimeDays ?? ''}
               onChange={(event) => {
                 const raw = event.target.value;
                 onChange({
@@ -2021,17 +2255,17 @@ function QuoteUploadActionCard({
               aria-hidden="true"
               tabIndex={-1}
             />
-            {action.attachment ? (
+            {attachment ? (
               <>
                 <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate">
                   <span className="text-muted-foreground">Quote document: </span>
                   <span className="font-medium">
-                    {action.attachment.source === 'email_attachment'
-                      ? action.attachment.attachmentName
-                      : action.attachment.fileName}
+                    {attachment.source === 'email_attachment'
+                      ? attachment.attachmentName
+                      : attachment.fileName}
                   </span>
-                  {action.attachment.source === 'email_attachment' && (
+                  {attachment.source === 'email_attachment' && (
                     <span className="ml-1 text-muted-foreground">(from email)</span>
                   )}
                 </span>
@@ -2081,39 +2315,116 @@ function QuoteUploadActionCard({
             )}
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      {isUpload && !isWaiting ? (
         <div className="mt-3 rounded-md bg-background p-3 text-sm text-muted-foreground">
           <p>
-            <span className="font-medium text-foreground">
-              ${action.quotedAmount.toLocaleString()}
-            </span>
-            {action.negotiationAmount ? (
-              <span> · Negotiation ${action.negotiationAmount.toLocaleString()}</span>
+            <span className="font-medium text-foreground">${quotedAmount.toLocaleString()}</span>
+            {negotiationAmount ? (
+              <span> · Negotiation ${negotiationAmount.toLocaleString()}</span>
             ) : null}
-            {action.leadTimeDays ? <span> · Lead time {action.leadTimeDays} days</span> : null}
+            {leadTimeDays ? <span> · Lead time {leadTimeDays} days</span> : null}
           </p>
-          {action.attachment ? (
+          {attachment ? (
             <p className="mt-1">
               Document:{' '}
               <span className="font-medium">
-                {action.attachment.source === 'email_attachment'
-                  ? action.attachment.attachmentName
-                  : action.attachment.fileName}
+                {attachment.source === 'email_attachment'
+                  ? attachment.attachmentName
+                  : attachment.fileName}
               </span>
             </p>
           ) : null}
         </div>
-      )}
+      ) : null}
+
+      {isDestructive ? (
+        <div className="mt-3 rounded-md bg-background p-3 text-sm text-muted-foreground">
+          <p>
+            {action.action === 'remove_quote' ? (
+              <>
+                Clear the submitted quote from{' '}
+                <span className="font-medium text-foreground">{action.vendorName}</span> on{' '}
+                <span className="font-medium text-foreground">{action.rfqNumber}</span>. The vendor
+                stays on the RFQ and can submit again.
+              </>
+            ) : (
+              <>
+                Remove <span className="font-medium text-foreground">{action.vendorName}</span> from{' '}
+                <span className="font-medium text-foreground">{action.rfqNumber}</span> entirely.
+                Any submitted quote from this vendor is also cleared.
+              </>
+            )}
+          </p>
+        </div>
+      ) : null}
+
+      {isPublish ? (
+        <div className="mt-3 rounded-md bg-background p-3 text-sm">
+          <p className="text-muted-foreground">
+            {action.projectName ? (
+              <>
+                Publish <span className="font-medium text-foreground">{action.rfqNumber}</span> for{' '}
+                <span className="font-medium text-foreground">{action.projectName}</span> and invite
+                the selected vendors.
+              </>
+            ) : (
+              <>
+                Publish <span className="font-medium text-foreground">{action.rfqNumber}</span> and
+                invite the selected vendors.
+              </>
+            )}
+          </p>
+          <div className="mt-3">
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Invite vendors ({publishVendors.length})
+            </p>
+            {isWaiting ? (
+              <PublishRfqVendorPicker
+                selectedVendors={publishVendors}
+                onChange={(nextVendors) => onChange({ ...action, vendors: nextVendors })}
+              />
+            ) : publishVendors.length === 0 ? (
+              <p className="rounded-md border border-dashed border-border bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
+                No vendors selected.
+              </p>
+            ) : (
+              <ul className="flex flex-wrap gap-1.5">
+                {publishVendors.map((vendor) => (
+                  <li
+                    key={vendor.vendorId}
+                    className="inline-flex max-w-56 items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs"
+                  >
+                    <span className="min-w-0 truncate font-medium">{vendor.vendorName}</span>
+                    {vendor.vendorEmail && (
+                      <span className="min-w-0 truncate text-muted-foreground">
+                        · {vendor.vendorEmail}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {errorText ? (
         <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{errorText}</p>
       ) : null}
 
-      {isWaiting && !canSubmit ? (
+      {isWaiting && isUpload && !canSubmit ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          {!action.attachment
+          {!attachment
             ? 'Attach the quote document before submitting.'
             : 'Enter a quotation amount greater than 0.'}
+        </p>
+      ) : null}
+
+      {isWaiting && isPublish && !canSubmit ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Add at least one vendor before publishing.
         </p>
       ) : null}
 
@@ -2130,13 +2441,13 @@ function QuoteUploadActionCard({
           </Button>
           <Button
             type="button"
-            variant="primary"
+            variant={isDestructive ? 'destructive' : 'primary'}
             size="sm"
             disabled={processing || !canSubmit}
             onClick={() => void onApprove(true)}
           >
             <Check className="size-3.5" />{' '}
-            {processing && processingApproved === true ? 'Working…' : 'Submit quote'}
+            {processing && processingApproved === true ? 'Working…' : submitLabel}
           </Button>
         </div>
       ) : null}
@@ -2149,10 +2460,84 @@ function QuoteUploadActionCard({
           )}
         >
           <Check className="size-3.5" />
-          {isRejected ? 'Quote rejected. Nothing was submitted.' : 'Quote submitted.'}
+          {isRejected ? rejectedLabel : successLabel}
         </p>
       ) : null}
     </div>
+  );
+}
+
+function PublishRfqVendorPicker({
+  selectedVendors,
+  onChange,
+}: {
+  selectedVendors: RfqPublishVendor[];
+  onChange: (vendors: RfqPublishVendor[]) => void;
+}) {
+  const [search, setSearch] = useState('');
+
+  // Keep the already-picked vendors visible in the dropdown even if they aren't
+  // in the current search page — matches how the rfq-detail Publish dialog uses
+  // the same picker.
+  const selectedOptions = useMemo<InfiniteMultiSearchSelectOption[]>(
+    () =>
+      selectedVendors.map((vendor) => ({
+        value: vendor.vendorId,
+        label: vendor.vendorName,
+        description: vendor.vendorEmail ?? undefined,
+      })),
+    [selectedVendors]
+  );
+
+  const picker = useVendorPickerOptions({
+    search,
+    selectedOptions,
+    queryScope: 'elliot-publish-rfq',
+    status: 'ACTIVE',
+  });
+
+  const selectedIds = useMemo(
+    () => selectedVendors.map((vendor) => vendor.vendorId),
+    [selectedVendors]
+  );
+
+  const handleValueChange = (nextIds: string[]) => {
+    // Preserve the existing entries where possible (they may have vendorEmail
+    // from elliot's original proposal that isn't on the picker option), then
+    // fill in newly-added ids from the picker options.
+    const existingById = new Map(selectedVendors.map((vendor) => [vendor.vendorId, vendor]));
+    const optionById = new Map(picker.options.map((option) => [option.value, option]));
+    const nextVendors: RfqPublishVendor[] = nextIds.map((id) => {
+      const existing = existingById.get(id);
+      if (existing) return existing;
+      const option = optionById.get(id);
+      return {
+        vendorId: id,
+        vendorName: option?.label ?? id,
+        vendorEmail: option?.description ?? null,
+      };
+    });
+    onChange(nextVendors);
+  };
+
+  return (
+    <InfiniteMultiSearchSelect
+      options={picker.options}
+      value={selectedIds}
+      onValueChange={handleValueChange}
+      selectedOptions={selectedOptions}
+      search={search}
+      onSearchChange={setSearch}
+      isLoading={picker.isLoading}
+      isFetchingNextPage={picker.isFetchingNextPage}
+      hasNextPage={picker.hasNextPage}
+      onFetchNextPage={picker.fetchNextPage}
+      placeholder="Select vendors to invite…"
+      searchPlaceholder="Search vendors…"
+      emptyMessage={search ? 'No matching vendors found.' : 'No vendors found.'}
+      loadingMessage="Loading vendors…"
+      testId="elliot-rfq-publish-vendors"
+    />
   );
 }
 
