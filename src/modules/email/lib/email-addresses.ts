@@ -3,7 +3,7 @@ export type ParsedEmailAddress = {
   name?: string;
 };
 
-const EMAIL_ADDRESS_PATTERN = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
+export const EMAIL_ADDRESS_PATTERN = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
 
 export function parseEmailAddresses(value: string): ParsedEmailAddress[] {
   return splitEmailAddresses(value).map((recipient) => {
