@@ -16,6 +16,7 @@ import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import {
   EmailMailToolbar,
   type EmailListFilter,
+  type EmailStatusFilter,
 } from '@/modules/email/components/email-mail-toolbar';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
 import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
@@ -122,6 +123,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
+  const [mailStatusFilter, setMailStatusFilter] = useState<EmailStatusFilter>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedCategoryTagId, setSelectedCategoryTagId] = useState<string | null>(null);
   const [mobilePane, setMobilePane] = useState<'list' | 'reading'>('list');
@@ -258,28 +260,47 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
-    if (mailFilter === 'unread') return emailsForActiveSearch.filter((email) => email.unread);
-    if (mailFilter === 'attachments') {
-      return emailsForActiveSearch.filter(
+    // Step 1 — narrow by the "Show messages" filter.
+    let list = emailsForActiveSearch;
+    if (mailFilter === 'unread') {
+      list = list.filter((email) => email.unread);
+    } else if (mailFilter === 'attachments') {
+      list = list.filter(
         (email) => Boolean(email.attachmentCount) || Boolean(email.attachments?.length)
       );
-    }
-    if (mailFilter === 'other' && selectedCategoryTagId) {
+    } else if (mailFilter === 'other' && selectedCategoryTagId) {
       const selectedTag = availableOtherCategoryTags.find(
         (tag) => tag.id === selectedCategoryTagId
       );
-      if (!selectedTag) return emailsForActiveSearch;
-      const tagKeys = new Set([
-        selectedTag.id.toLowerCase(),
-        selectedTag.providerId.toLowerCase(),
-        selectedTag.name.toLowerCase(),
-      ]);
-      return emailsForActiveSearch.filter((email) =>
-        (email.keywords ?? []).some((keyword) => tagKeys.has(keyword.toLowerCase()))
-      );
+      if (selectedTag) {
+        const tagKeys = new Set([
+          selectedTag.id.toLowerCase(),
+          selectedTag.providerId.toLowerCase(),
+          selectedTag.name.toLowerCase(),
+        ]);
+        list = list.filter((email) =>
+          (email.keywords ?? []).some((keyword) => tagKeys.has(keyword.toLowerCase()))
+        );
+      }
     }
-    return emailsForActiveSearch;
-  }, [availableOtherCategoryTags, emailsForActiveSearch, mailFilter, selectedCategoryTagId]);
+
+    // Step 2 — narrow by thread status. Unclassified threads default to "open"
+    // (matches the pill on the row card), so the "open" filter includes them.
+    if (mailStatusFilter !== 'all') {
+      list = list.filter((email) => {
+        const status = email.classification?.status ?? 'open';
+        return status === mailStatusFilter;
+      });
+    }
+
+    return list;
+  }, [
+    availableOtherCategoryTags,
+    emailsForActiveSearch,
+    mailFilter,
+    mailStatusFilter,
+    selectedCategoryTagId,
+  ]);
   const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
   const viewKey = `account:${connectedAccount?.id ?? accountSlug ?? 'unknown'}`;
   const selectedEmailId =
@@ -985,6 +1006,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             selectedFolder={selectedFolder}
             folders={foldersQuery.data}
             filter={mailFilter}
+            statusFilter={mailStatusFilter}
             search={messageSearch}
             projects={referenceProjectsQuery.data}
             categoryTags={availableOtherCategoryTags}
@@ -996,6 +1018,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
               setSelectedFolder(folder);
               setSelectedTarget(null);
               setMailFilter('all');
+              setMailStatusFilter('all');
               setSelectedCategoryTagId(null);
               setMobilePane('list');
             }}
@@ -1003,6 +1026,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
               setMailFilter(filter);
               if (filter !== 'other') setSelectedCategoryTagId(null);
             }}
+            onStatusFilterChange={setMailStatusFilter}
             onProjectChange={(projectId) => {
               setSelectedProjectId(projectId);
               setSelectedTarget(null);
