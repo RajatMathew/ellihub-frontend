@@ -66,6 +66,7 @@ import {
   useDeleteScheduleEntryMutation,
   useUpdateScheduleEntryMutation,
 } from '@/modules/project/hooks';
+import { useSubmitQuoteMutation } from '@/modules/project/hooks/rfq/rfq.hooks';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import { Conversation, ConversationContent } from './ai-elements/conversation';
@@ -145,6 +146,20 @@ type ScheduleAgentAction =
       scheduleDate?: string;
       summary: string;
     };
+
+type QuoteUploadAgentAction = {
+  action: 'upload_quote';
+  quoteId: string;
+  rfqId: string;
+  rfqNumber: string;
+  vendorName: string;
+  projectId: string;
+  quotedAmount: number;
+  negotiationAmount?: number | null;
+  leadTimeDays?: number | null;
+  attachment?: ScheduleAttachmentSelection | null;
+  summary: string;
+};
 
 type MockAgentPanelProps = {
   open: boolean;
@@ -322,6 +337,7 @@ export function EmailAgentPanel({
   const [includeActiveContext, setIncludeActiveContext] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, MockAgentAction>>({});
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, ScheduleAgentAction>>({});
+  const [quoteDrafts, setQuoteDrafts] = useState<Record<string, QuoteUploadAgentAction>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [history, setHistory] = useState<ConversationSummary[]>([]);
   const [actionsDisabled, setActionsDisabled] = useState<boolean | null>(null);
@@ -428,6 +444,7 @@ export function EmailAgentPanel({
   const createScheduleMutation = useCreateScheduleEntryMutation();
   const updateScheduleMutation = useUpdateScheduleEntryMutation();
   const deleteScheduleMutation = useDeleteScheduleEntryMutation();
+  const submitQuoteMutation = useSubmitQuoteMutation();
   const uploadManager = useUploadManager();
 
   useEffect(() => {
@@ -451,6 +468,7 @@ export function EmailAgentPanel({
         setIncludeActiveContext(true);
         setDrafts({});
         setScheduleDrafts({});
+        setQuoteDrafts({});
         setContextOpen(false);
         setHistoryOpen(false);
       }
@@ -480,6 +498,7 @@ export function EmailAgentPanel({
       setDraftMentionContextIds([]);
       setDrafts({});
       setScheduleDrafts({});
+      setQuoteDrafts({});
       setHistoryOpen(false);
     } finally {
       setLoadingConversationId(null);
@@ -494,6 +513,7 @@ export function EmailAgentPanel({
     setDraftMentionContextIds([]);
     setDrafts({});
     setScheduleDrafts({});
+    setQuoteDrafts({});
     setHistoryOpen(false);
   };
 
@@ -777,6 +797,153 @@ export function EmailAgentPanel({
     [uploadManager]
   );
 
+  const uploadLocalFileForQuote = useCallback(
+    async (
+      file: File,
+      projectId: string,
+      rfqId: string
+    ): Promise<{ fileId: string; fileName: string }> => {
+      const folderId = await filesApi.getProjectEntityFolderId(projectId, 'RFQ', rfqId);
+      const uploaded = await uploadManager.enqueueUploadsAndWait(
+        [
+          {
+            file,
+            data: {
+              name: file.name,
+              parentId: folderId,
+              mimeType: file.type || undefined,
+              size: file.size,
+            },
+          },
+        ],
+        { label: `Quote attachment: ${file.name}` }
+      );
+      const [fileItem] = uploaded;
+      if (!fileItem?.id) throw new Error('The file could not be uploaded.');
+      return { fileId: fileItem.id, fileName: file.name };
+    },
+    [uploadManager]
+  );
+
+  const materializeQuoteAttachment = useCallback(
+    async (
+      attachment: ScheduleAttachmentSelection | null | undefined,
+      projectId: string,
+      rfqId: string
+    ): Promise<string | undefined> => {
+      if (!attachment) return undefined;
+      if (attachment.source === 'existing_file') return attachment.fileId;
+      if (attachment.source !== 'email_attachment') return undefined;
+      const sourceAccountId = attachment.accountId ?? accountId;
+      if (!sourceAccountId) throw new Error('Connect a mailbox before attaching an email file.');
+
+      const attachmentName = attachment.attachmentName;
+      try {
+        const folderId = await filesApi.getProjectEntityFolderId(projectId, 'RFQ', rfqId);
+        const blob = await emailApi.getAttachment(
+          sourceAccountId,
+          attachment.messageId,
+          attachment.attachmentId
+        );
+        const file = new File([blob], attachmentName, {
+          type: blob.type || 'application/octet-stream',
+        });
+        const uploaded = await uploadManager.enqueueUploadsAndWait(
+          [
+            {
+              file,
+              data: {
+                name: attachmentName,
+                parentId: folderId,
+                mimeType: file.type || undefined,
+                size: file.size,
+              },
+            },
+          ],
+          { label: `Quote attachment: ${attachmentName}` }
+        );
+        const [fileItem] = uploaded;
+        if (!fileItem?.id) {
+          throw new Error('The attachment upload finished without a file id.');
+        }
+        return fileItem.id;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : 'unknown error';
+        throw new Error(
+          `Couldn't attach ${attachmentName} from email (${reason}). The quote was not submitted. Try again without an attachment, then use the Attach button on the card to upload the file from your computer.`
+        );
+      }
+    },
+    [accountId, uploadManager]
+  );
+
+  const executeQuoteUpload = useCallback(
+    async (action: QuoteUploadAgentAction): Promise<string> => {
+      if (!action.attachment) {
+        throw new Error('Attach a file before submitting this quote.');
+      }
+      const fileId = await materializeQuoteAttachment(
+        action.attachment,
+        action.projectId,
+        action.rfqId
+      );
+      if (!fileId) {
+        throw new Error('Attach a file before submitting this quote.');
+      }
+      await submitQuoteMutation.mutateAsync({
+        rfqId: action.rfqId,
+        data: {
+          id: action.quoteId,
+          quotedAmount: action.quotedAmount,
+          negotiationAmount: action.negotiationAmount ?? null,
+          leadTime: action.leadTimeDays ? `${action.leadTimeDays} days` : undefined,
+          attachments: [fileId],
+        },
+      });
+      return `Quote from ${action.vendorName} on ${action.rfqNumber} submitted.`;
+    },
+    [materializeQuoteAttachment, submitQuoteMutation]
+  );
+
+  const handleQuoteUploadApproval = useCallback(
+    async (toolCallId: string, action: QuoteUploadAgentAction, approved: boolean) => {
+      setPendingApproval({ id: toolCallId, approved });
+      try {
+        if (!approved) {
+          addToolOutput({
+            tool: 'proposeUploadRfqQuote',
+            toolCallId,
+            state: 'output-available',
+            output: 'REJECTED: No quote was submitted.',
+          });
+          return;
+        }
+        const result = await executeQuoteUpload(action);
+        addToolOutput({
+          tool: 'proposeUploadRfqQuote',
+          toolCallId,
+          state: 'output-available',
+          output: `SUCCESS: ${result}`,
+        });
+      } catch (actionError) {
+        const message =
+          actionError instanceof Error && actionError.message.startsWith("Couldn't attach ")
+            ? actionError.message
+            : getApiErrorMessage(actionError, 'The quote submission failed.');
+        toast.error(message);
+        addToolOutput({
+          tool: 'proposeUploadRfqQuote',
+          toolCallId,
+          state: 'output-error',
+          errorText: message,
+        });
+      } finally {
+        setPendingApproval(null);
+      }
+    },
+    [addToolOutput, executeQuoteUpload]
+  );
+
   const executeScheduleAction = useCallback(
     async (action: ScheduleAgentAction): Promise<string> => {
       if (action.action === 'remove_schedule') {
@@ -1036,7 +1203,7 @@ export function EmailAgentPanel({
             </div>
             ) : (
             <div className="space-y-5" aria-live="polite">
-              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onScheduleUploadFile={uploadLocalFileForSchedule} /></div>)}
+              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onQuoteDraftChange={(id, draft) => setQuoteDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onQuoteApprove={handleQuoteUploadApproval} onScheduleUploadFile={uploadLocalFileForSchedule} onQuoteUploadFile={uploadLocalFileForQuote} quoteDrafts={quoteDrafts} /></div>)}
               {shouldShowThinkingIndicator({ status, messages }) ? (
                 <ThinkingIndicator label={getCurrentActivityLabel(messages[messages.length - 1])} />
               ) : null}
@@ -1154,24 +1321,36 @@ function AgentMessage({
   mentionLabels,
   drafts,
   scheduleDrafts,
+  quoteDrafts,
   onDraftChange,
   onScheduleDraftChange,
+  onQuoteDraftChange,
   onApprove,
   onScheduleApprove,
+  onQuoteApprove,
   onScheduleUploadFile,
+  onQuoteUploadFile,
   pendingApproval,
 }: {
   message: UIMessage;
   mentionLabels: string[];
   drafts: Record<string, MockAgentAction>;
   scheduleDrafts: Record<string, ScheduleAgentAction>;
+  quoteDrafts: Record<string, QuoteUploadAgentAction>;
   onDraftChange: (id: string, draft: MockAgentAction) => void;
   onScheduleDraftChange: (id: string, draft: ScheduleAgentAction) => void;
+  onQuoteDraftChange: (id: string, draft: QuoteUploadAgentAction) => void;
   onApprove: (id: string, action: MockAgentAction, approved: boolean) => Promise<void>;
   onScheduleApprove: (id: string, action: ScheduleAgentAction, approved: boolean) => Promise<void>;
+  onQuoteApprove: (id: string, action: QuoteUploadAgentAction, approved: boolean) => Promise<void>;
   onScheduleUploadFile: (
     file: File,
     projectId: string
+  ) => Promise<{ fileId: string; fileName: string }>;
+  onQuoteUploadFile: (
+    file: File,
+    projectId: string,
+    rfqId: string
   ) => Promise<{ fileId: string; fileName: string }>;
   pendingApproval: { id: string; approved: boolean } | null;
 }) {
@@ -1218,6 +1397,29 @@ function AgentMessage({
           onChange={(next) => onScheduleDraftChange(toolPart.toolCallId, next)}
           onApprove={(approved) => onScheduleApprove(toolPart.toolCallId, action, approved)}
           onUploadFile={onScheduleUploadFile}
+        />
+      );
+      return;
+    }
+    if (part.type === 'tool-proposeUploadRfqQuote' && 'toolCallId' in part) {
+      const toolPart = part as unknown as { toolCallId: string; state: string; input?: QuoteUploadAgentAction; output?: string; errorText?: string };
+      const action = quoteDrafts[toolPart.toolCallId] ?? toolPart.input;
+      if (!action) {
+        renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing a quote upload for review…</div>);
+        return;
+      }
+      renderedParts.push(
+        <QuoteUploadActionCard
+          key={toolPart.toolCallId}
+          action={action}
+          state={toolPart.state}
+          output={toolPart.output}
+          errorText={toolPart.errorText}
+          processing={pendingApproval?.id === toolPart.toolCallId}
+          processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined}
+          onChange={(next) => onQuoteDraftChange(toolPart.toolCallId, next)}
+          onApprove={(approved) => onQuoteApprove(toolPart.toolCallId, action, approved)}
+          onUploadFile={onQuoteUploadFile}
         />
       );
     }
@@ -1273,6 +1475,8 @@ const TOOL_ACTIVITY_LABELS: Record<string, string> = {
   lookupScheduleEntries: 'checking existing schedule entries',
   lookupEmailAttachments: 'looking at attachments on this email',
   lookupCrossInboxAttachments: 'searching your mailboxes',
+  lookupRfqs: 'searching RFQs',
+  lookupRfqVendors: 'looking up vendors on this RFQ',
 };
 
 function isPendingToolPart(part: UIMessage['parts'][number]): boolean {
@@ -1293,7 +1497,8 @@ function messageHasVisibleContent(message: UIMessage): boolean {
     }
     return (
       part.type === 'tool-proposeEmailAction' ||
-      part.type === 'tool-proposeProjectScheduleAction'
+      part.type === 'tool-proposeProjectScheduleAction' ||
+      part.type === 'tool-proposeUploadRfqQuote'
     );
   });
 }
@@ -1678,6 +1883,273 @@ function ScheduleActionCard({
         >
           <Check className="size-3.5" />
           {isRejected ? rejectedLabel : successLabel}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function QuoteUploadActionCard({
+  action,
+  state,
+  output,
+  errorText,
+  processing,
+  processingApproved,
+  onChange,
+  onApprove,
+  onUploadFile,
+}: {
+  action: QuoteUploadAgentAction;
+  state: string;
+  output?: string;
+  errorText?: string;
+  processing: boolean;
+  processingApproved?: boolean;
+  onChange: (action: QuoteUploadAgentAction) => void;
+  onApprove: (approved: boolean) => Promise<void>;
+  onUploadFile: (
+    file: File,
+    projectId: string,
+    rfqId: string
+  ) => Promise<{ fileId: string; fileName: string }>;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const isWaiting = state === 'input-available' || processing;
+  const isRejected = output?.startsWith('REJECTED:') === true;
+  const canSubmit = action.quotedAmount > 0 && !!action.attachment;
+
+  const handleFileChange = async (event: ReactChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploadingFile(true);
+    try {
+      const { fileId, fileName } = await onUploadFile(file, action.projectId, action.rfqId);
+      onChange({
+        ...action,
+        attachment: { source: 'existing_file', fileId, fileName },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The file could not be uploaded.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background text-primary">
+          <FileText className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Review action
+          </p>
+          <p className="mt-1 text-sm font-medium">{action.summary}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            Upload quote · <span className="font-medium text-foreground/80">{action.rfqNumber}</span>
+            {' · '}
+            <span className="font-medium text-foreground/80">{action.vendorName}</span>
+          </p>
+        </div>
+      </div>
+
+      {isWaiting ? (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            <span className="text-muted-foreground">Quotation amount ($)</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              inputMode="decimal"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={Number.isFinite(action.quotedAmount) ? action.quotedAmount : ''}
+              onChange={(event) =>
+                onChange({
+                  ...action,
+                  quotedAmount: Number(event.target.value) || 0,
+                })
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium">
+            <span className="text-muted-foreground">Negotiation amount ($)</span>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              inputMode="decimal"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={action.negotiationAmount ?? ''}
+              onChange={(event) => {
+                const raw = event.target.value;
+                onChange({
+                  ...action,
+                  negotiationAmount: raw ? Number(raw) : null,
+                });
+              }}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium sm:col-span-2">
+            <span className="text-muted-foreground">Lead time (days)</span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              value={action.leadTimeDays ?? ''}
+              onChange={(event) => {
+                const raw = event.target.value;
+                onChange({
+                  ...action,
+                  leadTimeDays: raw ? Math.max(1, Math.floor(Number(raw))) : null,
+                });
+              }}
+            />
+          </label>
+          <div className="sm:col-span-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-background/60 px-2.5 py-1.5 text-xs">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="sr-only"
+              onChange={(event) => void handleFileChange(event)}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+            {action.attachment ? (
+              <>
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="text-muted-foreground">Quote document: </span>
+                  <span className="font-medium">
+                    {action.attachment.source === 'email_attachment'
+                      ? action.attachment.attachmentName
+                      : action.attachment.fileName}
+                  </span>
+                  {action.attachment.source === 'email_attachment' && (
+                    <span className="ml-1 text-muted-foreground">(from email)</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1"
+                  aria-label="Replace attachment"
+                  disabled={uploadingFile}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingFile ? (
+                    <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  aria-label="Remove attachment"
+                  onClick={() => onChange({ ...action, attachment: null })}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="min-w-0 flex-1 text-muted-foreground">
+                  Quote document required. Attach the vendor's quotation to submit.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingFile}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploadingFile ? (
+                    <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Paperclip className="size-3.5" aria-hidden="true" />
+                  )}
+                  {uploadingFile ? 'Uploading…' : 'Attach file'}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 rounded-md bg-background p-3 text-sm text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">
+              ${action.quotedAmount.toLocaleString()}
+            </span>
+            {action.negotiationAmount ? (
+              <span> · Negotiation ${action.negotiationAmount.toLocaleString()}</span>
+            ) : null}
+            {action.leadTimeDays ? <span> · Lead time {action.leadTimeDays} days</span> : null}
+          </p>
+          {action.attachment ? (
+            <p className="mt-1">
+              Document:{' '}
+              <span className="font-medium">
+                {action.attachment.source === 'email_attachment'
+                  ? action.attachment.attachmentName
+                  : action.attachment.fileName}
+              </span>
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {errorText ? (
+        <p className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive">{errorText}</p>
+      ) : null}
+
+      {isWaiting && !canSubmit ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {!action.attachment
+            ? 'Attach the quote document before submitting.'
+            : 'Enter a quotation amount greater than 0.'}
+        </p>
+      ) : null}
+
+      {isWaiting ? (
+        <div className="mt-3 flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={processing}
+            onClick={() => void onApprove(false)}
+          >
+            <X className="size-3.5" /> {processing && processingApproved === false ? 'Working…' : 'Reject'}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={processing || !canSubmit}
+            onClick={() => void onApprove(true)}
+          >
+            <Check className="size-3.5" />{' '}
+            {processing && processingApproved === true ? 'Working…' : 'Submit quote'}
+          </Button>
+        </div>
+      ) : null}
+
+      {state === 'output-available' && output ? (
+        <p
+          className={cn(
+            'mt-3 flex items-center gap-2 text-xs font-medium',
+            isRejected ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-400'
+          )}
+        >
+          <Check className="size-3.5" />
+          {isRejected ? 'Quote rejected. Nothing was submitted.' : 'Quote submitted.'}
         </p>
       ) : null}
     </div>
