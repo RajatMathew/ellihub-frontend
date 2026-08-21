@@ -220,22 +220,36 @@ export function EmailMailToolbar({
                 <Inbox aria-hidden="true" />
                 Inbox
               </DropdownMenuItem>
+              {/*
+                Two distinct sections below: "Categories" is a filter view
+                ("Other" for uncategorised threads), "Folders" is the mail
+                provider's real folder tree (Drafts, Sent Items, Deleted Items,
+                Junk Email, Archive, Conversation History, custom folders…).
+                Keeping them apart avoids overloading the word "Other" — it's a
+                category, not a folder — and reads cleanly across Outlook,
+                Gmail, and Zoho.
+              */}
               <DropdownMenuSeparator />
-              <DropdownMenuLabel>Folders & categories</DropdownMenuLabel>
+              <DropdownMenuLabel>Categories</DropdownMenuLabel>
               <DropdownMenuItem onClick={openOtherCategory}>
                 <span className="min-w-0 flex-1 truncate">Other</span>
               </DropdownMenuItem>
-              {otherFolders.length > 0 &&
-                otherFolders.map((folder) => (
-                  <DropdownMenuItem key={folder.id} onClick={() => onSelectFolder?.(folder.id)}>
-                    <span className="min-w-0 flex-1 truncate">{folder.name}</span>
-                    {folder.unreadCount > 0 && (
-                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                        {folder.unreadCount}
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+              {otherFolders.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Folders</DropdownMenuLabel>
+                  {otherFolders.map((folder) => (
+                    <DropdownMenuItem key={folder.id} onClick={() => onSelectFolder?.(folder.id)}>
+                      <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+                      {folder.unreadCount > 0 && (
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {folder.unreadCount}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
               {onCreateFolder && (
                 <>
                   <DropdownMenuSeparator />
