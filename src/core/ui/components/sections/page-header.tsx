@@ -1,5 +1,5 @@
 import { LayoutPanelLeft, MoreHorizontal, type LucideIcon } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 
 import {
   Breadcrumb,
