@@ -493,6 +493,11 @@ type SendDraftPayload = {
   accountId: string;
   draftId: string;
   messageId?: string;
+  /**
+   * Suppresses the default "Email sent." toast. Used by the undo-send flow so
+   * its custom toast is the only source of feedback.
+   */
+  silent?: boolean;
 };
 
 type SendDraftSnapshot = {
@@ -582,15 +587,15 @@ export const useSendEmailDraftMutation = () => {
 
       return { messages, folders };
     },
-    onSuccess: (_result, _payload) => {
-      toast.success('Email sent.');
+    onSuccess: (_result, payload) => {
+      if (!payload.silent) toast.success('Email sent.');
     },
     onError: (error, payload, snapshot) => {
       for (const [queryKey, messages] of snapshot?.messages ?? []) {
         queryClient.setQueryData(queryKey, messages);
       }
       queryClient.setQueryData(emailKeys.folders(payload.accountId), snapshot?.folders);
-      toastApiError(error, 'Failed to send email.');
+      if (!payload.silent) toastApiError(error, 'Failed to send email.');
     },
     onSettled: (_result, _error, payload) => {
       void Promise.allSettled([
@@ -636,15 +641,18 @@ export const useReplyConnectedEmailMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: ReplyConnectedEmailPayload) => emailApi.replyMessage(payload),
+    mutationFn: (payload: ReplyConnectedEmailPayload & { silent?: boolean }) =>
+      emailApi.replyMessage(payload),
     onSuccess: (_result, payload) => {
       void Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
         queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
       ]);
-      toast.success('Reply sent.');
+      if (!payload.silent) toast.success('Reply sent.');
     },
-    onError: (error) => toastApiError(error, 'Failed to send reply.'),
+    onError: (error, payload) => {
+      if (!payload.silent) toastApiError(error, 'Failed to send reply.');
+    },
   });
 };
 
