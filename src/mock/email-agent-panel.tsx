@@ -413,6 +413,31 @@ export function EmailAgentPanel({
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
   const preserveConversationOnThreadChangeRef = useRef(false);
   const [pendingApproval, setPendingApproval] = useState<{ id: string; approved: boolean } | null>(null);
+  /**
+   * The elliot action the user just approved is being held for a short
+   * cancellation window. Presence of this state means the ActionCard for
+   * `toolCallId` should render the inline PendingActionBar instead of its
+   * normal buttons. The bar owns the entire lifecycle: `countdown` while the
+   * user can still cancel, then `sending` while the actual mutations are in
+   * flight. It's cleared in the same batch as the tool output, so the card
+   * transitions bar → confirmation without a "Working…" interstitial.
+   *
+   * Tone drives the palette:
+   *   - `success`      → emerald (reply — additive)
+   *   - `destructive`  → destructive tokens (delete / archive / move —
+   *                       reversible-during-window actions that remove the
+   *                       message from the current folder)
+   */
+  const [pendingDeferredAction, setPendingDeferredAction] = useState<{
+    toolCallId: string;
+    startedAt: number;
+    delayMs: number;
+    phase: 'countdown' | 'sending';
+    tone: 'success' | 'destructive';
+    actionType: MockAgentAction['action'];
+    label: string;
+    cancel: () => void;
+  } | null>(null);
   const pushesContent = open && width >= PUSH_CONTENT_WIDTH;
   const hidesEmailList = open && width >= HIDE_EMAIL_LIST_WIDTH;
   const suggestions = useMemo(
@@ -647,7 +672,9 @@ export function EmailAgentPanel({
       }
 
       if (action.action === 'reply') {
-        // Reply is per-message — always use the first messageId.
+        // Non-deferred path (preview mode / no account). handleApproval handles
+        // the normal case via runDeferredReply; if we get here, just fire the
+        // reply immediately.
         await replyMutation.mutateAsync({
           accountId,
           messageId: primaryMessageId,
@@ -744,6 +771,93 @@ export function EmailAgentPanel({
     [accountId, actionsDisabled, archiveMutation, classificationMutation, contextEmails, deleteMutation, email, folders, moveMutation, replyMutation, statusMutation, tags, tagsMutation]
   );
 
+  /**
+   * Full lifecycle for an agent-approved elliot action that we want to hold
+   * for a cancellation window: countdown → sending → tool output. The bar
+   * renders continuously through all phases and the confirmation replaces it
+   * in the same batch as the tool output, so the ActionCard never falls back
+   * to the "Working…" button state between the bar disappearing and the
+   * success/error message appearing.
+   *
+   * Currently used for reply (success tone) and delete / archive / move
+   * (destructive tone). Other actions (tag, mark_read, set_status) run
+   * immediately through the standard executeAction path.
+   */
+  const runDeferredAction = useCallback(
+    (config: {
+      toolCallId: string;
+      actionType: MockAgentAction['action'];
+      tone: 'success' | 'destructive';
+      label: string;
+      execute: () => Promise<void>;
+      successOutput: string;
+      cancelOutput: string;
+      errorFallback: string;
+    }) => {
+      const { toolCallId, actionType, tone, label, execute, successOutput, cancelOutput, errorFallback } = config;
+      const delayMs = 5000;
+
+      let settled = false;
+
+      const cancel = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timerId);
+        // Single batch: bar disappears AND the rejection lands in the same
+        // render — no gap where the card would flash back to buttons.
+        setPendingDeferredAction(null);
+        addToolOutput({
+          tool: 'proposeEmailAction',
+          toolCallId,
+          state: 'output-available',
+          output: `REJECTED: ${cancelOutput}`,
+        });
+      };
+
+      const timerId = window.setTimeout(async () => {
+        if (settled) return;
+        settled = true;
+        // Flip the bar into "sending" — cancel is gone, progress bar full,
+        // subtle pulse while the mutation(s) run.
+        setPendingDeferredAction((prev) =>
+          prev && prev.toolCallId === toolCallId
+            ? { ...prev, phase: 'sending', cancel: () => undefined }
+            : prev
+        );
+        try {
+          await execute();
+          setPendingDeferredAction(null);
+          addToolOutput({
+            tool: 'proposeEmailAction',
+            toolCallId,
+            state: 'output-available',
+            output: `SUCCESS: ${successOutput}`,
+          });
+        } catch (error) {
+          setPendingDeferredAction(null);
+          addToolOutput({
+            tool: 'proposeEmailAction',
+            toolCallId,
+            state: 'output-error',
+            errorText: error instanceof Error ? error.message : errorFallback,
+          });
+        }
+      }, delayMs);
+
+      setPendingDeferredAction({
+        toolCallId,
+        startedAt: Date.now(),
+        delayMs,
+        phase: 'countdown',
+        tone,
+        actionType,
+        label,
+        cancel,
+      });
+    },
+    [addToolOutput]
+  );
+
   const handleApproval = useCallback(
     async (toolCallId: string, action: MockAgentAction, approved: boolean) => {
       setPendingApproval({ id: toolCallId, approved });
@@ -754,6 +868,108 @@ export function EmailAgentPanel({
             toolCallId,
             state: 'output-available',
             output: 'REJECTED: No mailbox change was made.',
+          });
+          return;
+        }
+        // Certain actions are held for a short cancellation window using the
+        // inline PendingActionBar. runDeferredAction owns the entire
+        // lifecycle — countdown, actual mutation, and adding the tool output —
+        // so the card transitions bar → confirmation without ever falling
+        // back to the "Working…" button state.
+        //
+        // Actions with a bar:
+        //   - reply           → success tone (green), we're sending
+        //   - delete / archive / move → destructive tone (red), we're
+        //                       relocating/removing from the current folder
+        // Live-preview mode (actionsDisabled === true) still runs the plain
+        // executeAction path — deferring a simulated action would be silly.
+        const canDefer = accountId && actionsDisabled === false && action.messageIds.length > 0;
+        if (canDefer && action.action === 'reply') {
+          runDeferredAction({
+            toolCallId,
+            actionType: 'reply',
+            tone: 'success',
+            label: 'Sending email',
+            execute: async () => {
+              await replyMutation.mutateAsync({
+                accountId,
+                messageId: action.messageIds[0]!,
+                body: action.body ?? '',
+                bodyType: 'html',
+                subject: action.subject,
+                to: action.to,
+                cc: action.cc,
+                silent: true,
+              });
+            },
+            successOutput: 'Reply sent successfully.',
+            cancelOutput: 'Reply cancelled before it went out.',
+            errorFallback: 'The reply failed.',
+          });
+          return;
+        }
+        if (canDefer && action.action === 'delete') {
+          const targetFolderId = folders.find((folder) => folder.key === 'deleted')?.id;
+          const messageIds = [...action.messageIds];
+          const bulkSuffix = messageIds.length > 1 ? ` (${messageIds.length} emails)` : '';
+          preserveConversationOnThreadChangeRef.current = true;
+          runDeferredAction({
+            toolCallId,
+            actionType: 'delete',
+            tone: 'destructive',
+            label: messageIds.length > 1 ? 'Deleting emails' : 'Deleting email',
+            execute: () =>
+              runBulkAgent(messageIds, (messageId) =>
+                deleteMutation.mutateAsync({ accountId, messageId, targetFolderId })
+              ),
+            successOutput: `Email moved to deleted items${bulkSuffix}.`,
+            cancelOutput: 'Delete cancelled before anything moved.',
+            errorFallback: 'The delete failed.',
+          });
+          return;
+        }
+        if (canDefer && action.action === 'archive') {
+          const targetFolderId = folders.find((folder) => folder.key === 'archive')?.id;
+          const messageIds = [...action.messageIds];
+          const bulkSuffix = messageIds.length > 1 ? ` (${messageIds.length} emails)` : '';
+          preserveConversationOnThreadChangeRef.current = true;
+          runDeferredAction({
+            toolCallId,
+            actionType: 'archive',
+            tone: 'destructive',
+            label: messageIds.length > 1 ? 'Archiving emails' : 'Archiving email',
+            execute: () =>
+              runBulkAgent(messageIds, (messageId) =>
+                archiveMutation.mutateAsync({ accountId, messageId, targetFolderId })
+              ),
+            successOutput: `Email archived successfully${bulkSuffix}.`,
+            cancelOutput: 'Archive cancelled before anything moved.',
+            errorFallback: 'The archive failed.',
+          });
+          return;
+        }
+        if (canDefer && action.action === 'move') {
+          const target = folders.find(
+            (folder) =>
+              folder.key?.toLowerCase() === action.targetFolderKey?.toLowerCase() ||
+              folder.name.toLowerCase() === action.targetFolderName?.toLowerCase()
+          );
+          if (!target) throw new Error(`I could not find the ${action.targetFolderName ?? 'target'} folder.`);
+          const messageIds = [...action.messageIds];
+          const bulkSuffix = messageIds.length > 1 ? ` (${messageIds.length} emails)` : '';
+          preserveConversationOnThreadChangeRef.current = true;
+          runDeferredAction({
+            toolCallId,
+            actionType: 'move',
+            tone: 'destructive',
+            label: `Moving to ${target.name}`,
+            execute: () =>
+              runBulkAgent(messageIds, (messageId) =>
+                moveMutation.mutateAsync({ accountId, messageId, folderId: target.id })
+              ),
+            successOutput: `Email moved to ${target.name}${bulkSuffix}.`,
+            cancelOutput: 'Move cancelled before anything moved.',
+            errorFallback: 'The move failed.',
           });
           return;
         }
@@ -781,7 +997,19 @@ export function EmailAgentPanel({
         setPendingApproval(null);
       }
     },
-    [addToolOutput, executeAction]
+    [
+      accountId,
+      actionsDisabled,
+      addToolOutput,
+      archiveMutation,
+      deleteMutation,
+      executeAction,
+      folders,
+      moveMutation,
+      replyMutation,
+      runBulkAgent,
+      runDeferredAction,
+    ]
   );
 
   const materializeScheduleAttachment = useCallback(
@@ -1359,7 +1587,7 @@ export function EmailAgentPanel({
             </div>
             ) : (
             <div className="space-y-5" aria-live="polite">
-              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onQuoteDraftChange={(id, draft) => setQuoteDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onQuoteApprove={handleRfqActionApproval} onScheduleUploadFile={uploadLocalFileForSchedule} onQuoteUploadFile={uploadLocalFileForQuote} quoteDrafts={quoteDrafts} /></div>)}
+              {messages.map((message) => <div key={message.id} ref={(element) => { messageRefs.current[message.id] = element; }}><AgentMessage message={message} mentionLabels={mentionLabels} drafts={drafts} scheduleDrafts={scheduleDrafts} pendingApproval={pendingApproval} pendingDeferredAction={pendingDeferredAction} onDraftChange={(id, draft) => setDrafts((current) => ({ ...current, [id]: draft }))} onScheduleDraftChange={(id, draft) => setScheduleDrafts((current) => ({ ...current, [id]: draft }))} onQuoteDraftChange={(id, draft) => setQuoteDrafts((current) => ({ ...current, [id]: draft }))} onApprove={handleApproval} onScheduleApprove={handleScheduleApproval} onQuoteApprove={handleRfqActionApproval} onScheduleUploadFile={uploadLocalFileForSchedule} onQuoteUploadFile={uploadLocalFileForQuote} quoteDrafts={quoteDrafts} /></div>)}
               {shouldShowThinkingIndicator({ status, messages }) ? (
                 <ThinkingIndicator label={getCurrentActivityLabel(messages[messages.length - 1])} />
               ) : null}
@@ -1487,6 +1715,7 @@ function AgentMessage({
   onScheduleUploadFile,
   onQuoteUploadFile,
   pendingApproval,
+  pendingDeferredAction,
 }: {
   message: UIMessage;
   mentionLabels: string[];
@@ -1509,6 +1738,16 @@ function AgentMessage({
     rfqId: string
   ) => Promise<{ fileId: string; fileName: string }>;
   pendingApproval: { id: string; approved: boolean } | null;
+  pendingDeferredAction: {
+    toolCallId: string;
+    startedAt: number;
+    delayMs: number;
+    phase: 'countdown' | 'sending';
+    tone: 'success' | 'destructive';
+    actionType: MockAgentAction['action'];
+    label: string;
+    cancel: () => void;
+  } | null;
 }) {
   const renderedParts: ReactNode[] = [];
   let textBuffer = '';
@@ -1531,7 +1770,7 @@ function AgentMessage({
         renderedParts.push(<div key={toolPart.toolCallId} className="rounded-md border border-border bg-muted/20 p-3 text-xs text-muted-foreground" role="status">Preparing an action for review…</div>);
         return;
       }
-      renderedParts.push(<ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />);
+      renderedParts.push(<ActionCard key={toolPart.toolCallId} action={action} state={toolPart.state} output={toolPart.output} errorText={toolPart.errorText} processing={pendingApproval?.id === toolPart.toolCallId} processingApproved={pendingApproval?.id === toolPart.toolCallId ? pendingApproval.approved : undefined} pendingSend={pendingDeferredAction?.toolCallId === toolPart.toolCallId ? pendingDeferredAction : null} onChange={(next) => onDraftChange(toolPart.toolCallId, next)} onApprove={(approved) => onApprove(toolPart.toolCallId, action, approved)} />);
       return;
     }
     if (part.type === 'tool-proposeProjectScheduleAction' && 'toolCallId' in part) {
@@ -1725,6 +1964,7 @@ function ActionCard({
   errorText,
   processing,
   processingApproved,
+  pendingSend,
   onChange,
   onApprove,
 }: {
@@ -1734,11 +1974,38 @@ function ActionCard({
   errorText?: string;
   processing: boolean;
   processingApproved?: boolean;
+  pendingSend?: {
+    toolCallId: string;
+    startedAt: number;
+    delayMs: number;
+    phase: 'countdown' | 'sending';
+    tone: 'success' | 'destructive';
+    actionType: MockAgentAction['action'];
+    label: string;
+    cancel: () => void;
+  } | null;
   onChange: (action: MockAgentAction) => void;
   onApprove: (approved: boolean) => Promise<void>;
 }) {
   const isWaiting = state === 'input-available' || processing;
   const isRejected = output?.startsWith('REJECTED:') === true;
+  // When elliot is holding an approved action in the cancellation window,
+  // the card morphs into a compact inline PendingSendBar so the user can
+  // see the countdown and hit Cancel without leaving the chat. The bar
+  // owns both the countdown and the actual sending state.
+  if (pendingSend) {
+    return (
+      <PendingSendBar
+        label={pendingSend.label}
+        startedAt={pendingSend.startedAt}
+        delayMs={pendingSend.delayMs}
+        phase={pendingSend.phase}
+        tone={pendingSend.tone}
+        actionType={pendingSend.actionType}
+        onCancel={pendingSend.cancel}
+      />
+    );
+  }
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 shadow-sm">
       <div className="flex items-start gap-3">
@@ -1752,6 +2019,159 @@ function ActionCard({
       {state === 'output-available' && output ? <p className={cn('mt-3 flex items-center gap-2 text-xs font-medium', isRejected ? 'text-muted-foreground' : 'text-emerald-700 dark:text-emerald-400')}><Check className="size-3.5" />{action.action === 'reply' ? (isRejected ? 'Reply rejected. No email was sent.' : 'Reply approved successfully.') : output}</p> : null}
     </div>
   );
+}
+
+/**
+ * Inline pending-action bar that lives inside the elliot chat. Rendered by
+ * ActionCard through both the countdown and the actual mutation. Cancel is
+ * only available during the countdown phase; once the mutation kicks off
+ * the bar switches to a spinner + "Working…" pill until the ActionCard
+ * swaps it out for the final confirmation.
+ *
+ * Two tones:
+ *   - success     → emerald (reply, additive)
+ *   - destructive → destructive tokens (delete / archive / move — the mail
+ *                    disappears from view)
+ */
+function PendingSendBar({
+  label,
+  startedAt,
+  delayMs,
+  phase,
+  tone,
+  actionType,
+  onCancel,
+}: {
+  label: string;
+  startedAt: number;
+  delayMs: number;
+  phase: 'countdown' | 'sending';
+  tone: 'success' | 'destructive';
+  actionType: MockAgentAction['action'];
+  onCancel: () => void;
+}) {
+  const isSending = phase === 'sending';
+  const [progress, setProgress] = useState(() =>
+    Math.min(1, Math.max(0, (Date.now() - startedAt) / delayMs))
+  );
+
+  useEffect(() => {
+    if (isSending) {
+      // Snap to full once the countdown is over; the bar's own pulse covers
+      // the remaining "sending" period.
+      setProgress(1);
+      return;
+    }
+    const interval = window.setInterval(() => {
+      const next = Math.min(1, Math.max(0, (Date.now() - startedAt) / delayMs));
+      setProgress(next);
+      if (next >= 1) window.clearInterval(interval);
+    }, 60);
+    return () => window.clearInterval(interval);
+  }, [delayMs, isSending, startedAt]);
+
+  const remainingSeconds = Math.max(0, Math.ceil((delayMs * (1 - progress)) / 1000));
+
+  const iconClasses =
+    tone === 'destructive'
+      ? 'bg-destructive/10 text-destructive ring-1 ring-destructive/25'
+      : 'bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400 dark:ring-emerald-400/25';
+  const fillClasses =
+    tone === 'destructive' ? 'bg-destructive' : 'bg-emerald-500 dark:bg-emerald-400';
+  const workingLabel =
+    tone === 'destructive'
+      ? actionType === 'delete'
+        ? 'Deleting'
+        : actionType === 'archive'
+          ? 'Archiving'
+          : 'Moving'
+      : 'Sending';
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span
+          className={cn('flex size-9 shrink-0 items-center justify-center rounded-full', iconClasses)}
+          aria-hidden="true"
+        >
+          <PendingActionIcon actionType={actionType} tone={tone} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold tracking-tight text-foreground">{label}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {isSending
+              ? tone === 'destructive'
+                ? 'Applying now — this usually takes a moment.'
+                : 'Delivering now — this usually takes a moment.'
+              : `Cancel within ${remainingSeconds}s to stop it.`}
+          </p>
+        </div>
+        {isSending ? (
+          <span
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-inset ring-border"
+            role="status"
+          >
+            <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+            {workingLabel}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border transition-colors hover:bg-muted/70 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+      <div
+        className="relative h-1 w-full overflow-hidden bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+        aria-label={
+          isSending
+            ? `${label} — in progress`
+            : `${label} — ${remainingSeconds} seconds remaining`
+        }
+      >
+        <div
+          className={cn(
+            'h-full',
+            fillClasses,
+            // While the API call runs, pulse the fill so the bar reads as
+            // "still working" rather than "done".
+            isSending && 'motion-safe:animate-pulse'
+          )}
+          style={{
+            width: `${progress * 100}%`,
+            transition: 'width 80ms linear',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PendingActionIcon({
+  actionType,
+  tone,
+}: {
+  actionType: MockAgentAction['action'];
+  tone: 'success' | 'destructive';
+}) {
+  const cls = 'size-4';
+  const stroke = 2.6;
+  if (tone === 'destructive') {
+    if (actionType === 'delete')
+      return <Trash2 className={cls} strokeWidth={stroke} aria-hidden="true" />;
+    if (actionType === 'archive')
+      return <Archive className={cls} strokeWidth={stroke} aria-hidden="true" />;
+    if (actionType === 'move')
+      return <FolderInput className={cls} strokeWidth={stroke} aria-hidden="true" />;
+  }
+  return <Check className={cls} strokeWidth={stroke} aria-hidden="true" />;
 }
 
 function ScheduleActionCard({
