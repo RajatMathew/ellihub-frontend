@@ -67,7 +67,7 @@ export default function EmployeeListPage() {
     setDeleteTarget(employee);
   }, []);
 
-  const columns = useEmployeeListColumns(handleDelete);
+  const columns = useEmployeeListColumns(handleDelete, canDelete);
 
   const list = useListTable({
     columns,
@@ -119,7 +119,7 @@ export default function EmployeeListPage() {
         list={list}
         mobileBreakpoint="xl"
         mobileItem={(employee) => (
-          <EmployeeMobileCard employee={employee} onDelete={handleDelete} />
+          <EmployeeMobileCard canDelete={canDelete} employee={employee} onDelete={handleDelete} />
         )}
         state={state}
         tableLayout={{ width: 'fixed' }}

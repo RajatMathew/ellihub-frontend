@@ -78,6 +78,7 @@ export function CostCodesListPage() {
   const updateMutation = useUpdateCostCodeMutation();
 
   const columns = useCostCodeColumns({
+    canDelete,
     onDelete: setDeleteTarget,
     onEdit: setEditingCostCode,
   });

@@ -87,6 +87,7 @@ export function LookupListPage() {
   });
 
   const columns = useLookupListColumns({
+    canDelete,
     onDelete: setDeleteTarget,
     onEdit: (lookup) => {
       setEditingLookup(lookup);

@@ -17,9 +17,10 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 interface UseLookupListColumnsOptions {
   onEdit: (lookup: Lookup) => void;
   onDelete: (lookup: Lookup) => void;
+  canDelete: boolean;
 }
 
-export function useLookupListColumns({ onEdit, onDelete }: UseLookupListColumnsOptions) {
+export function useLookupListColumns({ onEdit, onDelete, canDelete }: UseLookupListColumnsOptions) {
   return useMemo<ColumnDef<Lookup>[]>(
     () => [
       {
@@ -63,11 +64,15 @@ export function useLookupListColumns({ onEdit, onDelete }: UseLookupListColumnsO
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
+                      <Trash2 className="size-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -79,6 +84,6 @@ export function useLookupListColumns({ onEdit, onDelete }: UseLookupListColumnsO
         },
       },
     ],
-    [onDelete, onEdit]
+    [canDelete, onDelete, onEdit]
   );
 }

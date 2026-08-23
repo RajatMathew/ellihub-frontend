@@ -36,6 +36,7 @@ interface PTOCellProps {
 interface PTOActionsCellProps extends PTOCellProps {
   isDecisionPending: boolean;
   canReview: boolean;
+  canDelete: boolean;
   onDelete: (request: { id: string; name: string }) => void;
   onDecision: (target: PTODecisionTarget) => void;
 }
@@ -99,6 +100,7 @@ export function PTOActionsCell({
   pto,
   isDecisionPending,
   canReview,
+  canDelete,
   onDelete,
   onDecision,
 }: PTOActionsCellProps) {
@@ -147,14 +149,18 @@ export function PTOActionsCell({
               </Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => onDelete({ id: pto.id, name: employeeName })}
-          >
-            <Trash2 className="size-4" />
-            Delete Request
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDelete({ id: pto.id, name: employeeName })}
+              >
+                <Trash2 className="size-4" />
+                Delete Request
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

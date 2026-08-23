@@ -68,6 +68,7 @@ export default function PTOListPage() {
   const canReviewPTO = can('leave', 'approve');
 
   const columns = usePTOListColumns({
+    canDelete: canDeletePTO,
     canReview: canReviewPTO,
     isDecisionPending: approveMutation.isPending || rejectMutation.isPending,
     onDecision: useCallback(

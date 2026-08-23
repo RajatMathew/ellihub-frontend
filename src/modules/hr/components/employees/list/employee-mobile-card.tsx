@@ -12,9 +12,11 @@ import { Link } from 'react-router-dom';
 export function EmployeeMobileCard({
   employee,
   onDelete,
+  canDelete,
 }: {
   employee: Employee;
   onDelete: (employee: { id: string; name: string }) => void;
+  canDelete: boolean;
 }) {
   return (
     <div className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5">
@@ -36,7 +38,7 @@ export function EmployeeMobileCard({
             </div>
           </div>
         </div>
-        <EmployeeActionsCell employee={employee} onDelete={onDelete} />
+        <EmployeeActionsCell canDelete={canDelete} employee={employee} onDelete={onDelete} />
       </div>
 
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-2.5 text-xs sm:grid-cols-2">

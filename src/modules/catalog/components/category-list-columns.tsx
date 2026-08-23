@@ -17,9 +17,14 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 interface UseCategoryListColumnsOptions {
   onEdit: (category: CostCodeCategory) => void;
   onDelete: (category: CostCodeCategory) => void;
+  canDelete: boolean;
 }
 
-export function useCategoryListColumns({ onEdit, onDelete }: UseCategoryListColumnsOptions) {
+export function useCategoryListColumns({
+  onEdit,
+  onDelete,
+  canDelete,
+}: UseCategoryListColumnsOptions) {
   return useMemo<ColumnDef<CostCodeCategory>[]>(
     () => [
       {
@@ -65,11 +70,15 @@ export function useCategoryListColumns({ onEdit, onDelete }: UseCategoryListColu
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
-                  <Trash2 className="size-4" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
+                      <Trash2 className="size-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -81,6 +90,6 @@ export function useCategoryListColumns({ onEdit, onDelete }: UseCategoryListColu
         },
       },
     ],
-    [onDelete, onEdit]
+    [canDelete, onDelete, onEdit]
   );
 }

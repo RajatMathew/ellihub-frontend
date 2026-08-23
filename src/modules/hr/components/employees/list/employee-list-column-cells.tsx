@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 interface EmployeeActionsCellProps {
   employee: Employee;
   onDelete: (employee: { id: string; name: string }) => void;
+  canDelete: boolean;
 }
 
 export function EmployeeNameCell({ employee }: { employee: Employee }) {
@@ -82,7 +83,7 @@ export function EmployeeStartDateCell({ employee }: { employee: Employee }) {
   );
 }
 
-export function EmployeeActionsCell({ employee, onDelete }: EmployeeActionsCellProps) {
+export function EmployeeActionsCell({ employee, onDelete, canDelete }: EmployeeActionsCellProps) {
   return (
     <div className="flex justify-end pr-2">
       <DropdownMenu>
@@ -99,14 +100,18 @@ export function EmployeeActionsCell({ employee, onDelete }: EmployeeActionsCellP
           <DropdownMenuItem asChild>
             <Link to={`${employee.id}/edit`}>Edit Profile</Link>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => onDelete({ id: employee.id, name: employee.name })}
-          >
-            <UserMinus className="mr-2 size-4" />
-            Delete Employee
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => onDelete({ id: employee.id, name: employee.name })}
+              >
+                <UserMinus className="mr-2 size-4" />
+                Delete Employee
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

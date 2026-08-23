@@ -15,7 +15,10 @@ import {
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 
-export function useEmployeeListColumns(onDelete: (employee: { id: string; name: string }) => void) {
+export function useEmployeeListColumns(
+  onDelete: (employee: { id: string; name: string }) => void,
+  canDelete: boolean
+) {
   return useMemo<ColumnDef<Employee>[]>(
     () => [
       {
@@ -92,7 +95,9 @@ export function useEmployeeListColumns(onDelete: (employee: { id: string; name: 
         id: 'actions',
         size: 64,
         header: () => null,
-        cell: ({ row }) => <EmployeeActionsCell employee={row.original} onDelete={onDelete} />,
+        cell: ({ row }) => (
+          <EmployeeActionsCell canDelete={canDelete} employee={row.original} onDelete={onDelete} />
+        ),
         meta: {
           headerClassName: 'w-16 text-end pr-4',
           skeleton: (
@@ -104,6 +109,6 @@ export function useEmployeeListColumns(onDelete: (employee: { id: string; name: 
         enableSorting: false,
       },
     ],
-    [onDelete]
+    [canDelete, onDelete]
   );
 }

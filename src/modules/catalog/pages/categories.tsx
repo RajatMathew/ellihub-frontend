@@ -73,6 +73,7 @@ export function CostCodeCategoriesListPage() {
   });
 
   const columns = useCategoryListColumns({
+    canDelete,
     onDelete: setDeleteTarget,
     onEdit: (category) => {
       setEditingCategory(category);

@@ -70,7 +70,8 @@ export default function DepartmentListPage() {
   const deleteMutation = useDeleteDepartmentMutation();
 
   const columns = useDepartmentListColumns(
-    useCallback((department: DepartmentDeleteTarget) => setDeleteTarget(department), [])
+    useCallback((department: DepartmentDeleteTarget) => setDeleteTarget(department), []),
+    canDelete
   );
 
   const list = useListTable({

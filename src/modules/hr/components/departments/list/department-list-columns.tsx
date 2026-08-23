@@ -13,7 +13,8 @@ import type { Department } from '@/modules/hr/schemas/department.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 
 export function useDepartmentListColumns(
-  onDelete: (department: { id: string; name: string; employeeCount?: number }) => void
+  onDelete: (department: { id: string; name: string; employeeCount?: number }) => void,
+  canDelete: boolean
 ) {
   return useMemo<ColumnDef<Department>[]>(
     () => [
@@ -52,7 +53,13 @@ export function useDepartmentListColumns(
         id: 'actions',
         size: 64,
         header: () => null,
-        cell: ({ row }) => <DepartmentActionsCell department={row.original} onDelete={onDelete} />,
+        cell: ({ row }) => (
+          <DepartmentActionsCell
+            canDelete={canDelete}
+            department={row.original}
+            onDelete={onDelete}
+          />
+        ),
         meta: {
           headerClassName: 'w-16 text-end pr-4',
           skeleton: (
@@ -64,6 +71,6 @@ export function useDepartmentListColumns(
         enableSorting: false,
       },
     ],
-    [onDelete]
+    [canDelete, onDelete]
   );
 }
