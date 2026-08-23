@@ -259,11 +259,14 @@ export default function RFQDetailPage() {
   const removeAttachmentMutation = useRemoveRFQAttachmentMutation();
   const uploadManager = useUploadManager();
   const rfqFolderQuery = useProjectFolderQuery(projectId, 'rfq');
+  // An RFQ's own documents live in its backup documents folder; the quotes
+  // that came back are filed per vendor under vendor quotations.
   const rfqEntityFolderQuery = useProjectEntityFolderQuery(
     projectId,
     'RFQ',
     rfqId,
-    project?.capabilities?.actions?.rfq?.update === true
+    project?.capabilities?.actions?.rfq?.update === true,
+    'ENTITY_BACKUP_DOCUMENTS'
   );
   const rfqUploadFolderId = rfqEntityFolderQuery.data ?? rfqFolderQuery.data;
 

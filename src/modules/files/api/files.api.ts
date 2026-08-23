@@ -30,6 +30,9 @@ const CHUNK_UPLOAD_RETRY_ATTEMPTS = 3;
  */
 export type ProjectEntityFolderType = 'RFQ' | 'PURCHASE_ORDER' | 'SUB_CHANGE_ORDER' | 'INVOICE';
 
+/** Fixed folders inside a record's own folder. Only RFQ has any today. */
+export type EntitySubFolderType = 'ENTITY_BACKUP_DOCUMENTS' | 'ENTITY_VENDOR_QUOTATIONS';
+
 /**
  * Shape of GET /file/registry. The folder list itself is not mirrored here —
  * that is the point — only the shape it arrives in. The API rejects a type it
@@ -438,14 +441,21 @@ export const filesApi = {
     return parseFolderId(raw, 'Project subfolder lookup');
   },
 
+  /**
+   * A record's own folder, or one of the fixed subfolders inside it. An RFQ
+   * keeps its documents in 'ENTITY_BACKUP_DOCUMENTS' and the quotes that came
+   * back under 'ENTITY_VENDOR_QUOTATIONS'.
+   */
   async getProjectEntityFolderId(
     projectId: string,
     entityType: ProjectEntityFolderType,
-    entityId: string
+    entityId: string,
+    subFolder?: EntitySubFolderType
   ): Promise<string> {
     const res = await api.post(`${BASE}/project/${projectId}/entity-folder`, {
       entityType,
       entityId,
+      ...(subFolder ? { subFolder } : {}),
     });
     const raw = res.data?.data ?? res.data;
 
