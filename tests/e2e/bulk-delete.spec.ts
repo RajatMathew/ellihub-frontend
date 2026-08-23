@@ -13,6 +13,12 @@ import { expect, test, type Page, type Request, type Route } from '@playwright/t
  * rule: a department holding employees cannot be deleted.
  */
 
+// These boot lazily-loaded routes against a cold dev server, which can take most
+// of the default budget on its own when the suite runs in parallel. The waits
+// below are for behaviour, not for compilation, so the timeout is raised rather
+// than each assertion being loosened.
+test.describe.configure({ timeout: 60_000 });
+
 const NOW = '2026-06-11T00:00:00.000Z';
 const ROUTE_TIMEOUT = 15_000;
 
