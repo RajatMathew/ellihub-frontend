@@ -1,5 +1,6 @@
 import {
   filesApi,
+  type EntitySubFolderType,
   type FolderRegistry,
   type ProjectEntityFolderType,
 } from '@/modules/files/api/files.api';
@@ -70,9 +71,10 @@ async function resolveProjectFolder(
 export async function resolveProjectEntityFolder(
   projectId: string,
   entityType: ProjectEntityFolderType,
-  entityId: string
+  entityId: string,
+  subFolder?: EntitySubFolderType
 ): Promise<string> {
-  return filesApi.getProjectEntityFolderId(projectId, entityType, entityId);
+  return filesApi.getProjectEntityFolderId(projectId, entityType, entityId, subFolder);
 }
 
 export function useProjectFolderQuery(projectId: string | undefined, subfolderName?: string) {
@@ -91,7 +93,8 @@ export function useProjectEntityFolderQuery(
   projectId: string | undefined,
   entityType: ProjectEntityFolderType | undefined,
   entityId: string | undefined,
-  enabled = true
+  enabled = true,
+  subFolder?: EntitySubFolderType
 ) {
   return useQuery({
     queryKey: [
@@ -100,8 +103,9 @@ export function useProjectEntityFolderQuery(
       projectId,
       entityType ?? '__type__',
       entityId ?? '__entity__',
+      subFolder ?? '__self__',
     ],
-    queryFn: () => resolveProjectEntityFolder(projectId!, entityType!, entityId!),
+    queryFn: () => resolveProjectEntityFolder(projectId!, entityType!, entityId!, subFolder),
     enabled: enabled && !!projectId && !!entityType && !!entityId,
     staleTime: 5 * 60 * 1000,
     retry: false,
