@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   ptoPaginatedResponseSchema,
   ptoSchema,
@@ -57,6 +57,10 @@ export const ptoApi = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 
   async approve(data: PTODecisionInput): Promise<void> {

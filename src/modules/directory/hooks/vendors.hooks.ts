@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { vendorsApi } from '@/modules/directory/api/vendors.api';
 import { vendorsKeys } from '@/modules/directory/constants/vendors.keys';
@@ -64,6 +65,19 @@ export const useUpdateVendorMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update vendor.'),
+  });
+};
+
+export const useBulkDeleteVendorsMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'vendors', one: 'vendor' },
+    mutationFn: vendorsApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: vendorsKeys.all });
+      void qc.invalidateQueries({ queryKey: filesKeys.all });
+    },
   });
 };
 

@@ -1,12 +1,22 @@
 import { useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
+import { Button } from '@/app/components/ui/button';
+import { useAccess } from '@/app/contexts/access-context';
 import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
 import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
 import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
 import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
 import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
 import {
+  useBulkDeleteCostCodesMutation,
   useCostCodeCategoriesQuery,
   useCostCodesQuery,
   useCostCodeStatsQuery,
@@ -19,12 +29,22 @@ import type {
   CostCodeCreate,
   CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
-import { Tag } from 'lucide-react';
+import { Tag, Trash2 } from 'lucide-react';
 
 const COST_CODE_DEFAULT_PAGE_SIZE = 10;
 const COST_CODE_SORT_BY_OPTIONS = ['name', 'code'] as const;
 
+const COST_CODE_ITEM_LABEL = { many: 'cost codes', one: 'cost code' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+const COST_CODE_SELECTION: ListSelectionConfig<CostCode> = {
+  getRowLabel: (costCode) => `${costCode.code} ${costCode.name}`.trim(),
+};
+
 export function CostCodesListPage() {
+  const { can } = useAccess();
+  const canDelete = can('costCode', 'delete');
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingCostCode, setEditingCostCode] = useState<CostCode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCode | null>(null);
@@ -67,8 +87,17 @@ export function CostCodesListPage() {
     getRowId: (costCode) => costCode.id,
     query: costCodesQuery,
     rows: costCodesQuery.data?.data ?? [],
+    selection: canDelete ? COST_CODE_SELECTION : undefined,
     state,
     totalCount: costCodesQuery.data?.count ?? 0,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeleteCostCodesMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const hasStatsData = statsQuery.data !== undefined;
@@ -96,6 +125,13 @@ export function CostCodesListPage() {
 
       <DataTable
         ariaLabel="Cost codes"
+        bulkItemLabel={COST_CODE_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           description: 'Click "+ Add Cost Code" to get started.',
           icon: <Tag className="size-10 text-muted-foreground/50" />,
@@ -134,6 +170,19 @@ export function CostCodesListPage() {
         }}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
+        }}
+      />
+
+      <BulkDeleteDialog
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={COST_CODE_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
         }}
       />
     </div>

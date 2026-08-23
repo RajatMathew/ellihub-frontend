@@ -1,21 +1,38 @@
 import { useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { useAccess } from '@/app/contexts/access-context';
 import { LookupFormDialog } from '@/modules/lookup/components/lookup-form-dialog';
 import { useLookupListColumns } from '@/modules/lookup/components/lookup-list-columns';
 import {
+  useBulkDeleteLookupsMutation,
   useCreateLookupMutation,
   useDeleteLookupMutation,
   useLookupsQuery,
   useUpdateLookupMutation,
 } from '@/modules/lookup/hooks';
 import type { Lookup, LookupCreate, LookupUpdate } from '@/modules/lookup/schemas/lookup.schema';
-import { ListFilterPlus, Plus, Tag } from 'lucide-react';
+import { ListFilterPlus, Plus, Tag, Trash2 } from 'lucide-react';
 
 const LOOKUP_SORT_BY_OPTIONS = ['type', 'label'] as const;
+
+const LOOKUP_ITEM_LABEL = { many: 'entries', one: 'entry' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+const LOOKUP_SELECTION: ListSelectionConfig<Lookup> = {
+  getRowLabel: (lookup) => lookup.label ?? lookup.type,
+};
 
 function matchesLookupSearch(lookup: Lookup, query: string) {
   const needle = query.toLowerCase();
@@ -27,7 +44,10 @@ function matchesLookupSearch(lookup: Lookup, query: string) {
 }
 
 export function LookupListPage() {
+  const { can } = useAccess();
+  const canDelete = can('lookup', 'delete');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [editingLookup, setEditingLookup] = useState<Lookup | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lookup | null>(null);
 
@@ -80,7 +100,16 @@ export function LookupListPage() {
     mode: 'client',
     query: lookupsQuery,
     rows: lookups,
+    selection: canDelete ? LOOKUP_SELECTION : undefined,
     state,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeleteLookupsMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -117,6 +146,13 @@ export function LookupListPage() {
 
       <DataTable
         ariaLabel="Lookups"
+        bulkItemLabel={LOOKUP_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           icon: <Tag className="size-10 text-muted-foreground/50" />,
           title: 'No lookups found',
@@ -169,6 +205,20 @@ export function LookupListPage() {
           deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
         }}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
+      />
+
+      <BulkDeleteDialog
+        description="Any references to these lookup values may need to be updated."
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={LOOKUP_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
+        }}
       />
     </div>
   );

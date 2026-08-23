@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { contactsApi } from '@/modules/directory/api/contacts.api';
 import { contactsKeys } from '@/modules/directory/constants/contacts.keys';
@@ -70,6 +71,19 @@ export const useUpdateContactMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update contact.'),
+  });
+};
+
+export const useBulkDeleteContactsMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'contacts', one: 'contact' },
+    mutationFn: contactsApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: contactsKeys.all });
+      void qc.invalidateQueries({ queryKey: filesKeys.all });
+    },
   });
 };
 

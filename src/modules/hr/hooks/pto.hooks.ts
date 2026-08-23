@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { ptoApi } from '@/modules/hr/api/pto.api';
 import { ptoKeys } from '@/modules/hr/constants/pto.keys';
@@ -51,6 +52,18 @@ export const useUpdatePTOMutation = () => {
       toast.success('Time off request updated');
     },
     onError: (error) => toastApiError(error, 'Failed to update request'),
+  });
+};
+
+export const useBulkDeletePTOMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const queryClient = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'PTO requests', one: 'PTO request' },
+    mutationFn: ptoApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void queryClient.invalidateQueries({ queryKey: ptoKeys.all });
+    },
   });
 };
 

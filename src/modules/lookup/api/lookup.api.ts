@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   lookupListSchema,
   lookupSchema,
@@ -56,5 +56,9 @@ export const lookupApi = {
   /** DELETE /lookup/:id – Delete a lookup */
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 };

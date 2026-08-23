@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { employeesApi } from '@/modules/hr/api/employees.api';
 import { employeesKeys } from '@/modules/hr/constants/employees.keys';
@@ -67,6 +68,19 @@ export const useUpdateEmployeeMutation = () => {
       void queryClient.invalidateQueries({ queryKey: lookupKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update employee.'),
+  });
+};
+
+export const useBulkDeleteEmployeesMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const queryClient = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'employees', one: 'employee' },
+    mutationFn: employeesApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void queryClient.invalidateQueries({ queryKey: employeesKeys.all });
+      void queryClient.invalidateQueries({ queryKey: lookupKeys.all });
+    },
   });
 };
 

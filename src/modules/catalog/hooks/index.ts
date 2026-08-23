@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
 import { costCodesApi } from '@/modules/catalog/api/costcodes.api';
@@ -42,6 +43,21 @@ export const useUpdateCostCodeCategoryMutation = () => {
     mutationFn: costCodeCategoriesApi.update,
     onSuccess: () => qc.invalidateQueries({ queryKey: costCodeCategoriesKeys.all }),
     onError: (error) => toastApiError(error, 'Failed to update category.'),
+  });
+};
+
+export const useBulkDeleteCostCodeCategoriesMutation = (
+  onOutcome?: UseBulkDeleteOptions['onOutcome']
+) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'categories', one: 'category' },
+    mutationFn: costCodeCategoriesApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: costCodeCategoriesKeys.all });
+      void qc.invalidateQueries({ queryKey: costCodesKeys.all });
+    },
   });
 };
 
@@ -90,6 +106,18 @@ export const useUpdateCostCodeMutation = () => {
       toast.success('Cost code updated successfully.');
     },
     onError: (error) => toastApiError(error, 'Failed to update cost code. Please try again.'),
+  });
+};
+
+export const useBulkDeleteCostCodesMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'cost codes', one: 'cost code' },
+    mutationFn: costCodesApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: costCodesKeys.all });
+    },
   });
 };
 

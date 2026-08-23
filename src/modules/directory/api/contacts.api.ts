@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   contactPaginatedResponseSchema,
   contactSchema,
@@ -79,6 +79,10 @@ export const contactsApi = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 
   async addTag(contactId: string, tag: string): Promise<Contact> {

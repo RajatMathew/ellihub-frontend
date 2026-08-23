@@ -1,6 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
+import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
 import {
@@ -14,20 +22,34 @@ import {
   CONTACTS_SORT_BY_OPTIONS,
 } from '@/modules/directory/constants/contacts/contact-list.constants';
 import {
+  useBulkDeleteContactsMutation,
   useContactsQuery,
   useDeleteContactMutation,
   useDirectoryKpisQuery,
   useProfessionalRolesQuery,
 } from '@/modules/directory/hooks';
 import type { Contact, ListContactsParams } from '@/modules/directory/schemas/contact.schema';
-import { ListFilterPlus, Users } from 'lucide-react';
+import { ListFilterPlus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyVendorNames = new Map<string, string>();
 
+const CONTACT_ITEM_LABEL = { many: 'contacts', one: 'contact' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+// The eligibility rule is the row menu's rule: a linked contact is refused by the
+// API, so it must not be checkable either.
+const CONTACT_SELECTION: ListSelectionConfig<Contact> = {
+  canSelect: (contact) => getContactLinkedEntities(contact, emptyVendorNames).length === 0,
+  getRowLabel: (contact) => contact.fullName,
+  ineligibleReason: 'Unlink this contact from its vendor or GC before deleting it.',
+};
+
 export function ContactsListPage() {
   const { can } = useAccess();
+  const canDelete = can('contact', 'delete');
   const [pendingDeleteContact, setPendingDeleteContact] = useState<Contact | null>(null);
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const { data: professionalRoles = [], isLoading: isRolesLoading } = useProfessionalRolesQuery();
 
@@ -83,7 +105,7 @@ export function ContactsListPage() {
   );
 
   const columns = useContactListColumns({
-    canDelete: can('contact', 'delete'),
+    canDelete,
     canUpdate: can('contact', 'update'),
     onDelete: handleDelete,
     vendorNames,
@@ -94,8 +116,17 @@ export function ContactsListPage() {
     getRowId: (contact) => contact.id,
     query: contactsQuery,
     rows: contactsQuery.data?.data ?? [],
+    selection: canDelete ? CONTACT_SELECTION : undefined,
     state,
     totalCount: contactsQuery.data?.pagination?.totalItems ?? 0,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeleteContactsMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const hasStatsData = statsQuery.data !== undefined;
@@ -113,6 +144,13 @@ export function ContactsListPage() {
 
       <DataTable
         ariaLabel="Contacts"
+        bulkItemLabel={CONTACT_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           description: 'Click "+ Add Contact" to get started.',
           icon: <Users className="size-10 text-muted-foreground/50" />,
@@ -151,6 +189,19 @@ export function ContactsListPage() {
         }}
         onOpenChange={(open) => {
           if (!open) setPendingDeleteContact(null);
+        }}
+      />
+
+      <BulkDeleteDialog
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={CONTACT_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
         }}
       />
     </div>

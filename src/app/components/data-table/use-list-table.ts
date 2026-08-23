@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   getCoreRowModel,
@@ -6,11 +6,13 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type RowSelectionState,
   type SortingState,
   type Table,
   type VisibilityState,
 } from '@tanstack/react-table';
 
+import { createSelectionColumn, type ListSelectionConfig } from './data-table-selection';
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
 
@@ -67,6 +69,40 @@ export interface UseListTableOptions<
    * rather than the body briefly rendering against data that is not ready.
    */
   extraLoading?: boolean;
+  /**
+   * Turns on row selection and prepends the kit's checkbox column. Omit it and
+   * the table renders exactly as it did before — nothing about a list without
+   * bulk actions changes.
+   *
+   * Keep the object and its callbacks stable (module scope, or `useCallback`).
+   * A fresh object every render rebuilds the column list every render.
+   */
+  selection?: ListSelectionConfig<TData>;
+}
+
+export interface ListSelection<TData> {
+  /** Whether the table is rendering checkboxes at all. */
+  isEnabled: boolean;
+  count: number;
+  /**
+   * The selected rows themselves, including rows on pages no longer loaded.
+   * Snapshotted when checked, so a bulk action can name what it is about to act on.
+   */
+  rows: TData[];
+  ids: string[];
+  /**
+   * The same rows as `{ id, label }`, labelled by the config's `getRowLabel`.
+   * A confirm dialog can name what it is about to delete without the page
+   * writing that mapping again.
+   */
+  items: { id: string; label: string }[];
+  clear: () => void;
+  /**
+   * Unchecks specific rows, leaving the rest selected. For a bulk action that
+   * partly succeeded: the records it handled leave the selection and the ones it
+   * could not stay checked, so the user is looking at exactly what is left.
+   */
+  deselect: (ids: string[]) => void;
 }
 
 export interface ListTable<TData extends object> {
@@ -79,6 +115,7 @@ export interface ListTable<TData extends object> {
   isRefreshing: boolean;
   isError: boolean;
   retry: () => void;
+  selection: ListSelection<TData>;
 }
 
 /**
@@ -103,6 +140,7 @@ export function useListTable<
   columnVisibility,
   extraLoading = false,
   mode = 'server',
+  selection,
 }: UseListTableOptions<TData, TDefs, TField>): ListTable<TData> {
   const isClient = mode === 'client';
   const { page, size, sortBy, sortOrder, setPage, setSize, setSort } = state;
@@ -142,9 +180,20 @@ export function useListTable<
   // "Refreshing" indicator would sit on top of an empty state.
   const isRefreshing = rows.length > 0 && query.isFetching && !isInitialLoading;
 
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const { canSelect, getRowLabel, ineligibleReason } = selection ?? {};
+
+  const resolvedColumns = useMemo(() => {
+    if (!getRowLabel) return columns;
+
+    return [createSelectionColumn<TData>({ canSelect, getRowLabel, ineligibleReason }), ...columns];
+  }, [canSelect, columns, getRowLabel, ineligibleReason]);
+
   const table = useReactTable({
-    columns,
+    columns: resolvedColumns,
     data: filteredRows,
+    enableRowSelection: !getRowLabel ? false : canSelect ? (row) => canSelect(row.original) : true,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getRowId,
@@ -177,6 +226,7 @@ export function useListTable<
     state: {
       columnVisibility,
       pagination: { pageIndex: page - 1, pageSize: size },
+      rowSelection,
       sorting,
     },
   });
@@ -190,11 +240,88 @@ export function useListTable<
     if (page > lastPage) setPage(lastPage);
   }, [effectiveTotal, isInitialLoading, page, query.isError, setPage, size]);
 
+  const selectedIds = useMemo(
+    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
+    [rowSelection]
+  );
+
+  // TanStack keeps a selected id in `rowSelection` when the user pages away, but
+  // `getSelectedRowModel()` only ever sees the page currently loaded. Cache each
+  // row the moment it is checked so a bulk action can still name — and act on —
+  // rows from earlier pages. Entries are dropped as soon as they are deselected,
+  // so the cache never outgrows the selection.
+  const snapshot = useRef(new Map<string, TData>());
+
+  const pageRows = table.getRowModel().rows;
+
+  const selectedRows = useMemo(() => {
+    const cache = snapshot.current;
+
+    for (const row of pageRows) {
+      if (rowSelection[row.id]) cache.set(row.id, row.original);
+    }
+
+    for (const id of cache.keys()) {
+      if (!rowSelection[id]) cache.delete(id);
+    }
+
+    return selectedIds.flatMap((id) => {
+      const row = cache.get(id);
+      return row ? [{ id, row }] : [];
+    });
+  }, [pageRows, rowSelection, selectedIds]);
+
+  const selectedItems = useMemo(
+    () => (getRowLabel ? selectedRows.map(({ id, row }) => ({ id, label: getRowLabel(row) })) : []),
+    [getRowLabel, selectedRows]
+  );
+
+  const clearSelection = useCallback(() => setRowSelection({}), []);
+
+  const deselect = useCallback((ids: string[]) => {
+    if (ids.length === 0) return;
+
+    setRowSelection((previous) => {
+      const next = { ...previous };
+      for (const id of ids) delete next[id];
+      return next;
+    });
+  }, []);
+
+  // Anything that changes *which* records the list is showing invalidates the
+  // selection: the user would otherwise carry checked rows into a result set
+  // they can no longer see and delete them blind. Paging deliberately does not
+  // reset — that is the case selection is meant to survive.
+  const selectionScope = `${JSON.stringify(rawValues)}|${sortBy}|${sortOrder}|${size}`;
+  const scopeRef = useRef(selectionScope);
+
+  if (scopeRef.current !== selectionScope) {
+    scopeRef.current = selectionScope;
+    if (selectedIds.length > 0) setRowSelection({});
+  }
+
+  // Memoized as a whole: a page reads `list.selection` straight into effect and
+  // callback dependencies, and a fresh object — or a fresh `rows` array — every
+  // render would re-fire all of them.
+  const selectionApi = useMemo<ListSelection<TData>>(
+    () => ({
+      clear: clearSelection,
+      count: selectedIds.length,
+      deselect,
+      ids: selectedIds,
+      isEnabled: Boolean(getRowLabel),
+      items: selectedItems,
+      rows: selectedRows.map(({ row }) => row),
+    }),
+    [clearSelection, deselect, getRowLabel, selectedIds, selectedItems, selectedRows]
+  );
+
   return {
     isError: query.isError,
     isInitialLoading,
     isRefreshing,
     retry: query.refetch,
+    selection: selectionApi,
     table,
     totalCount: effectiveTotal,
   };
