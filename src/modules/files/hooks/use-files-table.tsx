@@ -1,4 +1,8 @@
-import { useListTable, type ListQueryStatus } from '@/app/components/data-table';
+import {
+  useListTable,
+  type ListQueryStatus,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { useFilesColumns } from '@/modules/files/components/files-columns';
 import type { SectionedFiles } from '@/modules/files/hooks/use-files-display-data';
 import type { useFilesListParams } from '@/modules/files/hooks/use-files-list-params';
@@ -24,6 +28,8 @@ interface UseFilesTableParams {
   canRename?: boolean;
   canDelete?: boolean;
   canExport?: boolean;
+  /** Turns on the kit's checkbox column. Omitted in grid view and without the permission. */
+  selection?: ListSelectionConfig<FileItem>;
 }
 
 export function useFilesTable({
@@ -45,6 +51,7 @@ export function useFilesTable({
   canRename = true,
   canDelete = true,
   canExport = true,
+  selection,
 }: UseFilesTableParams) {
   const columns = useFilesColumns({
     showLocation,
@@ -68,6 +75,7 @@ export function useFilesTable({
     getRowId: (row) => row.id,
     query,
     rows: sectionedData.data,
+    selection,
     state,
     totalCount,
   });

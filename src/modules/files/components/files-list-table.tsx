@@ -22,7 +22,7 @@ import type { FileItem } from '@/modules/files/schemas/file.schema';
 // sections and animated, so it composes the grid primitives directly rather
 // than going through DataTable. See use-files-list-params for the rationale.
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { flexRender, type Cell, type ColumnDef, type Row, type Table } from '@tanstack/react-table';
+import { flexRender, type Cell, type Row, type Table } from '@tanstack/react-table';
 import { motion } from 'motion/react';
 
 import { FilesSectionHeader } from './files-section-header';
@@ -31,14 +31,17 @@ const FILE_REORDER_TRANSITION = { type: 'spring' as const, stiffness: 420, dampi
 
 interface FilesListTableProps {
   table: Table<FileItem>;
-  columns: ColumnDef<FileItem>[];
   sectionedData: SectionedFiles;
   isLoading: boolean;
 }
 
-export function FilesListTable({ table, columns, sectionedData, isLoading }: FilesListTableProps) {
+export function FilesListTable({ table, sectionedData, isLoading }: FilesListTableProps) {
   const { props } = useDataGrid();
   const onRowClick = props.onRowClick as ((item: FileItem) => void) | undefined;
+  // Read off the table, not the `columns` prop: selection prepends a checkbox
+  // column the caller's array knows nothing about, and a section header that
+  // spans one column too few leaves a gap in the row.
+  const renderedColumnCount = table.getVisibleFlatColumns().length;
 
   if (isLoading) {
     return (
@@ -75,7 +78,7 @@ export function FilesListTable({ table, columns, sectionedData, isLoading }: Fil
                 <Fragment key={row.id}>
                   {index === 0 && sectionedData.protectedItems.length > 0 && (
                     <tr className="bg-muted/50">
-                      <td colSpan={columns.length} className="px-4 py-2.5">
+                      <td colSpan={renderedColumnCount} className="px-4 py-2.5">
                         <FilesSectionHeader
                           type="protected"
                           count={sectionedData.protectedItems.length}
@@ -86,7 +89,7 @@ export function FilesListTable({ table, columns, sectionedData, isLoading }: Fil
                   {index === sectionedData.protectedItems.length &&
                     sectionedData.sharedItems.length > 0 && (
                       <tr className="bg-muted/50">
-                        <td colSpan={columns.length} className="px-4 py-2.5">
+                        <td colSpan={renderedColumnCount} className="px-4 py-2.5">
                           <FilesSectionHeader
                             type="shared"
                             count={sectionedData.sharedItems.length}

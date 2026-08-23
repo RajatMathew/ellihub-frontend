@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import { assertUploadFileIsValid } from '@/modules/files/lib/file-upload-policy';
 import {
   fileExportJobSchema,
@@ -619,5 +619,10 @@ export const filesApi = {
 
   async deleteFile(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  /** Mixed files and folders in one call — the API resolves each id's type. */
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 };

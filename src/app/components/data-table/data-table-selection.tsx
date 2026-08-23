@@ -21,8 +21,20 @@ export interface ListSelectionConfig<TData> {
    * rather than silently being skipped later. Omit when every row is eligible.
    */
   canSelect?: (row: TData) => boolean;
-  /** Tooltip on the disabled checkbox, explaining what would make the row eligible. */
-  ineligibleReason?: string;
+  /**
+   * Tooltip on the disabled checkbox, explaining what would make the row
+   * eligible. A function when the reason is the row's own — a file says which
+   * record is holding it, not merely that something is.
+   */
+  ineligibleReason?: string | ((row: TData) => string | undefined);
+  /**
+   * Extra state that changes which records the list is showing, and so must
+   * clear the selection. The filters, sort and page size are already covered;
+   * this is for navigation a list keeps outside its filter schema — Files
+   * changes folder and search scope by URL params that are deliberately not
+   * filters. Any string that differs when the result set differs will do.
+   */
+  scope?: string;
 }
 
 function SelectAllHeader<TData>({ table }: { table: Table<TData> }) {
@@ -58,9 +70,14 @@ function SelectRowCell<TData>({
 }: {
   row: Row<TData>;
   label: string;
-  ineligibleReason?: string;
+  ineligibleReason?: string | ((row: TData) => string | undefined);
 }) {
   const canSelect = row.getCanSelect();
+  const blockedReason = canSelect
+    ? undefined
+    : typeof ineligibleReason === 'function'
+      ? ineligibleReason(row.original)
+      : ineligibleReason;
 
   return (
     <>
@@ -76,7 +93,7 @@ function SelectRowCell<TData>({
         checked={row.getIsSelected()}
         disabled={!canSelect}
         size="sm"
-        title={canSelect ? undefined : ineligibleReason}
+        title={blockedReason}
         // Rows carry links and their own action menus; a checkbox click must not
         // bubble into either.
         onClick={(event) => event.stopPropagation()}

@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import {
   filesApi,
@@ -175,6 +176,19 @@ export const useDownloadFile = () => {
     mutationFn: (file: { id: string; name?: string | null; displayName?: string | null }) =>
       filesApi.downloadFile(file),
     onError: (error) => toastApiError(error, 'Failed to download file.'),
+  });
+};
+
+export const useBulkDeleteFilesMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const queryClient = useQueryClient();
+
+  return useBulkDelete({
+    itemLabel: { many: 'items', one: 'item' },
+    mutationFn: filesApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void queryClient.invalidateQueries({ queryKey: filesKeys.all });
+    },
   });
 };
 

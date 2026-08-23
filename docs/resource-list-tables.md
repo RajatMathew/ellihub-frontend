@@ -161,7 +161,14 @@ export const useBulkDeleteDepartmentsMutation = (onDeleted?: (ids: string[]) => 
   selecting each page works; "select all 240" on a destructive action does not,
   because the user cannot see what they are agreeing to.
 - **Selection resets when the result set changes** — any filter, the sort, or the
-  page size. It deliberately survives paging.
+  page size. It deliberately survives paging. A list that navigates by state the
+  filter schema does not hold names it in `scope`: Files passes its folder and
+  search scope, or checked rows would follow the user into another folder.
+- **`ineligibleReason` may be a function** when the reason belongs to the row —
+  a file names the record holding it, rather than only saying something does.
+- **Turning selection off clears it.** Passing `selection: undefined` — Files
+  does in grid view, where there are no checkboxes — drops the checked ids
+  rather than leaving a count nothing on screen can clear.
 - **Keep the config object at module scope.** A fresh object every render rebuilds
   the column list every render.
 
@@ -218,3 +225,15 @@ Going through `DataTable` would have cost three render hatches, so it stops at
 
 That is the layering working, not a workaround. If another list needs the same, take
 the same route rather than bending `DataTable`.
+
+Bulk selection still reaches it: its body maps `row.getVisibleCells()` generically, so
+the injected checkbox column renders there with no special case, and it composes
+`DataTableBulkBar` into the same header slot `DataTable` uses. What it needs beyond the
+usual wiring is the `scope` key above, and `selection: undefined` in grid view.
+
+Files also carries the one rule the other lists do not: **deleting a folder does not
+delete what is in it.** The API refuses a folder that still has items, exactly as the
+single delete does, so a bulk selection reports those back rather than emptying them.
+Files are deleted before folders so that emptying a folder and removing it in one
+selection works; a folder nested inside another selected folder still fails, and says
+why.

@@ -181,7 +181,7 @@ export function useListTable<
   const isRefreshing = rows.length > 0 && query.isFetching && !isInitialLoading;
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const { canSelect, getRowLabel, ineligibleReason } = selection ?? {};
+  const { canSelect, getRowLabel, ineligibleReason, scope } = selection ?? {};
 
   const resolvedColumns = useMemo(() => {
     if (!getRowLabel) return columns;
@@ -240,9 +240,12 @@ export function useListTable<
     if (page > lastPage) setPage(lastPage);
   }, [effectiveTotal, isInitialLoading, page, query.isError, setPage, size]);
 
+  // Gated on selection being on at all: a list that turns it off — Files does,
+  // in grid view, where there are no checkboxes to uncheck with — must report an
+  // empty selection, not a count nothing on screen can clear.
   const selectedIds = useMemo(
-    () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
-    [rowSelection]
+    () => (getRowLabel ? Object.keys(rowSelection).filter((id) => rowSelection[id]) : []),
+    [getRowLabel, rowSelection]
   );
 
   // TanStack keeps a selected id in `rowSelection` when the user pages away, but
@@ -292,12 +295,23 @@ export function useListTable<
   // selection: the user would otherwise carry checked rows into a result set
   // they can no longer see and delete them blind. Paging deliberately does not
   // reset — that is the case selection is meant to survive.
-  const selectionScope = `${JSON.stringify(rawValues)}|${sortBy}|${sortOrder}|${size}`;
+  // Selection being switched off counts as a scope change, so the checked ids
+  // are dropped rather than waiting silently to reappear.
+  const selectionScope = [
+    JSON.stringify(rawValues),
+    sortBy,
+    sortOrder,
+    size,
+    scope ?? '',
+    getRowLabel ? 'on' : 'off',
+  ].join('|');
   const scopeRef = useRef(selectionScope);
 
   if (scopeRef.current !== selectionScope) {
     scopeRef.current = selectionScope;
-    if (selectedIds.length > 0) setRowSelection({});
+    // Read the raw state, not `selectedIds` — that is already empty when
+    // selection is off, which is exactly the case that needs clearing.
+    if (Object.keys(rowSelection).length > 0) setRowSelection({});
   }
 
   // Memoized as a whole: a page reads `list.selection` straight into effect and
