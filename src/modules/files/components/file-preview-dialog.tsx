@@ -539,7 +539,7 @@ export function FilePreviewDialog({
         <DialogHeader className="mb-0 flex h-12 shrink-0 flex-row items-center justify-between gap-4 border-b border-border/70 bg-background px-4 py-0 text-start">
           <DialogTitle
             className="flex min-w-0 flex-1 items-center gap-2 text-sm leading-none font-semibold tracking-normal text-foreground"
-            style={{ fontFamily: '"DM Sans", "IBM Plex Sans", system-ui, sans-serif' }}
+            style={{ fontFamily: '"Public Sans", "IBM Plex Sans", system-ui, sans-serif' }}
           >
             <FileTypeIcon
               fileType={file?.type ?? 'FILE'}
@@ -550,7 +550,7 @@ export function FilePreviewDialog({
             <span
               className="min-w-0 flex-1 truncate"
               title={displayName || undefined}
-              style={{ fontFamily: '"DM Sans", "IBM Plex Sans", system-ui, sans-serif' }}
+              style={{ fontFamily: '"Public Sans", "IBM Plex Sans", system-ui, sans-serif' }}
             >
               {displayName}
             </span>

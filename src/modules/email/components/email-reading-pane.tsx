@@ -30,13 +30,13 @@ import {
   type EmailReferenceMarkerState,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
+import type { EmailReplyDraft } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailListItem,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
-import type { EmailReplyDraft } from '@/modules/email/components/email-reply-composer';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
@@ -328,8 +328,8 @@ export function EmailReadingPane({
               mode="icon"
               size="icon"
               className="size-10 bg-background p-1.5 sm:size-9"
-              aria-label="Open or close elliot agent"
-              title="Open or close elliot agent (E)"
+              aria-label="Open or close Elliot Agent"
+              title="Open or close Elliot Agent (E)"
               onClick={onOpenAgent}
             >
               <img
@@ -605,7 +605,7 @@ function EmailReadingPaneShortcuts({
           <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
             {agentActionKey.toUpperCase()}
           </kbd>
-          <span>elliot</span>
+          <span>Elliot</span>
         </>
       ) : null}
     </span>

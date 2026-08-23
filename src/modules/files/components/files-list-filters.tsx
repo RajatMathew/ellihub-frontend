@@ -86,7 +86,7 @@ export function FilesListFilters({
   return (
     <TableCardHeader
       title={
-        <span className="flex min-h-11 min-w-0 items-center font-['DM_Sans',sans-serif] text-sm font-semibold leading-none tracking-normal text-table-card-header-foreground">
+        <span className="flex min-h-11 min-w-0 items-center font-['Public_Sans',sans-serif] text-sm font-semibold leading-none tracking-normal text-table-card-header-foreground">
           <span className="truncate">{folderName}</span>
         </span>
       }

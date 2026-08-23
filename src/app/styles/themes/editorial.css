@@ -124,7 +124,7 @@
 .editorial body,
 .editorial {
   font-family:
-    'DM Sans',
+    'Public Sans',
     'IBM Plex Sans',
     system-ui,
     -apple-system,
@@ -156,7 +156,7 @@
 }
 
 .editorial [data-slot='app-sidebar'] [data-slot='accordion-menu-sub-trigger'] {
-  font-family: 'DM Sans', 'IBM Plex Sans', sans-serif;
+  font-family: 'Public Sans', 'IBM Plex Sans', sans-serif;
   font-size: 0.75rem;
   letter-spacing: 0;
   text-transform: none;
