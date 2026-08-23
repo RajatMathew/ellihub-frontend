@@ -1,9 +1,19 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
+import { Button } from '@/app/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import {
+  canDeleteRFQ,
   getRFQTrackValue,
+  RFQ_DELETE_BLOCKED_REASON,
   RFQListConfirmDialogs,
   RFQListHeader,
   RFQListStats,
@@ -11,15 +21,17 @@ import {
 } from '@/modules/project/components/rfq';
 import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import { RFQ_DEFAULT_PAGE_SIZE, RFQ_SORT_BY_OPTIONS } from '@/modules/project/constants/rfq';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
 import {
+  useBulkDeleteRFQsMutation,
   useCancelRFQMutation,
   useDeleteRFQMutation,
   useRFQListQuery,
   useRFQStatsQuery,
 } from '@/modules/project/hooks/rfq';
 import type { ListRFQParams, RFQListItem } from '@/modules/project/schemas/rfq';
-import { ChevronRight, ClipboardList, ListFilterPlus } from 'lucide-react';
+import { ChevronRight, ClipboardList, ListFilterPlus, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const RFQ_STATUS_FILTER_OPTIONS = [
@@ -27,6 +39,17 @@ const RFQ_STATUS_FILTER_OPTIONS = [
   { label: 'Published', value: 'PUBLISHED' },
   { label: 'Awarded', value: 'AWARDED' },
 ];
+
+const RFQ_ITEM_LABEL = { many: 'RFQs', one: 'RFQ' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+// Bulk delete is draft-only, matching the row menu and the API: an issued RFQ has
+// been sent to vendors and is voided, not deleted.
+const RFQ_SELECTION: ListSelectionConfig<RFQListItem> = {
+  canSelect: canDeleteRFQ,
+  getRowLabel: (rfq) => rfq.rfqNumber ?? rfq.title ?? rfq.id,
+  ineligibleReason: RFQ_DELETE_BLOCKED_REASON,
+};
 
 const SEARCH_FILTER = f.search({ className: 'sm:w-60', placeholder: 'Search RFQs...' });
 const STATUS_FILTER = f.select({
@@ -45,6 +68,12 @@ export default function RFQListPage() {
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
   const [voidReason, setVoidReason] = useState('');
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  // The same capability the row menu reads: RFQ delete is granted per project,
+  // not by a global permission.
+  const { data: project } = useProjectDetailQuery(projectId);
+  const canDeleteRFQs = project?.capabilities?.actions?.rfq?.delete === true;
 
   const { data: tradeCategories } = useLookupsQuery('TRADE_CATEGORY');
 
@@ -113,8 +142,14 @@ export default function RFQListPage() {
     getRowId: (rfq) => rfq.id,
     query: rfqsQuery,
     rows: rfqsQuery.data?.data ?? [],
+    selection: canDeleteRFQs ? RFQ_SELECTION : undefined,
     state,
     totalCount: rfqsQuery.data?.pagination?.totalItems ?? 0,
+  });
+
+  const bulkDelete = useBulkDeleteRFQsMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const hasStatsData = statsQuery.data !== undefined;
@@ -136,6 +171,13 @@ export default function RFQListPage() {
 
       <DataTable
         ariaLabel="RFQs"
+        bulkItemLabel={RFQ_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         className="overflow-hidden"
         empty={{
           description: 'Click "+ Add RFQ" to get started.',
@@ -179,6 +221,19 @@ export default function RFQListPage() {
             </div>
           </div>
         }
+      />
+
+      <BulkDeleteDialog
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={RFQ_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
+        }}
       />
 
       <RFQListConfirmDialogs

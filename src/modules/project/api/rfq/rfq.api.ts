@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   getGeneratedPdfFileFromResponse,
   sanitizeDownloadName,
@@ -296,6 +296,10 @@ export const rfqApi = {
     await api.delete(`${BASE}/${id}`);
   },
 
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
+  },
+
   async addDeliverable(rfqId: string, data: RFQDeliverableInput): Promise<unknown> {
     const payload = {
       ...data,
@@ -378,7 +382,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-      leadTime?: string;
+    leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/submit-quote`, data);
@@ -389,7 +393,7 @@ export const rfqApi = {
     id: string;
     quotedAmount: number;
     negotiationAmount?: number | null;
-      leadTime?: string;
+    leadTime?: string;
     attachments: string[];
   }): Promise<unknown> {
     const res = await api.patch(`${BASE}/vendor/edit-quote`, data);

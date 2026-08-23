@@ -11,6 +11,18 @@ export function getRFQStatusName(rfq: RFQListItem) {
   return status ?? '';
 }
 
+/**
+ * Only a draft RFQ can be deleted — the same rule the API enforces. Anything
+ * issued has been sent to vendors, and is voided rather than deleted. Shared by
+ * the row menu and by bulk selection so the two cannot disagree.
+ */
+export function canDeleteRFQ(rfq: RFQListItem) {
+  return getRFQStatusName(rfq) === 'DRAFT';
+}
+
+export const RFQ_DELETE_BLOCKED_REASON =
+  'Only draft RFQs can be deleted. Void an issued RFQ instead.';
+
 export function getRFQStatusLabel(rfq: RFQListItem) {
   const { status } = rfq;
 

@@ -1,4 +1,5 @@
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import type { GeneratePdfTermsInput } from '@/modules/pdf/schemas';
@@ -87,6 +88,16 @@ export const useUpdateRFQMutation = () => {
       toast.success('RFQ updated.');
     },
     onError: (err) => toastApiError(err, 'Failed to update RFQ.'),
+  });
+};
+
+export const useBulkDeleteRFQsMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'RFQs', one: 'RFQ' },
+    mutationFn: rfqApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => void invalidateRFQQueries(qc),
   });
 };
 
