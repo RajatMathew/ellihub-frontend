@@ -189,9 +189,15 @@ function DataGridTableHeadRowCell<TData>({
           column.getCanPin() &&
           '[&:not([data-pinned]):has(+[data-pinned])_div.cursor-col-resize:last-child]:opacity-0 [&[data-last-col=left]_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=left][data-last-col=left]]:border-e! [&[data-pinned=right]:last-child_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=right][data-last-col=right]]:border-s! [&[data-pinned][data-last-col]]:border-border data-pinned:bg-muted/90 data-pinned:backdrop-blur-xs',
         headerAlignClasses[header.column.columnDef.meta?.align ?? 'start'],
-        // The header's content is a flex row (sortable) or an inline-flex label
-        // (plain); both need the alignment on this element to reach them.
-        '[&>*]:w-full',
+        // Only when the column is actually being pushed off the start edge. The
+        // header's content is a flex row (sortable) or an inline-flex label
+        // (plain), and `justify-*` cannot move either unless it fills the cell —
+        // but stretching it unconditionally also stretches content that is not a
+        // label at all, which is what pulled the select-all checkbox into a
+        // 44px-wide box.
+        header.column.columnDef.meta?.align &&
+          header.column.columnDef.meta.align !== 'start' &&
+          '[&>*]:w-full',
         header.column.columnDef.meta?.headerClassName,
         column.getIndex() === 0 || column.getIndex() === header.headerGroup.headers.length - 1
           ? props.tableClassNames?.edgeCell
