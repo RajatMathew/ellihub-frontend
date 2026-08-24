@@ -1,6 +1,8 @@
+import { DetailTable } from '@/app/components/detail-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency, formatDecimal } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import {
   calculateRoundedLineAmount,
   formatPurchaseOrderTaxLabel,
@@ -113,114 +115,84 @@ export function PurchaseOrderDetailLineItemsCard({
               </div>
             </div>
 
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-max text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="w-8 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
-                      #
-                    </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
-                      Description
-                    </th>
-                    <th className="w-40 pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
-                      Cost Code
-                    </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
-                      Qty
-                    </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold tracking-normal text-muted-foreground">
-                      Unit
-                    </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold tracking-normal text-muted-foreground">
-                      Unit Price
-                    </th>
-                    <th className="pb-2 text-right text-xs font-semibold tracking-normal text-muted-foreground">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lineItems.map((lineItem) => (
-                    <tr key={lineItem.id} className="border-b last:border-0">
-                      <td className="py-2.5 pr-3 text-muted-foreground">{lineItem.lineNumber}</td>
-                      <td className="py-2.5 pr-3">
+            <DetailTable
+              ariaLabel="Line items"
+              className="hidden lg:block"
+              columns={[
+                { key: 'lineNumber', header: '#', width: 'w-8' },
+                { key: 'description', header: 'Description' },
+                { key: 'costCode', header: 'Cost Code', width: 'w-40' },
+                { align: 'end', key: 'quantity', header: 'Qty' },
+                { key: 'unit', header: 'Unit' },
+                { align: 'end', key: 'unitPrice', header: 'Unit Price' },
+                { align: 'end', key: 'amount', header: 'Amount' },
+              ]}
+              rows={lineItems}
+              getRowId={(lineItem) => lineItem.id}
+              renderCell={(lineItem, key) => {
+                switch (key) {
+                  case 'lineNumber':
+                    return <span className="text-muted-foreground">{lineItem.lineNumber}</span>;
+                  case 'description':
+                    return (
+                      <>
                         <div className="font-medium">{lineItem.description}</div>
                         {lineItem.notes && (
                           <div className="mt-0.5 text-xs text-muted-foreground">
                             {lineItem.notes}
                           </div>
                         )}
-                      </td>
-                      <td className="py-2.5 pr-3 text-xs text-muted-foreground">
+                      </>
+                    );
+                  case 'costCode':
+                    return (
+                      <span className="text-xs text-muted-foreground">
                         {lineItem.costCodeId ? (costCodeMap.get(lineItem.costCodeId) ?? '-') : '-'}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums">
-                        {formatDecimal(lineItem.quantity)}
-                      </td>
-                      <td className="py-2.5 pr-3">{lineItem.unit}</td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums">
+                      </span>
+                    );
+                  case 'quantity':
+                    return <span className="tabular-nums">{formatDecimal(lineItem.quantity)}</span>;
+                  case 'unit':
+                    return lineItem.unit;
+                  case 'unitPrice':
+                    return (
+                      <span className="tabular-nums">
                         {formatCurrency(parseFloat(lineItem.unitPrice ?? '0'))}
-                      </td>
-                      <td className="py-2.5 text-right font-medium tabular-nums">
+                      </span>
+                    );
+                  default:
+                    return (
+                      <span className="font-medium tabular-nums">
                         {formatCurrency(calculateRoundedLineAmount(lineItem))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
-                      Subtotal
-                    </td>
-                    <td className="pt-3 text-right text-sm tabular-nums">
-                      {formatCurrency(subtotal)}
-                    </td>
-                  </tr>
+                      </span>
+                    );
+                }
+              }}
+              footer={
+                <>
+                  <PurchaseOrderTotalRow label="Subtotal" value={formatCurrency(subtotal)} />
                   {discount !== 0 && (
-                    <tr>
-                      <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Negotiated Discount
-                      </td>
-                      <td className="pt-1 text-right text-sm tabular-nums">
-                        -{formatCurrency(discount)}
-                      </td>
-                    </tr>
+                    <PurchaseOrderTotalRow
+                      label="Negotiated Discount"
+                      value={`-${formatCurrency(discount)}`}
+                    />
                   )}
                   {shippingHandling !== 0 && (
-                    <tr>
-                      <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        Shipping and Handling Fee
-                      </td>
-                      <td className="pt-1 text-right text-sm tabular-nums">
-                        {formatCurrency(shippingHandling)}
-                      </td>
-                    </tr>
+                    <PurchaseOrderTotalRow
+                      label="Shipping and Handling Fee"
+                      value={formatCurrency(shippingHandling)}
+                    />
                   )}
                   {taxAmount !== 0 && (
-                    <tr>
-                      <td colSpan={6} className="pt-1 text-right text-xs text-muted-foreground">
-                        {formatPurchaseOrderTaxLabel(taxPercent)}
-                      </td>
-                      <td className="pt-1 text-right text-sm tabular-nums">
-                        {formatCurrency(taxAmount)}
-                      </td>
-                    </tr>
+                    <PurchaseOrderTotalRow
+                      label={formatPurchaseOrderTaxLabel(taxPercent)}
+                      value={formatCurrency(taxAmount)}
+                    />
                   )}
-                  <tr className="border-t">
-                    <td
-                      colSpan={6}
-                      className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground"
-                    >
-                      Total
-                    </td>
-                    <td className="pt-2 text-right font-semibold tabular-nums">
-                      {formatCurrency(total)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                  <PurchaseOrderTotalRow emphasis label="Total" value={formatCurrency(total)} />
+                </>
+              }
+            />
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
@@ -230,5 +202,33 @@ export function PurchaseOrderDetailLineItemsCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** A totals row under the line items. Spans every column but the last. */
+function PurchaseOrderTotalRow({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <tr>
+      <td
+        colSpan={6}
+        className={cn(
+          'px-4 py-1.5 text-end text-xs text-muted-foreground',
+          emphasis && 'font-semibold'
+        )}
+      >
+        {label}
+      </td>
+      <td className={cn('px-4 py-1.5 text-end text-sm tabular-nums', emphasis && 'font-semibold')}>
+        {value}
+      </td>
+    </tr>
   );
 }

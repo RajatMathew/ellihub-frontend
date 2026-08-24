@@ -1,3 +1,4 @@
+import { DetailTable } from '@/app/components/detail-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatDecimal } from '@/app/lib/helpers';
 import type { RFQDeliverable } from '@/modules/project/schemas/rfq';
@@ -64,47 +65,50 @@ export function RFQDetailDeliverablesCard({ deliverables }: RFQDetailDeliverable
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-max w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="w-8 pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      #
-                    </th>
-                    <th className="pb-2 pr-3 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      Description
-                    </th>
-                    <th className="pb-2 pr-3 text-right text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      Qty
-                    </th>
-                    <th className="pb-2 text-xs font-semibold uppercase tracking-normal text-muted-foreground">
-                      Unit
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliverables.map((deliverable, index) => (
-                    <tr key={deliverable.id} className="border-b border-muted/20 last:border-0">
-                      <td className="w-8 py-2.5 pr-3 text-xs font-medium text-muted-foreground">
-                        {deliverable.sequenceNumber ?? index + 1}
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <div className="text-sm font-medium">{getDeliverableName(deliverable)}</div>
-                        {deliverable.specifications && (
-                          <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                            {deliverable.specifications}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right tabular-nums">
-                        {deliverable.quantity != null ? formatDecimal(deliverable.quantity) : '-'}
-                      </td>
-                      <td className="py-2.5">{getUnitLabel(deliverable.unit)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DetailTable
+              ariaLabel="Deliverables"
+              className="hidden lg:block"
+              columns={[
+                { key: 'index', header: '#', width: 'w-8' },
+                { key: 'description', header: 'Description' },
+                { align: 'end', key: 'quantity', header: 'Qty' },
+                { key: 'unit', header: 'Unit' },
+              ]}
+              rows={deliverables}
+              getRowId={(deliverable) => deliverable.id}
+              renderCell={(deliverable, key, index) => {
+                if (key === 'index') {
+                  return (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {deliverable.sequenceNumber ?? index + 1}
+                    </span>
+                  );
+                }
+
+                if (key === 'description') {
+                  return (
+                    <>
+                      <div className="text-sm font-medium">{getDeliverableName(deliverable)}</div>
+                      {deliverable.specifications && (
+                        <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                          {deliverable.specifications}
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+
+                if (key === 'quantity') {
+                  return (
+                    <span className="tabular-nums">
+                      {deliverable.quantity != null ? formatDecimal(deliverable.quantity) : '-'}
+                    </span>
+                  );
+                }
+
+                return getUnitLabel(deliverable.unit);
+              }}
+            />
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 py-6 text-center">
