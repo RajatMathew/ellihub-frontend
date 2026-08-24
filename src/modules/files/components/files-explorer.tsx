@@ -380,6 +380,7 @@ export function FilesExplorer({
           <DataGrid
             table={table}
             recordCount={totalCount}
+            tableAriaLabel="Files"
             isLoading={isDataLoading}
             onRowClick={handleRowClick}
             emptyMessage={<FilesEmptyState />}

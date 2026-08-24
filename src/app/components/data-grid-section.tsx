@@ -13,8 +13,8 @@ import { AlertCircle, Loader2, RefreshCcw, type LucideProps } from 'lucide-react
 
 export interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
-  /** Accessible name for the rendered <table>. */
-  tableAriaLabel?: string;
+  /** Accessible name for the rendered <table>. Required, as on `DataGridProps`. */
+  tableAriaLabel: string;
   totalCount: number;
   isLoading: boolean;
   isRefreshing?: boolean;

@@ -6,8 +6,6 @@ import type { ReactNode } from 'react';
 
 import type { ColumnFiltersState, RowData, SortingState, Table } from '@tanstack/react-table';
 
-import { cn } from '@app/lib/utils';
-
 declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
@@ -67,8 +65,13 @@ export interface DataGridProps<TData extends object> {
   className?: string;
   table?: Table<TData>;
   recordCount: number;
-  /** Accessible name for the rendered <table>. Required by rules/accessibility.md. */
-  tableAriaLabel?: string;
+  /**
+   * Accessible name for the rendered <table>. Required, not optional:
+   * rules/accessibility.md mandates it, and the one list that rendered
+   * `DataGrid` directly rather than through `DataTable` had quietly gone
+   * without.
+   */
+  tableAriaLabel: string;
   children?: ReactNode;
   onRowClick?: (row: TData) => void;
   isLoading?: boolean;
@@ -193,23 +196,4 @@ function DataGrid<TData extends object>({ children, table, ...props }: DataGridP
   );
 }
 
-function DataGridContainer({
-  children,
-  className,
-  border = true,
-}: {
-  children: ReactNode;
-  className?: string;
-  border?: boolean;
-}) {
-  return (
-    <div
-      data-slot="data-grid"
-      className={cn('grid w-full', border && 'border border-border rounded-lg', className)}
-    >
-      {children}
-    </div>
-  );
-}
-
-export { useDataGrid, DataGridProvider, DataGrid, DataGridContainer };
+export { useDataGrid, DataGridProvider, DataGrid };
