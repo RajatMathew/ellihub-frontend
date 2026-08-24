@@ -1,7 +1,5 @@
-import { AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
-
+import { StatusBadge } from '@/app/components/status-badge';
 import { Alert, AlertContent, AlertDescription, AlertIcon } from '@/app/components/ui/alert';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
   Card,
@@ -15,6 +13,7 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Switch } from '@/app/components/ui/switch';
 import type { QuickBooksReferenceSyncStatus } from '@/modules/integrations/schemas/quickbooks.schema';
+import { AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
 
 type QuickBooksReferenceSyncCardProps = {
   status: QuickBooksReferenceSyncStatus;
@@ -44,13 +43,6 @@ function formatSyncDate(value: string | null | undefined) {
   }).format(date);
 }
 
-function getStatusVariant(status: string | null | undefined) {
-  if (status === 'SUCCESS') return 'success';
-  if (status === 'FAILED') return 'destructive';
-  if (status === 'PARTIAL') return 'warning';
-  return 'secondary';
-}
-
 export function QuickBooksReferenceSyncCard({
   status,
   canSync,
@@ -68,12 +60,12 @@ export function QuickBooksReferenceSyncCard({
       <CardHeader>
         <CardHeading>
           <CardTitle>Reference Data Sync</CardTitle>
-          <CardDescription>QuickBooks bank accounts, line item categories, and payees</CardDescription>
+          <CardDescription>
+            QuickBooks bank accounts, line item categories, and payees
+          </CardDescription>
         </CardHeading>
         <CardToolbar className="flex-wrap">
-          <Badge variant={getStatusVariant(status.lastSyncStatus)} appearance="light">
-            {status.lastSyncStatus ?? 'Not synced'}
-          </Badge>
+          <StatusBadge fallback="Not synced" size="md" status={status.lastSyncStatus} />
           <Button size="sm" onClick={onSync} disabled={syncDisabled}>
             <RefreshCcw className={`size-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Syncing...' : 'Sync Now'}
@@ -140,9 +132,7 @@ export function QuickBooksReferenceSyncCard({
             <div key={entity.entity} className="rounded-md border p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="font-medium">{entityLabels[entity.entity] ?? entity.entity}</div>
-                <Badge variant={getStatusVariant(entity.lastSyncStatus)} appearance="light" size="sm">
-                  {entity.lastSyncStatus ?? 'Not synced'}
-                </Badge>
+                <StatusBadge fallback="Not synced" status={entity.lastSyncStatus} />
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">

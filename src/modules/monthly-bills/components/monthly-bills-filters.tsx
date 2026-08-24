@@ -41,8 +41,11 @@ type MonthlyBillsFiltersProps = MonthlyBillsFiltersBaseProps &
       }
   );
 
+// The trigger takes its colour from the header's `data-surface` token scope.
+// Selected badges are the one thing that does not follow, because they sit on
+// the trigger rather than the header — hence the explicit soft-primary fill.
 const tableHeaderMultiSelectTriggerClassName =
-  'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_.text-muted-foreground]:!text-table-card-header-foreground/75 [&_svg]:!text-table-card-header-foreground [&_[data-slot=badge]]:!border-primary-alpha [&_[data-slot=badge]]:!bg-primary-soft [&_[data-slot=badge]]:!text-primary-soft-foreground [&_[data-slot=badge].text-muted-foreground]:!text-primary-soft-foreground/75 [&_[data-slot=badge]_[role=button]]:!text-primary-soft-foreground/55 [&_[data-slot=badge]_[role=button]:hover]:!text-primary-soft-foreground [&_[data-slot=badge]_svg]:!text-primary-soft-foreground/65';
+  'shadow-xs shadow-black/10 [&_[data-slot=badge]]:border-primary-alpha [&_[data-slot=badge]]:bg-primary-soft [&_[data-slot=badge]]:text-primary-soft-foreground';
 
 export function MonthlyBillsFilters(props: MonthlyBillsFiltersProps) {
   const {
@@ -93,6 +96,7 @@ export function MonthlyBillsFilters(props: MonthlyBillsFiltersProps) {
           placeholder="All Vendors"
           searchPlaceholder="Search vendors..."
           emptyMessage="No vendors found."
+          size="toolbar"
           triggerClassName={tableHeaderMultiSelectTriggerClassName}
         />
       </div>
@@ -107,6 +111,7 @@ export function MonthlyBillsFilters(props: MonthlyBillsFiltersProps) {
           placeholder="All Trades"
           searchPlaceholder="Search trades..."
           emptyMessage="No trades found."
+          size="toolbar"
           triggerClassName={tableHeaderMultiSelectTriggerClassName}
         />
       </div>

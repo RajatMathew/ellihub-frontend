@@ -1,7 +1,5 @@
-import { AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
-
+import { StatusBadge } from '@/app/components/status-badge';
 import { Alert, AlertContent, AlertDescription, AlertIcon } from '@/app/components/ui/alert';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -16,6 +14,7 @@ import {
   useFieldwireSyncStatusQuery,
   useSyncFieldwireMutation,
 } from '@/modules/synchronization/hooks/synchronization.hooks';
+import { AlertCircle, CheckCircle2, RefreshCcw } from 'lucide-react';
 
 type FieldwireSyncDialogProps = {
   open: boolean;
@@ -34,13 +33,6 @@ function formatSyncDate(value: string | null | undefined) {
   }).format(date);
 }
 
-function getStatusVariant(status: string | null | undefined) {
-  if (status === 'SUCCESS') return 'success';
-  if (status === 'FAILED') return 'destructive';
-  if (status === 'PARTIAL') return 'warning';
-  return 'secondary';
-}
-
 export function FieldwireSyncDialog({ open, onOpenChange }: FieldwireSyncDialogProps) {
   const statusQuery = useFieldwireSyncStatusQuery(open);
   const syncMutation = useSyncFieldwireMutation();
@@ -55,7 +47,10 @@ export function FieldwireSyncDialog({ open, onOpenChange }: FieldwireSyncDialogP
   }
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !syncMutation.isPending && onOpenChange(nextOpen)}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => !syncMutation.isPending && onOpenChange(nextOpen)}
+    >
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Sync Fieldwire</DialogTitle>
@@ -79,10 +74,10 @@ export function FieldwireSyncDialog({ open, onOpenChange }: FieldwireSyncDialogP
                 Last Global Sync
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">{formatSyncDate(overview?.lastSyncedAt)}</span>
-                <Badge variant={getStatusVariant(overview?.lastSyncStatus)} appearance="light" size="sm">
-                  {overview?.lastSyncStatus ?? 'Not synced'}
-                </Badge>
+                <span className="text-sm font-medium">
+                  {formatSyncDate(overview?.lastSyncedAt)}
+                </span>
+                <StatusBadge fallback="Not synced" status={overview?.lastSyncStatus} />
               </div>
             </div>
           </div>
@@ -148,7 +143,9 @@ export function FieldwireSyncDialog({ open, onOpenChange }: FieldwireSyncDialogP
           <Button
             type="button"
             onClick={handleSync}
-            disabled={syncMutation.isPending || statusQuery.isLoading || overview?.mappedProjectCount === 0}
+            disabled={
+              syncMutation.isPending || statusQuery.isLoading || overview?.mappedProjectCount === 0
+            }
           >
             <RefreshCcw className={`size-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
             {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}

@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { TableCardHeader, TableCardHeaderClearButton } from '@/app/components/table-card-header';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderFilters,
+  TableCardHeaderTitle,
+  TableCardHeaderTrailing,
+} from '@/app/components/table-card-header';
 import { Card, CardContent } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -95,12 +101,12 @@ export function MonthlyBillsSummaryPage({ selectedDate, enabled }: MonthlyBillsS
       <Card className="overflow-hidden">
         <TableCardHeader
           title={
-            <span id="monthly-bills-summary-title" className="flex items-center">
-              Summary for {periodLabel}
+            <span id="monthly-bills-summary-title" className="contents">
+              <TableCardHeaderTitle>Summary for {periodLabel}</TableCardHeaderTitle>
             </span>
           }
           actions={
-            <div className="ml-auto flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end">
+            <TableCardHeaderFilters>
               <MonthlyBillsFilters
                 showSearch={false}
                 vendorIds={vendorIds}
@@ -114,10 +120,14 @@ export function MonthlyBillsSummaryPage({ selectedDate, enabled }: MonthlyBillsS
                 onTradeCategoryChange={setTradeCategoryIds}
                 onTradeCategorySearchChange={setTradeCategorySearch}
               />
-              {hasActiveFilters ? (
-                <TableCardHeaderClearButton active onClick={clearFilters} />
-              ) : null}
-            </div>
+            </TableCardHeaderFilters>
+          }
+          trailing={
+            <TableCardHeaderTrailing>
+              {/* Always rendered, so the row does not reflow the moment a filter
+                  is applied — the table sits directly under it. */}
+              <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
+            </TableCardHeaderTrailing>
           }
         />
 

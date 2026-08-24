@@ -1,4 +1,10 @@
-import { TableCardHeader, TableCardHeaderSearch } from '@/app/components/table-card-header';
+import {
+  TableCardHeader,
+  TableCardHeaderFilters,
+  TableCardHeaderSearch,
+  TableCardHeaderTitle,
+  TableCardHeaderTrailing,
+} from '@/app/components/table-card-header';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
@@ -20,11 +26,11 @@ import { Switch } from '@/app/components/ui/switch';
 import { formatCurrency } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { formatDateOnlyLabel } from '@/modules/monthly-bills/lib/monthly-bills-date';
+import type { RecurringBillItem } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import type {
   RecurringBillFrequency,
   RecurringBillRuleGroup,
 } from '@/modules/monthly-bills/types/recurring-bills.types';
-import type { RecurringBillItem } from '@/modules/monthly-bills/schemas/recurring-bills.schema';
 import {
   Ban,
   CalendarDays,
@@ -96,13 +102,9 @@ export function RecurringBillsWorkspace({
   return (
     <Card className="overflow-hidden">
       <TableCardHeader
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            Recurring Bills
-          </span>
-        }
+        title={<TableCardHeaderTitle>Recurring Bills</TableCardHeaderTitle>}
         actions={
-          <div className="flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:flex-row xl:flex-nowrap xl:items-center">
+          <TableCardHeaderFilters>
             <TableCardHeaderSearch
               value={search}
               placeholder="Search vendor, bill, category, or bank account..."
@@ -113,7 +115,7 @@ export function RecurringBillsWorkspace({
               value={status}
               onValueChange={(value) => onStatusChange(value as RecurringStatusFilter)}
             >
-              <SelectTrigger className="h-9 w-full border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground hover:border-table-card-header-foreground/40 xl:w-44 [&_svg]:text-table-card-header-foreground">
+              <SelectTrigger size="toolbar" className="w-full shadow-xs shadow-black/10 xl:w-44">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent align="end">
@@ -124,19 +126,17 @@ export function RecurringBillsWorkspace({
                 ))}
               </SelectContent>
             </Select>
-            {canUpdateBills && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground hover:border-table-card-header-foreground/40 hover:bg-card-header hover:text-table-card-header-foreground [&_svg]:text-table-card-header-foreground"
-                onClick={onCreateRule}
-              >
-                <Plus className="size-3.5" />
+          </TableCardHeaderFilters>
+        }
+        trailing={
+          canUpdateBills ? (
+            <TableCardHeaderTrailing>
+              <Button type="button" variant="outline" size="toolbar" onClick={onCreateRule}>
+                <Plus />
                 Add recurring bill
               </Button>
-            )}
-          </div>
+            </TableCardHeaderTrailing>
+          ) : undefined
         }
       />
 
@@ -330,7 +330,11 @@ function RecurringBillOccurrenceRow({
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase text-muted-foreground">Due date</p>
         <p className="text-sm font-semibold text-foreground">
-          {formatDateOnlyLabel(occurrence.dueDate, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {formatDateOnlyLabel(occurrence.dueDate, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })}
         </p>
       </div>
       <RecurringBillAmountCell rule={occurrence} rowState={rowState} />
@@ -424,7 +428,13 @@ function RecurringBillGroupActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Actions for ${group.name}`}>
+        <Button
+          type="button"
+          variant="ghost"
+          mode="icon"
+          size="sm"
+          aria-label={`Actions for ${group.name}`}
+        >
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -470,7 +480,13 @@ function RecurringBillOccurrenceActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" mode="icon" size="sm" aria-label={`Cycle actions for ${occurrence.name}`}>
+        <Button
+          type="button"
+          variant="ghost"
+          mode="icon"
+          size="sm"
+          aria-label={`Cycle actions for ${occurrence.name}`}
+        >
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
