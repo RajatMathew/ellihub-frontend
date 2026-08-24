@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { gcApi } from '@/modules/directory/api/gc.api';
@@ -14,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 /* ---- queries ---- */
 
 export const useGCsQuery = (params?: ListGCsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...gcKeys.list(), params],
     queryFn: () => gcApi.list(params),
   });

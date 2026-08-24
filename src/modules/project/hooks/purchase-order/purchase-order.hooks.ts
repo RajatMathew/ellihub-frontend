@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -27,7 +28,7 @@ function invalidatePOQueries(queryClient: QueryClient, poId?: string, projectId?
 /* ---- queries ---- */
 
 export const usePOsQuery = (params?: ListPOsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...poKeys.list(), params],
     queryFn: () => poApi.list(params),
   });

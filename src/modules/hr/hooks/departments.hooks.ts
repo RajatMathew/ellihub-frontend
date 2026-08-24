@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
@@ -14,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const useDepartmentsQuery = (params?: ListDepartmentsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: departmentsKeys.list(params),
     queryFn: () => departmentsApi.list(params),
   });

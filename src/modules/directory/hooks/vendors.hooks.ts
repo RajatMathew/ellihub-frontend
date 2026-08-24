@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { vendorsApi } from '@/modules/directory/api/vendors.api';
@@ -10,15 +11,14 @@ import type {
   UpdateVendorInput,
 } from '@/modules/directory/schemas/vendor.schema';
 import { filesKeys } from '@/modules/files/constants/files.keys';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ---- queries ---- */
 
 export const useVendorsQuery = (params?: ListVendorsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...vendorsKeys.list(), params],
     queryFn: () => vendorsApi.list(params),
-    placeholderData: keepPreviousData,
   });
 
 export const useVendorDetailQuery = (id: string) =>

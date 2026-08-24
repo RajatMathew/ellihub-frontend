@@ -30,6 +30,7 @@ export type {
   SortOrder,
   TabsFilterDef,
 } from './types';
+export { useListQuery } from './use-list-query';
 export { useListState, type ListState } from './use-list-state';
 export {
   useListTable,

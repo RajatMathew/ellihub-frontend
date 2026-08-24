@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { primeChangeOrderApi } from '@/modules/project/api/prime-change-order';
 import { primeChangeOrderKeys } from '@/modules/project/constants/prime-change-order';
@@ -8,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const usePrimeChangeOrdersQuery = (params: ListPrimeChangeOrderParams) =>
-  useQuery({
+  useListQuery({
     queryKey: primeChangeOrderKeys.list(params.projectId, params),
     queryFn: () => primeChangeOrderApi.list(params),
     enabled: !!params.projectId,

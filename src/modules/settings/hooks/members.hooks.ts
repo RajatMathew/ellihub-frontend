@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { membersApi } from '@/modules/settings/api/members.api';
@@ -10,11 +11,11 @@ import type {
   MemberSuspendInput,
   MemberUpdateInput,
 } from '@/modules/settings/schemas/members.schema';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const useMembersQuery = (params: MembersListParams, enabled = true) => {
-  return useQuery({
+  return useListQuery({
     queryKey: membersKeys.list(params),
     queryFn: () => membersApi.list(params),
     enabled,

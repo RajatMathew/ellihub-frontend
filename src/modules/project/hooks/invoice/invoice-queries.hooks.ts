@@ -1,10 +1,11 @@
+import { useListQuery } from '@/app/components/data-table';
 import { invoiceApi } from '@/modules/project/api/invoice';
 import { invoiceKeys } from '@/modules/project/constants/invoice';
 import type { ListInvoiceParams } from '@/modules/project/schemas/invoice';
 import { useQuery } from '@tanstack/react-query';
 
 export const useInvoiceListQuery = (params: ListInvoiceParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...invoiceKeys.list(params.projectId ?? 'all'), params],
     queryFn: () => invoiceApi.list(params),
     enabled: !!params.projectId,

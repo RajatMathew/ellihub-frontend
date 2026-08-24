@@ -9,6 +9,7 @@ import type {
   ActivityPanelCommentControls,
   ActivityPanelItem,
 } from '@/app/components/activity-panel';
+import { useListQuery } from '@/app/components/data-table';
 import { useAccess } from '@/app/contexts/access-context';
 import { activityLogKeys } from '@/app/hooks/activity-log.keys';
 import { toastApiError } from '@/app/lib/toast-api-error';
@@ -32,7 +33,7 @@ export function useActivityLogQuery(
   params?: ListActivityLogParams,
   options?: { enabled?: boolean }
 ) {
-  return useQuery({
+  return useListQuery({
     queryKey: activityLogKeys.list(params),
     queryFn: () => activityLogApi.list(params),
     enabled: options?.enabled ?? true,

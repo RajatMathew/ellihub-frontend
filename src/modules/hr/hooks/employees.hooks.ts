@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { employeesApi } from '@/modules/hr/api/employees.api';
@@ -15,7 +16,7 @@ export const useEmployeesQuery = (
   params: ListEmployeesParams,
   options: { enabled?: boolean } = {}
 ) => {
-  return useQuery({
+  return useListQuery({
     queryKey: employeesKeys.list(params),
     queryFn: () => employeesApi.list(params),
     enabled: options.enabled ?? true,
