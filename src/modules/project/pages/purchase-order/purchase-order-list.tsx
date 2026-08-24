@@ -177,7 +177,7 @@ export default function ProjectPOs() {
           className="overflow-hidden"
           empty={{
             description: 'Purchase orders will appear here once created.',
-            icon: <ClipboardList className="size-10 text-muted-foreground/50" />,
+            icon: ClipboardList,
             title: 'No purchase orders yet',
           }}
           error={{ title: 'Failed to load purchase orders' }}

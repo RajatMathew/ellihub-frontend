@@ -6,7 +6,6 @@ import {
   AlertIcon,
   AlertTitle,
 } from '@/app/components/ui/alert';
-import { Input } from '@/app/components/ui/input';
 import {
   PrimeChangeOrderListHeader,
   PrimeChangeOrderNotConnected,
@@ -31,32 +30,6 @@ import {
 import { AlertCircle, DatabaseZap, ListFilterPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 
-const costInputClassName =
-  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 placeholder:text-table-card-header-foreground/75 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-32';
-
-/**
- * Min/max cost use `f.custom` rather than a dedicated filter kind: this is the
- * only list in the app with a numeric range. Promote it to `f.numberRange` if a
- * second one appears.
- */
-function costBoundFilter(key: 'totalCostMin' | 'totalCostMax', label: string) {
-  return f.custom({
-    key,
-    render: ({ value, setValue }) => (
-      <Input
-        aria-label={label}
-        className={costInputClassName}
-        min={0}
-        placeholder={label}
-        step="0.01"
-        type="number"
-        value={value ?? ''}
-        onChange={(event) => setValue(event.target.value || undefined)}
-      />
-    ),
-  });
-}
-
 const PRIME_CHANGE_ORDER_FILTERS = [
   f.search({ className: 'sm:w-64', placeholder: 'Search change orders...' }),
   f.select({
@@ -65,8 +38,14 @@ const PRIME_CHANGE_ORDER_FILTERS = [
     options: PRIME_CHANGE_ORDER_STATUSES.map((status) => ({ label: status, value: status })),
     placeholder: 'All Statuses',
   }),
-  costBoundFilter('totalCostMin', 'Min cost'),
-  costBoundFilter('totalCostMax', 'Max cost'),
+  f.numberRange({
+    key: 'totalCostMin',
+    label: 'Cost',
+    maxLabel: 'Max cost',
+    minLabel: 'Min cost',
+    step: '0.01',
+    toKey: 'totalCostMax',
+  }),
 ];
 
 export function PrimeChangeOrderListPage() {
@@ -153,7 +132,7 @@ export function PrimeChangeOrderListPage() {
           className="overflow-hidden"
           empty={{
             description: 'Sync this project to pull Prime Change Orders from Fieldwire.',
-            icon: <DatabaseZap className="size-10 text-muted-foreground/50" />,
+            icon: DatabaseZap,
             title: 'No Fieldwire change orders',
           }}
           error={{ title: 'Failed to load change orders' }}
@@ -166,11 +145,7 @@ export function PrimeChangeOrderListPage() {
           state={state}
           tableClassNames={{ base: 'min-w-full' }}
           tableLayout={{ width: 'auto' }}
-          title={
-            <span className="flex items-center font-mono text-xs font-semibold uppercase tracking-[0.08em] !text-table-card-header-foreground">
-              Prime Change Orders
-            </span>
-          }
+          title="Prime Change Orders"
         />
       </div>
     </div>

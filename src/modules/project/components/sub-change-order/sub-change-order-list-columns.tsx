@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
+import type { ColumnDef } from '@tanstack/react-table';
 
 import {
   SubChangeOrderActionsCell,
@@ -98,8 +98,9 @@ export function useSubChangeOrderListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Amount" />,
         cell: ({ row }) => <SubChangeOrderAmountCell sco={row.original} />,
         meta: {
-          headerClassName: 'min-w-32 text-right',
-          cellClassName: 'text-right',
+          align: 'end',
+          headerClassName: 'min-w-32',
+          cellClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
       },
@@ -131,17 +132,8 @@ export function useSubChangeOrderListColumns({
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => <SubChangeOrderActionsCell sco={row.original} />,
-        meta: {
-          headerClassName: 'w-14',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({ cell: (sco) => <SubChangeOrderActionsCell sco={sco} /> }),
     ],
-    [changeTypeLabelById, projectId],
+    [changeTypeLabelById, projectId]
   );
 }

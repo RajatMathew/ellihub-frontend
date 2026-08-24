@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -16,6 +15,7 @@ import {
   VendorCell,
 } from '@/modules/project/components/invoice/invoice-list-column-cells';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
+import type { ColumnDef } from '@tanstack/react-table';
 
 export function useInvoiceListColumns(projectId: string) {
   return useMemo<ColumnDef<InvoiceListItem>[]>(
@@ -93,8 +93,9 @@ export function useInvoiceListColumns(projectId: string) {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Total" />,
         cell: ({ row }) => <TotalAmountCell invoice={row.original} />,
         meta: {
-          headerClassName: 'min-w-32 text-right',
-          cellClassName: 'text-right',
+          align: 'end',
+          headerClassName: 'min-w-32',
+          cellClassName: 'min-w-32',
           skeleton: <Skeleton className="h-3.5 w-20" />,
         },
       },
@@ -117,17 +118,8 @@ export function useInvoiceListColumns(projectId: string) {
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => <InvoiceActionsCell invoice={row.original} />,
-        meta: {
-          headerClassName: 'w-14',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({ cell: (invoice) => <InvoiceActionsCell invoice={invoice} /> }),
     ],
-    [projectId],
+    [projectId]
   );
 }

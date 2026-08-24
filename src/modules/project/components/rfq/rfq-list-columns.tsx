@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -92,23 +93,11 @@ export function useRFQListColumns({ onDelete, onVoid, onCreatePO }: UseRFQListCo
         },
         enableSorting: false,
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <RFQActionsCell
-            rfq={row.original}
-            onDelete={onDelete}
-            onVoid={onVoid}
-            onCreatePO={onCreatePO}
-          />
+      col.actions({
+        cell: (rfq) => (
+          <RFQActionsCell rfq={rfq} onCreatePO={onCreatePO} onDelete={onDelete} onVoid={onVoid} />
         ),
-        meta: {
-          headerClassName: 'w-14',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      }),
     ],
     [onCreatePO, onDelete, onVoid]
   );

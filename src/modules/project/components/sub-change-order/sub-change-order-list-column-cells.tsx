@@ -1,11 +1,5 @@
+import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import {
   ListingIdentifierLink,
   ListingIdentifierText,
@@ -13,8 +7,7 @@ import {
 import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
-import { MoreHorizontal } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import {
   formatOptionalSubChangeOrderCurrency,
@@ -144,34 +137,20 @@ export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
 }
 
 export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
+  // Stays a component because the available actions come from a query.
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
-  const canEdit = project?.capabilities?.actions?.subChangeOrder?.update === true;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem asChild>
-          <Link to={`${sco.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canEdit && (
-          <DropdownMenuItem asChild>
-            <Link to={`${sco.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <RowActions
+      label={sco.scoNumber ?? 'change order'}
+      items={[
+        { label: 'View', to: `${sco.id}` },
+        project?.capabilities?.actions?.subChangeOrder?.update === true && {
+          label: 'Edit',
+          to: `${sco.id}/edit`,
+        },
+      ]}
+    />
   );
 }

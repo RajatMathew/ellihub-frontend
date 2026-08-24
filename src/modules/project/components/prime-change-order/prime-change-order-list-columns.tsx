@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -15,6 +13,7 @@ import {
   PrimeChangeOrderStatusCell,
 } from '@/modules/project/components/prime-change-order/prime-change-order-list-column-cells';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
+import type { ColumnDef } from '@tanstack/react-table';
 
 export function usePrimeChangeOrderListColumns() {
   return useMemo<ColumnDef<PrimeChangeOrder>[]>(
@@ -38,8 +37,9 @@ export function usePrimeChangeOrderListColumns() {
         header: ({ column }) => <DataGridColumnHeader column={column} title="Total Cost" />,
         cell: ({ row }) => <PrimeChangeOrderCostCell order={row.original} />,
         meta: {
-          headerClassName: 'min-w-32 text-right',
-          cellClassName: 'text-right',
+          align: 'end',
+          headerClassName: 'min-w-32',
+          cellClassName: 'min-w-32',
           skeleton: <Skeleton className="ml-auto h-3.5 w-20" />,
         },
       },
@@ -114,6 +114,6 @@ export function usePrimeChangeOrderListColumns() {
         enableSorting: false,
       },
     ],
-    [],
+    []
   );
 }

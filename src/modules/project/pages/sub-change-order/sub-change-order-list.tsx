@@ -95,7 +95,7 @@ export function SubChangeOrderListPage() {
         className="overflow-hidden"
         empty={{
           description: 'Sub change orders will appear here once created.',
-          icon: <ClipboardList className="size-10 text-muted-foreground/50" />,
+          icon: ClipboardList,
           title: 'No sub change orders yet',
         }}
         error={{ title: 'Failed to load sub change orders' }}

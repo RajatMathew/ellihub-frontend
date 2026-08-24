@@ -1,11 +1,5 @@
+import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import {
   calculateEffectivePurchaseOrderTotals,
@@ -18,8 +12,7 @@ import {
 } from '@/modules/project/constants/purchase-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
-import { MoreHorizontal } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import {
   formatOptionalPurchaseOrderCurrency,
@@ -176,47 +169,28 @@ export function PurchaseOrderActionsCell({
   po: POListItem;
   onCancel: (po: POListItem) => void;
 }) {
+  // Stays a component because the available actions come from a query.
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const projectActions = project?.capabilities?.actions;
-  const canEdit = projectActions?.purchaseOrder?.update === true;
-  const canCancel =
-    projectActions?.purchaseOrder?.cancel === true &&
-    po.status !== 'CANCELLED' &&
-    po.status !== 'DELIVERED';
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem asChild>
-          <Link to={`${po.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canEdit && (
-          <DropdownMenuItem asChild>
-            <Link to={`${po.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-        {canCancel && (
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => onCancel(po)}
-          >
-            Cancel
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <RowActions
+      label={po.poNumber ?? 'purchase order'}
+      items={[
+        { label: 'View', to: `${po.id}` },
+        projectActions?.purchaseOrder?.update === true && {
+          label: 'Edit',
+          to: `${po.id}/edit`,
+        },
+        projectActions?.purchaseOrder?.cancel === true &&
+          po.status !== 'CANCELLED' &&
+          po.status !== 'DELIVERED' && {
+            destructive: true,
+            label: 'Cancel',
+            onSelect: () => onCancel(po),
+          },
+      ]}
+    />
   );
 }
