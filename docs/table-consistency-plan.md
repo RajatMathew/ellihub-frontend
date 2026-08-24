@@ -7,7 +7,9 @@ The [first pass](./table-unification-plan.md) collapsed six competing table syst
 put all 17 resource lists on it. Its scope note says **"theme and visual changes"** were deliberately
 out of scope. This is that work.
 
-**Status: complete.** All six phases landed. Typechecks, lints clean, production build passes. Typechecks, lints clean, production build passes.
+**Status: complete and verified.** All six phases landed. Typechecks, lints clean, production build
+passes — and the components have now been rendered and measured (see *Verification*, below), which
+found three defects that reading the code had not. Typechecks, lints clean, production build passes.
 Not yet verified in a browser — the dev server boots but the sign-in wall needs real
 credentials, the same blocker the first-pass plan carries.
 
@@ -572,11 +574,52 @@ The first pass held because it left an ESLint rule behind, not because it left a
 
 ## Verification
 
-Everything in the audit is static analysis. The first-pass plan already carries an open item saying
-nothing has been clicked through, because the sign-in wall needs real credentials.
+The sign-in wall blocks the app itself, so the components were mounted in a temporary standalone
+Vite entry — real components, mock data, no app shell and no auth — and driven at 320, 375, 768 and
+1280px in all four themes. The harness was deleted afterwards; what follows is what it established.
 
-Three items want a runtime check before the work starts:
+### Confirmed working
 
-- [ ] **G3** — the skeleton-to-data collapse, to size how bad it actually looks
-- [ ] **J1** — which empty message users actually see on a filtered list
-- [ ] **E4** — whether dropping the compensating `size-4` overrides changes icon size visibly
+- [x] **No horizontal page overflow at any width**, down to 320px. Wide tables scroll inside their
+      own container, which is the intent.
+- [x] **Every header control is 32px** and they align on one row.
+- [x] **Clear sits at the right edge at every breakpoint**, including mobile, where the header
+      stacks — the original complaint.
+- [x] **Currency headers are right-aligned on sortable columns.** Measured on a live sortable
+      column: header content sits right, cell text lines up with it. This is D1, the defect the
+      column factories existed for.
+- [x] **Filter chips**, including a deep-linked `hidden` filter, which previously had no way to
+      show itself. Removing one chip clears only that filter; Clear empties the URL.
+- [x] **Text contrast 12.3–19.0:1** for header controls across light, editorial, dark and dark-blue.
+- [x] **Status vocabulary** resolves and falls back — `PENDING_APPROVAL` → "Pending Approval"
+      caution, an unknown status → neutral rather than nothing.
+
+### Found and fixed
+
+- [x] **The refresh indicator covered the Clear button.** Anchored top-right of the Card, whose
+      first child is the header. Moved above the footer.
+- [x] **Control borders failed WCAG 1.4.11.** 25% of the header foreground composites to 1.8:1 in
+      light. A control there shares the header's background, so the border is the only thing
+      defining it. Raised to 45%, which clears 3:1 in every theme; 40% would still fail light.
+- [x] **`Reserve` was dead code.** Introduced in phase 2, never used.
+
+### One false alarm worth recording
+
+The harness initially reported the Clear button at 1.07:1 in dark — apparently invisible. It was an
+artifact: the dev server's Tailwind output was missing the `text-(--outline-button-foreground)`
+utility that the production build does emit, so the button fell back to an inherited colour.
+Measuring against the shipped stylesheet showed Clear and the selects at identical contrast in all
+four themes.
+
+**The lesson is the same one the lint gate taught**: a measurement you have not seen produce both
+answers is not a measurement. The first pass at the gate reported zero violations on a tree that
+had nineteen; this reported a failure that did not exist. Both were caught by checking the
+instrument, not the result.
+
+### Still not verified
+
+- [ ] The app's own screens, behind the sign-in wall. The harness proves the components; it does not
+      prove every page wires them the way it thinks it does.
+- [ ] Motion over time — that a filter change no longer *feels* like a page load. `keepPreviousData`
+      and the held body height are correct in code and the indicator no longer displaces anything,
+      but nobody has watched it.
