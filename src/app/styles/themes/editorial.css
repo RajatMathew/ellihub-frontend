@@ -47,7 +47,10 @@
   --warning-soft: #f7efd9;
   --warning-alpha: #ead7a5;
   --warning-accent: #b8860b;
-  --warning-soft-foreground: var(--warning-accent);
+  /* Not `--warning-accent`: #b8860b on the #f7efd9 soft surface is 2.84:1,
+     under AA for badge-sized text. Darkened within the same goldenrod family
+     to 5.73:1. */
+  --warning-soft-foreground: #7a5707;
   --info: #1a3a5f;
   --info-foreground: #fdfbf6;
   --info-soft: #ebeef3;
@@ -58,7 +61,9 @@
   --destructive-foreground: #ffffff;
   --destructive-soft: #fbe8e8;
   --destructive-alpha: #f3c2c2;
-  --destructive-soft-foreground: #dc2626;
+  /* Darker than `--destructive` (#dc2626), which reads 4.1:1 on the #fbe8e8
+     soft surface — under AA for badge-sized text. Same red, 5.49:1. */
+  --destructive-soft-foreground: #b91c1c;
 
   /** Charts **/
   --chart-1: #1a3a5f;
