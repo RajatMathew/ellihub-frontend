@@ -43,6 +43,26 @@ const bodyCellSpacingVariants = cva('', {
 
 const fallbackSkeletonWidths = ['w-32', 'w-24', 'w-40', 'w-28', 'w-20', 'w-36'] as const;
 
+/**
+ * `align` on a column's meta drives both the head and the body.
+ *
+ * The head cannot use `text-align`: a sortable header renders a flex row, which
+ * ignores it. So the head aligns with `justify-*` on that row and the body with
+ * `text-*` on the cell. Declaring alignment once and applying the right rule to
+ * each is the whole point — see `ColumnMeta.align`.
+ */
+const headerAlignClasses = {
+  start: '',
+  center: 'justify-center text-center',
+  end: 'justify-end text-end',
+} as const;
+
+const cellAlignClasses = {
+  start: '',
+  center: 'text-center',
+  end: 'text-end',
+} as const;
+
 function getPinningStyles<TData>(column: Column<TData>): CSSProperties {
   const isPinned = column.getIsPinned();
 
@@ -169,6 +189,10 @@ function DataGridTableHeadRowCell<TData>({
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&
           '[&:not([data-pinned]):has(+[data-pinned])_div.cursor-col-resize:last-child]:opacity-0 [&[data-last-col=left]_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=left][data-last-col=left]]:border-e! [&[data-pinned=right]:last-child_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=right][data-last-col=right]]:border-s! [&[data-pinned][data-last-col]]:border-border data-pinned:bg-muted/90 data-pinned:backdrop-blur-xs',
+        headerAlignClasses[header.column.columnDef.meta?.align ?? 'start'],
+        // The header's content is a flex row (sortable) or an inline-flex label
+        // (plain); both need the alignment on this element to reach them.
+        '[&>*]:w-full',
         header.column.columnDef.meta?.headerClassName,
         column.getIndex() === 0 || column.getIndex() === header.headerGroup.headers.length - 1
           ? props.tableClassNames?.edgeCell
@@ -258,6 +282,11 @@ function DataGridTableBodyRowSkeletonCell<TData>({
         bodyCellSpacing,
         props.tableLayout?.cellBorder && 'border-e',
         props.tableLayout?.columnsResizable && column.getCanResize() && 'truncate',
+        cellAlignClasses[column.columnDef.meta?.align ?? 'start'],
+        // A skeleton is an inline block, so the cell's text-align does not move
+        // it. Push it over explicitly or the loading row sits left of the data.
+        column.columnDef.meta?.align === 'end' && '[&>*]:ms-auto',
+        column.columnDef.meta?.align === 'center' && '[&>*]:mx-auto',
         column.columnDef.meta?.cellClassName,
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&
@@ -413,6 +442,7 @@ function DataGridTableBodyRowCell<TData>({
         bodyCellSpacing,
         props.tableLayout?.cellBorder && 'border-e',
         props.tableLayout?.columnsResizable && column.getCanResize() && 'truncate',
+        cellAlignClasses[cell.column.columnDef.meta?.align ?? 'start'],
         cell.column.columnDef.meta?.cellClassName,
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&

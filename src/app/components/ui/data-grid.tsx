@@ -13,6 +13,16 @@ declare module '@tanstack/react-table' {
     headerTitle?: string;
     headerClassName?: string;
     cellClassName?: string;
+    /**
+     * Horizontal alignment for the header *and* the cell, set once.
+     *
+     * `text-align` on a `headerClassName` does not align a sortable header:
+     * `DataGridColumnHeader` wraps the sort button in a flex box, which ignores
+     * it. So alignment was silently working on non-sortable columns and silently
+     * failing on sortable ones — money columns were right-aligned in the body and
+     * left-aligned in the head. Declaring it here applies the right rule to each.
+     */
+    align?: 'start' | 'center' | 'end';
     textOverflow?: 'truncate' | 'scroll' | 'wrap';
     preserveTruncatedCellLayout?: boolean;
     alwaysShowTooltip?: boolean;
