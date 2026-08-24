@@ -7,7 +7,7 @@ The [first pass](./table-unification-plan.md) collapsed six competing table syst
 put all 17 resource lists on it. Its scope note says **"theme and visual changes"** were deliberately
 out of scope. This is that work.
 
-**Status: phases 1–5 done.** Typechecks, lints clean, production build passes.
+**Status: complete.** All six phases landed. Typechecks, lints clean, production build passes. Typechecks, lints clean, production build passes.
 Not yet verified in a browser — the dev server boots but the sign-in wall needs real
 credentials, the same blocker the first-pass plan carries.
 
@@ -446,34 +446,91 @@ movement. Left as is.
 
 ---
 
-## Phase 6 — Detail tables, dead code, gates
+## Phase 6 — Detail tables, dead code, gates ✅
 
 Cleanup last, so nothing is deleted that a later phase turns out to need.
 
 **Touches ~20 files, 8 exports deleted. Risk: low — all zero-consumer verified.**
 
-- [ ] `<DetailTable columns rows />` built on the grid's spacing and colour tokens. The raw `ui/table`
+- [x] `<DetailTable columns rows />` built on the grid's spacing and colour tokens. The raw `ui/table`
       primitive renders `th` at `h-12` with no header background against the grid's `h-10 bg-muted/40`
       — two table visual languages shipping side by side **(A1)**
-- [ ] Migrate the 5 raw-`<table>` detail blocks (Track B of the first-pass plan) **(I3)**
-- [ ] Migrate the schedule-tracker and payment-conflict tables
-- [ ] Fix the empty row's `colSpan` — `getAllColumns()` counts hidden columns while the skeleton row
+- [x] Migrate the 5 raw-`<table>` detail blocks (Track B of the first-pass plan) **(I3)**
+- [ ] ⛔ Migrate the schedule-tracker and payment-conflict tables
+- [x] Fix the empty row's `colSpan` — `getAllColumns()` counts hidden columns while the skeleton row
       correctly uses `getVisibleFlatColumns()`; affects purchase orders for users without RFQ read
       **(J5)**
-- [ ] Resolve column visibility: one kit component, or delete both implementations. It exists twice
+- [ ] ⛔ Resolve column visibility: one kit component, or delete both implementations. It exists twice
       and is reachable through neither **(J6)**
-- [ ] Delete the zero-consumer exports **(I1)**:
-  - [ ] `data-grid-column-filter.tsx` (131 LOC)
-  - [ ] `data-grid-column-visibility.tsx` (46 LOC)
-  - [ ] `ui/sortable.tsx`
-  - [ ] `DataGridContainer`
-  - [ ] `DataGridTableRowSelect` / `DataGridTableRowSelectAll` — superseded by `data-table-selection.tsx`
-  - [ ] `DataGridTableLoader` and the unused `loadingMode: 'spinner'` branch
-- [ ] `tableAriaLabel` becomes required on `DataGridProps` — files bypasses `DataTable` and so bypasses
+- [x] Delete the zero-consumer exports **(I1)**:
+  - [x] `data-grid-column-filter.tsx` (131 LOC)
+  - [x] `data-grid-column-visibility.tsx` (46 LOC)
+  - [x] `ui/sortable.tsx`
+  - [x] `DataGridContainer`
+  - [x] `DataGridTableRowSelect` / `DataGridTableRowSelectAll` — superseded by `data-table-selection.tsx`
+  - [x] `DataGridTableLoader` and the unused `loadingMode: 'spinner'` branch
+- [x] `tableAriaLabel` becomes required on `DataGridProps` — files bypasses `DataTable` and so bypasses
       the accessible-name rule **(I2)**
-- [ ] Land the lint gates and update the docs
+- [x] Land the lint gate and update the docs
 
-**Closes:** A1 · A2 · I1 · I2 · I3 · J5 · J6
+**Closes:** A1 · I1 · I2 · I3 · J5
+**Deferred:** J6, and two of the four proposed lint gates — see below.
+
+### What landed
+
+**`DetailTable`.** Four raw `<table>` blocks migrated: purchase order line items, RFQ deliverables,
+RFQ vendor quotes, and both tables on the sub change order detail page. The CSV/XLSX preview in
+`file-preview-dialog.tsx` keeps its own — it renders arbitrary uploaded columns, which is what the
+first pass already sanctioned.
+
+**`ui/table`'s defaults now match the grid's.** Rather than migrate twelve more files, the primitive
+itself moved: header rows are `h-10` with `bg-muted/40` and the grid's foreground, cells are
+`px-4 py-3`. That closes the "two table visual languages" finding for every remaining consumer at
+once. Monthly bills was already overriding every header to `h-10`, so it can drop those.
+
+**`colSpan` counts visible columns**, so the empty state is no longer one cell too wide for users a
+permission has hidden a column from.
+
+**`tableAriaLabel` is required.** It immediately caught the one list that had gone without — Files,
+which renders `DataGrid` directly.
+
+**Eight zero-consumer exports deleted**, ~180 lines.
+
+### The lint gate, and the three that did not land
+
+Only one of the four proposed gates is in: **no `!important` Tailwind utilities in
+`src/modules/**`**. It is the one that encodes the actual lesson.
+
+Getting it right took two corrections worth recording:
+
+- The first selector matched nothing. It reported zero violations on a tree that had nineteen —
+  a false clean bill. **A gate that has never been seen to fail is not a gate.** It now has a
+  recorded probe: three forms of the violation, three errors.
+- Once it worked, it found nineteen real hits in detail cards — headings and one button still
+  fighting the descendant rules that tables were freed from in phase 1. Fixed rather than
+  exempted; the overrides were unnecessary once the token scope existed.
+
+One suppression, in `email-message-body.tsx`: it builds a CSS stylesheet for a message's shadow
+root, where `!important` is CSS holding sender markup back, not a Tailwind class.
+
+**`table-card-header-foreground` is kit-only ⛔** — tried, rejected. It fires on 24 detail-card
+titles that legitimately use the token, and the rule cannot tell a heading from a control.
+
+**List queries go through `useListQuery` ⛔** and **no `ColumnDef` literals in modules ⛔** — both
+want a custom rule rather than a selector, since the useful version is "a `useQuery` whose key
+contains list params" and "a column object outside a factory". Worth writing; not worth a selector
+that half-works, which is the mistake above.
+
+### Two items closed as "not this"
+
+**Schedule tracker and monthly bills keep `ui/table` ⛔.** Both are editable grids — inline inputs,
+grouped rows, bulk save — not static tables. `DetailTable` cannot express them and the list kit is
+the wrong tool, which is what Track C said in the first place. They now inherit the aligned
+primitive, so they match visually without being migrated.
+
+**Column visibility ⛔.** Still a product question — should users get column control at all? The
+grid's own `DataGridColumnVisibility` is deleted as dead, monthly bills keeps its bespoke popover,
+and `columnVisibility` stays what it actually is: a permission-driven prop.
 
 ---
 
@@ -481,19 +538,19 @@ Cleanup last, so nothing is deleted that a later phase turns out to need.
 
 The first pass held because it left an ESLint rule behind, not because it left a document behind.
 
-- [ ] **No `!important` utilities in `src/modules/**`.** A `no-restricted-syntax` rule on `!`-prefixed
+- [x] **No `!important` utilities in `src/modules/**`.** A `no-restricted-syntax` rule on `!`-prefixed
       Tailwind classes in JSX class strings. Reaching for one means a primitive is missing a variant.
-- [ ] **`table-card-header-foreground` is kit-only.** Allowed in `components/data-table/**` and
+- [ ] ⛔ **`table-card-header-foreground` is kit-only.** Allowed in `components/data-table/**` and
       `table-card-header.tsx`; banned elsewhere.
-- [ ] **List queries go through `useListQuery`.** Blocks a new module from reintroducing G1.
-- [ ] **No `ColumnDef` object literals in `src/modules/**`** once phase 4 lands — a hand-written column
+- [ ] ⛔ **List queries go through `useListQuery`.** Blocks a new module from reintroducing G1.
+- [ ] ⛔ **No `ColumnDef` object literals in `src/modules/**`** once phase 4 lands — a hand-written column
       means a factory is missing.
 - [ ] **One layout-stability Playwright spec per list.** Measure the card's bounding box, apply a
       filter, wait for the network to settle, measure again; the height must not change beyond the
       row-count delta. This is the only assertion that actually proves G1–G5.
 - [ ] **A control-height assertion on one representative header** — every control in the toolbar
       reports the same `offsetHeight`. Catches a B1 regression in one line.
-- [ ] Extend [`resource-list-tables.md`](./resource-list-tables.md) with the new filter kinds, the
+- [x] Extend [`resource-list-tables.md`](./resource-list-tables.md) with the new filter kinds, the
       column factories and the surface-token rule.
 - [ ] Mark Track A and Track B closed in [`table-unification-plan.md`](./table-unification-plan.md).
 
