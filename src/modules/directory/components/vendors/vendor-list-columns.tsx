@@ -1,17 +1,14 @@
 import { useMemo } from 'react';
 
-import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
-import { Skeleton } from '@/app/components/ui/skeleton';
+import { col } from '@/app/components/data-table';
+import { formatCurrency } from '@/app/lib/helpers';
 import type { VendorCommitmentSummary } from '@/modules/directory/components/vendors/vendor-commitment-utils';
 import {
-  VendorActionsCell,
   VendorContactCell,
-  VendorCurrencyCell,
-  VendorDocumentCountCell,
-  VendorNameCell,
   VendorTypeCell,
 } from '@/modules/directory/components/vendors/vendor-list-column-cells';
 import { getVendorPrimaryContact } from '@/modules/directory/components/vendors/vendor-list-utils';
+import { VENDOR_STATUS_LABELS } from '@/modules/directory/constants/vendors/vendor-list.constants';
 import type { Vendor } from '@/modules/directory/schemas/vendor.schema';
 import { type ColumnDef } from '@tanstack/react-table';
 
@@ -23,6 +20,10 @@ interface UseVendorListColumnsOptions {
   commitmentsByVendorId?: Map<string, VendorCommitmentSummary>;
 }
 
+function getContactCount(vendor: Vendor): number {
+  return vendor.contacts?.length ?? vendor._count?.contacts ?? 0;
+}
+
 export function useVendorListColumns({
   typeLabels,
   onDelete,
@@ -32,116 +33,79 @@ export function useVendorListColumns({
 }: UseVendorListColumnsOptions) {
   return useMemo<ColumnDef<Vendor>[]>(
     () => [
-      {
-        accessorKey: 'name',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Vendor Name" />,
-        cell: ({ row }) => <VendorNameCell vendor={row.original} />,
-        meta: {
-          headerClassName: 'w-[26%] min-w-72 max-w-[28rem]',
-          cellClassName: 'w-[26%] min-w-72 max-w-[28rem]',
-          textOverflow: 'truncate',
-          skeleton: (
-            <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-          ),
-        },
-      },
-      {
-        id: 'type',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Type" />,
-        cell: ({ row }) => <VendorTypeCell vendor={row.original} typeLabels={typeLabels} />,
-        meta: {
-          headerClassName: 'w-[12%] min-w-32',
-          cellClassName: 'w-[12%] min-w-32',
-          skeleton: <Skeleton className="h-5 w-24 rounded-sm" />,
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'contact',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Contact" />,
-        cell: ({ row }) => <VendorContactCell vendor={row.original} />,
-        meta: {
-          headerClassName: 'w-[20%] min-w-64 max-w-[24rem]',
-          cellClassName: 'w-[20%] min-w-64 max-w-[24rem]',
-          textOverflow: 'truncate',
-          tooltipContent: (vendor) =>
-            getVendorPrimaryContact(vendor)?.fullName ?? vendor.email ?? vendor.name,
-          skeleton: (
-            <div className="flex flex-col gap-1">
-              <Skeleton className="h-3.5 w-24" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-          ),
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'documents',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Documents" />,
-        cell: ({ row }) => <VendorDocumentCountCell vendor={row.original} />,
-        meta: {
-          headerClassName: 'w-[12%] min-w-36',
-          cellClassName: 'w-[12%] min-w-36',
-          skeleton: <Skeleton className="h-5 w-20 rounded-sm" />,
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'totalCommitted',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Total Committed" />,
-        cell: ({ row }) => (
-          <VendorCurrencyCell
-            value={
-              commitmentsByVendorId?.get(row.original.id)?.totalCommitted ??
-              row.original.totalCommitted
-            }
-          />
-        ),
-        meta: {
-          headerClassName: 'w-[14%] min-w-44',
-          cellClassName: 'w-[14%] min-w-44',
-          skeleton: <Skeleton className="h-3.5 w-20" />,
-        },
-        enableSorting: false,
-      },
-      {
-        id: 'balance',
-        header: ({ column }) => <DataGridColumnHeader column={column} title="Balance" />,
-        cell: ({ row }) => {
-          const commitment = commitmentsByVendorId?.get(row.original.id);
-          const balance = commitment
-            ? commitment.totalCommitted - row.original.totalPaid
-            : row.original.currentBalance;
+      col.link({
+        key: 'name',
+        title: 'Vendor Name',
+        to: (vendor) => vendor.id,
+        label: (vendor) => vendor.name,
+        secondary: (vendor) => {
+          const count = getContactCount(vendor);
+          const contacts = `${count} Contact${count === 1 ? '' : 's'}`;
 
-          return <VendorCurrencyCell value={balance} />;
+          return vendor.status === 'ACTIVE'
+            ? contacts
+            : `${contacts} · ${VENDOR_STATUS_LABELS[vendor.status]}`;
         },
-        meta: {
-          headerClassName: 'w-[10%] min-w-32',
-          cellClassName: 'w-[10%] min-w-32',
-          skeleton: <Skeleton className="h-3.5 w-16" />,
+        tooltip: (vendor) => vendor.name,
+        width: 'xl',
+      }),
+      col.custom({
+        key: 'type',
+        title: 'Type',
+        cell: (vendor) => <VendorTypeCell typeLabels={typeLabels} vendor={vendor} />,
+      }),
+      col.custom({
+        key: 'contact',
+        title: 'Contact',
+        cell: (vendor) => <VendorContactCell vendor={vendor} />,
+        tooltip: (vendor) =>
+          getVendorPrimaryContact(vendor)?.fullName ?? vendor.email ?? vendor.name,
+        width: 'lg',
+      }),
+      col.text({
+        key: 'documents',
+        title: 'Documents',
+        value: (vendor) => {
+          const count = vendor.documentCount ?? vendor._count?.documents ?? 0;
+          return `${count} Document${count === 1 ? '' : 's'}`;
         },
-        enableSorting: false,
-      },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <VendorActionsCell
-            vendor={row.original}
-            canUpdate={canUpdate}
-            canDelete={canDelete}
-            onDelete={onDelete}
-          />
-        ),
-        meta: {
-          headerClassName: 'w-16',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
+        sortable: false,
+        width: 'md',
+      }),
+      col.currency({
+        key: 'totalCommitted',
+        title: 'Total Committed',
+        value: (vendor) =>
+          formatCurrency(
+            commitmentsByVendorId?.get(vendor.id)?.totalCommitted ?? vendor.totalCommitted
+          ),
+        sortable: false,
+        width: 'md',
+      }),
+      col.currency({
+        key: 'balance',
+        title: 'Balance',
+        value: (vendor) => {
+          const commitment = commitmentsByVendorId?.get(vendor.id);
+
+          return formatCurrency(
+            commitment ? commitment.totalCommitted - vendor.totalPaid : vendor.currentBalance
+          );
         },
-        enableSorting: false,
-      },
+        sortable: false,
+      }),
+      col.actions({
+        label: (vendor) => vendor.name,
+        items: (vendor) => [
+          { label: 'View', to: `${vendor.id}` },
+          canUpdate && { label: 'Edit', to: `${vendor.id}/edit` },
+          canDelete && {
+            destructive: true,
+            label: 'Archive',
+            onSelect: () => onDelete(vendor.id),
+          },
+        ],
+      }),
     ],
     [canDelete, canUpdate, commitmentsByVendorId, onDelete, typeLabels]
   );
