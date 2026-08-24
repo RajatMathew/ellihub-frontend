@@ -1,14 +1,14 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   memberUserSchema,
   type MemberCreateInput,
   type MemberPasswordResetInput,
+  type MemberRole,
+  type MembersListParams,
+  type MembersListResponse,
   type MemberSuspendInput,
   type MemberUpdateInput,
   type MemberUser,
-  type MembersListParams,
-  type MembersListResponse,
-  type MemberRole,
 } from '@/modules/settings/schemas/members.schema';
 import type { AxiosError } from 'axios';
 
@@ -35,7 +35,11 @@ function parseApiMember(payload: ApiResponse<unknown>): MemberUser {
   return memberUserSchema.parse(payload.data);
 }
 
-function parseApiMembers(payload: ApiResponse<unknown>, fallbackPage: number, fallbackSize: number) {
+function parseApiMembers(
+  payload: ApiResponse<unknown>,
+  fallbackPage: number,
+  fallbackSize: number
+) {
   const members = memberUserSchema.array().parse(payload.data ?? []);
   const totalItems = payload.pagination?.totalItems ?? members.length;
 
@@ -43,7 +47,8 @@ function parseApiMembers(payload: ApiResponse<unknown>, fallbackPage: number, fa
     data: members,
     pagination: {
       totalItems,
-      totalPages: payload.pagination?.totalPages ?? Math.max(1, Math.ceil(totalItems / fallbackSize)),
+      totalPages:
+        payload.pagination?.totalPages ?? Math.max(1, Math.ceil(totalItems / fallbackSize)),
       currentPage: payload.pagination?.currentPage ?? fallbackPage,
       pageSize: payload.pagination?.itemsPerPage ?? fallbackSize,
     },
@@ -148,5 +153,9 @@ export const membersApi = {
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Failed to remove member.'));
     }
+  },
+
+  bulkRemove(userIds: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest('/users/bulk-delete', userIds);
   },
 };

@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
@@ -20,6 +28,7 @@ import {
   MEMBERS_SORT_BY_FIELDS,
 } from '@/modules/settings/constants/members-list.constants';
 import {
+  useBulkRemoveMembersMutation,
   useCreateMemberMutation,
   useMembersQuery,
   useRemoveMemberMutation,
@@ -35,7 +44,7 @@ import type {
   MembersListParams,
   MemberUser,
 } from '@/modules/settings/schemas/members.schema';
-import { ListFilterPlus, Plus, UserRound } from 'lucide-react';
+import { ListFilterPlus, Plus, Trash2, UserRound } from 'lucide-react';
 
 const toOptions = (labels: Record<string, string>) =>
   Object.entries(labels).map(([value, label]) => ({ label, value }));
@@ -63,6 +72,8 @@ const MEMBER_FILTERS = [
   }),
 ];
 
+const MEMBER_ITEM_LABEL = { many: 'members', one: 'member' };
+
 export default function MembersPage() {
   const { access, isAdmin, isLoading: isAccessLoading } = useAccess();
   const currentUserId = access?.userId;
@@ -73,6 +84,7 @@ export default function MembersPage() {
   const [suspendTarget, setSuspendTarget] = useState<MemberUser | null>(null);
   const [unsuspendTarget, setUnsuspendTarget] = useState<MemberUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<MemberUser | null>(null);
+  const [isBulkRemoveOpen, setBulkRemoveOpen] = useState(false);
   const [roleTarget, setRoleTarget] = useState<{ member: MemberUser; role: MemberRole } | null>(
     null
   );
@@ -101,6 +113,21 @@ export default function MembersPage() {
   const unsuspendMutation = useUnsuspendMemberMutation();
   const removeMutation = useRemoveMemberMutation();
 
+  // Only the self-check can be answered here. Whether a member is the last
+  // administrator depends on the whole organization, not the page in front of
+  // the user, so that one is left to the server and reported per id.
+  const selection = useMemo<ListSelectionConfig<MemberUser> | undefined>(
+    () =>
+      currentUserId
+        ? {
+            canSelect: (member) => member.id !== currentUserId,
+            getRowLabel: (member) => member.name,
+            ineligibleReason: 'You cannot delete your own account.',
+          }
+        : undefined,
+    [currentUserId]
+  );
+
   const columns = useMemberListColumns({
     currentUserId,
     onCheckingRegisterAccessChange: (member, enabled) =>
@@ -121,8 +148,14 @@ export default function MembersPage() {
     getRowId: (member) => member.id,
     query: membersQuery,
     rows: membersQuery.data?.data ?? [],
+    selection,
     state,
     totalCount: membersQuery.data?.pagination.totalItems ?? 0,
+  });
+
+  const bulkRemove = useBulkRemoveMembersMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkRemoveOpen(false);
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -164,6 +197,13 @@ export default function MembersPage() {
 
       <DataTable
         ariaLabel="Members"
+        bulkItemLabel={MEMBER_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkRemoveOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           description: 'Create a member or adjust the current filters.',
           icon: <UserRound className="size-10 text-muted-foreground/50" />,
@@ -265,6 +305,19 @@ export default function MembersPage() {
           );
         }}
         onOpenChange={(open) => !open && setRoleTarget(null)}
+      />
+
+      <BulkDeleteDialog
+        failures={bulkRemove.failures}
+        isPending={bulkRemove.isPending}
+        itemLabel={MEMBER_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkRemoveOpen}
+        onConfirm={() => bulkRemove.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkRemoveOpen(open);
+          if (!open) bulkRemove.reset();
+        }}
       />
 
       <ConfirmDialog
