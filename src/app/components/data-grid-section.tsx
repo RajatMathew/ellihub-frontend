@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import { renderRowSelectionCheckbox } from '@/app/components/data-table/data-table-selection';
 import { Button } from '@/app/components/ui/button';
@@ -9,7 +9,7 @@ import { DataGridTable } from '@/app/components/ui/data-grid-table';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import type { Table } from '@tanstack/react-table';
-import { AlertCircle, Loader2, RefreshCcw } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCcw, type LucideProps } from 'lucide-react';
 
 export interface DataGridSectionProps<TData extends object> {
   table: Table<TData>;
@@ -22,7 +22,8 @@ export interface DataGridSectionProps<TData extends object> {
   isError: boolean;
   errorTitle: string;
   errorDescription?: string;
-  emptyIcon: ReactNode;
+  /** The icon component. Sized and tinted here so every empty state matches. */
+  emptyIcon: ComponentType<LucideProps>;
   emptyTitle: string;
   emptyDescription?: string;
   emptyAction?: ReactNode;
@@ -80,9 +81,10 @@ export function DataGridSection<TData extends object>({
   mobileBreakpoint = 'lg',
 }: DataGridSectionProps<TData>) {
   const responsiveClasses = responsiveListClasses[mobileBreakpoint];
+  const EmptyIcon = emptyIcon;
   const emptyState = (
     <div className="flex flex-col items-center gap-2 py-8">
-      {emptyIcon}
+      <EmptyIcon className="size-10 text-muted-foreground/50" />
       <p className="text-sm font-medium">{emptyTitle}</p>
       {emptyDescription && <p className="text-xs text-muted-foreground">{emptyDescription}</p>}
       {emptyAction}
