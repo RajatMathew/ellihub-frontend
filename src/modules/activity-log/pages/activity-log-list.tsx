@@ -2,13 +2,12 @@ import { DataTable, f, useListState, useListTable } from '@/app/components/data-
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { useAccess } from '@/app/contexts/access-context';
 import { useActivityLogQuery } from '@/app/hooks/use-activity-log';
-import { ActivityEmptyIcon } from '@/modules/activity-log/components/activity-log-cells';
 import { useActivityLogColumns } from '@/modules/activity-log/components/activity-log-columns';
 import {
   ACTIVITY_ACTION_OPTIONS,
   ACTIVITY_ENTITY_OPTIONS,
 } from '@/modules/activity-log/constants/activity-log.constants';
-import { ListFilterPlus } from 'lucide-react';
+import { ListFilterPlus, Search } from 'lucide-react';
 
 const DEFAULT_PAGE_SIZE = 25;
 const ACTIVITY_SORT_BY_OPTIONS = ['createdAt'] as const;
@@ -76,23 +75,15 @@ export default function ActivityLogListPage() {
           description: state.hasActiveFilters
             ? 'Try adjusting the filters.'
             : 'Activity will appear here once users make changes.',
-          icon: <ActivityEmptyIcon />,
+          icon: Search,
           title: 'No activity found',
         }}
         error={{ title: 'Failed to load activity logs' }}
         list={list}
         state={state}
         tableLayout={{ dense: true, headerBackground: true, rowBorder: true }}
-        title={
-          <div className="flex flex-col justify-center gap-1">
-            <span className="text-xs font-semibold tracking-normal text-table-card-header-foreground">
-              Event Stream
-            </span>
-            <span className="text-xs text-table-card-header-foreground/75">
-              {list.totalCount} log entr{list.totalCount === 1 ? 'y' : 'ies'}
-            </span>
-          </div>
-        }
+        title="Event Stream"
+        titleDescription={`${list.totalCount} log entr${list.totalCount === 1 ? 'y' : 'ies'}`}
       />
     </div>
   );

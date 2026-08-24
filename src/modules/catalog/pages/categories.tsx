@@ -11,7 +11,6 @@ import {
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
 import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
 import { useCategoryListColumns } from '@/modules/catalog/components/category-list-columns';
@@ -140,13 +139,13 @@ export function CostCodeCategoriesListPage() {
         ariaLabel="Cost code categories"
         bulkItemLabel={CATEGORY_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
-          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          icon: Tag,
           title: 'No categories found',
         }}
         error={{
@@ -155,17 +154,7 @@ export function CostCodeCategoriesListPage() {
         }}
         list={list}
         state={state}
-        title={
-          list.isInitialLoading ? (
-            <span className="flex items-center">
-              <Skeleton className="h-4 w-40" />
-            </span>
-          ) : (
-            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-              All Categories ({list.totalCount})
-            </span>
-          )
-        }
+        title={`All Categories (${list.totalCount})`}
       />
 
       <CategoryFormDialog

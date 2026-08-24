@@ -1,18 +1,11 @@
 import { useMemo } from 'react';
 
-import { Button } from '@/app/components/ui/button';
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { Lookup } from '@/modules/lookup/schemas/lookup.schema';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface UseLookupListColumnsOptions {
   onEdit: (lookup: Lookup) => void;
@@ -45,44 +38,18 @@ export function useLookupListColumns({ onEdit, onDelete, canDelete }: UseLookupL
           textOverflow: 'truncate',
         },
       },
-      {
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  aria-label={`Open actions for ${row.original.label ?? row.original.type}`}
-                  mode="icon"
-                  size="sm"
-                  variant="ghost"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                  <Pencil className="size-4" />
-                  Edit
-                </DropdownMenuItem>
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
-                      <Trash2 className="size-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
-        enableSorting: false,
-        id: 'actions',
-        meta: {
-          skeleton: <Skeleton className="ms-auto h-7 w-7" />,
-        },
-      },
+      col.actions({
+        label: (lookup) => lookup.label ?? lookup.name ?? lookup.id,
+        items: (lookup) => [
+          { icon: Pencil, label: 'Edit', onSelect: () => onEdit(lookup) },
+          canDelete && {
+            destructive: true,
+            icon: Trash2,
+            label: 'Delete',
+            onSelect: () => onDelete(lookup),
+          },
+        ],
+      }),
     ],
     [canDelete, onDelete, onEdit]
   );

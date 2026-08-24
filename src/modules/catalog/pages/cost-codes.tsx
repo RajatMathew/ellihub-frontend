@@ -128,14 +128,14 @@ export function CostCodesListPage() {
         ariaLabel="Cost codes"
         bulkItemLabel={COST_CODE_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
           description: 'Click "+ Add Cost Code" to get started.',
-          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          icon: Tag,
           title: 'No cost codes found',
         }}
         error={{ title: 'Failed to load cost codes' }}

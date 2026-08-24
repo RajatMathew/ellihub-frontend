@@ -10,7 +10,6 @@ import {
   getActivityEntityLabel,
 } from '@/modules/activity-log/constants/activity-log.constants';
 import { formatActivityDate } from '@/modules/activity-log/lib/activity-log-utils';
-import { Search } from 'lucide-react';
 
 export function ActivityActionBadge({ action }: { action: string }) {
   const meta = getActivityActionMeta(action);
@@ -26,14 +25,6 @@ export function ActivityEntityBadge({ entityType }: { entityType: string }) {
     <Badge variant="outline" size="sm">
       {getActivityEntityLabel(entityType)}
     </Badge>
-  );
-}
-
-export function ActivityEmptyIcon() {
-  return (
-    <div className="flex size-10 items-center justify-center rounded-md border bg-muted/30">
-      <Search className="size-5 text-muted-foreground/60" />
-    </div>
   );
 }
 

@@ -11,7 +11,6 @@ import {
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
 import { LookupFormDialog } from '@/modules/lookup/components/lookup-form-dialog';
 import { useLookupListColumns } from '@/modules/lookup/components/lookup-list-columns';
@@ -149,13 +148,13 @@ export function LookupListPage() {
         ariaLabel="Lookups"
         bulkItemLabel={LOOKUP_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
-          icon: <Tag className="size-10 text-muted-foreground/50" />,
+          icon: Tag,
           title: 'No lookups found',
         }}
         error={{
@@ -165,17 +164,7 @@ export function LookupListPage() {
         list={list}
         state={state}
         title={
-          list.isInitialLoading ? (
-            <span className="flex items-center">
-              <Skeleton className="h-4 w-40" />
-            </span>
-          ) : (
-            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-              {typeFilter
-                ? `${typeFilter} (${list.totalCount})`
-                : `All Lookups (${list.totalCount})`}
-            </span>
-          )
+          typeFilter ? `${typeFilter} (${list.totalCount})` : `All Lookups (${list.totalCount})`
         }
       />
 
