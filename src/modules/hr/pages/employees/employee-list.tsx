@@ -103,8 +103,8 @@ export default function EmployeeListPage() {
         ariaLabel="Employees"
         bulkItemLabel={EMPLOYEE_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
@@ -112,7 +112,7 @@ export default function EmployeeListPage() {
         empty={{
           action: <NewEmployeeButton />,
           description: 'Add your first employee to start managing the workforce.',
-          icon: <Users className="size-10 text-muted-foreground/40" />,
+          icon: Users,
           title: 'No employees found',
         }}
         error={{ title: 'Failed to load employees.' }}
@@ -128,11 +128,7 @@ export default function EmployeeListPage() {
         )}
         state={state}
         tableLayout={{ width: 'fixed' }}
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            All Employees
-          </span>
-        }
+        title="All Employees"
       />
 
       <EmployeeDeleteDialog

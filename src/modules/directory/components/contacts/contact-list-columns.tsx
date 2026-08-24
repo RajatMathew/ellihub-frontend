@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
-  ContactActionsCell,
   ContactEmailCell,
   ContactLinkedCompanyCell,
   ContactNameCell,
@@ -12,6 +12,7 @@ import {
 } from '@/modules/directory/components/contacts/contact-list-column-cells';
 import type { Contact } from '@/modules/directory/schemas/contact.schema';
 import { type ColumnDef } from '@tanstack/react-table';
+import { Trash2 } from 'lucide-react';
 
 interface UseContactListColumnsOptions {
   vendorNames: Map<string, string>;
@@ -100,23 +101,19 @@ export function useContactListColumns({
         },
         enableSorting: false,
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <ContactActionsCell
-            contact={row.original}
-            canUpdate={canUpdate}
-            canDelete={canDelete}
-            onDelete={onDelete}
-          />
-        ),
-        meta: {
-          headerClassName: 'w-16',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({
+        label: (contact) => contact.fullName,
+        items: (contact) => [
+          { label: 'View', to: `${contact.id}` },
+          canUpdate && { label: 'Edit', to: `${contact.id}/edit` },
+          canDelete && {
+            destructive: true,
+            icon: Trash2,
+            label: 'Delete',
+            onSelect: () => onDelete(contact),
+          },
+        ],
+      }),
     ],
     [canDelete, canUpdate, onDelete, vendorNames]
   );

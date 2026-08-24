@@ -22,6 +22,12 @@ export interface FilterOption {
 interface FilterBase<TKey extends string, TValue, TData> {
   /** URL search-param key. Also this filter's identity in the values object. */
   key: TKey;
+  /**
+   * Human name for this filter, used by the active-filter chips. Falls back to
+   * the control's own placeholder, then to the key — so a filter with a visible
+   * placeholder rarely needs to set it, and a `hidden` filter always should.
+   */
+  label?: string;
   /** API request key, when the backend names it differently (e.g. `size` vs `limit`). */
   apiKey?: string;
   /** Parse a raw URL value into the typed value. Return `undefined` to treat it as unset. */
@@ -47,6 +53,24 @@ interface FilterBase<TKey extends string, TValue, TData> {
    * which the URL knows nothing about.
    */
   onClear?: () => void;
+  /**
+   * A control that lives in the filter row but is not a filter: a view toggle, a
+   * sort select. It reaches the URL and renders in order with everything else,
+   * but `clearFilters` leaves it alone and it never counts toward
+   * `hasActiveFilters` — clearing a filter set should not throw the user back to
+   * list view or reset how the list is sorted.
+   */
+  persistent?: boolean;
+}
+
+export interface SearchScopeConfig {
+  /** URL key holding the scope. Owned by the search filter, cleared with it. */
+  key: string;
+  options: FilterOption[];
+  /** The scope that means "no narrowing". Omitted from the URL when active. */
+  defaultValue: string;
+  /** Placeholder per scope, so the input says what it will search. */
+  placeholders?: Record<string, string>;
 }
 
 export interface SearchFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
@@ -58,6 +82,12 @@ export interface SearchFilterDef<TKey extends string = string, TData = unknown> 
   placeholder: string;
   /** Debounce applies to the draft input only; the URL always holds the committed value. */
   debounceMs?: number;
+  /**
+   * A segmented control inside the input, narrowing what the search covers —
+   * Files searches either the current folder or everything. Inline rather than a
+   * popover on focus, which is what Files did and nothing else in the app does.
+   */
+  scope?: SearchScopeConfig;
   className?: string;
 }
 
@@ -137,6 +167,76 @@ export interface HiddenFilterDef<TKey extends string = string, TData = unknown> 
   kind: 'hidden';
 }
 
+/**
+ * A from/to date pair behind a single trigger, with presets.
+ *
+ * Owns the same two keys as `dateRange`; the difference is the control. Prefer
+ * this one — two bare date inputs eat two slots of a header row and offer no
+ * "last 7 days".
+ */
+export interface DateRangePopoverFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, string, TData> {
+  kind: 'dateRangePopover';
+  toKey: string;
+  toApiKey?: string;
+  /** Trigger text when nothing is picked. */
+  placeholder?: string;
+  presets?: readonly { label: string; getValue: () => { from: Date; to: Date } }[];
+  /** Latest selectable day. Defaults to today. */
+  maxDate?: Date;
+  className?: string;
+}
+
+/** A segmented single-choice control. For view modes and short option sets. */
+export interface ToggleGroupFilterDef<
+  TKey extends string = string,
+  TValue extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, TValue, TData> {
+  kind: 'toggleGroup';
+  options: (FilterOption & { icon?: ComponentType<LucideProps>; ariaLabel?: string })[];
+  /** Show the icon only, with the label as the accessible name. */
+  iconOnly?: boolean;
+  className?: string;
+}
+
+/**
+ * A min/max number pair owning two URL keys. `key` holds the minimum, `toKey`
+ * the maximum.
+ */
+export interface NumberRangeFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, string, TData> {
+  kind: 'numberRange';
+  toKey: string;
+  toApiKey?: string;
+  minLabel?: string;
+  maxLabel?: string;
+  step?: string;
+  className?: string;
+}
+
+/**
+ * A select bound to the list's sort, not to a filter.
+ *
+ * Sorting already lives in `ListState`, so this control writes through
+ * `setSort` rather than owning a key of its own. For lists that sort from the
+ * header instead of from column headers — Files does, and its grid view has no
+ * column headers to click.
+ */
+export interface SortSelectFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends FilterBase<TKey, string, TData> {
+  kind: 'sortSelect';
+  options: FilterOption[];
+  placeholder?: string;
+  className?: string;
+}
+
 export interface CustomFilterDef<TKey extends string = string, TData = unknown> extends FilterBase<
   TKey,
   string,
@@ -158,6 +258,10 @@ export type AnyFilterDef<TData = unknown> =
   | TabsFilterDef<string, string, TData>
   | InfiniteSelectFilterDef<string, TData>
   | DateRangeFilterDef<string, TData>
+  | DateRangePopoverFilterDef<string, TData>
+  | ToggleGroupFilterDef<string, string, TData>
+  | NumberRangeFilterDef<string, TData>
+  | SortSelectFilterDef<string, TData>
   | HiddenFilterDef<string, TData>
   | CustomFilterDef<string, TData>;
 

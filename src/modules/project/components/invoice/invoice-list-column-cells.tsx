@@ -1,11 +1,5 @@
+import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import {
   ListingIdentifierLink,
   ListingIdentifierText,
@@ -14,8 +8,7 @@ import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { InvoiceListItem } from '@/modules/project/schemas/invoice';
-import { MoreHorizontal } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 function formatOptionalDate(value: string | null | undefined) {
   return value ? formatDate(value) : '-';
@@ -142,34 +135,20 @@ export function CreatedAtCell({ invoice }: { invoice: InvoiceListItem }) {
 }
 
 export function InvoiceActionsCell({ invoice }: { invoice: InvoiceListItem }) {
+  // Stays a component because the available actions come from a query.
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
-  const canEdit = project?.capabilities?.actions?.invoice?.update === true;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem asChild>
-          <Link to={`${invoice.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canEdit && (
-          <DropdownMenuItem asChild>
-            <Link to={`${invoice.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <RowActions
+      label={invoice.invoiceNumber ?? 'invoice'}
+      items={[
+        { label: 'View', to: `${invoice.id}` },
+        project?.capabilities?.actions?.invoice?.update === true && {
+          label: 'Edit',
+          to: `${invoice.id}/edit`,
+        },
+      ]}
+    />
   );
 }

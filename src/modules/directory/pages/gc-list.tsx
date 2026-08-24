@@ -155,14 +155,14 @@ export function GCListPage() {
         ariaLabel="General contractors"
         bulkItemLabel={GC_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
           description: 'Click "+ Add GC" to get started.',
-          icon: <Building2 className="size-10 text-muted-foreground/50" />,
+          icon: Building2,
           title: 'No general contractors yet',
         }}
         error={{ title: 'Failed to load general contractors' }}

@@ -1,20 +1,3 @@
-export function getRfqStatusVariant(statusName: string | null | undefined) {
-  switch (statusName) {
-    case 'PUBLISHED':
-      return 'primary' as const;
-    case 'EVALUATION':
-      return 'warning' as const;
-    case 'AWARDED':
-      return 'success' as const;
-    case 'CANCELLED':
-      return 'destructive' as const;
-    case 'DRAFT':
-    case 'VOID':
-    default:
-      return 'secondary' as const;
-  }
-}
-
 export const RFQ_TRACK_LABELS: Record<string, string> = {
   MATERIAL: 'Material',
   FABRICATION: 'Fabrication',

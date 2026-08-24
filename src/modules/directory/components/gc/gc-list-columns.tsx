@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
-  GCActionsCell,
   GCActiveProjectsCell,
   GCNameCell,
   GCPrimaryContactCell,
@@ -102,23 +102,14 @@ export function useGCListColumns({
         },
         enableSorting: false,
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <GCActionsCell
-            gc={row.original}
-            canUpdate={canUpdate}
-            canDelete={canDelete}
-            onDelete={onDelete}
-          />
-        ),
-        meta: {
-          headerClassName: 'w-16',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({
+        label: (gc) => gc.name,
+        items: (gc) => [
+          { label: 'View', to: `${gc.id}` },
+          canUpdate && { label: 'Edit', to: `${gc.id}/edit` },
+          canDelete && { destructive: true, label: 'Archive', onSelect: () => onDelete(gc.id) },
+        ],
+      }),
     ],
     [canDelete, canUpdate, onDelete, typeLabels]
   );

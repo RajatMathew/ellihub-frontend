@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { costCodeCategoriesApi } from '@/modules/catalog/api/costcode-categories.api';
@@ -75,7 +76,7 @@ export const useDeleteCostCodeCategoryMutation = () => {
 
 /* ---- cost code queries ---- */
 export const useCostCodesQuery = (filters?: CostCodeFilters) =>
-  useQuery({
+  useListQuery({
     queryKey: [...costCodesKeys.list(), filters],
     queryFn: () => costCodesApi.list(filters),
   });

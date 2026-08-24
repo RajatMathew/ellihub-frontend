@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   BulkDeleteDialog,
@@ -8,8 +8,8 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { TableCardHeaderTabs } from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import {
   canDeleteRFQ,
   getRFQTrackValue,
@@ -19,7 +19,6 @@ import {
   RFQListStats,
   useRFQListColumns,
 } from '@/modules/project/components/rfq';
-import { ProjectFilterTabs } from '@/modules/project/components/shared';
 import { RFQ_DEFAULT_PAGE_SIZE, RFQ_SORT_BY_OPTIONS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
@@ -31,7 +30,7 @@ import {
   useRFQStatsQuery,
 } from '@/modules/project/hooks/rfq';
 import type { ListRFQParams, RFQListItem } from '@/modules/project/schemas/rfq';
-import { ChevronRight, ClipboardList, ListFilterPlus, Trash2 } from 'lucide-react';
+import { ClipboardList, ListFilterPlus, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const RFQ_STATUS_FILTER_OPTIONS = [
@@ -63,7 +62,6 @@ const STATUS_FILTER = f.select({
 export default function RFQListPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const tabsScrollRef = useRef<HTMLDivElement>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<RFQListItem | null>(null);
   const [voidTarget, setVoidTarget] = useState<RFQListItem | null>(null);
@@ -86,17 +84,6 @@ export default function RFQListPage() {
       }),
     [tradeCategories]
   );
-
-  const scrollTabsForward = useCallback(() => {
-    const scrollElement = tabsScrollRef.current;
-
-    if (!scrollElement) return;
-
-    scrollElement.scrollBy({
-      behavior: 'smooth',
-      left: Math.max(scrollElement.clientWidth * 0.75, 180),
-    });
-  }, []);
 
   // Track has no server-side equivalent, so it narrows the page already on
   // screen. Declared hidden because its control lives in the header's title
@@ -173,15 +160,15 @@ export default function RFQListPage() {
         ariaLabel="RFQs"
         bulkItemLabel={RFQ_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         className="overflow-hidden"
         empty={{
           description: 'Click "+ Add RFQ" to get started.',
-          icon: <ClipboardList className="size-10 text-muted-foreground/50" />,
+          icon: ClipboardList,
           title: 'No RFQs yet',
         }}
         error={{ title: 'Failed to load RFQs' }}
@@ -190,36 +177,12 @@ export default function RFQListPage() {
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}
         title={
-          <div className="relative flex min-h-11 min-w-0 max-w-full items-stretch overflow-hidden pr-12 sm:w-[min(42vw,36rem)] lg:w-[min(46vw,42rem)] xl:w-[min(48vw,46rem)]">
-            <div
-              className="flex min-w-0 items-stretch overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              ref={tabsScrollRef}
-            >
-              <ProjectFilterTabs
-                className="w-max min-w-max flex-nowrap pr-16"
-                options={[{ label: 'All', value: undefined }, ...trackOptions]}
-                value={state.values.track}
-                onValueChange={(value) => state.setFilterValue('track', value)}
-              />
-            </div>
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex w-24 items-center justify-center bg-gradient-to-r from-card-header/0 via-card-header/90 to-card-header">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    aria-label="Scroll for more filters"
-                    className="pointer-events-auto flex size-5 cursor-pointer items-center justify-center rounded-full border border-table-card-header-foreground/25 bg-card-header text-table-card-header-foreground/80 shadow-xs shadow-black/10 transition-colors hover:border-table-card-header-foreground/45 hover:text-table-card-header-foreground"
-                    type="button"
-                    onClick={scrollTabsForward}
-                  >
-                    <ChevronRight className="size-3.5" strokeWidth={2} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="font-sans text-xs font-medium" side="bottom">
-                  Scroll for more filters
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
+          <TableCardHeaderTabs
+            activeValue={state.values.track}
+            className="sm:w-[min(42vw,36rem)] lg:w-[min(46vw,42rem)] xl:w-[min(48vw,46rem)]"
+            tabs={[{ label: 'All', value: undefined }, ...trackOptions]}
+            onChange={(value) => state.setFilterValue('track', value)}
+          />
         }
       />
 

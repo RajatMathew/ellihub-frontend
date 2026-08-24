@@ -44,7 +44,7 @@ export function VendorProjectsTab({ vendor }: VendorProjectsTabProps) {
     <Card>
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest">
             Committed Projects
           </CardTitle>
           <p className="mt-2 text-sm text-table-card-header-foreground/80">

@@ -146,6 +146,64 @@
   }
 }
 
+/**
+ * Card-header control surface.
+ *
+ * A table card header paints its own background (`--card-header`), which is dark
+ * in three of the four themes. Controls placed inside it default to the page
+ * palette and therefore disappear, which is why every header control used to
+ * carry a hand-written `!important` override string.
+ *
+ * Rather than fight each control from outside, redefine what the palette *means*
+ * inside the header. `SelectTrigger`, `InputWrapper`, `Button` and the search
+ * pickers all read these tokens already, so they render correctly here without
+ * knowing where they are.
+ *
+ * See docs/table-consistency-plan.md, phase 1.
+ */
+[data-surface='card-header'] {
+  --background: var(--card-header);
+  --foreground: var(--table-card-header-foreground);
+  /* 45%, not 25%: a control here has the same background as the header, so the
+     border is the only thing defining it. Below 45% it fails WCAG 1.4.11's 3:1
+     minimum for a UI component boundary in at least one theme — light is the
+     tightest, at 3.17:1 here and 2.69:1 at 40%. */
+  --input-border: color-mix(in srgb, var(--table-card-header-foreground) 45%, transparent);
+  --ring: color-mix(in srgb, var(--table-card-header-foreground) 40%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--table-card-header-foreground) 75%, transparent);
+  --accent: color-mix(in srgb, var(--table-card-header-foreground) 12%, transparent);
+  --accent-foreground: var(--table-card-header-foreground);
+  --secondary-foreground: var(--table-card-header-foreground);
+  /* The neutral *surfaces*, not just their text. Remapping only the foreground
+     left a badge inside a header with the page's cream `--muted` behind the
+     header's near-white text — about 1:1, i.e. invisible. A neutral chip here is
+     a translucent tint of the header's own foreground, the same way the outline
+     controls are. */
+  --muted: color-mix(in srgb, var(--table-card-header-foreground) 15%, transparent);
+  --secondary: color-mix(in srgb, var(--table-card-header-foreground) 15%, transparent);
+  --outline-button-border: color-mix(in srgb, var(--table-card-header-foreground) 45%, transparent);
+  --outline-button-background: var(--card-header);
+  --outline-button-foreground: var(--table-card-header-foreground);
+  --outline-button-hover-border: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 65%,
+    transparent
+  );
+  --outline-button-hover-background: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 10%,
+    transparent
+  );
+  --outline-button-hover-foreground: var(--table-card-header-foreground);
+}
+
+/**
+ * Popovers, dropdowns and select menus portal to the body, so they escape the
+ * scope above and correctly keep the page palette. Anything rendered inline
+ * inside the header — a badge inside a multi-select trigger, say — does not, and
+ * that is intended.
+ */
+
 /** Global Styles **/
 @layer base {
   * {

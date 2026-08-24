@@ -96,7 +96,7 @@ export function MasterScheduleCard({
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between !px-4 !py-2.5 sm:!px-4">
+        <CardHeader className="flex flex-row items-center justify-between px-4 py-2.5">
           <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
             {folderUrl ? (
               <Link to={folderUrl} className="hover:underline">
@@ -116,7 +116,11 @@ export function MasterScheduleCard({
                     disabled={isSaving || isRemoving}
                     onClick={() => setUploadOpen(true)}
                   >
-                    {masterSchedule ? <RefreshCw className="size-4" /> : <Upload className="size-4" />}
+                    {masterSchedule ? (
+                      <RefreshCw className="size-4" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
                     {masterSchedule ? 'Replace' : 'Upload'}
                   </Button>
                 )}
@@ -136,7 +140,7 @@ export function MasterScheduleCard({
           )}
         </CardHeader>
 
-        <CardContent className="!px-3 !py-2 sm:!px-3 sm:!py-2">
+        <CardContent className="px-3 py-2">
           {isLoading ? (
             <ProjectInlineListLoading rows={1} />
           ) : masterSchedule ? (

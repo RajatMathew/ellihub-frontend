@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import { DataGridSection } from '@/app/components/data-grid-section';
+import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import type { DataGridProps } from '@/app/components/ui/data-grid';
+import { SearchX, type LucideProps } from 'lucide-react';
 
 import { DataTableBulkBar, type DataTableItemLabel } from './data-table-bulk-bar';
 import { DataTableFilters } from './data-table-filters';
@@ -11,10 +13,28 @@ import type { ListState } from './use-list-state';
 import type { ListTable } from './use-list-table';
 
 export interface DataTableEmptyState {
-  icon: ReactNode;
+  /**
+   * The icon component itself, not an element — the kit sizes and tints it, so
+   * every empty state in the app matches without each page restating the class.
+   */
+  icon: ComponentType<LucideProps>;
   title: string;
   description?: string;
   action?: ReactNode;
+}
+
+/**
+ * Shown instead of `empty` when filters are active and nothing matched.
+ *
+ * A list with filters applied and no results is not the same state as a list
+ * with no records: the first-run copy ("No vendors yet — click Add Vendor")
+ * names the wrong problem and offers the wrong action. Only `title` and
+ * `description` are worth overriding; the icon and the Clear-filters action are
+ * the same on every list, so the kit supplies them.
+ */
+export interface DataTableFilteredEmptyState {
+  title?: string;
+  description?: string;
 }
 
 export interface DataTableProps<
@@ -30,14 +50,26 @@ export interface DataTableProps<
    */
   ariaLabel: string;
   empty: DataTableEmptyState;
+  /** Overrides the copy shown when filters match nothing. */
+  filteredEmpty?: DataTableFilteredEmptyState;
   error: { title: string; description?: string };
   /**
    * Render these filter definitions instead of `state.filters` — same keys, live
    * data attached. See `DataTableFilters`.
    */
   filters?: readonly AnyFilterDef<never>[];
-  /** Overrides the schema-driven title slot (tabs, by default). */
+  /**
+   * Names the list. A string takes the shared title treatment; a node is
+   * rendered as given, for a header that is genuinely its own thing. Omit both
+   * and a `tabs` filter takes the slot.
+   */
   title?: ReactNode;
+  /** Second line under a string title. */
+  titleDescription?: ReactNode;
+  /** Extra controls in the header's trailing slot, beside Clear. */
+  headerTrailing?: ReactNode;
+  /** Hides the active-filter chip row. */
+  hideFilterChips?: boolean;
   /**
    * Buttons for the rows currently selected — a Delete, typically. Rendered in a
    * bar that takes over the header while a selection is live; the count and the
@@ -83,8 +115,12 @@ export function DataTable<
   ariaLabel,
   filters,
   empty,
+  filteredEmpty,
   error,
   title,
+  titleDescription,
+  headerTrailing,
+  hideFilterChips,
   bulkActions,
   bulkItemLabel,
   replaceBody,
@@ -96,6 +132,36 @@ export function DataTable<
 }: DataTableProps<TData, TDefs, TField>) {
   const showBulkBar = Boolean(bulkActions) && list.selection.count > 0;
 
+  const schema = (filters ?? state.filters) as readonly AnyFilterDef<never>[];
+
+  // Fire onClear from the *rendered* schema: when a page attaches live data via
+  // the `filters` override, that copy is the one holding the real callbacks.
+  // Owned here rather than in the header, because the filtered-empty state needs
+  // the same action.
+  const clearAll = () => {
+    for (const def of schema) def.onClear?.();
+    state.clearFilters();
+  };
+
+  // A filtered list with no rows is its own state, and it is not "no records".
+  const isFilteredEmpty =
+    state.hasActiveFilters && !list.isInitialLoading && !list.isError && list.totalCount === 0;
+
+  const activeEmpty: DataTableEmptyState = isFilteredEmpty
+    ? {
+        action: (
+          <Button className="mt-1" size="sm" variant="outline" onClick={clearAll}>
+            Clear filters
+          </Button>
+        ),
+        description:
+          filteredEmpty?.description ??
+          'Try a different search, or clear the filters to start over.',
+        icon: SearchX,
+        title: filteredEmpty?.title ?? 'No matching results',
+      }
+    : empty;
+
   return (
     <Card className={className}>
       {showBulkBar ? (
@@ -106,15 +172,24 @@ export function DataTable<
           onClear={list.selection.clear}
         />
       ) : (
-        <DataTableFilters filters={filters} state={state} title={title} />
+        <DataTableFilters
+          description={titleDescription}
+          hideChips={hideFilterChips}
+          isTitleLoading={list.isInitialLoading}
+          schema={filters}
+          state={state}
+          title={title}
+          trailing={headerTrailing}
+          onClearAll={clearAll}
+        />
       )}
 
       {replaceBody ?? (
         <DataGridSection
-          emptyAction={empty.action}
-          emptyDescription={empty.description}
-          emptyIcon={empty.icon}
-          emptyTitle={empty.title}
+          emptyAction={activeEmpty.action}
+          emptyDescription={activeEmpty.description}
+          emptyIcon={activeEmpty.icon}
+          emptyTitle={activeEmpty.title}
           errorDescription={error.description}
           errorTitle={error.title}
           isError={list.isError}

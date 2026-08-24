@@ -58,10 +58,72 @@ module hand-maintains them.
 | `f.infiniteSelect` | Picker backed by its own paginated query. |
 | `f.dateRange` | From/to pair owning two URL keys. |
 | `f.hidden` | No control. Arrives by deep link, still reaches the request and `clearFilters`. |
-| `f.custom` | Anything else. If you reach for this more than twice across the app, widen the schema instead. |
+| `f.multiSelect` | Not built. No paginated list needs one yet — see the plan doc. |
+| `f.dateRangePopover` | One trigger, presets, apply/clear. Prefer over `f.dateRange`. |
+| `f.toggleGroup` | Segmented single choice — a view mode, a short option set. |
+| `f.numberRange` | Min/max pair owning two URL keys. |
+| `f.sortSelect` | Sorts from the header rather than a column header. Owns no key; writes through `setSort`. |
+| `f.custom` | Anything else. If you reach for this more than twice across the app, widen the schema instead. Currently unused. |
 
 Options shared by every kind: `apiKey`, `parse`, `serialize`, `toApiValue`,
-`defaultValue`, `clientPredicate`, `onClear`.
+`defaultValue`, `clientPredicate`, `onClear`, `label`, `persistent`.
+
+`persistent` marks a control that lives in the filter row and the URL without
+being a filter — a view toggle, a sort select. `clearFilters` skips it and
+`hasActiveFilters` ignores it, so clearing filters cannot switch the user back to
+list view or reset the sort.
+
+`f.search` also takes `scope`: a segmented control inside the input narrowing
+what the search covers. The scope key is owned by the search and cleared with it.
+
+## Columns
+
+Columns are declared as data too. Each kind owns alignment for the header *and*
+the cell, its width, its skeleton, and whether it sorts.
+
+```tsx
+const columns = [
+  col.link({ key: 'name', title: 'Vendor', to: (v) => v.id, label: (v) => v.name, width: 'xl' }),
+  col.status({ key: 'status', title: 'Status', value: (v) => v.status }),
+  col.currency({ key: 'balance', title: 'Balance', value: (v) => formatCurrency(v.balance) }),
+  col.actions({ label: (v) => v.name, items: (v) => [{ label: 'Edit', to: `${v.id}/edit` }] }),
+];
+```
+
+| Builder | Cell |
+| --- | --- |
+| `col.text` | Text, optionally with a quieter second line. |
+| `col.link` | The cell that opens the record — a real `<Link>`, so it is keyboard- and middle-click-friendly. |
+| `col.currency` | Right-aligned and tabular. |
+| `col.date` | Tabular, optionally muted. |
+| `col.status` | `StatusBadge`, resolved through the shared tone vocabulary. |
+| `col.actions` | The `⋯` menu. Pass `items`, or `cell` when the actions depend on a query. |
+| `col.custom` | Anything else. Still gets width, align and skeleton. |
+
+**Never set alignment through `headerClassName`.** `text-align` does not reach a
+sortable header, which renders a flex row. Use `align` on the column; the kit
+applies `justify-*` to the head and `text-*` to the cell.
+
+**Do not set `enableSorting`.** `useListTable` derives it from the list's declared
+`sort.fields`, so a column can never render a sort control that does nothing.
+
+**Widths come from `COLUMN_WIDTHS`** — `xs` through `xl`, plus a fixed `actions`.
+
+## Queries
+
+List queries go through `useListQuery`, which pins
+`placeholderData: keepPreviousData`. Without it a filter change empties the body
+and the whole table redraws as skeletons. Everything `useQuery` takes still
+passes through.
+
+Not for `mode: 'client'` lists: their query key never changes.
+
+## Detail tables
+
+A static table on a detail page — line items, deliverables — uses `DetailTable`,
+not the list kit and not a raw `<table>`. It takes the same spacing and colour
+tokens as the data grid, so a line-item table and a resource list read as the
+same kind of object.
 
 ## Bulk selection and bulk delete
 

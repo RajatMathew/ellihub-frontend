@@ -186,7 +186,7 @@ export function InvoiceListPage() {
         className="overflow-hidden"
         empty={{
           description: 'Invoices will appear here once created.',
-          icon: <FileText className="size-10 text-muted-foreground/50" />,
+          icon: FileText,
           title: 'No invoices yet',
         }}
         error={{ title: 'Failed to load invoices' }}

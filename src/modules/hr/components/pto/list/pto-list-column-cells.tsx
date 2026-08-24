@@ -1,14 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   Tooltip,
@@ -26,7 +20,7 @@ import {
   getPTOTypeLabel,
 } from '@/modules/hr/components/pto/shared/pto-utils';
 import type { PTO } from '@/modules/hr/schemas/pto.schema';
-import { Check, Edit2, Eye, MoreHorizontal, Trash2, X } from 'lucide-react';
+import { Check, Edit2, Eye, Trash2, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PTOCellProps {
@@ -127,42 +121,19 @@ export function PTOActionsCell({
         </>
       )}
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="xs" mode="icon" className="size-8 hover:bg-muted">
-            <MoreHorizontal className="size-4" />
-            <span className="sr-only">PTO actions</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem asChild>
-            <Link to={pto.id}>
-              <Eye className="size-4" />
-              View Details
-            </Link>
-          </DropdownMenuItem>
-          {pto.status === 'PENDING' && (
-            <DropdownMenuItem asChild>
-              <Link to={`${pto.id}/edit`}>
-                <Edit2 className="size-4" />
-                Edit Request
-              </Link>
-            </DropdownMenuItem>
-          )}
-          {canDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => onDelete({ id: pto.id, name: employeeName })}
-              >
-                <Trash2 className="size-4" />
-                Delete Request
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActions
+        label={employeeName}
+        items={[
+          { icon: Eye, label: 'View Details', to: pto.id },
+          pto.status === 'PENDING' && { icon: Edit2, label: 'Edit Request', to: `${pto.id}/edit` },
+          canDelete && {
+            destructive: true,
+            icon: Trash2,
+            label: 'Delete Request',
+            onSelect: () => onDelete({ id: pto.id, name: employeeName }),
+          },
+        ]}
+      />
     </div>
   );
 }

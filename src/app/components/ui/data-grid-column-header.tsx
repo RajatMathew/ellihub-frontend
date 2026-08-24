@@ -40,6 +40,12 @@ interface DataGridColumnHeaderProps<TData, TValue> extends HTMLAttributes<HTMLDi
   visibility?: boolean;
 }
 
+const alignJustify = {
+  start: 'justify-start',
+  center: 'justify-center',
+  end: 'justify-end',
+} as const;
+
 function DataGridColumnHeader<TData, TValue>({
   column,
   title = '',
@@ -49,6 +55,9 @@ function DataGridColumnHeader<TData, TValue>({
   visibility = false,
 }: DataGridColumnHeaderProps<TData, TValue>) {
   const { isLoading, table, props, recordCount } = useDataGrid();
+
+  // Declared once on the column and applied to the head and the body together.
+  const align = column.columnDef.meta?.align ?? 'start';
 
   const moveColumn = (direction: 'left' | 'right') => {
     const currentOrder = [...table.getState().columnOrder]; // Get current column order
@@ -86,6 +95,8 @@ function DataGridColumnHeader<TData, TValue>({
       <div
         className={cn(
           'text-accent-foreground font-normal inline-flex h-full items-center gap-1.5 text-[0.8125rem] leading-[calc(1.125/0.8125)] [&_svg]:size-3.5 [&_svg]:opacity-60',
+          align !== 'start' && 'w-full',
+          align !== 'start' && alignJustify[align],
           className
         )}
       >
@@ -100,7 +111,13 @@ function DataGridColumnHeader<TData, TValue>({
       <Button
         variant="ghost"
         className={cn(
-          'text-secondary-foreground rounded-md font-normal -ms-2 px-2 h-7 hover:bg-secondary data-[state=open]:bg-secondary hover:text-foreground data-[state=open]:text-foreground',
+          // Same colour as `headerLabel` below: a sortable and a non-sortable
+          // header sit in the same row and must not read as two different things.
+          // The sort chevron carries the affordance.
+          'text-accent-foreground rounded-md font-normal px-2 h-7 hover:bg-secondary data-[state=open]:bg-secondary hover:text-foreground data-[state=open]:text-foreground',
+          // The negative inset puts the label flush with the cell's padding edge
+          // rather than 8px inside it. Mirror it when the column aligns to the end.
+          align === 'end' ? '-me-2' : align === 'start' ? '-ms-2' : '',
           className
         )}
         disabled={isLoading || recordCount === 0}
@@ -148,7 +165,12 @@ function DataGridColumnHeader<TData, TValue>({
 
   const headerControls = () => {
     return (
-      <div className="flex items-center h-full gap-1.5 justify-between">
+      <div
+        className={cn(
+          'flex items-center h-full gap-1.5 justify-between',
+          align !== 'start' && alignJustify[align]
+        )}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>{headerButton()}</DropdownMenuTrigger>
           <DropdownMenuContent className="w-40" align="start">
@@ -295,7 +317,11 @@ function DataGridColumnHeader<TData, TValue>({
   }
 
   if (column.getCanSort() || (props.tableLayout?.columnsResizable && column.getCanResize())) {
-    return <div className="flex items-center h-full">{headerButton()}</div>;
+    return (
+      <div className={cn('flex items-center h-full', align !== 'start' && alignJustify[align])}>
+        {headerButton()}
+      </div>
+    );
   }
 
   return headerLabel();

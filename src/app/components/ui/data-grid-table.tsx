@@ -11,7 +11,6 @@ import {
 } from '@tanstack/react-table';
 import { cva } from 'class-variance-authority';
 
-import { Checkbox } from '@app/components/ui/checkbox';
 import { useDataGrid } from '@app/components/ui/data-grid';
 import { Skeleton } from '@app/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@app/components/ui/tooltip';
@@ -42,6 +41,26 @@ const bodyCellSpacingVariants = cva('', {
 });
 
 const fallbackSkeletonWidths = ['w-32', 'w-24', 'w-40', 'w-28', 'w-20', 'w-36'] as const;
+
+/**
+ * `align` on a column's meta drives both the head and the body.
+ *
+ * The head cannot use `text-align`: a sortable header renders a flex row, which
+ * ignores it. So the head aligns with `justify-*` on that row and the body with
+ * `text-*` on the cell. Declaring alignment once and applying the right rule to
+ * each is the whole point — see `ColumnMeta.align`.
+ */
+const headerAlignClasses = {
+  start: '',
+  center: 'justify-center text-center',
+  end: 'justify-end text-end',
+} as const;
+
+const cellAlignClasses = {
+  start: '',
+  center: 'text-center',
+  end: 'text-end',
+} as const;
 
 function getPinningStyles<TData>(column: Column<TData>): CSSProperties {
   const isPinned = column.getIsPinned();
@@ -169,6 +188,16 @@ function DataGridTableHeadRowCell<TData>({
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&
           '[&:not([data-pinned]):has(+[data-pinned])_div.cursor-col-resize:last-child]:opacity-0 [&[data-last-col=left]_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=left][data-last-col=left]]:border-e! [&[data-pinned=right]:last-child_div.cursor-col-resize:last-child]:opacity-0 [&[data-pinned=right][data-last-col=right]]:border-s! [&[data-pinned][data-last-col]]:border-border data-pinned:bg-muted/90 data-pinned:backdrop-blur-xs',
+        headerAlignClasses[header.column.columnDef.meta?.align ?? 'start'],
+        // Only when the column is actually being pushed off the start edge. The
+        // header's content is a flex row (sortable) or an inline-flex label
+        // (plain), and `justify-*` cannot move either unless it fills the cell —
+        // but stretching it unconditionally also stretches content that is not a
+        // label at all, which is what pulled the select-all checkbox into a
+        // 44px-wide box.
+        header.column.columnDef.meta?.align &&
+          header.column.columnDef.meta.align !== 'start' &&
+          '[&>*]:w-full',
         header.column.columnDef.meta?.headerClassName,
         column.getIndex() === 0 || column.getIndex() === header.headerGroup.headers.length - 1
           ? props.tableClassNames?.edgeCell
@@ -258,6 +287,11 @@ function DataGridTableBodyRowSkeletonCell<TData>({
         bodyCellSpacing,
         props.tableLayout?.cellBorder && 'border-e',
         props.tableLayout?.columnsResizable && column.getCanResize() && 'truncate',
+        cellAlignClasses[column.columnDef.meta?.align ?? 'start'],
+        // A skeleton is an inline block, so the cell's text-align does not move
+        // it. Push it over explicitly or the loading row sits left of the data.
+        column.columnDef.meta?.align === 'end' && '[&>*]:ms-auto',
+        column.columnDef.meta?.align === 'center' && '[&>*]:mx-auto',
         column.columnDef.meta?.cellClassName,
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&
@@ -413,6 +447,7 @@ function DataGridTableBodyRowCell<TData>({
         bodyCellSpacing,
         props.tableLayout?.cellBorder && 'border-e',
         props.tableLayout?.columnsResizable && column.getCanResize() && 'truncate',
+        cellAlignClasses[cell.column.columnDef.meta?.align ?? 'start'],
         cell.column.columnDef.meta?.cellClassName,
         props.tableLayout?.columnsPinnable &&
           column.getCanPin() &&
@@ -438,7 +473,10 @@ function DataGridTableBodyRowCell<TData>({
 
 function DataGridTableEmpty() {
   const { table, props } = useDataGrid();
-  const totalColumns = table.getAllColumns().length;
+  // Visible columns, not all of them: `getAllColumns` counts the ones hidden by
+  // `columnVisibility`, which made the empty row one cell too wide for exactly
+  // the users a permission had hidden a column from.
+  const totalColumns = table.getVisibleFlatColumns().length;
 
   return (
     <tr>
@@ -446,81 +484,6 @@ function DataGridTableEmpty() {
         {props.emptyMessage || 'No data available'}
       </td>
     </tr>
-  );
-}
-
-function DataGridTableLoader() {
-  const { props } = useDataGrid();
-
-  return (
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-      <div className="text-muted-foreground bg-card  flex items-center gap-2 px-4 py-2 font-medium leading-none text-sm border shadow-xs rounded-md">
-        <svg
-          className="animate-spin -ml-1 h-5 w-5 text-muted-foreground"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="3"
-          ></circle>
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          ></path>
-        </svg>
-        {props.loadingMessage || 'Loading...'}
-      </div>
-    </div>
-  );
-}
-
-function DataGridTableRowSelect<TData>({
-  row,
-  size,
-}: {
-  row: Row<TData>;
-  size?: 'sm' | 'md' | 'lg';
-}) {
-  return (
-    <>
-      <div
-        className={cn(
-          'hidden absolute top-0 bottom-0 start-0 w-[2px] bg-primary',
-          row.getIsSelected() && 'block'
-        )}
-      ></div>
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        size={size ?? 'sm'}
-        className="align-[inherit]"
-      />
-    </>
-  );
-}
-
-function DataGridTableRowSelectAll({ size }: { size?: 'sm' | 'md' | 'lg' }) {
-  const { table, recordCount, isLoading } = useDataGrid();
-
-  return (
-    <Checkbox
-      checked={
-        table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
-      }
-      disabled={isLoading || recordCount === 0}
-      onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-      aria-label="Select all"
-      size={size}
-      className="align-[inherit]"
-    />
   );
 }
 
@@ -556,6 +519,11 @@ function DataGridTable<TData>() {
       {(props.tableLayout?.stripped || !props.tableLayout?.rowBorder) && <DataGridTableRowSpacer />}
 
       <DataGridTableBody>
+        {/* `pageSize` rows is the right guess where this now runs: with
+            `useListQuery` keeping the previous page's data, a filter or sort
+            change never empties the body, so skeletons only appear on a genuine
+            first load — where the page size is all there is to go on. The card's
+            height is held separately, in DataGridSection. */}
         {props.loadingMode === 'skeleton' && isLoading && pagination?.pageSize ? (
           Array.from({ length: pagination.pageSize }).map((_, rowIndex) => (
             <DataGridTableBodyRowSkeleton key={rowIndex}>
@@ -609,8 +577,5 @@ export {
   DataGridTableHeadRow,
   DataGridTableHeadRowCell,
   DataGridTableHeadRowCellResize,
-  DataGridTableLoader,
-  DataGridTableRowSelect,
-  DataGridTableRowSelectAll,
   DataGridTableRowSpacer,
 };

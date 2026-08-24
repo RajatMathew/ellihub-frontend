@@ -1,12 +1,5 @@
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
+import { RowActions } from '@/app/components/data-table';
+import { StatusBadge } from '@/app/components/status-badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import { formatDate } from '@/app/lib/helpers';
 import {
@@ -15,10 +8,9 @@ import {
   getRFQStatusName,
   getRFQTrackLabel,
 } from '@/modules/project/components/rfq/rfq-list-utils';
-import { getRfqStatusVariant } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { RFQListItem } from '@/modules/project/schemas/rfq';
-import { FilePlus2, MoreHorizontal } from 'lucide-react';
+import { FilePlus2 } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 
 export function RFQNumberCell({ rfq }: { rfq: RFQListItem }) {
@@ -47,11 +39,7 @@ export function RFQStatusCell({ rfq }: { rfq: RFQListItem }) {
     return <span className="text-sm text-muted-foreground">-</span>;
   }
 
-  return (
-    <Badge variant={getRfqStatusVariant(statusName)} appearance="light" size="sm">
-      {getRFQStatusLabel(rfq)}
-    </Badge>
-  );
+  return <StatusBadge label={getRFQStatusLabel(rfq)} status={statusName} />;
 }
 
 export function RFQDateCell({ rfq }: { rfq: RFQListItem }) {
@@ -94,65 +82,37 @@ interface RFQActionsCellProps {
 }
 
 export function RFQActionsCell({ rfq, onDelete, onVoid, onCreatePO }: RFQActionsCellProps) {
+  // Stays a component because the available actions come from a query.
   const { projectId = '' } = useParams<{ projectId: string }>();
   const { data: project } = useProjectDetailQuery(projectId);
   const projectActions = project?.capabilities?.actions;
   const statusName = getRFQStatusName(rfq);
-  const canEdit = projectActions?.rfq?.update === true;
-  const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
-  const canDelete = projectActions?.rfq?.delete === true && canDeleteRFQ(rfq);
-  const canVoid =
-    projectActions?.rfq?.void === true && (statusName === 'PUBLISHED' || statusName === 'AWARDED');
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem asChild>
-          <Link to={`${rfq.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canEdit && (
-          <DropdownMenuItem asChild>
-            <Link to={`${rfq.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-        {canCreatePO && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onCreatePO(rfq)}>
-              <FilePlus2 className="size-4" />
-              Create PO from RFQ
-            </DropdownMenuItem>
-          </>
-        )}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onDelete(rfq)}>
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-        {canVoid && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onVoid(rfq)}>
-              Void
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <RowActions
+      label={rfq.rfqNumber ?? 'RFQ'}
+      items={[
+        { label: 'View', to: `${rfq.id}` },
+        projectActions?.rfq?.update === true && { label: 'Edit', to: `${rfq.id}/edit` },
+        projectActions?.purchaseOrder?.create === true &&
+          statusName === 'AWARDED' && {
+            icon: FilePlus2,
+            label: 'Create PO from RFQ',
+            onSelect: () => onCreatePO(rfq),
+          },
+        projectActions?.rfq?.delete === true &&
+          canDeleteRFQ(rfq) && {
+            destructive: true,
+            label: 'Delete',
+            onSelect: () => onDelete(rfq),
+          },
+        projectActions?.rfq?.void === true &&
+          (statusName === 'PUBLISHED' || statusName === 'AWARDED') && {
+            destructive: true,
+            label: 'Void',
+            onSelect: () => onVoid(rfq),
+          },
+      ]}
+    />
   );
 }

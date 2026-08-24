@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 
-import { TableCardHeader, TableCardHeaderClearButton } from '@/app/components/table-card-header';
+import {
+  TableCardHeader,
+  TableCardHeaderClearButton,
+  TableCardHeaderFilters,
+  TableCardHeaderTrailing,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
 import { Card } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
@@ -27,9 +32,6 @@ import type {
 } from '@/modules/monthly-bills/schemas/monthly-bills.schema';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
-
-const tableHeaderActionButtonClassName =
-  '!border-table-card-header-foreground/25 !bg-card-header !text-table-card-header-foreground hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
 
 interface MonthlyBillsSubcontractorPageProps {
   selectedDate: Date;
@@ -240,7 +242,7 @@ export function MonthlyBillsSubcontractorPage({
         <Card className="overflow-hidden">
           <TableCardHeader
             actions={
-              <div className="ml-auto flex w-full min-w-0 flex-col items-stretch gap-2.5 xl:w-auto xl:flex-row xl:flex-nowrap xl:items-center xl:justify-end">
+              <TableCardHeaderFilters>
                 <div className="min-w-0 xl:w-auto xl:shrink-0">
                   <MonthlyBillsFilters
                     searchInput={searchInput}
@@ -258,58 +260,58 @@ export function MonthlyBillsSubcontractorPage({
                     className="xl:w-auto xl:grid-cols-[18rem_12rem_12rem]"
                   />
                 </div>
-
-                <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end xl:w-auto xl:flex-nowrap">
-                  <MonthlyBillsColumnToggle
-                    visibleColumns={visibleColumns}
-                    onToggleColumn={toggleColumn}
-                    triggerClassName={`${tableHeaderActionButtonClassName} data-[state=open]:!border-table-card-header-foreground/40 data-[state=open]:!bg-card-header data-[state=open]:!text-table-card-header-foreground`}
-                    contentClassName="!bg-popover"
-                  />
-                  {canUpdateCurrentBills &&
-                    (effectiveBulkEditMode ? (
-                      <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={effectiveBulkSaving}
-                          onClick={handleBulkSave}
-                          className="min-w-28"
-                        >
-                          {effectiveBulkSaving ? (
-                            <Loader2 className="size-4 animate-spin text-white!" />
-                          ) : (
-                            <Save className="size-4 text-white!" />
-                          )}
-                          Save All
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={effectiveBulkSaving}
-                          onClick={handleBulkCancel}
-                          className={`min-w-24 ${tableHeaderActionButtonClassName}`}
-                        >
-                          <X className="size-3.5" />
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
+              </TableCardHeaderFilters>
+            }
+            trailing={
+              <TableCardHeaderTrailing className="w-full flex-wrap sm:w-auto">
+                <MonthlyBillsColumnToggle
+                  visibleColumns={visibleColumns}
+                  onToggleColumn={toggleColumn}
+                  contentClassName="bg-popover"
+                />
+                {canUpdateCurrentBills &&
+                  (effectiveBulkEditMode ? (
+                    <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
+                      <Button
+                        type="button"
+                        size="toolbar"
+                        disabled={effectiveBulkSaving}
+                        onClick={handleBulkSave}
+                        className="min-w-28"
+                      >
+                        {effectiveBulkSaving ? (
+                          <Loader2 className="size-4 animate-spin text-white!" />
+                        ) : (
+                          <Save className="size-4 text-white!" />
+                        )}
+                        Save All
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        onClick={() => setBulkEditMode(true)}
-                        className={`w-full shrink-0 sm:w-auto ${tableHeaderActionButtonClassName}`}
+                        size="toolbar"
+                        disabled={effectiveBulkSaving}
+                        onClick={handleBulkCancel}
+                        className="min-w-24"
                       >
-                        <Pencil className="size-3.5" />
-                        Bulk Edit
+                        <X />
+                        Cancel
                       </Button>
-                    ))}
-                  <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
-                </div>
-              </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="toolbar"
+                      onClick={() => setBulkEditMode(true)}
+                      className="w-full shrink-0 sm:w-auto"
+                    >
+                      <Pencil />
+                      Bulk Edit
+                    </Button>
+                  ))}
+                <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
+              </TableCardHeaderTrailing>
             }
           />
 

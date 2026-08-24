@@ -34,7 +34,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-xs font-semibold uppercase tracking-normal !text-table-card-header-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-normal">
           Sub Change Orders ({scos.length})
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
@@ -44,12 +44,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
             </span>
           )}
           {canCreate && createTo && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="!border-input !bg-background !text-foreground hover:!bg-background hover:!text-foreground [&_svg]:!text-muted-foreground"
-              asChild
-            >
+            <Button variant="outline" size="toolbar" asChild>
               <Link to={createTo}>
                 <Plus className="size-4" />
                 Add SCO

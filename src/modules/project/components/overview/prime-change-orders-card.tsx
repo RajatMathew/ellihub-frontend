@@ -1,4 +1,4 @@
-import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/status-badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
@@ -7,15 +7,6 @@ import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-function getStatusVariant(status: string) {
-  if (status === 'Approved') return 'success';
-  if (status === 'Rejected' || status === 'Void') return 'destructive';
-  if (status === 'Pending Approval' || status === 'Pending Revision' || status === 'Requested') {
-    return 'warning';
-  }
-  return 'secondary';
-}
 
 interface PrimeChangeOrdersCardProps {
   projectId: string;
@@ -57,14 +48,7 @@ export function PrimeChangeOrdersCard({
                     <span className="shrink-0 text-xs font-mono text-muted-foreground">
                       {pco.referenceNumber ?? '-'}
                     </span>
-                    <Badge
-                      variant={getStatusVariant(pco.statusName)}
-                      appearance="light"
-                      size="xs"
-                      className="shrink-0"
-                    >
-                      {pco.statusName}
-                    </Badge>
+                    <StatusBadge className="shrink-0" size="xs" status={pco.statusName} />
                   </div>
                   <span className="ml-auto shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums">
                     {pco.totalCost == null ? '-' : formatCurrency(pco.totalCost)}

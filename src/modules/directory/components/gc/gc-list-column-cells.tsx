@@ -1,13 +1,5 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { getInitials } from '@/app/lib/helpers';
 import {
   getGCPrimaryContact,
@@ -20,7 +12,7 @@ import {
   GC_TYPE_BADGE_VARIANTS,
 } from '@/modules/directory/constants/gc/gc-list.constants';
 import type { GeneralContractor } from '@/modules/directory/schemas/gc.schema';
-import { ExternalLink, MoreHorizontal } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function GCNameCell({ gc }: { gc: GeneralContractor }) {
@@ -115,55 +107,5 @@ export function GCActiveProjectsCell({ gc }: { gc: GeneralContractor }) {
     <span className="block text-center text-sm font-medium text-foreground">
       {gc.activeProjects ?? 0}
     </span>
-  );
-}
-
-export function GCActionsCell({
-  gc,
-  canUpdate,
-  canDelete,
-  onDelete,
-}: {
-  gc: GeneralContractor;
-  canUpdate: boolean;
-  canDelete: boolean;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-          aria-label={`Open actions for ${gc.name}`}
-        >
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem asChild>
-          <Link to={`${gc.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canUpdate && (
-          <DropdownMenuItem asChild>
-            <Link to={`${gc.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => onDelete(gc.id)}
-            >
-              Archive
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

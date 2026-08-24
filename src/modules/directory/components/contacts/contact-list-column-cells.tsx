@@ -1,13 +1,5 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { getInitials } from '@/app/lib/helpers';
 import {
@@ -15,7 +7,7 @@ import {
   type ContactLinkedEntity,
 } from '@/modules/directory/components/contacts/contact-list-utils';
 import type { Contact } from '@/modules/directory/schemas/contact.schema';
-import { Mail, MoreHorizontal, Phone, Trash2 } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function ContactNameCell({ contact }: { contact: Contact }) {
@@ -137,53 +129,5 @@ export function ContactRoleCell({ contact }: { contact: Contact }) {
     </Badge>
   ) : (
     <span className="text-sm text-muted-foreground">-</span>
-  );
-}
-
-export function ContactActionsCell({
-  contact,
-  canUpdate,
-  canDelete,
-  onDelete,
-}: {
-  contact: Contact;
-  canUpdate: boolean;
-  canDelete: boolean;
-  onDelete: (contact: Contact) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          mode="icon"
-          size="sm"
-          className="size-7"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Actions</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem asChild>
-          <Link to={`${contact.id}`}>View</Link>
-        </DropdownMenuItem>
-        {canUpdate && (
-          <DropdownMenuItem asChild>
-            <Link to={`${contact.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-        )}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={() => onDelete(contact)}>
-              <Trash2 className="size-4" />
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   BulkDeleteDialog,
   DataTableBulkBar,
+  DataTableFilters,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
 import { QueryErrorState } from '@/app/components/query-error-state';
@@ -16,7 +17,6 @@ import {
 } from '@/modules/files/components/files-breadcrumbs';
 import { FilesEmptyState } from '@/modules/files/components/files-empty-state';
 import { FilesGridContent } from '@/modules/files/components/files-grid-content';
-import { FilesListFilters } from '@/modules/files/components/files-list-filters';
 import { FilesListTable } from '@/modules/files/components/files-list-table';
 import { FilesPageDialogs } from '@/modules/files/components/files-page-dialogs';
 import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar';
@@ -28,10 +28,7 @@ import {
   useFilesDisplayData,
 } from '@/modules/files/hooks/use-files-display-data';
 import { useFilesFolderData } from '@/modules/files/hooks/use-files-folder-data';
-import {
-  useFilesListParams,
-  type FilesSearchMode,
-} from '@/modules/files/hooks/use-files-list-params';
+import { useFilesListParams } from '@/modules/files/hooks/use-files-list-params';
 import { useFilesTable } from '@/modules/files/hooks/use-files-table';
 import { useFolderZipExport } from '@/modules/files/hooks/use-folder-zip-export';
 import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
@@ -114,17 +111,13 @@ export function FilesExplorer({
     searchQuery,
     sortBy,
     sortOrder,
-    searchInput,
     searchMode,
     setSearchInput,
     updateParams,
-    handleSearchChange,
     folderId,
     viewMode,
     dateFrom,
     dateTo,
-    setSort,
-    setDateRange,
     clearFilters,
   } = listParams;
   const { rootFolder, currentFolderId, folderDetail, allChildren, isLoading, isError, refetch } =
@@ -176,7 +169,6 @@ export function FilesExplorer({
   const totalCount = isSearchActive
     ? (fileSearchQuery.data?.pagination.totalItems ?? 0)
     : folderDisplayData.totalCount;
-  const hasActiveFilters = isSearchActive || listParams.hasActiveFilters;
   const isDataLoading = isLoading || (isSearchActive && fileSearchQuery.isLoading);
   const isDataError = isError || (isSearchActive && fileSearchQuery.isError);
   const navigationRootId = rootFolderId ?? rootFolder?.id;
@@ -266,13 +258,6 @@ export function FilesExplorer({
     [setSearchInput, updateParams]
   );
 
-  const handleSearchModeChange = useCallback(
-    (value: FilesSearchMode) => {
-      updateParams({ searchMode: value === 'global' ? undefined : value, page: undefined });
-    },
-    [updateParams]
-  );
-
   const handleBreadcrumbClick = useCallback(
     (folderId?: string) => {
       updateParams({
@@ -343,15 +328,11 @@ export function FilesExplorer({
     <div className="container-fluid max-w-full overflow-x-clip py-5 sm:py-7.5">
       <FilesPageToolbar
         title={title}
-        searchInput={searchInput}
-        searchMode={searchMode}
         canCreateFolder={canCreateFolder && !!currentFolderId}
         canUpload={canUpload && !!currentFolderId}
         canExport={canExport && (!!folderDetail || folderZipExport.isExporting)}
         isExporting={folderZipExport.isExporting}
         showMutationActions={canCreateFolder || canUpload}
-        onSearchChange={handleSearchChange}
-        onSearchModeChange={handleSearchModeChange}
         onExport={handleExport}
         onCreateFolder={() => setCreateFolderOpen(true)}
         onUploadFile={() => setUploadFileOpen(true)}
@@ -370,24 +351,17 @@ export function FilesExplorer({
             itemLabel={FILES_ITEM_LABEL}
             onClear={list.selection.clear}
             actions={
-              <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-                <Trash2 className="size-3.5" />
+              <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 />
                 Delete
               </Button>
             }
           />
         ) : (
-          <FilesListFilters
-            folderName={currentFolderName}
-            sortBy={sortBy}
-            viewMode={viewMode}
-            hasActiveFilters={hasActiveFilters}
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onSortChange={(value) => setSort(value, sortOrder)}
-            onViewChange={(view) => updateParams({ view: view === 'list' ? undefined : view })}
-            onClearFilters={clearFilters}
-            onDateRangeChange={setDateRange}
+          <DataTableFilters
+            state={listParams}
+            title={currentFolderName}
+            onClearAll={clearFilters}
           />
         )}
 
@@ -406,6 +380,7 @@ export function FilesExplorer({
           <DataGrid
             table={table}
             recordCount={totalCount}
+            tableAriaLabel="Files"
             isLoading={isDataLoading}
             onRowClick={handleRowClick}
             emptyMessage={<FilesEmptyState />}

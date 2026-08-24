@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import {
@@ -38,7 +39,7 @@ export const useFolderDetailQuery = (id: string | undefined, enabled = true) =>
   });
 
 export const useFilesSearchQuery = (params: FileSearchParams, enabled: boolean) =>
-  useQuery({
+  useListQuery({
     queryKey: filesKeys.search(params),
     queryFn: () => filesApi.searchFiles(params),
     enabled,

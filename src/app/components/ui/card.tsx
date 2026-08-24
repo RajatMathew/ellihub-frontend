@@ -26,7 +26,10 @@ const useCardContext = () => {
 
 // Variants
 const cardVariants = cva(
-  'flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
+  // `relative` so an overlay inside the card — the table's refresh indicator —
+  // has a defined containing block instead of finding whichever ancestor happens
+  // to be positioned. No offsets, so it changes nothing on its own.
+  'relative flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
   {
     variants: {
       variant: {
@@ -48,8 +51,15 @@ const cardHeaderVariants = cva(
       variant: {
         default: 'border-b border-card-border',
         accent: '',
+        // Headings and links are still reached by descendant selector: they carry
+        // no palette of their own and there is nothing to hand them a token.
+        // Controls are NOT — `[data-surface=card-header]` in globals.css remaps
+        // --background / --foreground / --input-border / --accent for this
+        // subtree, so Button, Input and Select render correctly here on their own.
+        // Restyling them from out here is what forced every header control to
+        // carry an `!important` string. See docs/table-consistency-plan.md.
         themed:
-          'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_[data-slot=card-description]]:!text-card-header-foreground/80 [&_button]:bg-transparent [&_button]:text-card-header-foreground [&_button:hover]:bg-card-header-foreground/10 [&_button:hover]:text-card-header-foreground [&_button.text-foreground]:text-card-header-foreground [&_button.text-muted-foreground]:text-card-header-foreground/80 [&_button:hover.text-muted-foreground]:text-card-header-foreground [&_button.border-foreground]:border-card-header-foreground [&_button.border-transparent]:border-transparent [&_button]:border-card-header-foreground/30 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline [&_svg]:text-card-header-foreground',
+          'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_[data-slot=card-description]]:!text-card-header-foreground/80 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline',
       },
     },
     defaultVariants: {
@@ -116,6 +126,9 @@ function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement
   return (
     <div
       data-slot="card-header"
+      // Only the themed header paints its own background, so only it needs the
+      // token remap. See the `[data-surface='card-header']` block in globals.css.
+      data-surface={variant === 'themed' ? 'card-header' : undefined}
       className={cn(cardHeaderVariants({ variant }), className)}
       {...props}
     />
@@ -135,7 +148,7 @@ function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 }
 
 // CardTable Component
-function CardTable({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardTable({ className, ...props }: React.ComponentProps<'div'>) {
   const { variant } = useCardContext();
   return (
     <div

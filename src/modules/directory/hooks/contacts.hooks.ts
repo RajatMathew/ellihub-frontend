@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { contactsApi } from '@/modules/directory/api/contacts.api';
@@ -22,7 +23,7 @@ import { useForm } from 'react-hook-form';
 /* ---- contact queries ---- */
 
 export const useContactsQuery = (params?: ListContactsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...contactsKeys.list(), params],
     queryFn: () => contactsApi.list(params),
   });

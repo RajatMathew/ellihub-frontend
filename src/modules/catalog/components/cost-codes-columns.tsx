@@ -1,18 +1,10 @@
 import { useMemo } from 'react';
 
-import { Button } from '@/app/components/ui/button';
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
 import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
 
 interface UseCostCodeColumnsOptions {
   onEdit: (row: CostCode) => void;
@@ -73,41 +65,17 @@ export function useCostCodeColumns({ onEdit, onDelete, canDelete }: UseCostCodeC
         },
         enableSorting: false,
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="size-7"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onEdit(row.original)}>Edit</DropdownMenuItem>
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-        meta: {
-          headerClassName: 'w-16',
-          skeleton: <Skeleton className="ms-auto h-7 w-7" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({
+        label: (costCode) => costCode.name,
+        items: (costCode) => [
+          { label: 'Edit', onSelect: () => onEdit(costCode) },
+          canDelete && {
+            destructive: true,
+            label: 'Delete',
+            onSelect: () => onDelete(costCode),
+          },
+        ],
+      }),
     ],
     [canDelete, onEdit, onDelete]
   );

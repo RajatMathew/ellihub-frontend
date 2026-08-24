@@ -199,14 +199,14 @@ export default function MembersPage() {
         ariaLabel="Members"
         bulkItemLabel={MEMBER_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkRemoveOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkRemoveOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
           description: 'Create a member or adjust the current filters.',
-          icon: <UserRound className="size-10 text-muted-foreground/50" />,
+          icon: UserRound,
           title: 'No members found',
         }}
         error={{ title: 'Failed to load members' }}
@@ -214,11 +214,7 @@ export default function MembersPage() {
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            All Members
-          </span>
-        }
+        title="All Members"
       />
 
       <MemberFormDialog

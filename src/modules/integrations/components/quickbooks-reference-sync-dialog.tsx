@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { Alert, AlertContent, AlertDescription, AlertIcon } from '@/app/components/ui/alert';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -37,13 +38,6 @@ function formatSyncDate(value: string | null | undefined) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
-}
-
-function getStatusVariant(status: string | null | undefined) {
-  if (status === 'SUCCESS') return 'success';
-  if (status === 'FAILED') return 'destructive';
-  if (status === 'PARTIAL') return 'warning';
-  return 'secondary';
 }
 
 export function QuickBooksReferenceSyncDialog({
@@ -150,13 +144,7 @@ export function QuickBooksReferenceSyncDialog({
               <div key={entity.entity} className="rounded-md border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-medium">{entityLabels[entity.entity] ?? entity.entity}</div>
-                  <Badge
-                    variant={getStatusVariant(entity.lastSyncStatus)}
-                    appearance="light"
-                    size="sm"
-                  >
-                    {entity.lastSyncStatus ?? 'Not synced'}
-                  </Badge>
+                  <StatusBadge fallback="Not synced" status={entity.lastSyncStatus} />
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">

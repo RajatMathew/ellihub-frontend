@@ -183,11 +183,31 @@ export function useListTable<
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const { canSelect, getRowLabel, ineligibleReason, scope } = selection ?? {};
 
-  const resolvedColumns = useMemo(() => {
-    if (!getRowLabel) return columns;
+  // A column that declares nothing sorts if — and only if — the list declared its
+  // id as a sort field. TanStack defaults `enableSorting` to true, and `setSort`
+  // ignores a field the API cannot sort by, so the default used to render a sort
+  // control that responded to clicks and changed nothing. A column that sets the
+  // flag explicitly is left alone.
+  const sortFields = state.sortFields;
 
-    return [createSelectionColumn<TData>({ canSelect, getRowLabel, ineligibleReason }), ...columns];
-  }, [canSelect, columns, getRowLabel, ineligibleReason]);
+  const resolvedColumns = useMemo(() => {
+    const sortable = new Set<string>(sortFields ?? []);
+
+    const withSorting = columns.map((column) => {
+      if (column.enableSorting !== undefined) return column;
+
+      const id = column.id ?? ('accessorKey' in column ? String(column.accessorKey) : undefined);
+
+      return { ...column, enableSorting: id !== undefined && sortable.has(id) };
+    });
+
+    if (!getRowLabel) return withSorting;
+
+    return [
+      createSelectionColumn<TData>({ canSelect, getRowLabel, ineligibleReason }),
+      ...withSorting,
+    ];
+  }, [canSelect, columns, getRowLabel, ineligibleReason, sortFields]);
 
   const table = useReactTable({
     columns: resolvedColumns,

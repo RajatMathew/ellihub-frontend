@@ -1,33 +1,75 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { f, useListState } from '@/app/components/data-table';
 import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import {
+  DATE_PRESETS,
   DEFAULT_PAGE_SIZE,
   SEARCH_DEBOUNCE_MS,
   SORT_OPTIONS,
 } from '@/modules/files/constants/files.constants';
+import { LayoutGrid, List } from 'lucide-react';
 
 export type FilesViewMode = 'list' | 'grid';
 export type FilesSearchMode = 'global' | 'folder';
 
 /**
- * Files uses the data-table kit for URL state only, not for rendering.
+ * Files uses the data-table kit for URL state and for its header, not for its
+ * body.
  *
- * Its header shares no controls with the filter schema — the date filter is a
- * popover with presets and a range calendar, sorting is a select rather than
- * column headers, the view toggle is not a filter, and search lives in the page
- * toolbar. The body also swaps between a sectioned table and a card grid. Going
- * through `DataTable` would take three render escape hatches and turn every
- * header control into a custom one, so it stops at this layer deliberately.
+ * The body still renders itself — it swaps between a sectioned table and a card
+ * grid, rows navigate on click, and the error state sits outside the grid — so
+ * this stops short of `DataTable`. The header, which used to be a bespoke
+ * component with its own copy of every control's class string, now comes from
+ * the same schema every other list uses.
  *
- * The date bounds and folder are declared hidden: they carry no control of their
- * own here, but they belong in the request and in `clearFilters`.
+ * Three of its controls are not filters: the view toggle, the sort select and
+ * the search scope. They are declared `persistent` (or owned by the search),
+ * so `clearFilters` cannot switch the user back to list view or reset the sort.
  */
 const FILES_FILTERS = [
-  f.search({ debounceMs: SEARCH_DEBOUNCE_MS, placeholder: 'Search files...' }),
-  f.hidden({ key: 'dateFrom' }),
-  f.hidden({ key: 'dateTo' }),
+  f.search({
+    debounceMs: SEARCH_DEBOUNCE_MS,
+    placeholder: 'Search files...',
+    scope: {
+      defaultValue: 'global',
+      key: 'searchMode',
+      options: [
+        { label: 'All', value: 'global' },
+        { label: 'Folder', value: 'folder' },
+      ],
+      placeholders: {
+        folder: 'Search this folder...',
+        global: 'Search all files...',
+      },
+    },
+  }),
+  f.dateRangePopover({
+    key: 'dateFrom',
+    label: 'Uploaded',
+    placeholder: 'Date range',
+    presets: DATE_PRESETS,
+    toKey: 'dateTo',
+  }),
+  f.sortSelect({
+    options: [
+      { label: 'Newest', value: 'createdAt' },
+      { label: 'Name', value: 'name' },
+      { label: 'Size', value: 'size' },
+      { label: 'Last Updated', value: 'updatedAt' },
+    ],
+    placeholder: 'Sort by',
+  }),
+  f.toggleGroup({
+    defaultValue: 'list',
+    iconOnly: true,
+    key: 'view',
+    options: [
+      { icon: List, label: 'List view', value: 'list' },
+      { icon: LayoutGrid, label: 'Grid view', value: 'grid' },
+    ],
+    persistent: true,
+  }),
 ];
 
 export function useFilesListParams() {
@@ -37,13 +79,9 @@ export function useFilesListParams() {
     sort: { by: 'updatedAt', fields: SORT_OPTIONS, order: 'desc' },
   });
 
-  // View mode, search scope and the current folder are navigation state, not
-  // filters, so they stay outside the schema and are read straight from the URL.
+  // The current folder is navigation, not a filter: it is set by the breadcrumbs
+  // and by clicking a folder row, and clearing filters must not leave it.
   const { searchParams, updateParams } = useUrlParamPatch();
-
-  const viewMode: FilesViewMode = searchParams.get('view') === 'grid' ? 'grid' : 'list';
-  const searchMode: FilesSearchMode =
-    searchParams.get('searchMode') === 'folder' ? 'folder' : 'global';
   const folderId = searchParams.get('folderId') ?? undefined;
 
   useEffect(() => {
@@ -52,23 +90,16 @@ export function useFilesListParams() {
     updateParams({ folderPath: undefined });
   }, [searchParams, updateParams]);
 
-  const setDateRange = useCallback(
-    (from: string | undefined, to: string | undefined) => {
-      updateParams({ dateFrom: from, dateTo: to, page: undefined });
-    },
-    [updateParams]
-  );
-
   return {
     ...state,
-    dateFrom: state.values.dateFrom,
-    handleSearchChange: state.setSearchInput,
-    updateParams,
-    dateTo: state.values.dateTo,
+    // Read from `rawValues`: a range owns two URL keys but `FilterValues` maps
+    // only the definition's primary `key`, so `dateTo` is not on the typed side.
+    dateFrom: state.rawValues.dateFrom,
+    dateTo: state.rawValues.dateTo,
     folderId,
-    searchMode,
+    searchMode: (state.rawValues.searchMode === 'folder' ? 'folder' : 'global') as FilesSearchMode,
     searchQuery: state.values.search ?? '',
-    setDateRange,
-    viewMode,
+    updateParams,
+    viewMode: (state.rawValues.view === 'grid' ? 'grid' : 'list') as FilesViewMode,
   };
 }

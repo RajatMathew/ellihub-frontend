@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 
-import { TableCardHeader, TableCardHeaderToolbar } from '@/app/components/table-card-header';
+import {
+  TableCardHeader,
+  TableCardHeaderFilters,
+  TableCardHeaderTrailing,
+} from '@/app/components/table-card-header';
 import { Button } from '@/app/components/ui/button';
 import { X } from 'lucide-react';
 
@@ -42,19 +46,22 @@ export function DataTableBulkBar({ count, itemLabel, actions, onClear }: DataTab
           {count} {noun} selected
         </span>
       }
+      // Same three slots as the filter header, so the bar taking it over does not
+      // move anything sideways. Actions arrive from the page as plain buttons, so
+      // the bar sizes them itself rather than trusting each caller to pass
+      // `size="toolbar"` — without it the page's Delete sat 4px shorter than Clear.
       actions={
-        <TableCardHeaderToolbar className="flex-wrap justify-end">
+        <TableCardHeaderFilters className="[&>[data-slot=button]]:h-8">
           {actions}
-          <Button
-            className="h-8 text-xs text-table-card-header-foreground hover:bg-table-card-header-foreground/10 hover:text-table-card-header-foreground"
-            size="sm"
-            variant="ghost"
-            onClick={onClear}
-          >
-            <X className="size-3.5" />
+        </TableCardHeaderFilters>
+      }
+      trailing={
+        <TableCardHeaderTrailing>
+          <Button size="toolbar" variant="ghost" onClick={onClear}>
+            <X strokeWidth={2} />
             Clear
           </Button>
-        </TableCardHeaderToolbar>
+        </TableCardHeaderTrailing>
       }
     />
   );

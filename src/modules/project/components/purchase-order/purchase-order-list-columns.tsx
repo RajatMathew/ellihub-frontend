@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 
-import type { ColumnDef } from '@tanstack/react-table';
-
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
+import type { ColumnDef } from '@tanstack/react-table';
 
 import {
   PurchaseOrderActionsCell,
@@ -43,8 +43,7 @@ export function usePurchaseOrderListColumns({
           textOverflow: 'truncate',
           preserveTruncatedCellLayout: true,
           alwaysShowTooltip: true,
-          tooltipContent: (po) =>
-            [po.poNumber ?? '-', po.description].filter(Boolean).join('\n'),
+          tooltipContent: (po) => [po.poNumber ?? '-', po.description].filter(Boolean).join('\n'),
           skeleton: (
             <div className="flex flex-col gap-1.5">
               <Skeleton className="h-3.5 w-28" />
@@ -68,9 +67,7 @@ export function usePurchaseOrderListColumns({
       {
         accessorKey: 'rfqId',
         header: ({ column }) => <DataGridColumnHeader column={column} title="RFQ" />,
-        cell: ({ row }) => (
-          <PurchaseOrderRfqCell po={row.original} projectId={projectId} />
-        ),
+        cell: ({ row }) => <PurchaseOrderRfqCell po={row.original} projectId={projectId} />,
         meta: {
           headerClassName: 'min-w-28',
           textOverflow: 'truncate',
@@ -119,8 +116,9 @@ export function usePurchaseOrderListColumns({
         header: ({ column }) => <DataGridColumnHeader column={column} title="Amount" />,
         cell: ({ row }) => <PurchaseOrderAmountCell po={row.original} />,
         meta: {
-          headerClassName: 'min-w-40 text-right',
-          cellClassName: 'text-right',
+          align: 'end',
+          headerClassName: 'min-w-40',
+          cellClassName: 'min-w-40',
           skeleton: (
             <div className="flex flex-col items-end gap-1">
               <Skeleton className="h-3.5 w-20" />
@@ -153,19 +151,10 @@ export function usePurchaseOrderListColumns({
           skeleton: <Skeleton className="h-3.5 w-24" />,
         },
       },
-      {
-        id: 'actions',
-        header: () => null,
-        cell: ({ row }) => (
-          <PurchaseOrderActionsCell po={row.original} onCancel={onCancel} />
-        ),
-        meta: {
-          headerClassName: 'w-14',
-          skeleton: <Skeleton className="size-7 rounded-md" />,
-        },
-        enableSorting: false,
-      },
+      col.actions({
+        cell: (po) => <PurchaseOrderActionsCell po={po} onCancel={onCancel} />,
+      }),
     ],
-    [onCancel, projectId, tradeCategoryLabelById],
+    [onCancel, projectId, tradeCategoryLabelById]
   );
 }

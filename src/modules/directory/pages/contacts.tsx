@@ -146,14 +146,14 @@ export function ContactsListPage() {
         ariaLabel="Contacts"
         bulkItemLabel={CONTACT_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
           description: 'Click "+ Add Contact" to get started.',
-          icon: <Users className="size-10 text-muted-foreground/50" />,
+          icon: Users,
           title: 'No contacts yet',
         }}
         error={{ title: 'Failed to load contacts' }}
@@ -161,11 +161,7 @@ export function ContactsListPage() {
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            Contact Directory
-          </span>
-        }
+        title="Contact Directory"
       />
 
       <ConfirmDialog

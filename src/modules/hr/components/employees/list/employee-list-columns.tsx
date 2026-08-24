@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
@@ -91,23 +92,11 @@ export function useEmployeeListColumns(
           ),
         },
       },
-      {
-        id: 'actions',
-        size: 64,
-        header: () => null,
-        cell: ({ row }) => (
-          <EmployeeActionsCell canDelete={canDelete} employee={row.original} onDelete={onDelete} />
+      col.actions({
+        cell: (employee) => (
+          <EmployeeActionsCell canDelete={canDelete} employee={employee} onDelete={onDelete} />
         ),
-        meta: {
-          headerClassName: 'w-16 text-end pr-4',
-          skeleton: (
-            <div className="flex justify-end pr-2">
-              <Skeleton className="size-8 rounded-md" />
-            </div>
-          ),
-        },
-        enableSorting: false,
-      },
+      }),
     ],
     [canDelete, onDelete]
   );

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
-import { AlertTriangle, ExternalLink, Plug, Power, Settings2, ShieldAlert } from 'lucide-react';
-
+import { StatusBadge } from '@/app/components/status-badge';
 import {
   Alert,
   AlertContent,
@@ -19,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
   Card,
@@ -32,6 +30,7 @@ import {
 } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import type { QuickBooksStatus } from '@/modules/integrations/schemas/quickbooks.schema';
+import { AlertTriangle, ExternalLink, Plug, Power, Settings2, ShieldAlert } from 'lucide-react';
 
 type QuickBooksStatusCardProps = {
   status: QuickBooksStatus;
@@ -52,14 +51,14 @@ const formatDateTime = (value: string | null): string => {
 
 const getConnectionBadge = (status: QuickBooksStatus) => {
   if (!status.configured) {
-    return { label: 'Config needed', variant: 'warning' as const };
+    return { label: 'Config needed', tone: 'caution' as const };
   }
 
   if (status.connection?.status === 'CONNECTED') {
-    return { label: 'Connected', variant: 'success' as const };
+    return { label: 'Connected', tone: 'positive' as const };
   }
 
-  return { label: 'Not connected', variant: 'secondary' as const };
+  return { label: 'Not connected', tone: 'neutral' as const };
 };
 
 function DetailItem({ label, value }: { label: string; value: string }) {
@@ -134,9 +133,7 @@ export function QuickBooksStatusCard({
             <CardDescription>Accounting connection</CardDescription>
           </CardHeading>
           <CardToolbar className="flex-wrap">
-            <Badge variant={badge.variant} appearance="light">
-              {badge.label}
-            </Badge>
+            <StatusBadge label={badge.label} size="md" status={null} tone={badge.tone} />
             <Button variant="outline" size="sm" asChild>
               <a
                 href="https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0"

@@ -23,6 +23,8 @@ const inputVariants = cva(
         lg: 'h-10 px-4 text-sm rounded-md file:pe-4 file:me-4',
         md: 'h-8.5 px-3 text-[0.8125rem] leading-(--text-sm--line-height) rounded-md file:pe-3 file:me-3',
         sm: 'h-7 px-2.5 text-xs rounded-md file:pe-2.5 file:me-2.5',
+        // 32px table-card-header row. See docs/table-consistency-plan.md, phase 1.
+        toolbar: 'h-8 px-3 text-xs rounded-md file:pe-3 file:me-3',
       },
     },
     defaultVariants: {
@@ -39,6 +41,7 @@ const inputAddonVariants = cva(
         sm: 'rounded-md h-7 min-w-7 text-xs px-2.5 [&_svg:not([class*=size-])]:size-3.5',
         md: 'rounded-md h-8.5 min-w-8.5 px-3 text-[0.8125rem] leading-(--text-sm--line-height) [&_svg:not([class*=size-])]:size-4.5',
         lg: 'rounded-md h-10 min-w-10 px-4 text-sm [&_svg:not([class*=size-])]:size-4.5',
+        toolbar: 'rounded-md h-8 min-w-8 px-3 text-xs [&_svg:not([class*=size-])]:size-4',
       },
       mode: {
         default: '',
@@ -112,6 +115,7 @@ const inputWrapperVariants = cva(
         sm: 'gap-1.25 [&_svg:not([class*=size-])]:size-3.5',
         md: 'gap-1.5 [&_svg:not([class*=size-])]:size-4',
         lg: 'gap-1.5 [&_svg:not([class*=size-])]:size-4',
+        toolbar: 'gap-2 [&_svg:not([class*=size-])]:size-4',
       },
     },
     defaultVariants: {

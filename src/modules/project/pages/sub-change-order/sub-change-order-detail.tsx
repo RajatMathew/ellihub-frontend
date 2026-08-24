@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { DetailTable } from '@/app/components/detail-table';
 import {
   Toolbar,
   ToolbarActions,
@@ -27,6 +28,7 @@ import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { useResponsiveDetailSidebar } from '@/app/hooks/use-responsive-detail-sidebar';
 import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatDecimal } from '@/app/lib/helpers';
+import { cn } from '@/app/lib/utils';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -822,47 +824,43 @@ export function SCODetailPage() {
                     ))}
                   </div>
 
-                  <div className="hidden overflow-x-auto lg:block">
-                    <table className="min-w-max w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left">
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            PO Item
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                            Qty
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            Unit
-                          </th>
-                          <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {purchaseOrderDetail.lineItems.map((item) => (
-                          <tr key={item.id} className="border-b last:border-0">
-                            <td className="py-2.5 pr-4">
+                  <DetailTable
+                    ariaLabel="Purchase order items"
+                    className="hidden lg:block"
+                    columns={[
+                      { key: 'description', header: 'PO Item' },
+                      { align: 'end', key: 'quantity', header: 'Qty' },
+                      { key: 'unit', header: 'Unit' },
+                      { align: 'end', key: 'amount', header: 'Amount' },
+                    ]}
+                    rows={purchaseOrderDetail.lineItems}
+                    getRowId={(item) => item.id}
+                    renderCell={(item, key) => {
+                      switch (key) {
+                        case 'description':
+                          return (
+                            <>
                               <div className="font-medium">{item.description}</div>
                               {item.notes && (
                                 <div className="mt-1 text-xs text-muted-foreground">
                                   {item.notes}
                                 </div>
                               )}
-                            </td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {formatDecimal(item.quantity)}
-                            </td>
-                            <td className="py-2.5 pr-4">{lookupLabel(item.unit ?? item.unitId)}</td>
-                            <td className="py-2.5 text-right font-medium tabular-nums">
-                              {money(item.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </>
+                          );
+                        case 'quantity':
+                          return (
+                            <span className="tabular-nums">{formatDecimal(item.quantity)}</span>
+                          );
+                        case 'unit':
+                          return lookupLabel(item.unit ?? item.unitId);
+                        default:
+                          return (
+                            <span className="font-medium tabular-nums">{money(item.amount)}</span>
+                          );
+                      }
+                    }}
+                  />
                 </div>
               ) : null}
             </CardContent>
@@ -965,121 +963,84 @@ export function SCODetailPage() {
                     </div>
                   </div>
 
-                  <div className="hidden overflow-x-auto lg:block">
-                    <table className="min-w-max w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-left">
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            #
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            Description
-                          </th>
-                          <th className="w-40 pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            Cost Code
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                            Qty
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase">
-                            Unit
-                          </th>
-                          <th className="pb-2 pr-4 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                            Unit Price
-                          </th>
-                          <th className="pb-2 text-xs font-semibold tracking-normal text-muted-foreground uppercase text-right">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sco.lineItems.map((li, idx) => (
-                          <tr key={li.id} className="border-b last:border-0">
-                            <td className="py-2.5 pr-4 text-muted-foreground">{idx + 1}</td>
-                            <td className="py-2.5 pr-4">
+                  <DetailTable
+                    ariaLabel="Change order line items"
+                    className="hidden lg:block"
+                    columns={[
+                      { key: 'index', header: '#', width: 'w-8' },
+                      { key: 'description', header: 'Description' },
+                      { key: 'costCode', header: 'Cost Code', width: 'w-40' },
+                      { align: 'end', key: 'quantity', header: 'Qty' },
+                      { key: 'unit', header: 'Unit' },
+                      { align: 'end', key: 'unitPrice', header: 'Unit Price' },
+                      { align: 'end', key: 'amount', header: 'Amount' },
+                    ]}
+                    rows={sco.lineItems}
+                    getRowId={(li) => li.id}
+                    renderCell={(li, key, idx) => {
+                      switch (key) {
+                        case 'index':
+                          return <span className="text-muted-foreground">{idx + 1}</span>;
+                        case 'description':
+                          return (
+                            <>
                               <div className="font-medium">{li.description}</div>
                               {li.notes && (
                                 <div className="mt-1 text-xs text-muted-foreground">{li.notes}</div>
                               )}
-                            </td>
-                            <td className="py-2.5 pr-4 text-xs text-muted-foreground">
+                            </>
+                          );
+                        case 'costCode':
+                          return (
+                            <span className="text-xs text-muted-foreground">
                               {li.costCodeId ? (costCodeMap.get(li.costCodeId) ?? '-') : '-'}
-                            </td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">
+                            </span>
+                          );
+                        case 'quantity':
+                          return (
+                            <span className="tabular-nums">
                               {li.quantity != null || li.qty != null
                                 ? formatDecimal(li.quantity ?? li.qty)
                                 : '-'}
-                            </td>
-                            <td className="py-2.5 pr-4">{lookupLabel(li.unit ?? li.unitId)}</td>
-                            <td className="py-2.5 pr-4 text-right tabular-nums">
-                              {money(li.unitPrice)}
-                            </td>
-                            <td className="py-2.5 text-right font-medium tabular-nums">
+                            </span>
+                          );
+                        case 'unit':
+                          return lookupLabel(li.unit ?? li.unitId);
+                        case 'unitPrice':
+                          return <span className="tabular-nums">{money(li.unitPrice)}</span>;
+                        default:
+                          return (
+                            <span className="font-medium tabular-nums">
                               {money(lineAmount(li))}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={6} className="pt-3 text-right text-xs text-muted-foreground">
-                            Subtotal
-                          </td>
-                          <td className="pt-3 text-right tabular-nums text-sm">{money(amount)}</td>
-                        </tr>
+                            </span>
+                          );
+                      }
+                    }}
+                    footer={
+                      <>
+                        <SCOTotalRow label="Subtotal" value={money(amount)} />
                         {negotiatedDiscount !== 0 && (
-                          <tr>
-                            <td
-                              colSpan={6}
-                              className="pt-1 text-right text-xs text-muted-foreground"
-                            >
-                              Negotiated Discount
-                            </td>
-                            <td className="pt-1 text-right tabular-nums text-sm">
-                              -{money(negotiatedDiscount)}
-                            </td>
-                          </tr>
+                          <SCOTotalRow
+                            label="Negotiated Discount"
+                            value={`-${money(negotiatedDiscount)}`}
+                          />
                         )}
                         {shippingHandlingFee !== 0 && (
-                          <tr>
-                            <td
-                              colSpan={6}
-                              className="pt-1 text-right text-xs text-muted-foreground"
-                            >
-                              Shipping and Handling Fee
-                            </td>
-                            <td className="pt-1 text-right tabular-nums text-sm">
-                              {money(shippingHandlingFee)}
-                            </td>
-                          </tr>
+                          <SCOTotalRow
+                            label="Shipping and Handling Fee"
+                            value={money(shippingHandlingFee)}
+                          />
                         )}
                         {taxAmount !== 0 && (
-                          <tr>
-                            <td
-                              colSpan={6}
-                              className="pt-1 text-right text-xs text-muted-foreground"
-                            >
-                              {formatPurchaseOrderTaxLabel(taxPercent)}
-                            </td>
-                            <td className="pt-1 text-right tabular-nums text-sm">
-                              {money(taxAmount)}
-                            </td>
-                          </tr>
+                          <SCOTotalRow
+                            label={formatPurchaseOrderTaxLabel(taxPercent)}
+                            value={money(taxAmount)}
+                          />
                         )}
-                        <tr className="border-t">
-                          <td
-                            colSpan={6}
-                            className="pt-2 text-right text-xs font-semibold tracking-normal text-muted-foreground uppercase"
-                          >
-                            Total
-                          </td>
-                          <td className="pt-2 text-right font-semibold tabular-nums">
-                            {money(totalAmount)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                        <SCOTotalRow emphasis label="Total" value={money(totalAmount)} />
+                      </>
+                    }
+                  />
                 </>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-6 text-center">
@@ -1473,5 +1434,33 @@ export function SCODetailPage() {
         file={attachmentPreviewFile}
       />
     </div>
+  );
+}
+
+/** A totals row under the change order's line items. */
+function SCOTotalRow({
+  label,
+  value,
+  emphasis,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <tr>
+      <td
+        colSpan={6}
+        className={cn(
+          'px-4 py-1.5 text-end text-xs text-muted-foreground',
+          emphasis && 'font-semibold uppercase tracking-normal'
+        )}
+      >
+        {label}
+      </td>
+      <td className={cn('px-4 py-1.5 text-end text-sm tabular-nums', emphasis && 'font-semibold')}>
+        {value}
+      </td>
+    </tr>
   );
 }

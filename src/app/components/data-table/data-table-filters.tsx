@@ -3,31 +3,65 @@ import { Fragment, type ReactNode } from 'react';
 import {
   TableCardHeader,
   TableCardHeaderClearButton,
+  TableCardHeaderFilters,
   TableCardHeaderSearch,
   TableCardHeaderSelect,
   TableCardHeaderTabs,
-  TableCardHeaderToolbar,
+  TableCardHeaderTitle,
+  TableCardHeaderTrailing,
 } from '@/app/components/table-card-header';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { cn } from '@/app/lib/utils';
 
+import { collectActiveFilterChips } from './active-filter-chips';
+import { DataTableFilterChips } from './data-table-chips';
+import {
+  DateRangePopoverControl,
+  NumberRangeControl,
+  SortSelectControl,
+  ToggleGroupControl,
+} from './data-table-controls';
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
 
 const ALL_VALUE = 'all';
 
 /**
- * Shared trigger styling so pickers sit flush with the other header controls
- * instead of each page restating the same class string.
+ * Controls carry no colour here: the header stamps `data-surface="card-header"`
+ * and the token block in globals.css remaps the palette for the subtree. All a
+ * control needs is `size="toolbar"` — the 32px row this header sits on — and its
+ * width. See docs/table-consistency-plan.md, phase 1.
  */
-const dataTableFilterTriggerClassName =
-  'h-8 rounded-md !border-table-card-header-foreground/25 !bg-card-header !text-xs !font-medium !text-table-card-header-foreground shadow-xs shadow-black/10 hover:!border-table-card-header-foreground/40 hover:!bg-card-header [&_svg]:!text-table-card-header-foreground';
+const dataTableFilterShadowClassName = 'shadow-xs shadow-black/10';
 
-const dataTableFilterPlaceholderClassName = '!text-table-card-header-foreground/75';
+/**
+ * The order controls are rendered in, by kind.
+ *
+ * Order is a property of the kind, decided once here. Previously it was implicit
+ * in schema order, so a page could reorder its own header by rearranging its
+ * array and no two lists were guaranteed to read the same way. Tabs are absent
+ * because they occupy the title slot instead.
+ */
+const CONTROL_ORDER: Record<string, number> = {
+  search: 0,
+  select: 1,
+  infiniteSelect: 2,
+  numberRange: 3,
+  dateRange: 4,
+  dateRangePopover: 4,
+  custom: 5,
+  // Not filters: they sort or switch the view, so they sit after everything that
+  // narrows the list.
+  sortSelect: 6,
+  toggleGroup: 7,
+  hidden: 8,
+};
 
-const dataTableDateInputClassName =
-  'h-8 w-full rounded-md border-table-card-header-foreground/25 bg-card-header text-xs font-medium text-table-card-header-foreground shadow-xs shadow-black/10 hover:border-table-card-header-foreground/40 hover:bg-card-header focus-visible:!border-table-card-header-foreground/40 focus-visible:!outline-none focus-visible:!ring-0 sm:w-36';
+function controlRank(def: AnyFilterDef<never>): number {
+  return CONTROL_ORDER[def.kind] ?? 99;
+}
 
 interface DataTableFiltersProps<
   TDefs extends readonly AnyFilterDef<never>[],
@@ -35,155 +69,282 @@ interface DataTableFiltersProps<
 > {
   state: ListState<TDefs, TField>;
   /**
-   * Render these definitions instead of `state.filters`. Same keys, but with live
-   * data attached — for controls whose options depend on the query results, which
-   * cannot exist until after `useListState` has produced the request params.
+   * Render these definitions instead of `state.filters` — same keys, live data
+   * attached. Omit it and the state's own schema is used.
    */
-  filters?: readonly AnyFilterDef<never>[];
-  /** Rendered to the left of the controls. Tabs take this slot automatically. */
+  schema?: readonly AnyFilterDef<never>[];
+  /** Clears every filter, including companion local state. Owned by `DataTable`. */
+  onClearAll: () => void;
+  /**
+   * A string is rendered with the shared title treatment; a node is rendered as
+   * given, for the rare header that is genuinely its own thing. Tabs take this
+   * slot automatically when neither is supplied.
+   */
   title?: ReactNode;
+  /** Second line under a string title. */
+  description?: ReactNode;
+  /** Holds the title's shape with a skeleton while the list's first page loads. */
+  isTitleLoading?: boolean;
+  /** Extra controls for the trailing slot, beside Clear. */
+  trailing?: ReactNode;
+  /** Hides the active-filter chip row. */
+  hideChips?: boolean;
 }
 
 /**
  * Renders a filter schema into the shared table card header.
  *
- * Control order is fixed — tabs occupy the title slot, then search, then selects,
- * then custom controls, then the clear button — so every list in the app reads
- * the same way without each module re-deciding its own layout.
+ * Slot order is fixed — tabs or a title, then the controls in `CONTROL_ORDER`,
+ * then the trailing group holding Clear — so every list in the app reads the same
+ * way without each module re-deciding its own layout.
  */
 export function DataTableFilters<
   TDefs extends readonly AnyFilterDef<never>[],
   TField extends string,
->({ state, filters, title }: DataTableFiltersProps<TDefs, TField>) {
+>({
+  state,
+  schema: schemaOverride,
+  onClearAll,
+  title,
+  description,
+  isTitleLoading,
+  trailing,
+  hideChips,
+}: DataTableFiltersProps<TDefs, TField>) {
   const { hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } = state;
 
-  const schema = (filters ?? state.filters) as readonly AnyFilterDef<never>[];
+  // The one cast in the renderer. A schema is a tuple of concrete definitions;
+  // the union it belongs to cannot be proven from the tuple's own variance.
+  const defs = (schemaOverride ?? state.filters) as readonly AnyFilterDef<never>[];
 
-  // Fire onClear from the *rendered* schema: when a page attaches live data via
-  // the `filters` override, that copy is the one holding the real callbacks.
-  const clearAll = () => {
-    for (const def of schema) def.onClear?.();
-    state.clearFilters();
-  };
-  const tabsDef = schema.find((def) => def.kind === 'tabs');
-  const controls = schema.filter((def) => def.kind !== 'tabs');
+  const tabsDef = defs.find((def) => def.kind === 'tabs');
+  const controls = defs
+    .filter((def) => def.kind !== 'tabs')
+    .slice()
+    .sort((a, b) => controlRank(a) - controlRank(b));
 
   const titleContent =
-    title ??
-    (tabsDef ? (
-      <TableCardHeaderTabs
-        activeValue={rawValues[tabsDef.key]}
-        isLoading={tabsDef.isLoading}
-        tabs={[{ label: 'All', value: undefined }, ...tabsDef.options]}
-        onChange={(value) => setFilterValue(tabsDef.key, value)}
-      />
-    ) : undefined);
+    typeof title === 'string' ? (
+      <TableCardHeaderTitle description={description} isLoading={isTitleLoading}>
+        {title}
+      </TableCardHeaderTitle>
+    ) : (
+      (title ??
+      (tabsDef ? (
+        <TableCardHeaderTabs
+          activeValue={rawValues[tabsDef.key]}
+          isLoading={tabsDef.isLoading}
+          tabs={[{ label: 'All', value: undefined }, ...tabsDef.options]}
+          onChange={(value) => setFilterValue(tabsDef.key, value)}
+        />
+      ) : undefined))
+    );
+
+  const chips = hideChips ? [] : collectActiveFilterChips(defs, rawValues);
 
   return (
-    <TableCardHeader
-      title={titleContent}
-      actions={
-        <TableCardHeaderToolbar className="flex-wrap">
-          {controls.map((def) => {
-            if (def.kind === 'search') {
-              return (
-                <TableCardHeaderSearch
-                  key={def.key}
-                  className={def.className}
-                  placeholder={def.placeholder}
-                  value={searchInput}
-                  onChange={setSearchInput}
-                />
-              );
-            }
+    <>
+      <TableCardHeader
+        title={titleContent}
+        actions={
+          <TableCardHeaderFilters>
+            {controls.map((def) => {
+              if (def.kind === 'search') {
+                const scope = def.scope;
+                const scopeValue = scope ? (rawValues[scope.key] ?? scope.defaultValue) : undefined;
 
-            if (def.kind === 'select') {
-              const allValue = def.allValue ?? ALL_VALUE;
-
-              // Options often arrive from their own query. Hold the row's shape
-              // with a skeleton rather than flashing an empty select.
-              if (def.isLoading) {
-                return <Skeleton key={def.key} className="h-8 w-full sm:w-44" />;
+                return (
+                  <TableCardHeaderSearch
+                    key={def.key}
+                    className={def.className}
+                    placeholder={
+                      (scope && scopeValue && scope.placeholders?.[scopeValue]) || def.placeholder
+                    }
+                    scope={
+                      scope && scopeValue
+                        ? {
+                            // Drop the default scope from the URL rather than
+                            // writing it: otherwise the unfiltered state carries
+                            // a param, and `hasActiveFilters` lights up Clear on
+                            // a list nobody has filtered.
+                            onChange: (value) =>
+                              setFilterValue(
+                                scope.key,
+                                value === scope.defaultValue ? undefined : value
+                              ),
+                            options: scope.options,
+                            value: scopeValue,
+                          }
+                        : undefined
+                    }
+                    value={searchInput}
+                    onChange={setSearchInput}
+                  />
+                );
               }
 
-              return (
-                <TableCardHeaderSelect
-                  key={def.key}
-                  className={def.className}
-                  icon={def.icon}
-                  options={[{ label: def.placeholder, value: allValue }, ...def.options]}
-                  placeholder={def.placeholder}
-                  value={rawValues[def.key] ?? allValue}
-                  onValueChange={(value) =>
-                    setFilterValue(def.key, value === allValue ? undefined : value)
-                  }
-                />
-              );
-            }
+              if (def.kind === 'select') {
+                const allValue = def.allValue ?? ALL_VALUE;
 
-            if (def.kind === 'dateRange') {
-              return (
-                <Fragment key={def.key}>
-                  <Input
-                    aria-label={def.fromLabel ?? 'From date'}
-                    className={def.className ?? dataTableDateInputClassName}
-                    type="date"
-                    value={rawValues[def.key] ?? ''}
-                    onChange={(event) => setFilterValue(def.key, event.target.value || undefined)}
-                  />
-                  <Input
-                    aria-label={def.toLabel ?? 'To date'}
-                    className={def.className ?? dataTableDateInputClassName}
-                    type="date"
-                    value={rawValues[def.toKey] ?? ''}
-                    onChange={(event) => setFilterValue(def.toKey, event.target.value || undefined)}
-                  />
-                </Fragment>
-              );
-            }
+                // Options often arrive from their own query. Hold the row's shape
+                // with a skeleton rather than flashing an empty select.
+                if (def.isLoading) {
+                  return (
+                    <Skeleton key={def.key} className={cn('h-8 w-full sm:w-44', def.className)} />
+                  );
+                }
 
-            if (def.kind === 'infiniteSelect') {
-              return (
-                <div className={def.className ?? 'w-full sm:w-52'} key={def.key}>
-                  <InfiniteSearchSelect
-                    emptyMessage={def.emptyMessage}
-                    hasNextPage={def.hasNextPage}
-                    isFetchingNextPage={def.isFetchingNextPage}
-                    isLoading={def.isLoading}
-                    options={def.options}
+                return (
+                  <TableCardHeaderSelect
+                    key={def.key}
+                    className={def.className}
+                    icon={def.icon}
+                    options={[{ label: def.placeholder, value: allValue }, ...def.options]}
                     placeholder={def.placeholder}
-                    placeholderClassName={dataTableFilterPlaceholderClassName}
-                    search={def.search}
-                    searchPlaceholder={def.searchPlaceholder}
-                    triggerClassName={dataTableFilterTriggerClassName}
-                    value={rawValues[def.key] ?? null}
-                    onFetchNextPage={def.onFetchNextPage}
-                    onSearchChange={def.onSearchChange}
-                    onValueChange={(value) => setFilterValue(def.key, value ?? undefined)}
+                    value={rawValues[def.key] ?? allValue}
+                    onValueChange={(value) =>
+                      setFilterValue(def.key, value === allValue ? undefined : value)
+                    }
                   />
-                </div>
-              );
-            }
+                );
+              }
 
-            if (def.kind === 'custom') {
-              return (
-                <span key={def.key}>
-                  {def.render({
-                    clearAll,
-                    setValue: (value) => setFilterValue(def.key, value),
-                    value: rawValues[def.key],
-                  })}
-                </span>
-              );
-            }
+              if (def.kind === 'dateRange') {
+                return (
+                  <Fragment key={def.key}>
+                    <Input
+                      aria-label={def.fromLabel ?? 'From date'}
+                      className={cn(
+                        'w-full sm:w-36',
+                        dataTableFilterShadowClassName,
+                        def.className
+                      )}
+                      type="date"
+                      variant="toolbar"
+                      value={rawValues[def.key] ?? ''}
+                      onChange={(event) => setFilterValue(def.key, event.target.value || undefined)}
+                    />
+                    <Input
+                      aria-label={def.toLabel ?? 'To date'}
+                      className={cn(
+                        'w-full sm:w-36',
+                        dataTableFilterShadowClassName,
+                        def.className
+                      )}
+                      type="date"
+                      variant="toolbar"
+                      value={rawValues[def.toKey] ?? ''}
+                      onChange={(event) =>
+                        setFilterValue(def.toKey, event.target.value || undefined)
+                      }
+                    />
+                  </Fragment>
+                );
+              }
 
-            // 'hidden' filters deliberately render nothing.
-            return null;
-          })}
+              if (def.kind === 'infiniteSelect') {
+                return (
+                  <div className={def.className ?? 'w-full sm:w-52'} key={def.key}>
+                    <InfiniteSearchSelect
+                      emptyMessage={def.emptyMessage}
+                      hasNextPage={def.hasNextPage}
+                      isFetchingNextPage={def.isFetchingNextPage}
+                      isLoading={def.isLoading}
+                      options={def.options}
+                      placeholder={def.placeholder}
+                      search={def.search}
+                      searchPlaceholder={def.searchPlaceholder}
+                      size="toolbar"
+                      triggerClassName={dataTableFilterShadowClassName}
+                      value={rawValues[def.key] ?? null}
+                      onFetchNextPage={def.onFetchNextPage}
+                      onSearchChange={def.onSearchChange}
+                      onValueChange={(value) => setFilterValue(def.key, value ?? undefined)}
+                    />
+                  </div>
+                );
+              }
 
-          <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearAll} />
-        </TableCardHeaderToolbar>
-      }
-    />
+              if (def.kind === 'dateRangePopover') {
+                return (
+                  <DateRangePopoverControl
+                    key={def.key}
+                    def={def}
+                    from={rawValues[def.key]}
+                    to={rawValues[def.toKey]}
+                    onChange={(from, to) => {
+                      setFilterValue(def.key, from);
+                      setFilterValue(def.toKey, to);
+                    }}
+                  />
+                );
+              }
+
+              if (def.kind === 'numberRange') {
+                return (
+                  <NumberRangeControl
+                    key={def.key}
+                    def={def}
+                    max={rawValues[def.toKey]}
+                    min={rawValues[def.key]}
+                    onChange={setFilterValue}
+                  />
+                );
+              }
+
+              if (def.kind === 'toggleGroup') {
+                return (
+                  <ToggleGroupControl
+                    key={def.key}
+                    def={def}
+                    value={rawValues[def.key]}
+                    onChange={(value) => setFilterValue(def.key, value)}
+                  />
+                );
+              }
+
+              if (def.kind === 'sortSelect') {
+                return (
+                  <SortSelectControl
+                    key={def.key}
+                    def={def}
+                    value={state.sortBy}
+                    onChange={(field) => state.setSort(field, state.sortOrder)}
+                  />
+                );
+              }
+
+              if (def.kind === 'custom') {
+                return (
+                  <span key={def.key}>
+                    {def.render({
+                      clearAll: onClearAll,
+                      setValue: (value) => setFilterValue(def.key, value),
+                      value: rawValues[def.key],
+                    })}
+                  </span>
+                );
+              }
+
+              // 'hidden' filters deliberately render nothing. Their chip does.
+              return null;
+            })}
+          </TableCardHeaderFilters>
+        }
+        trailing={
+          <TableCardHeaderTrailing>
+            {trailing}
+            <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearAll} />
+          </TableCardHeaderTrailing>
+        }
+      />
+
+      <DataTableFilterChips
+        chips={chips}
+        onRemove={(keys) => {
+          for (const key of keys) setFilterValue(key, undefined);
+        }}
+      />
+    </>
   );
 }

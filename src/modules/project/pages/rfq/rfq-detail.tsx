@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { StatusBadge } from '@/app/components/status-badge';
 import {
   Toolbar,
   ToolbarActions,
@@ -72,7 +73,7 @@ import {
   ProjectActivityPanel,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
-import { getRfqStatusVariant, RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
+import { RFQ_TRACK_LABELS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import {
   useAddRFQAttachmentMutation,
@@ -1053,9 +1054,7 @@ export default function RFQDetailPage() {
                   }}
                 >
                   <SelectTrigger className="h-8 min-w-24 bg-transparent border-none p-0 focus:ring-0">
-                    <Badge variant={getRfqStatusVariant(statusName)} appearance="light" size="sm">
-                      {statusObj?.label || statusName}
-                    </Badge>
+                    <StatusBadge label={statusObj?.label || statusName} status={statusName} />
                   </SelectTrigger>
                   <SelectContent>
                     {draftPublishedStatuses.map((status) => (
@@ -1066,9 +1065,7 @@ export default function RFQDetailPage() {
                   </SelectContent>
                 </Select>
               ) : rfq.status ? (
-                <Badge variant={getRfqStatusVariant(statusName)} appearance="light" size="sm">
-                  {statusObj?.label || statusName}
-                </Badge>
+                <StatusBadge label={statusObj?.label || statusName} status={statusName} />
               ) : null}
               {rfq.rfqNumber && (
                 <span className="text-sm text-muted-foreground">RFQ #{rfq.rfqNumber}</span>

@@ -17,9 +17,6 @@ interface MonthlyBillsColumnToggleProps {
   contentClassName?: string;
 }
 
-const tableHeaderActionButtonClassName =
-  '!border-input !bg-background !text-foreground hover:!border-success/40 hover:!bg-background hover:!text-foreground data-[state=open]:!border-success/50 data-[state=open]:!ring-2 data-[state=open]:!ring-success/15 [&_svg]:!text-muted-foreground';
-
 export function MonthlyBillsColumnToggle({
   visibleColumns,
   onToggleColumn,
@@ -35,10 +32,10 @@ export function MonthlyBillsColumnToggle({
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="toolbar"
           className={cn(
-            'w-full shrink-0 justify-between gap-2 rounded-md px-3 font-medium shadow-sm transition-all sm:w-auto',
-            triggerClassName ?? tableHeaderActionButtonClassName
+            'w-full shrink-0 justify-between font-medium shadow-xs shadow-black/10 sm:w-auto',
+            triggerClassName
           )}
         >
           <span className="flex min-w-0 items-center gap-2">

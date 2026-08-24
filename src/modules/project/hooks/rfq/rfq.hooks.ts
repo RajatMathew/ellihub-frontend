@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
@@ -32,7 +33,7 @@ function invalidateRFQDetail(queryClient: QueryClient, rfqId: string) {
 /* ---- queries ---- */
 
 export const useRFQListQuery = (params: ListRFQParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...rfqKeys.list(params.projectId || 'all'), params],
     queryFn: () => rfqApi.list(params),
     enabled: !!params.projectId,

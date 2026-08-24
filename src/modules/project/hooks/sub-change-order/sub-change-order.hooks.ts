@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { filesKeys } from '@/modules/files/constants/files.keys';
@@ -52,7 +53,7 @@ function invalidateSCOQueries(
 /* ---- queries ---- */
 
 export const useSCOsQuery = (params?: ListSCOsParams) =>
-  useQuery({
+  useListQuery({
     queryKey: [...scoKeys.list(), params],
     queryFn: () => scoApi.list(params),
     enabled: !!params?.projectId,

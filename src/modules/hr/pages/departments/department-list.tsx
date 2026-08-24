@@ -117,25 +117,21 @@ export default function DepartmentListPage() {
         ariaLabel="Departments"
         bulkItemLabel={DEPARTMENT_ITEM_LABEL}
         bulkActions={
-          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-            <Trash2 className="size-3.5" />
+          <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 />
             Delete
           </Button>
         }
         empty={{
           action: <NewDepartmentButton />,
           description: 'Create your first department to start organizing your team.',
-          icon: <Building2 className="size-10 text-muted-foreground/40" />,
+          icon: Building2,
           title: 'No departments found',
         }}
         error={{ title: 'Failed to load departments.' }}
         list={list}
         state={state}
-        title={
-          <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-            All Departments
-          </span>
-        }
+        title="All Departments"
       />
 
       <DepartmentDeleteDialog

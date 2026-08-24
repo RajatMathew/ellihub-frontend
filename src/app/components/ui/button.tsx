@@ -47,6 +47,10 @@ const buttonVariants = cva(
         xs: 'h-8.5 rounded-md px-2.5 gap-1 text-xs [&_svg:not([class*=size-])]:size-3.5',
         md: 'h-8.5 rounded-md px-3 gap-1.5 text-[0.8125rem] leading-(--text-sm--line-height) [&_svg:not([class*=size-])]:size-4',
         sm: 'h-7 rounded-md px-2.5 gap-1.25 text-xs [&_svg:not([class*=size-])]:size-3.5',
+        // The 32px row every table card header sits on. Between `sm` and `md`
+        // because the header is denser than a form but still needs a real hit
+        // target — see docs/table-consistency-plan.md, phase 1.
+        toolbar: 'h-8 rounded-md px-3 gap-2 text-xs [&_svg:not([class*=size-])]:size-4',
         icon: 'size-8.5 rounded-md [&_svg:not([class*=size-])]:size-4 shrink-0',
       },
       autoHeight: {
@@ -314,7 +318,12 @@ const buttonVariants = cva(
       {
         size: 'sm',
         mode: 'icon',
-        className: 'w-7 h-7 p-0 [[&_svg:not([class*=size-])]:size-3.5',
+        className: 'w-7 h-7 p-0 [&_svg:not([class*=size-])]:size-3.5',
+      },
+      {
+        size: 'toolbar',
+        mode: 'icon',
+        className: 'w-8 h-8 p-0 [&_svg:not([class*=size-])]:size-4',
       },
       {
         size: 'md',

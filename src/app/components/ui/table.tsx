@@ -17,7 +17,17 @@ function Table({ className, ...props }: React.HTMLAttributes<HTMLTableElement>) 
 }
 
 function TableHeader({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead data-slot="table-header" className={cn('[&_tr]:border-b', className)} {...props} />;
+  return (
+    <thead
+      data-slot="table-header"
+      // Matches the data grid's header row. These two primitives were the app's
+      // two table visual languages — this one had no header background and a
+      // taller row, so a detail table and a resource list read as different
+      // kinds of object. See docs/table-consistency-plan.md, phase 6.
+      className={cn('[&_tr]:border-b [&_tr]:bg-muted/40', className)}
+      {...props}
+    />
+  );
 }
 
 function TableBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
@@ -58,7 +68,7 @@ function TableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
     <th
       data-slot="table-head"
       className={cn(
-        'h-12 px-4 text-left rtl:text-right align-middle font-normal text-muted-foreground [&:has([role=checkbox])]:pe-0',
+        'h-10 px-4 text-left rtl:text-right align-middle font-normal text-accent-foreground [&:has([role=checkbox])]:pe-0',
         className
       )}
       {...props}
@@ -70,7 +80,7 @@ function TableCell({ className, ...props }: React.TdHTMLAttributes<HTMLTableCell
   return (
     <td
       data-slot="table-cell"
-      className={cn('p-4 align-middle [&:has([role=checkbox])]:pe-0', className)}
+      className={cn('px-4 py-3 align-middle [&:has([role=checkbox])]:pe-0', className)}
       {...props}
     />
   );

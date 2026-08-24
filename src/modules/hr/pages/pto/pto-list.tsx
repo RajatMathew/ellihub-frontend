@@ -134,24 +134,20 @@ export default function PTOListPage() {
           ariaLabel="PTO requests"
           bulkItemLabel={PTO_ITEM_LABEL}
           bulkActions={
-            <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-              <Trash2 className="size-3.5" />
+            <Button size="toolbar" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 />
               Delete
             </Button>
           }
           empty={{
             description: 'Submit a new time off request to start tracking staff leave.',
-            icon: <Calendar className="size-10 text-muted-foreground/40" />,
+            icon: Calendar,
             title: 'No requests found',
           }}
           error={{ title: 'Failed to load time off requests.' }}
           list={list}
           state={state}
-          title={
-            <span className="flex items-center text-sm font-bold tracking-normal text-table-card-header-foreground">
-              All PTO Requests
-            </span>
-          }
+          title="All PTO Requests"
         />
       </div>
 

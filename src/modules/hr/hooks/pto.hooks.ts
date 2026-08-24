@@ -1,3 +1,4 @@
+import { useListQuery } from '@/app/components/data-table';
 import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { ptoApi } from '@/modules/hr/api/pto.api';
@@ -12,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export const usePTOListQuery = (params: ListPTOParams) =>
-  useQuery({
+  useListQuery({
     queryKey: ptoKeys.list(params),
     queryFn: () => ptoApi.list(params),
   });

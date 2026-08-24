@@ -23,7 +23,7 @@ export function ContactInfoCard({ contact, editor }: ContactInfoCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest">
           Contact Info
         </CardTitle>
       </CardHeader>
