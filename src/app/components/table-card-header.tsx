@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { CardHeader, CardTitle, CardToolbar } from '@/app/components/ui/card';
@@ -12,7 +12,7 @@ import {
 } from '@/app/components/ui/select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
-import { Search, X, type LucideProps } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X, type LucideProps } from 'lucide-react';
 
 /**
  * The table card header.
@@ -135,9 +135,14 @@ function TableCardHeaderTitle({
 /**
  * Tab strip for the title slot.
  *
- * Wraps below `sm` and runs on one line above it. This was two components —
- * `TableCardHeaderTabs` and the project modules' `ProjectFilterTabs` — rendering
- * the same design with different padding and wrapping.
+ * Scrolls rather than wraps when the tabs outrun the space, with an arrow at
+ * each end that appears only when there is something in that direction. RFQ had
+ * a hand-built version of this with a *forward arrow only*, so scrolling right
+ * left no way back; and the wrapping version this replaces made the header grow
+ * several rows tall on a narrow screen.
+ *
+ * The arrows are absolutely positioned, so appearing and disappearing moves
+ * nothing.
  */
 function TableCardHeaderTabs({
   activeValue,
@@ -146,9 +151,65 @@ function TableCardHeaderTabs({
   className,
   onChange,
 }: TableCardHeaderTabsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState({ end: false, start: false });
+
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    const update = () => {
+      // `scrollLeft` is negative in RTL in some engines; the distance from each
+      // edge is what matters, not the sign.
+      const position = Math.abs(element.scrollLeft);
+      const max = element.scrollWidth - element.clientWidth;
+      const next = { end: max > 1 && position < max - 1, start: position > 1 };
+
+      // Compare before setting. A fresh object every scroll event is never
+      // `Object.is`-equal, so React would re-render on every frame of a scroll —
+      // and, because this effect re-subscribes whenever `tabs` changes identity,
+      // that render would tear the listener down and rebuild it mid-scroll.
+      setOverflow((current) =>
+        current.start === next.start && current.end === next.end ? current : next
+      );
+    };
+
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+
+    return () => {
+      element.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+    // Length, not the array: callers build `tabs` inline, so its identity changes
+    // every render and the subscription would never survive one.
+  }, [tabs.length]);
+
+  const scroll = (direction: 'start' | 'end') => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    const step = Math.max(element.clientWidth * 0.75, 180);
+    // Animate only where animation is wanted and available. A `smooth` request
+    // is a no-op in engines that suppress scroll animation, which would leave
+    // the arrow doing nothing at all — jumping is the right degradation, not
+    // silence.
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    element.scrollBy({
+      behavior: prefersReducedMotion ? 'instant' : 'smooth',
+      left: direction === 'end' ? step : -step,
+    });
+  };
+
   if (isLoading) {
     return (
-      <div className="flex min-h-11 flex-wrap items-center gap-2 py-2">
+      <div className="flex min-h-11 items-center gap-2 py-2">
         <Skeleton className="h-7 w-16" />
         <Skeleton className="h-7 w-24" />
         <Skeleton className="h-7 w-28" />
@@ -157,27 +218,78 @@ function TableCardHeaderTabs({
   }
 
   return (
+    <div className={cn('relative flex min-h-11 min-w-0 max-w-full items-stretch', className)}>
+      <div
+        ref={scrollRef}
+        className="flex min-w-0 items-stretch overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex flex-nowrap items-stretch">
+          {tabs.map((tab) => (
+            <button
+              key={tab.value ?? '__all'}
+              type="button"
+              onClick={() => onChange(tab.value)}
+              className={cn(
+                'relative z-10 flex shrink-0 cursor-pointer items-center whitespace-nowrap px-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-4',
+                activeValue === tab.value
+                  ? 'text-table-card-header-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-table-card-tab-accent'
+                  : 'text-table-card-header-foreground/75 hover:text-table-card-header-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <TabScrollArrow direction="start" visible={overflow.start} onClick={() => scroll('start')} />
+      <TabScrollArrow direction="end" visible={overflow.end} onClick={() => scroll('end')} />
+    </div>
+  );
+}
+
+/**
+ * One end of the tab scroller: a fade over the tabs plus a button.
+ *
+ * `pointer-events-none` on the fade so it never eats a click meant for a tab
+ * underneath it; the button itself opts back in.
+ */
+function TabScrollArrow({
+  direction,
+  visible,
+  onClick,
+}: {
+  direction: 'start' | 'end';
+  visible: boolean;
+  onClick: () => void;
+}) {
+  if (!visible) return null;
+
+  const isEnd = direction === 'end';
+
+  return (
     <div
+      aria-hidden="true"
       className={cn(
-        'relative flex min-h-11 min-w-0 flex-wrap items-stretch gap-1 sm:inline-flex sm:flex-nowrap sm:gap-0',
-        className
+        'pointer-events-none absolute inset-y-0 z-20 flex w-16 items-center',
+        isEnd
+          ? 'end-0 justify-end bg-gradient-to-l from-card-header via-card-header/90 to-transparent'
+          : 'start-0 justify-start bg-gradient-to-r from-card-header via-card-header/90 to-transparent'
       )}
     >
-      {tabs.map((tab) => (
-        <button
-          key={tab.value ?? '__all'}
-          type="button"
-          onClick={() => onChange(tab.value)}
-          className={cn(
-            'relative z-10 flex cursor-pointer items-center px-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] transition-colors sm:px-4',
-            activeValue === tab.value
-              ? 'text-table-card-header-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:bg-table-card-tab-accent'
-              : 'text-table-card-header-foreground/75 hover:text-table-card-header-foreground'
-          )}
-        >
-          {tab.label}
-        </button>
-      ))}
+      <button
+        aria-hidden="true"
+        className="pointer-events-auto flex size-5 cursor-pointer items-center justify-center rounded-full border border-table-card-header-foreground/45 bg-card-header text-table-card-header-foreground/80 shadow-xs shadow-black/10 transition-colors hover:text-table-card-header-foreground"
+        tabIndex={-1}
+        type="button"
+        onClick={onClick}
+      >
+        {isEnd ? (
+          <ChevronRight className="size-3.5" strokeWidth={2} />
+        ) : (
+          <ChevronLeft className="size-3.5" strokeWidth={2} />
+        )}
+      </button>
     </div>
   );
 }
@@ -229,7 +341,14 @@ function TableCardHeaderFilters({
   );
 }
 
-/** Pinned to the end of the row. Right-aligned at every breakpoint. */
+/**
+ * Pinned to the end of the row. Right-aligned at every breakpoint.
+ *
+ * `empty:hidden` because the only thing in here is usually the Clear button,
+ * which unmounts when there is nothing to clear — without it the slot would
+ * still contribute the toolbar's gap and leave a phantom 8px on every unfiltered
+ * list.
+ */
 function TableCardHeaderTrailing({
   children,
   className,
@@ -240,7 +359,7 @@ function TableCardHeaderTrailing({
   return (
     <div
       data-header-slot="trailing"
-      className={cn('flex items-center justify-end gap-2', className)}
+      className={cn('flex items-center justify-end gap-2 empty:hidden', className)}
     >
       {children}
     </div>
@@ -318,6 +437,15 @@ function TableCardHeaderSelect({
   );
 }
 
+/**
+ * Clears every filter. Renders nothing until there is something to clear.
+ *
+ * This used to stay mounted and `invisible`, holding its space so the row could
+ * not reflow. That bought a still header at the cost of a permanent gap on every
+ * list, including the ones nobody has filtered — which is most of them, most of
+ * the time. Unmounting shifts the controls once, on a click the user just made,
+ * at the same moment the chip row appears anyway.
+ */
 function TableCardHeaderClearButton({
   active,
   onClick,
@@ -327,13 +455,13 @@ function TableCardHeaderClearButton({
   onClick: () => void;
   label?: string;
 }) {
+  if (!active) return null;
+
   return (
     <Button
       variant="outline"
       size="toolbar"
-      className={cn('shadow-xs shadow-black/10', !active && 'pointer-events-none invisible')}
-      aria-hidden={!active}
-      tabIndex={active ? undefined : -1}
+      className="shadow-xs shadow-black/10"
       onClick={onClick}
     >
       <X strokeWidth={2} />
