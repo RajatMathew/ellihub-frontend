@@ -1,9 +1,18 @@
 import { useCallback, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
+import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { PTOListStats, PTOListToolbar, usePTOListColumns } from '@/modules/hr/components/pto/list';
 import {
+  getPTOEmployeeName,
   PTODecisionDialog,
   PTODeleteDialog,
   type PTODecisionTarget,
@@ -14,13 +23,14 @@ import {
 } from '@/modules/hr/constants/pto/pto-list.constants';
 import {
   useApprovePTOMutation,
+  useBulkDeletePTOMutation,
   useDeletePTOMutation,
   usePTOListQuery,
   usePTOStatsQuery,
   useRejectPTOMutation,
 } from '@/modules/hr/hooks/pto.hooks';
-import type { ListPTOParams } from '@/modules/hr/schemas/pto.schema';
-import { Calendar } from 'lucide-react';
+import type { ListPTOParams, PTO } from '@/modules/hr/schemas/pto.schema';
+import { Calendar, Trash2 } from 'lucide-react';
 
 const PTO_FILTERS = [f.search({ className: 'sm:w-72', placeholder: 'Search requests...' })];
 
@@ -29,10 +39,19 @@ interface PTODeleteTarget {
   name: string;
 }
 
+const PTO_ITEM_LABEL = { many: 'PTO requests', one: 'PTO request' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+const PTO_SELECTION: ListSelectionConfig<PTO> = {
+  getRowLabel: getPTOEmployeeName,
+};
+
 export default function PTOListPage() {
   const { can } = useAccess();
   const [deleteTarget, setDeleteTarget] = useState<PTODeleteTarget | null>(null);
   const [decisionTarget, setDecisionTarget] = useState<PTODecisionTarget | null>(null);
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const canDeletePTO = can('leave', 'create');
 
   const state = useListState({
     filters: PTO_FILTERS,
@@ -49,6 +68,7 @@ export default function PTOListPage() {
   const canReviewPTO = can('leave', 'approve');
 
   const columns = usePTOListColumns({
+    canDelete: canDeletePTO,
     canReview: canReviewPTO,
     isDecisionPending: approveMutation.isPending || rejectMutation.isPending,
     onDecision: useCallback(
@@ -66,8 +86,17 @@ export default function PTOListPage() {
     getRowId: (request) => request.id,
     query: ptoQuery,
     rows: ptoQuery.data?.data ?? [],
+    selection: canDeletePTO ? PTO_SELECTION : undefined,
     state,
     totalCount: ptoQuery.data?.pagination.totalItems ?? 0,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeletePTOMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const hasStatsData = statsQuery.data !== undefined;
@@ -103,6 +132,13 @@ export default function PTOListPage() {
       <div className="pt-5">
         <DataTable
           ariaLabel="PTO requests"
+          bulkItemLabel={PTO_ITEM_LABEL}
+          bulkActions={
+            <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="size-3.5" />
+              Delete
+            </Button>
+          }
           empty={{
             description: 'Submit a new time off request to start tracking staff leave.',
             icon: <Calendar className="size-10 text-muted-foreground/40" />,
@@ -126,6 +162,19 @@ export default function PTOListPage() {
         onConfirm={handleConfirmDelete}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
+        }}
+      />
+
+      <BulkDeleteDialog
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={PTO_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
         }}
       />
 

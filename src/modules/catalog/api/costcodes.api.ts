@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   costCodePaginatedResponseSchema,
   costCodeSchema,
@@ -59,5 +59,9 @@ export const costCodesApi = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 };

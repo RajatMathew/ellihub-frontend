@@ -7,7 +7,11 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { formatDepartmentDate } from '@/modules/hr/components/departments/list/department-list-utils';
+import {
+  canDeleteDepartment,
+  DEPARTMENT_DELETE_BLOCKED_REASON,
+  formatDepartmentDate,
+} from '@/modules/hr/components/departments/list/department-list-utils';
 import type { Department } from '@/modules/hr/schemas/department.schema';
 import { MoreHorizontal, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,6 +22,7 @@ interface DepartmentCellProps {
 
 interface DepartmentActionsCellProps extends DepartmentCellProps {
   onDelete: (department: { id: string; name: string; employeeCount?: number }) => void;
+  canDelete: boolean;
 }
 
 export function DepartmentNameCell({ department }: DepartmentCellProps) {
@@ -62,9 +67,13 @@ export function DepartmentCreatedCell({ department }: DepartmentCellProps) {
   );
 }
 
-export function DepartmentActionsCell({ department, onDelete }: DepartmentActionsCellProps) {
+export function DepartmentActionsCell({
+  department,
+  onDelete,
+  canDelete,
+}: DepartmentActionsCellProps) {
   const employeeCount = department.employeeCount ?? 0;
-  const canDelete = employeeCount === 0;
+  const isEligible = canDeleteDepartment(department);
 
   return (
     <DropdownMenu>
@@ -87,23 +96,25 @@ export function DepartmentActionsCell({ department, onDelete }: DepartmentAction
         <DropdownMenuItem asChild>
           <Link to={`${department.id}/edit`}>Edit</Link>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          disabled={!canDelete}
-          title={
-            canDelete ? undefined : 'Remove employees from this department before deleting it.'
-          }
-          onClick={() =>
-            onDelete({
-              id: department.id,
-              name: department.name,
-              employeeCount,
-            })
-          }
-        >
-          Delete
-        </DropdownMenuItem>
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              disabled={!isEligible}
+              title={isEligible ? undefined : DEPARTMENT_DELETE_BLOCKED_REASON}
+              onClick={() =>
+                onDelete({
+                  id: department.id,
+                  name: department.name,
+                  employeeCount,
+                })
+              }
+            >
+              Delete
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

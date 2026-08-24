@@ -20,6 +20,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 interface UsePTOListColumnsParams {
   isDecisionPending: boolean;
   canReview: boolean;
+  canDelete: boolean;
   onDelete: (request: { id: string; name: string }) => void;
   onDecision: (target: PTODecisionTarget) => void;
 }
@@ -27,6 +28,7 @@ interface UsePTOListColumnsParams {
 export function usePTOListColumns({
   isDecisionPending,
   canReview,
+  canDelete,
   onDelete,
   onDecision,
 }: UsePTOListColumnsParams) {
@@ -115,6 +117,7 @@ export function usePTOListColumns({
             pto={row.original}
             isDecisionPending={isDecisionPending}
             canReview={canReview}
+            canDelete={canDelete}
             onDelete={onDelete}
             onDecision={onDecision}
           />
@@ -129,6 +132,6 @@ export function usePTOListColumns({
         },
       },
     ],
-    [canReview, isDecisionPending, onDelete, onDecision]
+    [canReview, canDelete, isDecisionPending, onDelete, onDecision]
   );
 }

@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   costCodeCategoryCreateSchema,
   costCodeCategoryListSchema,
@@ -16,12 +16,12 @@ export const costCodeCategoriesApi = {
     const res = await api.get(BASE);
     const rawData = res.data?.data ?? res.data ?? [];
     const result = costCodeCategoryListSchema.safeParse(rawData);
-    
+
     if (!result.success) {
       console.warn('[costCodeCategoriesApi.list] Validation failed:', result.error.format());
       return rawData as CostCodeCategory[];
     }
-    
+
     return result.data;
   },
 
@@ -44,5 +44,9 @@ export const costCodeCategoriesApi = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 };

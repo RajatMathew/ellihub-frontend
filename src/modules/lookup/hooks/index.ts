@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { lookupApi } from '@/modules/lookup/api/lookup.api';
 import { lookupKeys } from '@/modules/lookup/constants/lookup.keys';
@@ -50,6 +51,18 @@ export const useUpdateLookupMutation = () => {
       toast.success('Lookup updated successfully.');
     },
     onError: (error) => toastApiError(error, 'Failed to update lookup.'),
+  });
+};
+
+export const useBulkDeleteLookupsMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'entries', one: 'entry' },
+    mutationFn: lookupApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: lookupKeys.all });
+    },
   });
 };
 

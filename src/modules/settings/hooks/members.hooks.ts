@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { membersApi } from '@/modules/settings/api/members.api';
 import { membersKeys } from '@/modules/settings/constants/members.keys';
@@ -5,9 +6,9 @@ import type {
   MemberCreateInput,
   MemberPasswordResetInput,
   MemberRole,
+  MembersListParams,
   MemberSuspendInput,
   MemberUpdateInput,
-  MembersListParams,
 } from '@/modules/settings/schemas/members.schema';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -68,7 +69,9 @@ export const useUpdateCheckingRegisterAccessMutation = () => {
       membersApi.updateCheckingRegisterAccess(userId, enabled),
     onSuccess: (_, { enabled }) => {
       queryClient.invalidateQueries({ queryKey: membersKeys.lists() });
-      toast.success(enabled ? 'Checking Register access granted.' : 'Checking Register access removed.');
+      toast.success(
+        enabled ? 'Checking Register access granted.' : 'Checking Register access removed.'
+      );
     },
     onError: (error) => toastApiError(error, 'Failed to update Checking Register access.'),
   });
@@ -113,6 +116,17 @@ export const useUnsuspendMemberMutation = () => {
   });
 };
 
+export const useBulkRemoveMembersMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const queryClient = useQueryClient();
+
+  return useBulkDelete({
+    itemLabel: { many: 'members', one: 'member' },
+    mutationFn: membersApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => void queryClient.invalidateQueries({ queryKey: membersKeys.lists() }),
+  });
+};
+
 export const useRemoveMemberMutation = () => {
   const queryClient = useQueryClient();
 
@@ -125,4 +139,3 @@ export const useRemoveMemberMutation = () => {
     onError: (error) => toastApiError(error, 'Failed to remove member.'),
   });
 };
-

@@ -1,20 +1,29 @@
 import { useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { useAccess } from '@/app/contexts/access-context';
 import { CategoryFormDialog } from '@/modules/catalog/components/category-form-dialog';
 import { useCategoryListColumns } from '@/modules/catalog/components/category-list-columns';
 import {
+  useBulkDeleteCostCodeCategoriesMutation,
   useCostCodeCategoriesQuery,
   useCreateCostCodeCategoryMutation,
   useDeleteCostCodeCategoryMutation,
   useUpdateCostCodeCategoryMutation,
 } from '@/modules/catalog/hooks';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
-import { Plus, Tag } from 'lucide-react';
+import { Plus, Tag, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const CATEGORY_SORT_BY_OPTIONS = ['name', 'description'] as const;
@@ -36,8 +45,18 @@ const CATEGORY_FILTERS = [
   }),
 ];
 
+const CATEGORY_ITEM_LABEL = { many: 'categories', one: 'category' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+const CATEGORY_SELECTION: ListSelectionConfig<CostCodeCategory> = {
+  getRowLabel: (category) => category.name,
+};
+
 export function CostCodeCategoriesListPage() {
+  const { can } = useAccess();
+  const canDelete = can('costCodeGroup', 'delete');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CostCodeCategory | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CostCodeCategory | null>(null);
 
@@ -54,6 +73,7 @@ export function CostCodeCategoriesListPage() {
   });
 
   const columns = useCategoryListColumns({
+    canDelete,
     onDelete: setDeleteTarget,
     onEdit: (category) => {
       setEditingCategory(category);
@@ -67,7 +87,16 @@ export function CostCodeCategoriesListPage() {
     mode: 'client',
     query: categoriesQuery,
     rows: categories,
+    selection: canDelete ? CATEGORY_SELECTION : undefined,
     state,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeleteCostCodeCategoriesMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -109,6 +138,13 @@ export function CostCodeCategoriesListPage() {
 
       <DataTable
         ariaLabel="Cost code categories"
+        bulkItemLabel={CATEGORY_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           icon: <Tag className="size-10 text-muted-foreground/50" />,
           title: 'No categories found',
@@ -158,6 +194,20 @@ export function CostCodeCategoriesListPage() {
           deleteMutation.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
         }}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
+      />
+
+      <BulkDeleteDialog
+        description="Cost codes in these categories may need to be reassigned."
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={CATEGORY_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
+        }}
       />
     </div>
   );

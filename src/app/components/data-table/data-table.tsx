@@ -4,6 +4,7 @@ import { DataGridSection } from '@/app/components/data-grid-section';
 import { Card } from '@/app/components/ui/card';
 import type { DataGridProps } from '@/app/components/ui/data-grid';
 
+import { DataTableBulkBar, type DataTableItemLabel } from './data-table-bulk-bar';
 import { DataTableFilters } from './data-table-filters';
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
@@ -38,13 +39,27 @@ export interface DataTableProps<
   /** Overrides the schema-driven title slot (tabs, by default). */
   title?: ReactNode;
   /**
+   * Buttons for the rows currently selected — a Delete, typically. Rendered in a
+   * bar that takes over the header while a selection is live; the count and the
+   * Clear control come with it. Requires `selection` on `useListTable`, and
+   * should already be gated on the user's permission to run the action.
+   */
+  bulkActions?: ReactNode;
+  /** Names the records in the bar, e.g. `{ one: 'vendor', many: 'vendors' }`. */
+  bulkItemLabel?: DataTableItemLabel;
+  /**
    * Rendered in place of the table body and pagination. For states where the
    * list cannot exist at all — an unconnected integration, say — rather than
    * for an empty result, which `empty` already covers.
    */
   replaceBody?: ReactNode;
-  /** Card-per-row rendering below the breakpoint. Omit for a scrolling table. */
-  mobileItem?: (row: TData) => ReactNode;
+  /**
+   * Card-per-row rendering below the breakpoint. Omit for a scrolling table.
+   * The second argument is the row's selection checkbox, or null when the table
+   * has no selection — render it so a card layout does not silently lose the
+   * ability to select.
+   */
+  mobileItem?: (row: TData, selectionCheckbox: ReactNode) => ReactNode;
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
@@ -70,6 +85,8 @@ export function DataTable<
   empty,
   error,
   title,
+  bulkActions,
+  bulkItemLabel,
   replaceBody,
   mobileItem,
   mobileBreakpoint,
@@ -77,9 +94,20 @@ export function DataTable<
   tableClassNames,
   className,
 }: DataTableProps<TData, TDefs, TField>) {
+  const showBulkBar = Boolean(bulkActions) && list.selection.count > 0;
+
   return (
     <Card className={className}>
-      <DataTableFilters filters={filters} state={state} title={title} />
+      {showBulkBar ? (
+        <DataTableBulkBar
+          actions={bulkActions}
+          count={list.selection.count}
+          itemLabel={bulkItemLabel}
+          onClear={list.selection.clear}
+        />
+      ) : (
+        <DataTableFilters filters={filters} state={state} title={title} />
+      )}
 
       {replaceBody ?? (
         <DataGridSection

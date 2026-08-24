@@ -10,6 +10,7 @@ import {
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import { formatDate } from '@/app/lib/helpers';
 import {
+  canDeleteRFQ,
   getRFQStatusLabel,
   getRFQStatusName,
   getRFQTrackLabel,
@@ -99,7 +100,7 @@ export function RFQActionsCell({ rfq, onDelete, onVoid, onCreatePO }: RFQActions
   const statusName = getRFQStatusName(rfq);
   const canEdit = projectActions?.rfq?.update === true;
   const canCreatePO = projectActions?.purchaseOrder?.create === true && statusName === 'AWARDED';
-  const canDelete = projectActions?.rfq?.delete === true && statusName === 'DRAFT';
+  const canDelete = projectActions?.rfq?.delete === true && canDeleteRFQ(rfq);
   const canVoid =
     projectActions?.rfq?.void === true && (statusName === 'PUBLISHED' || statusName === 'AWARDED');
 

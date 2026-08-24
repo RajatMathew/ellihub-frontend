@@ -1,8 +1,5 @@
 import { useMemo } from 'react';
 
-import { type ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
-
 import { Button } from '@/app/components/ui/button';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import {
@@ -14,13 +11,16 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { CostCode } from '@/modules/catalog/schemas/costcode.schema';
+import { type ColumnDef } from '@tanstack/react-table';
+import { MoreHorizontal } from 'lucide-react';
 
 interface UseCostCodeColumnsOptions {
   onEdit: (row: CostCode) => void;
   onDelete: (row: CostCode) => void;
+  canDelete: boolean;
 }
 
-export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptions) {
+export function useCostCodeColumns({ onEdit, onDelete, canDelete }: UseCostCodeColumnsOptions) {
   return useMemo<ColumnDef<CostCode>[]>(
     () => [
       {
@@ -91,10 +91,14 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={() => onEdit(row.original)}>Edit</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
-                Delete
-              </DropdownMenuItem>
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => onDelete(row.original)}>
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -105,6 +109,6 @@ export function useCostCodeColumns({ onEdit, onDelete }: UseCostCodeColumnsOptio
         enableSorting: false,
       },
     ],
-    [onEdit, onDelete],
+    [canDelete, onEdit, onDelete]
   );
 }

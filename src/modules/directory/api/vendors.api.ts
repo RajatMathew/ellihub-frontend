@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   vendorContactLinkSchema,
   vendorDetailSchema,
@@ -97,6 +97,10 @@ export const vendorsApi = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 
   async addContact(id: string, data: CreateVendorContactInput): Promise<VendorContactLink> {

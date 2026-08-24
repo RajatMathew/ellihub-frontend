@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { renderRowSelectionCheckbox } from '@/app/components/data-table/data-table-selection';
 import { Button } from '@/app/components/ui/button';
 import { CardContent, CardFooter, CardTable } from '@/app/components/ui/card';
 import { DataGrid, type DataGridProps } from '@/app/components/ui/data-grid';
@@ -28,7 +29,12 @@ export interface DataGridSectionProps<TData extends object> {
   onRetry: () => void;
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
-  mobileItem?: (row: TData) => ReactNode;
+  /**
+   * Card-per-row rendering below the breakpoint. The second argument is the
+   * row's selection checkbox, or null when the table has no selection — the
+   * column lives in the table, which is not rendered at this width.
+   */
+  mobileItem?: (row: TData, selectionCheckbox: ReactNode) => ReactNode;
   mobileSkeleton?: ReactNode;
   mobileSkeletonCount?: number;
   mobileListClassName?: string;
@@ -144,7 +150,7 @@ export function DataGridSection<TData extends object>({
             <div className="grid min-w-0 gap-2.5">
               {mobileRows.map((row) => (
                 <div key={row.id} className="min-w-0">
-                  {mobileItem(row.original)}
+                  {mobileItem(row.original, renderRowSelectionCheckbox(row))}
                 </div>
               ))}
             </div>

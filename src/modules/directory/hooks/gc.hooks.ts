@@ -1,3 +1,4 @@
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { gcApi } from '@/modules/directory/api/gc.api';
 import { gcKeys } from '@/modules/directory/constants/gc.keys';
@@ -61,6 +62,19 @@ export const useUpdateGCMutation = () => {
       qc.invalidateQueries({ queryKey: filesKeys.all });
     },
     onError: (error) => toastApiError(error, 'Failed to update general contractor.'),
+  });
+};
+
+export const useBulkDeleteGCMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'general contractors', one: 'general contractor' },
+    mutationFn: gcApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: gcKeys.all });
+      void qc.invalidateQueries({ queryKey: filesKeys.all });
+    },
   });
 };
 

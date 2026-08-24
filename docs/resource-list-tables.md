@@ -63,6 +63,115 @@ module hand-maintains them.
 Options shared by every kind: `apiKey`, `parse`, `serialize`, `toApiValue`,
 `defaultValue`, `clientPredicate`, `onClear`.
 
+## Bulk selection and bulk delete
+
+A list with a delete action can offer bulk delete. Pass `selection` to `useListTable`
+and `bulkActions` to `DataTable`; the kit supplies the checkbox column, the bar that
+takes over the header, the count and the Clear control.
+
+```tsx
+const DEPARTMENT_ITEM_LABEL = { many: 'departments', one: 'department' };
+
+const DEPARTMENT_SELECTION: ListSelectionConfig<Department> = {
+  canSelect: canDeleteDepartment,
+  getRowLabel: (department) => department.name,
+  ineligibleReason: DEPARTMENT_DELETE_BLOCKED_REASON,
+};
+
+const list = useListTable({
+  /* … */
+  selection: canDelete ? DEPARTMENT_SELECTION : undefined,
+});
+
+const bulkDelete = useBulkDeleteDepartmentsMutation(
+  useCallback(() => {
+    list.selection.clear();
+    setBulkDeleteOpen(false);
+  }, [list.selection])
+);
+
+<DataTable
+  bulkItemLabel={DEPARTMENT_ITEM_LABEL}
+  bulkActions={
+    <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+      <Trash2 className="size-3.5" />
+      Delete
+    </Button>
+  }
+  /* … */
+/>
+
+<BulkDeleteDialog
+  failures={bulkDelete.failures}
+  isPending={bulkDelete.isPending}
+  itemLabel={DEPARTMENT_ITEM_LABEL}
+  items={list.selection.items}
+  open={isBulkDeleteOpen}
+  onConfirm={() => bulkDelete.run(list.selection.ids)}
+  onOpenChange={(open) => {
+    setBulkDeleteOpen(open);
+    if (!open) bulkDelete.reset();
+  }}
+/>;
+```
+
+`list.selection` gives `count`, `ids`, `rows`, `items` (`{ id, label }` pairs for the
+dialog) and `clear()`.
+
+### The module side
+
+Two small pieces per resource, following the usual layering:
+
+```ts
+// api/{resource}.api.ts
+bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+  return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
+},
+
+// hooks/{resource}.hooks.ts
+export const useBulkDeleteDepartmentsMutation = (onDeleted?: (ids: string[]) => void) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { many: 'departments', one: 'department' },
+    mutationFn: departmentsApi.bulkRemove,
+    onDeleted,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: departmentsKeys.all });
+    },
+  });
+};
+```
+
+### Rules for bulk delete
+
+- **A batch can come back half-done.** `POST /{resource}/bulk-delete` runs the
+  single-record delete per id — same guards, same activity log — and is deliberately
+  not one transaction, so a record blocked by its own rules cannot roll back the
+  rest. Never collapse the result to a single success: the dialog lists what failed
+  and why.
+- **`canSelect` must be the row menu's rule, and the same function.** Extract the
+  predicate once and use it in both, or the checkbox will offer what the menu
+  refuses. Ineligible rows render disabled with `ineligibleReason` as the tooltip.
+- **Gate `selection` on the permission**, not just the button. Without the
+  permission there is no checkbox column at all.
+- **`getRowLabel` is required.** Twenty checkboxes labelled "Select row" is not a
+  table anyone can use with a screen reader, and the confirm dialog names what it is
+  about to delete from the same function.
+- **Select-all is page-scoped and stays that way.** Selection survives paging, so
+  selecting each page works; "select all 240" on a destructive action does not,
+  because the user cannot see what they are agreeing to.
+- **Selection resets when the result set changes** — any filter, the sort, or the
+  page size. It deliberately survives paging. A list that navigates by state the
+  filter schema does not hold names it in `scope`: Files passes its folder and
+  search scope, or checked rows would follow the user into another folder.
+- **`ineligibleReason` may be a function** when the reason belongs to the row —
+  a file names the record holding it, rather than only saying something does.
+- **Turning selection off clears it.** Passing `selection: undefined` — Files
+  does in grid view, where there are no checkboxes — drops the checked ids
+  rather than leaving a count nothing on screen can clear.
+- **Keep the config object at module scope.** A fresh object every render rebuilds
+  the column list every render.
+
 ## Rules
 
 - **Declare schemas at module scope.** A fresh array each render gives `values` and
@@ -116,3 +225,15 @@ Going through `DataTable` would have cost three render hatches, so it stops at
 
 That is the layering working, not a workaround. If another list needs the same, take
 the same route rather than bending `DataTable`.
+
+Bulk selection still reaches it: its body maps `row.getVisibleCells()` generically, so
+the injected checkbox column renders there with no special case, and it composes
+`DataTableBulkBar` into the same header slot `DataTable` uses. What it needs beyond the
+usual wiring is the `scope` key above, and `selection: undefined` in grid view.
+
+Files also carries the one rule the other lists do not: **deleting a folder does not
+delete what is in it.** The API refuses a folder that still has items, exactly as the
+single delete does, so a bulk selection reports those back rather than emptying them.
+Files are deleted before folders so that emptying a folder and removing it in one
+selection works; a folder nested inside another selected folder still fails, and says
+why.

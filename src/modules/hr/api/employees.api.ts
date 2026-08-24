@@ -1,4 +1,4 @@
-import api from '@/app/api';
+import api, { bulkDeleteRequest, type BulkDeleteResult } from '@/app/api';
 import {
   employeePaginatedResponseSchema,
   employeeProjectSchema,
@@ -105,6 +105,10 @@ export const employeesApi = {
 
   async remove(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  bulkRemove(ids: string[]): Promise<BulkDeleteResult> {
+    return bulkDeleteRequest(`${BASE}/bulk-delete`, ids);
   },
 
   async getProjects(id: string): Promise<EmployeeProject[]> {

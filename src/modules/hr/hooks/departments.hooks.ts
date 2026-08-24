@@ -1,4 +1,5 @@
 import { activityLogKeys } from '@/app/hooks/use-activity-log';
+import { useBulkDelete, type UseBulkDeleteOptions } from '@/app/hooks/use-bulk-delete';
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { departmentsApi } from '@/modules/hr/api/departments.api';
 import { departmentsKeys } from '@/modules/hr/constants/departments.keys';
@@ -69,6 +70,19 @@ export const useDeleteDepartmentMutation = () => {
       toast.success('Department deleted successfully');
     },
     onError: (error) => toastApiError(error, 'Failed to delete department.'),
+  });
+};
+
+export const useBulkDeleteDepartmentsMutation = (onOutcome?: UseBulkDeleteOptions['onOutcome']) => {
+  const qc = useQueryClient();
+  return useBulkDelete({
+    itemLabel: { one: 'department', many: 'departments' },
+    mutationFn: departmentsApi.bulkRemove,
+    onOutcome,
+    onInvalidate: () => {
+      void qc.invalidateQueries({ queryKey: departmentsKeys.all });
+      void qc.invalidateQueries({ queryKey: activityLogKeys.all });
+    },
   });
 };
 

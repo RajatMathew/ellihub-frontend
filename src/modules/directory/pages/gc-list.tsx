@@ -1,7 +1,15 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import {
+  BulkDeleteDialog,
+  DataTable,
+  f,
+  useListState,
+  useListTable,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { GCStatsCards, useGCListColumns } from '@/modules/directory/components/gc';
 import { getGCTypeOptionLabel } from '@/modules/directory/components/gc/gc-list-utils';
@@ -11,21 +19,31 @@ import {
   GCS_SORT_BY_OPTIONS,
 } from '@/modules/directory/constants/gc/gc-list.constants';
 import {
+  useBulkDeleteGCMutation,
   useDeleteGCMutation,
   useGCsQuery,
   useGCStatsQuery,
   useGCTypesQuery,
 } from '@/modules/directory/hooks/gc.hooks';
-import type { ListGCsParams } from '@/modules/directory/schemas/gc.schema';
-import { Building2, ListFilterPlus, Plus } from 'lucide-react';
+import type { GeneralContractor, ListGCsParams } from '@/modules/directory/schemas/gc.schema';
+import { Building2, ListFilterPlus, Plus, Trash2 } from 'lucide-react';
 
 const GC_STATUS_OPTIONS = Object.entries(GC_STATUS_LABELS).map(([value, label]) => ({
   label,
   value,
 }));
 
+const GC_ITEM_LABEL = { many: 'general contractors', one: 'general contractor' };
+
+// Module scope, so the selection config keeps one identity for the table's life.
+const GC_SELECTION: ListSelectionConfig<GeneralContractor> = {
+  getRowLabel: (gc) => gc.name,
+};
+
 export function GCListPage() {
   const { can } = useAccess();
+  const canDelete = can('generalContractor', 'delete');
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const { data: typeTabs = [], isLoading: isTypesLoading } = useGCTypesQuery();
 
@@ -81,7 +99,7 @@ export function GCListPage() {
   );
 
   const columns = useGCListColumns({
-    canDelete: can('generalContractor', 'delete'),
+    canDelete,
     canUpdate: can('generalContractor', 'update'),
     onDelete: handleDelete,
     typeLabels,
@@ -92,8 +110,17 @@ export function GCListPage() {
     getRowId: (gc) => gc.id,
     query: generalContractorsQuery,
     rows: listData,
+    selection: canDelete ? GC_SELECTION : undefined,
     state,
     totalCount: generalContractorsQuery.data?.pagination?.totalItems ?? 0,
+  });
+
+  // Only the records the server actually deleted leave the selection. Anything
+  // it refused stays checked so the dialog can name it, which is also why the
+  // dialog closes only on a clean run.
+  const bulkDelete = useBulkDeleteGCMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   const hasStatsData = statsQuery.data !== undefined;
@@ -126,6 +153,13 @@ export function GCListPage() {
 
       <DataTable
         ariaLabel="General contractors"
+        bulkItemLabel={GC_ITEM_LABEL}
+        bulkActions={
+          <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        }
         empty={{
           description: 'Click "+ Add GC" to get started.',
           icon: <Building2 className="size-10 text-muted-foreground/50" />,
@@ -136,6 +170,19 @@ export function GCListPage() {
         state={state}
         tableClassNames={{ base: 'min-w-full' }}
         tableLayout={{ width: 'auto' }}
+      />
+
+      <BulkDeleteDialog
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={GC_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
+        }}
       />
     </div>
   );

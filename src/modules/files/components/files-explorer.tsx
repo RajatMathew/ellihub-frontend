@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 
+import {
+  BulkDeleteDialog,
+  DataTableBulkBar,
+  type ListSelectionConfig,
+} from '@/app/components/data-table';
 import { QueryErrorState } from '@/app/components/query-error-state';
+import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card';
 import { DataGrid } from '@/app/components/ui/data-grid';
 import { DataGridPagination } from '@/app/components/ui/data-grid-pagination';
@@ -16,7 +22,7 @@ import { FilesPageDialogs } from '@/modules/files/components/files-page-dialogs'
 import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar';
 import { FolderExportProgressDialog } from '@/modules/files/components/folder-export-progress-dialog';
 import { FolderExportStatusCard } from '@/modules/files/components/folder-export-status-card';
-import { useFilesSearchQuery } from '@/modules/files/hooks/files.hooks';
+import { useBulkDeleteFilesMutation, useFilesSearchQuery } from '@/modules/files/hooks/files.hooks';
 import {
   sectionFileItems,
   useFilesDisplayData,
@@ -28,7 +34,10 @@ import {
 } from '@/modules/files/hooks/use-files-list-params';
 import { useFilesTable } from '@/modules/files/hooks/use-files-table';
 import { useFolderZipExport } from '@/modules/files/hooks/use-folder-zip-export';
+import { getFileDisplayNameWithExtension } from '@/modules/files/lib/file-display-name';
+import { getBlockingFileLinks, getFileLinkBlockedReason } from '@/modules/files/lib/file-links';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
+import { Trash2 } from 'lucide-react';
 
 interface FilesExplorerProps {
   title?: string;
@@ -66,6 +75,23 @@ function getScopedBreadcrumbs(
   }
 
   return breadcrumbs.slice(1);
+}
+
+const FILES_ITEM_LABEL = { many: 'items', one: 'item' };
+
+/**
+ * The row menu's own rule, so the checkbox cannot offer what the menu refuses:
+ * protected items are never deletable, and a file something still points at is
+ * refused by the API.
+ */
+function canDeleteFileItem(item: FileItem) {
+  return item.isDeletable && !item.isLinked;
+}
+
+function getFileItemDeleteBlockedReason(item: FileItem) {
+  if (!item.isDeletable) return 'This item cannot be deleted.';
+
+  return getFileLinkBlockedReason(getBlockingFileLinks(item)) ?? undefined;
 }
 
 function getFolderDisplayName(name: string | null | undefined, fallback: string) {
@@ -198,7 +224,24 @@ export function FilesExplorer({
   const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
   const [renameItem, setRenameItem] = useState<FileItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<FileItem | null>(null);
+  const [isBulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const folderZipExport = useFolderZipExport({ enabled: canExport });
+
+  // Selection is list-view only, and the folder and search scope are navigation
+  // state the filter schema deliberately does not hold — so they have to be
+  // named here, or checked rows would follow the user into another folder.
+  const selection = useMemo<ListSelectionConfig<FileItem> | undefined>(
+    () =>
+      canDelete && viewMode === 'list'
+        ? {
+            canSelect: canDeleteFileItem,
+            getRowLabel: getFileDisplayNameWithExtension,
+            ineligibleReason: getFileItemDeleteBlockedReason,
+            scope: `${currentFolderId}|${searchMode}|${isSearchActive}`,
+          }
+        : undefined,
+    [canDelete, currentFolderId, isSearchActive, searchMode, viewMode]
+  );
 
   const handleExport = useCallback(() => {
     if (folderZipExport.isExporting) {
@@ -269,7 +312,8 @@ export function FilesExplorer({
     [fileSearchQuery, isDataError, isDataLoading, isSearchActive, refetch]
   );
 
-  const { table, columns } = useFilesTable({
+  const { table, list } = useFilesTable({
+    selection,
     sectionedData,
     totalCount,
     state: listParams,
@@ -288,6 +332,11 @@ export function FilesExplorer({
     canRename: canUpdate && !showResultLocation,
     canDelete: canDelete && !showResultLocation,
     canExport,
+  });
+
+  const bulkDelete = useBulkDeleteFilesMutation(({ deletedIds, failures }) => {
+    list.selection.deselect(deletedIds);
+    if (failures.length === 0) setBulkDeleteOpen(false);
   });
 
   return (
@@ -315,18 +364,32 @@ export function FilesExplorer({
       />
 
       <Card className="min-w-0 max-w-full overflow-hidden">
-        <FilesListFilters
-          folderName={currentFolderName}
-          sortBy={sortBy}
-          viewMode={viewMode}
-          hasActiveFilters={hasActiveFilters}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onSortChange={(value) => setSort(value, sortOrder)}
-          onViewChange={(view) => updateParams({ view: view === 'list' ? undefined : view })}
-          onClearFilters={clearFilters}
-          onDateRangeChange={setDateRange}
-        />
+        {list.selection.count > 0 ? (
+          <DataTableBulkBar
+            count={list.selection.count}
+            itemLabel={FILES_ITEM_LABEL}
+            onClear={list.selection.clear}
+            actions={
+              <Button size="sm" variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+            }
+          />
+        ) : (
+          <FilesListFilters
+            folderName={currentFolderName}
+            sortBy={sortBy}
+            viewMode={viewMode}
+            hasActiveFilters={hasActiveFilters}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onSortChange={(value) => setSort(value, sortOrder)}
+            onViewChange={(view) => updateParams({ view: view === 'list' ? undefined : view })}
+            onClearFilters={clearFilters}
+            onDateRangeChange={setDateRange}
+          />
+        )}
 
         {isDataError ? (
           <CardContent>
@@ -359,7 +422,6 @@ export function FilesExplorer({
             {viewMode === 'list' ? (
               <FilesListTable
                 table={table}
-                columns={columns}
                 sectionedData={sectionedData}
                 isLoading={isDataLoading}
               />
@@ -408,6 +470,20 @@ export function FilesExplorer({
         isCancelling={folderZipExport.isCancelling}
         onView={folderZipExport.reopen}
         onCancel={folderZipExport.cancelExport}
+      />
+
+      <BulkDeleteDialog
+        description="Folders must be empty first — a folder that still has items in it is reported back, not emptied."
+        failures={bulkDelete.failures}
+        isPending={bulkDelete.isPending}
+        itemLabel={FILES_ITEM_LABEL}
+        items={list.selection.items}
+        open={isBulkDeleteOpen}
+        onConfirm={() => bulkDelete.run(list.selection.ids)}
+        onOpenChange={(open) => {
+          setBulkDeleteOpen(open);
+          if (!open) bulkDelete.reset();
+        }}
       />
 
       <FilesPageDialogs
