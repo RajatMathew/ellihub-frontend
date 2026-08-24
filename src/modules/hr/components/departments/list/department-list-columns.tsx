@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
 
+import { col } from '@/app/components/data-table';
 import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
-  DepartmentActionsCell,
   DepartmentCreatedCell,
   DepartmentEmployeeCountCell,
   DepartmentNameCell,
   DepartmentNameSkeleton,
 } from '@/modules/hr/components/departments/list/department-list-column-cells';
+import { canDeleteDepartment } from '@/modules/hr/components/departments/list/department-list-utils';
 import type { Department } from '@/modules/hr/schemas/department.schema';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -49,27 +50,26 @@ export function useDepartmentListColumns(
           skeleton: <Skeleton className="h-4 w-24" />,
         },
       },
-      {
-        id: 'actions',
-        size: 64,
-        header: () => null,
-        cell: ({ row }) => (
-          <DepartmentActionsCell
-            canDelete={canDelete}
-            department={row.original}
-            onDelete={onDelete}
-          />
-        ),
-        meta: {
-          headerClassName: 'w-16 text-end pr-4',
-          skeleton: (
-            <div className="flex justify-end pr-2">
-              <Skeleton className="size-8 rounded-md" />
-            </div>
-          ),
-        },
-        enableSorting: false,
-      },
+      col.actions({
+        label: (department) => department.name,
+        items: (department) => [
+          { label: 'View Details', to: department.id },
+          { label: 'Edit', to: `${department.id}/edit` },
+          canDelete && {
+            destructive: true,
+            // Same predicate the checkbox column uses, so the menu cannot offer
+            // what a bulk delete would refuse.
+            disabled: !canDeleteDepartment(department),
+            label: 'Delete',
+            onSelect: () =>
+              onDelete({
+                employeeCount: department.employeeCount ?? 0,
+                id: department.id,
+                name: department.name,
+              }),
+          },
+        ],
+      }),
     ],
     [canDelete, onDelete]
   );

@@ -123,7 +123,8 @@ export function usePTOListColumns({
           />
         ),
         meta: {
-          headerClassName: 'w-28 text-right',
+          align: 'end',
+          headerClassName: 'w-28',
           skeleton: (
             <div className="flex justify-end pr-2">
               <Skeleton className="size-8 rounded-md" />

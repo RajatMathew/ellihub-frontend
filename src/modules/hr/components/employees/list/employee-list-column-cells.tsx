@@ -1,11 +1,4 @@
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
+import { RowActions } from '@/app/components/data-table';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { formatDate, getInitials } from '@/app/lib/helpers';
 import {
@@ -13,7 +6,7 @@ import {
   getEmployeeStatusTone,
 } from '@/modules/hr/components/employees/list/employee-list-utils';
 import type { Employee } from '@/modules/hr/schemas/employee.schema';
-import { MoreHorizontal, UserMinus } from 'lucide-react';
+import { UserMinus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface EmployeeActionsCellProps {
@@ -85,36 +78,19 @@ export function EmployeeStartDateCell({ employee }: { employee: Employee }) {
 
 export function EmployeeActionsCell({ employee, onDelete, canDelete }: EmployeeActionsCellProps) {
   return (
-    <div className="flex justify-end pr-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" mode="icon" size="sm" className="size-8 hover:bg-muted">
-            <MoreHorizontal className="size-4" />
-            <span className="sr-only">Actions</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem asChild>
-            <Link to={employee.id}>View Full Details</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to={`${employee.id}/edit`}>Edit Profile</Link>
-          </DropdownMenuItem>
-          {canDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => onDelete({ id: employee.id, name: employee.name })}
-              >
-                <UserMinus className="mr-2 size-4" />
-                Delete Employee
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <RowActions
+      label={employee.name}
+      items={[
+        { label: 'View Full Details', to: employee.id },
+        { label: 'Edit Profile', to: `${employee.id}/edit` },
+        canDelete && {
+          destructive: true,
+          icon: UserMinus,
+          label: 'Delete Employee',
+          onSelect: () => onDelete({ id: employee.id, name: employee.name }),
+        },
+      ]}
+    />
   );
 }
 

@@ -1,24 +1,15 @@
-import { Badge, type BadgeProps } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/status-badge';
 import type { PTOStatus } from '@/modules/hr/schemas/pto.schema';
 
 interface PTOStatusBadgeProps {
   status: PTOStatus;
 }
 
-const statusVariant: Record<PTOStatus, BadgeProps['variant']> = {
-  PENDING: 'warning',
-  APPROVED: 'success',
-  REJECTED: 'destructive',
-};
-
+/**
+ * PTO's statuses are the shared vocabulary — `PENDING`, `APPROVED`, `REJECTED`
+ * all resolve through `statusTone`, so this is now a label wrapper rather than a
+ * fourth copy of the status → variant map.
+ */
 export function PTOStatusBadge({ status }: PTOStatusBadgeProps) {
-  return (
-    <Badge
-      variant={statusVariant[status]}
-      appearance="outline"
-      className="text-xs font-semibold uppercase"
-    >
-      {status.toLowerCase()}
-    </Badge>
-  );
+  return <StatusBadge status={status} />;
 }
