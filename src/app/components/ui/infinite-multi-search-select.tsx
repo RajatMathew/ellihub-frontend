@@ -13,6 +13,10 @@ import {
   CommandList,
 } from '@app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import {
+  searchSelectTriggerSizes,
+  type SearchSelectSize,
+} from '@app/components/ui/search-select-size';
 import { useDebouncedCallback } from '@app/hooks/use-debounced-callback';
 import { cn } from '@app/lib/utils';
 
@@ -44,6 +48,7 @@ type InfiniteMultiSearchSelectProps = {
   searchDebounceMs?: number;
   maxVisibleSelectedOptions?: number;
   overflowLabel?: (count: number) => string;
+  size?: SearchSelectSize;
   triggerClassName?: string;
   contentClassName?: string;
   testId?: string;
@@ -110,6 +115,7 @@ export function InfiniteMultiSearchSelect({
   searchDebounceMs = 300,
   maxVisibleSelectedOptions = 1,
   overflowLabel = (count) => `+${count} more`,
+  size = 'md',
   triggerClassName,
   contentClassName,
   testId,
@@ -187,10 +193,7 @@ export function InfiniteMultiSearchSelect({
     return next;
   }, [options, selectedOptions]);
 
-  const normalizedMaxVisibleSelectedOptions = Math.max(
-    0,
-    Math.trunc(maxVisibleSelectedOptions)
-  );
+  const normalizedMaxVisibleSelectedOptions = Math.max(0, Math.trunc(maxVisibleSelectedOptions));
   const visibleSelectedOptions = useMemo(
     () => selectedOptions.slice(0, normalizedMaxVisibleSelectedOptions),
     [normalizedMaxVisibleSelectedOptions, selectedOptions]
@@ -261,7 +264,12 @@ export function InfiniteMultiSearchSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex min-h-8.5 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-[0.8125rem] font-normal outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            // Fixed height, never `min-h-*`: the overflow badge below keeps the
+            // selection to one row, so the trigger must not grow when a label is
+            // long — it sits in a card header, and growing it pushes the whole
+            // table down.
+            'flex w-full items-center justify-between rounded-md border border-input bg-background font-normal outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            searchSelectTriggerSizes[size],
             triggerClassName
           )}
         >

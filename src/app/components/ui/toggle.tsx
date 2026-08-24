@@ -20,6 +20,8 @@ const toggleVariants = cva(
         lg: 'h-10 min-w-10 rounded-md px-2.5 text-sm gap-1.5 [&_svg]:size-4',
         md: 'h-8.5 min-w-8.5 rounded-md px-2 text-[0.8125rem] leading-(--text-sm--line-height) gap-1 [&_svg]:size-4',
         sm: 'h-7 min-w-7 rounded-md px-1.25 text-xs gap-1 [&_svg]:size-3.5',
+        // 32px table-card-header row. See docs/table-consistency-plan.md, phase 1.
+        toolbar: 'h-8 min-w-8 rounded-md px-2 text-xs gap-1.5 [&_svg]:size-4',
       },
     },
     defaultVariants: {

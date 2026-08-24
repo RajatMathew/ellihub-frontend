@@ -13,6 +13,10 @@ import {
   CommandList,
 } from '@app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import {
+  searchSelectTriggerSizes,
+  type SearchSelectSize,
+} from '@app/components/ui/search-select-size';
 import { useDebouncedCallback } from '@app/hooks/use-debounced-callback';
 import { cn } from '@app/lib/utils';
 
@@ -42,6 +46,7 @@ type InfiniteSearchSelectProps = {
   emptyMessage?: string;
   loadingMessage?: string;
   searchDebounceMs?: number;
+  size?: SearchSelectSize;
   triggerClassName?: string;
   contentClassName?: string;
   placeholderClassName?: string;
@@ -107,6 +112,7 @@ export function InfiniteSearchSelect({
   emptyMessage = 'No results found.',
   loadingMessage = 'Loading...',
   searchDebounceMs = 300,
+  size = 'md',
   triggerClassName,
   contentClassName,
   placeholderClassName,
@@ -213,7 +219,8 @@ export function InfiniteSearchSelect({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            'flex h-8.5 w-full items-center justify-between gap-1 rounded-md border border-input bg-background px-3 text-[0.8125rem] font-normal leading-(--text-sm--line-height) outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            'flex w-full items-center justify-between rounded-md border border-input bg-background font-normal outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            searchSelectTriggerSizes[size],
             triggerClassName
           )}
         >
