@@ -161,7 +161,9 @@ export function DataGridSection<TData extends object>({
         <div
           aria-live="polite"
           className={cn(
-            'pointer-events-none absolute end-4 top-2 z-20 transition-opacity duration-150',
+            // Anchored to the bottom, above the footer. The card's first child
+            // is the header, so a top-anchored overlay lands on top of Clear.
+            'pointer-events-none absolute bottom-16 end-4 z-20 transition-opacity duration-150',
             isRefreshing && !isLoading ? 'opacity-100' : 'opacity-0'
           )}
         >

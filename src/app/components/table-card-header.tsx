@@ -247,33 +247,6 @@ function TableCardHeaderTrailing({
   );
 }
 
-/**
- * Keeps a conditional control's space while it is hidden.
- *
- * A header control that mounts and unmounts reflows the row, and the row is
- * directly above the table — so the table moves too. Reserving the space costs a
- * gap that is always there, which is the cheaper of the two.
- */
-function Reserve({
-  when,
-  children,
-  className,
-}: {
-  when: boolean;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      aria-hidden={!when}
-      inert={!when}
-      className={cn('flex items-center', !when && 'pointer-events-none invisible', className)}
-    >
-      {children}
-    </div>
-  );
-}
-
 function TableCardHeaderSearch({
   value,
   placeholder,
@@ -370,7 +343,6 @@ function TableCardHeaderClearButton({
 }
 
 export {
-  Reserve,
   TableCardHeader,
   TableCardHeaderClearButton,
   TableCardHeaderFilters,
