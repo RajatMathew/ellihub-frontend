@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 
 import { renderRowSelectionCheckbox } from '@/app/components/data-table/data-table-selection';
 import { Button } from '@/app/components/ui/button';
@@ -82,6 +82,33 @@ export function DataGridSection<TData extends object>({
 }: DataGridSectionProps<TData>) {
   const responsiveClasses = responsiveListClasses[mobileBreakpoint];
   const EmptyIcon = emptyIcon;
+
+  // Remember how tall the body was the last time it held rows, and hold that
+  // height while the next result set loads.
+  //
+  // Two jumps come from not doing this. The skeleton always drew `pageSize`
+  // rows, so a filtered result of three collapsed a ten-row card the moment it
+  // landed; and the reverse on the way back in. Measuring beats counting rows,
+  // because rows are not all one height — a two-line name cell is taller than a
+  // date.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [lastBodyHeight, setLastBodyHeight] = useState<number>();
+  const hasRows = table.getRowModel().rows.length > 0;
+
+  useLayoutEffect(() => {
+    if (isLoading || !hasRows || !bodyRef.current) return;
+
+    const height = bodyRef.current.offsetHeight;
+
+    // Zero means the table is not the visible layout — below the mobile
+    // breakpoint the card grid renders instead and this element is hidden.
+    // Holding a height of nothing would be worse than holding none.
+    if (height > 0) setLastBodyHeight(height);
+  }, [hasRows, isLoading, totalCount]);
+
+  // Only while loading. Once rows are on screen the body sizes itself, or an
+  // empty state would be padded out to the height of the last full page.
+  const bodyMinHeight = isLoading ? lastBodyHeight : undefined;
   const emptyState = (
     <div className="flex flex-col items-center gap-2 py-8">
       <EmptyIcon className="size-10 text-muted-foreground/50" />
@@ -127,12 +154,18 @@ export function DataGridSection<TData extends object>({
       }}
       tableClassNames={tableClassNames}
     >
-      {refreshIndicator === 'inline' && isRefreshing && !isLoading && (
+      {/* Overlaid, not inserted. This used to be a 36px bar in the flow between
+          the table and the footer, so every background refetch pushed the
+          pagination row down and pulled it back up again. */}
+      {refreshIndicator === 'inline' && (
         <div
-          className="flex min-h-9 items-center justify-end border-t bg-muted/20 px-4 py-2"
           aria-live="polite"
+          className={cn(
+            'pointer-events-none absolute end-4 top-2 z-20 transition-opacity duration-150',
+            isRefreshing && !isLoading ? 'opacity-100' : 'opacity-0'
+          )}
         >
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs font-medium text-muted-foreground shadow-xs">
             <Loader2 className="size-3.5 animate-spin" />
             Refreshing
           </span>
@@ -162,14 +195,19 @@ export function DataGridSection<TData extends object>({
         </CardContent>
       )}
       <CardTable
+        ref={bodyRef}
         className={cn(
-          'min-w-0 max-w-full overflow-x-auto overscroll-x-contain',
+          'min-w-0 max-w-full overflow-x-auto overscroll-x-contain [scrollbar-gutter:stable]',
           mobileItem && responsiveClasses.table
         )}
+        // Holds the body's height across a refetch, so a shorter result set
+        // cannot collapse the card before the new rows paint.
+        style={bodyMinHeight ? { minHeight: bodyMinHeight } : undefined}
       >
         <DataGridTable />
       </CardTable>
-      <CardFooter className="min-w-0 max-w-full overflow-x-auto">
+      {/* The footer is not a second scroll region: the pagination wraps instead. */}
+      <CardFooter className="min-w-0 max-w-full">
         <DataGridPagination />
       </CardFooter>
     </DataGrid>

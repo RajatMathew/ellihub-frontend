@@ -26,7 +26,10 @@ const useCardContext = () => {
 
 // Variants
 const cardVariants = cva(
-  'flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
+  // `relative` so an overlay inside the card — the table's refresh indicator —
+  // has a defined containing block instead of finding whichever ancestor happens
+  // to be positioned. No offsets, so it changes nothing on its own.
+  'relative flex min-w-0 max-w-full flex-col items-stretch text-card-foreground rounded-xl',
   {
     variants: {
       variant: {
@@ -145,7 +148,7 @@ function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 }
 
 // CardTable Component
-function CardTable({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardTable({ className, ...props }: React.ComponentProps<'div'>) {
   const { variant } = useCardContext();
   return (
     <div

@@ -586,6 +586,11 @@ function DataGridTable<TData>() {
       {(props.tableLayout?.stripped || !props.tableLayout?.rowBorder) && <DataGridTableRowSpacer />}
 
       <DataGridTableBody>
+        {/* `pageSize` rows is the right guess where this now runs: with
+            `useListQuery` keeping the previous page's data, a filter or sort
+            change never empties the body, so skeletons only appear on a genuine
+            first load — where the page size is all there is to go on. The card's
+            height is held separately, in DataGridSection. */}
         {props.loadingMode === 'skeleton' && isLoading && pagination?.pageSize ? (
           Array.from({ length: pagination.pageSize }).map((_, rowIndex) => (
             <DataGridTableBodyRowSkeleton key={rowIndex}>
