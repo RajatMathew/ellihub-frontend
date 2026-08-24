@@ -146,6 +146,53 @@
   }
 }
 
+/**
+ * Card-header control surface.
+ *
+ * A table card header paints its own background (`--card-header`), which is dark
+ * in three of the four themes. Controls placed inside it default to the page
+ * palette and therefore disappear, which is why every header control used to
+ * carry a hand-written `!important` override string.
+ *
+ * Rather than fight each control from outside, redefine what the palette *means*
+ * inside the header. `SelectTrigger`, `InputWrapper`, `Button` and the search
+ * pickers all read these tokens already, so they render correctly here without
+ * knowing where they are.
+ *
+ * See docs/table-consistency-plan.md, phase 1.
+ */
+[data-surface='card-header'] {
+  --background: var(--card-header);
+  --foreground: var(--table-card-header-foreground);
+  --input-border: color-mix(in srgb, var(--table-card-header-foreground) 25%, transparent);
+  --ring: color-mix(in srgb, var(--table-card-header-foreground) 40%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--table-card-header-foreground) 75%, transparent);
+  --accent: color-mix(in srgb, var(--table-card-header-foreground) 12%, transparent);
+  --accent-foreground: var(--table-card-header-foreground);
+  --secondary-foreground: var(--table-card-header-foreground);
+  --outline-button-border: color-mix(in srgb, var(--table-card-header-foreground) 25%, transparent);
+  --outline-button-background: var(--card-header);
+  --outline-button-foreground: var(--table-card-header-foreground);
+  --outline-button-hover-border: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 40%,
+    transparent
+  );
+  --outline-button-hover-background: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 10%,
+    transparent
+  );
+  --outline-button-hover-foreground: var(--table-card-header-foreground);
+}
+
+/**
+ * Popovers, dropdowns and select menus portal to the body, so they escape the
+ * scope above and correctly keep the page palette. Anything rendered inline
+ * inside the header — a badge inside a multi-select trigger, say — does not, and
+ * that is intended.
+ */
+
 /** Global Styles **/
 @layer base {
   * {
