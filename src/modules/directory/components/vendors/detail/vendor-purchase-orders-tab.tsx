@@ -83,7 +83,7 @@ function PurchaseOrderSummaryCard({ purchaseOrder }: { purchaseOrder: POListItem
     <Card className="overflow-hidden">
       <CardHeader className="flex-row items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <CardTitle className="text-sm !text-table-card-header-foreground">
+          <CardTitle className="text-sm">
             <ListingIdentifierText value={purchaseOrder.poNumber} fallback="Draft PO" />
           </CardTitle>
           <Badge
@@ -96,7 +96,7 @@ function PurchaseOrderSummaryCard({ purchaseOrder }: { purchaseOrder: POListItem
         </div>
         <Link
           to={purchaseOrderPath}
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium uppercase tracking-normal !text-table-card-header-foreground/80 hover:!text-table-card-header-foreground"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium uppercase tracking-normal/80 hover:!text-table-card-header-foreground"
         >
           View PO
           <ArrowUpRight className="size-3" />

@@ -23,7 +23,7 @@ export function ContactPersonalDetailsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest">
           Personal Details
         </CardTitle>
       </CardHeader>

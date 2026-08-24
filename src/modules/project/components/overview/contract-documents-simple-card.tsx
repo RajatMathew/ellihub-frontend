@@ -301,7 +301,7 @@ export function ContractDocumentsSimpleCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between !px-4 !py-2.5 sm:!px-4">
+      <CardHeader className="flex flex-row items-center justify-between px-4 py-2.5">
         {documentsUrl ? (
           <CardTitle className="text-xs font-semibold tracking-[0.18em] uppercase">
             <Link to={documentsUrl} className="hover:underline">
@@ -337,7 +337,7 @@ export function ContractDocumentsSimpleCard({
           </CardToolbar>
         )}
       </CardHeader>
-      <CardContent className="!px-3 !py-2 sm:!px-3 sm:!py-2">
+      <CardContent className="px-3 py-2">
         {isLoading ? (
           <ProjectInlineListLoading rows={2} />
         ) : sortedDocuments.length > 0 ? (

@@ -118,6 +118,9 @@ function EmailHtmlBody({
       const parsedDocument = new DOMParser().parseFromString(documentHtml, 'text/html');
       const emailRoot = document.importNode(parsedDocument.documentElement, true);
       const baseStyles = document.createElement('style');
+      /* eslint-disable no-restricted-syntax -- a CSS stylesheet for the
+         message's shadow root, not a Tailwind class string. `!important` here is
+         holding sender markup back, which is the whole point. */
       baseStyles.textContent = `
       :host {
         display: block;
@@ -153,6 +156,7 @@ function EmailHtmlBody({
         text-underline-offset: 2px;
       }
     `;
+      /* eslint-enable no-restricted-syntax */
 
       shadowRoot.replaceChildren(baseStyles, emailRoot);
       const images = Array.from(shadowRoot.querySelectorAll<HTMLImageElement>('img'));

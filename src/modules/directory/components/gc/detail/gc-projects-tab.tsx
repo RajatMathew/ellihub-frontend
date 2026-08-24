@@ -37,7 +37,7 @@ export function GCProjectsTab({ projects }: GCProjectsTabProps) {
     <Card>
       <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <CardTitle className="text-xs font-semibold uppercase tracking-widest !text-table-card-header-foreground">
+          <CardTitle className="text-xs font-semibold uppercase tracking-widest">
             Project Section
           </CardTitle>
           <p className="mt-2 text-sm text-table-card-header-foreground/80">

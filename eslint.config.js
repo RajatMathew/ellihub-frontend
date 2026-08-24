@@ -64,6 +64,25 @@ export default defineConfig([
           ],
         },
       ],
+      // Reaching for `!important` means a primitive is missing a variant. Adding
+      // the variant is the fix; shouting over the cascade is what produced 72 of
+      // these across 28 files before the card-header token scope replaced them.
+      'no-restricted-syntax': [
+        'error',
+        {
+          // Class strings arrive here with their quotes stripped, so matching a
+          // `!` at the start of the value or after whitespace is enough. The
+          // `[a-z[]` tail keeps it off things like `!isLoading`.
+          selector: 'Literal[value=/(^|\\s)![a-z[]/]',
+          message:
+            'No `!important` Tailwind utilities in modules. If a control will not take the style it needs, add a variant to the primitive instead.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/(^|\\s)![a-z[]/]',
+          message:
+            'No `!important` Tailwind utilities in modules. If a control will not take the style it needs, add a variant to the primitive instead.',
+        },
+      ],
     },
   },
   eslintConfigPrettier,
