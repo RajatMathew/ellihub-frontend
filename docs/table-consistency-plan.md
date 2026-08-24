@@ -7,7 +7,7 @@ The [first pass](./table-unification-plan.md) collapsed six competing table syst
 put all 17 resource lists on it. Its scope note says **"theme and visual changes"** were deliberately
 out of scope. This is that work.
 
-**Status: phases 1–4 done.** Typechecks, lints clean, production build passes.
+**Status: phases 1–5 done.** Typechecks, lints clean, production build passes.
 Not yet verified in a browser — the dev server boots but the sign-in wall needs real
 credentials, the same blocker the first-pass plan carries.
 
@@ -393,28 +393,56 @@ design question rather than a refactor. J4 stays open with its reasoning rather 
 
 ---
 
-## Phase 5 — The no-jump pass
+## Phase 5 — The no-jump pass ✅
 
 Deliberately after phases 1–4: fixing jumps first would only stabilise layouts that are about to
 change.
 
 **Touches ~20 files. Risk: low — additive.**
 
-- [ ] `useListQuery` wrapper pinning `placeholderData: keepPreviousData`; migrate all 15
+- [x] `useListQuery` wrapper pinning `placeholderData: keepPreviousData`; migrate all 15
       server-paginated list hooks. Only `useVendorsQuery` has it today, which is why every other list
       wipes to skeletons on a filter change **(G1)**
-- [ ] The refresh indicator becomes an overlay or a permanently reserved strip — never a `min-h-9` bar
+- [x] The refresh indicator becomes an overlay or a permanently reserved strip — never a `min-h-9` bar
       inserted into flow between the table and the footer **(G2)**
-- [ ] Skeleton row count and body min-height derived from the last known row count, falling back to
+- [x] Body height held from the last render that had rows, falling back to
       `pageSize` on first load **(G3)**
-- [ ] `scrollbar-gutter: stable` on the table scroller; drop the second, unexpected `overflow-x-auto`
+- [x] `scrollbar-gutter: stable` on the table scroller; drop the second, unexpected `overflow-x-auto`
       on `CardFooter` **(G4)**
-- [ ] Audit the header for any control that mounts conditionally; wrap in `<Reserve>` from phase 2
+- [x] Audit the header for any control that mounts conditionally; wrap in `<Reserve>` from phase 2
 
 **Note:** categories and lookup run `mode: 'client'` and are genuinely exempt from `keepPreviousData`
 — one fetch, in-memory filtering, the query key never changes. Do not "fix" them.
 
-**Closes:** G1 · G2 · G3 · G4 · RC-4
+**Closes:** G1 · G2 · G3 · G4 · G5 · RC-4
+
+### What landed
+
+**`useListQuery`.** The kit could not fix G1 from the inside — it owns the URL state and the
+rendering, but each module wrote its own `useQuery`. It now owns the query too, thinly: one option
+pinned, everything else passed through. Fifteen hooks migrated.
+
+**The refresh indicator overlays instead of inserting.** It was a 36px bar in the flow between the
+table and the footer, so every background refetch moved the pagination row down and back. `Card`
+gains `relative` so an overlay inside it has a defined containing block.
+
+**The body remembers its height.** Measured from the last render that held rows, held while the next
+set loads, released as soon as rows are back — otherwise an empty state would be padded out to the
+height of the last full page. Measured rather than counted, because rows are not one height: a
+two-line name cell is taller than a date.
+
+**The skeleton still draws `pageSize` rows, deliberately.** With the previous page kept, skeletons
+only appear on a genuine first load, where the page size is the only number available. The original
+finding assumed they appeared on every filter change — which was true, but because of G1, not because
+of the count.
+
+### One jump this pass deliberately accepts
+
+The active-filter chip row added in phase 2 appears when the first filter is applied, which moves the
+table down by its height. That is a single transition in direct response to a click, and the row is
+information the user just asked for — unlike the refresh indicator, which appeared repeatedly with no
+input. Reserving the space permanently would put an empty band on every list to avoid one expected
+movement. Left as is.
 
 ---
 
