@@ -5,7 +5,13 @@ import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import { parsePageParam, parseSizeParam } from '@/app/lib/helpers';
 
 import { DEFAULT_PAGE_SIZE, DEFAULT_SEARCH_DEBOUNCE_MS } from './constants';
-import { filterApiKey, filterUrlKeys, readFilterValue, writeFilterValue } from './filters';
+import {
+  filterApiKey,
+  filterUrlKeys,
+  isClearableFilter,
+  readFilterValue,
+  writeFilterValue,
+} from './filters';
 import type {
   AnyFilterDef,
   FilterValues,
@@ -32,6 +38,12 @@ export interface ListState<TDefs extends readonly AnyFilterDef<never>[], TField 
   apiParams: Record<string, unknown>;
   hasActiveFilters: boolean;
   filters: TDefs;
+  /**
+   * The fields this list can actually sort by. Exposed so `useListTable` can
+   * decide which columns render a sort control, rather than every column file
+   * hand-maintaining `enableSorting` against a list it cannot see.
+   */
+  sortFields: readonly TField[];
   setSearchInput: (value: string) => void;
   setFilterValue: (key: string, value: string | undefined) => void;
   setPage: (page: number) => void;
@@ -140,7 +152,25 @@ export function useListState<
   // schema, so its keys cannot be proven to TypeScript; the schema guarantees them.
   const values = rawValues as FilterValues<TDefs>;
 
-  const hasActiveFilters = useMemo(() => Object.values(rawValues).some(Boolean), [rawValues]);
+  // Persistent controls — a view toggle, a sort select — live in the same row and
+  // the same URL, but they are not filters. Counting them would light up Clear on
+  // a list nobody has filtered.
+  const clearableKeys = useMemo(() => {
+    const keys = new Set<string>();
+
+    for (const def of filters) {
+      if (!isClearableFilter(def)) continue;
+      for (const key of filterUrlKeys(def)) keys.add(key);
+    }
+
+    return keys;
+  }, [filters]);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Object.entries(rawValues).some(([key, value]) => Boolean(value) && clearableKeys.has(key)),
+    [clearableKeys, rawValues]
+  );
 
   const apiParams = useMemo(() => {
     const params: Record<string, unknown> = {
@@ -155,10 +185,22 @@ export function useListState<
       // Client-side filters never reach the API.
       if (def.clientPredicate) continue;
 
-      if (def.kind === 'dateRange') {
+      // A sort select writes through `setSort`, so sorting is already in `params`.
+      if (def.kind === 'sortSelect') continue;
+
+      if (
+        def.kind === 'dateRange' ||
+        def.kind === 'dateRangePopover' ||
+        def.kind === 'numberRange'
+      ) {
         params[filterApiKey(def)] = raw[def.key];
         params[def.toApiKey ?? def.toKey] = raw[def.toKey];
         continue;
+      }
+
+      // A search scope narrows the request alongside the text it belongs to.
+      if (def.kind === 'search' && def.scope) {
+        params[def.scope.key] = raw[def.scope.key];
       }
 
       const value = raw[def.key];
@@ -244,6 +286,8 @@ export function useListState<
 
     const patch: Record<string, undefined> = { page: undefined };
     for (const def of filters) {
+      if (!isClearableFilter(def)) continue;
+
       def.onClear?.();
       for (const key of filterUrlKeys(def)) patch[key] = undefined;
     }
@@ -255,6 +299,7 @@ export function useListState<
     apiParams,
     clearFilters,
     filters,
+    sortFields: sort.fields,
     hasActiveFilters,
     page,
     rawValues,
