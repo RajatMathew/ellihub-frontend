@@ -53,8 +53,13 @@ export interface DataTableProps<
    * for an empty result, which `empty` already covers.
    */
   replaceBody?: ReactNode;
-  /** Card-per-row rendering below the breakpoint. Omit for a scrolling table. */
-  mobileItem?: (row: TData) => ReactNode;
+  /**
+   * Card-per-row rendering below the breakpoint. Omit for a scrolling table.
+   * The second argument is the row's selection checkbox, or null when the table
+   * has no selection — render it so a card layout does not silently lose the
+   * ability to select.
+   */
+  mobileItem?: (row: TData, selectionCheckbox: ReactNode) => ReactNode;
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];

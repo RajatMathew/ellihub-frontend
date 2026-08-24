@@ -1,10 +1,15 @@
 /* eslint-disable react-refresh/only-export-components -- the column id and the
    column factory belong beside the cells they render, as in ui/data-grid.tsx */
 
+import type { ReactNode } from 'react';
+
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
-import type { ColumnDef, Row, Table } from '@tanstack/react-table';
+// The card layout has to show the same checkbox the table column does, and
+// rendering the column's own cell is what guarantees the two cannot drift —
+// label, disabled state and reason all come from one definition.
+import { flexRender, type ColumnDef, type Row, type Table } from '@tanstack/react-table';
 
 /** Column id the kit reserves for the checkbox column. Never a sortable field. */
 export const SELECTION_COLUMN_ID = '__select';
@@ -101,6 +106,23 @@ function SelectRowCell<TData>({
       />
     </>
   );
+}
+
+/**
+ * The checkbox for a row, rendered outside the table.
+ *
+ * For the card layout a list falls back to below its breakpoint, where there is
+ * no table to carry the column. Returns null when the table has no selection, so
+ * a card can leave the slot out entirely rather than reserve space for nothing.
+ */
+export function renderRowSelectionCheckbox<TData>(row: Row<TData>): ReactNode {
+  const cell = row
+    .getVisibleCells()
+    .find((candidate) => candidate.column.id === SELECTION_COLUMN_ID);
+
+  if (!cell) return null;
+
+  return flexRender(cell.column.columnDef.cell, cell.getContext());
 }
 
 /**

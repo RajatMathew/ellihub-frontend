@@ -118,8 +118,13 @@ export default function EmployeeListPage() {
         error={{ title: 'Failed to load employees.' }}
         list={list}
         mobileBreakpoint="xl"
-        mobileItem={(employee) => (
-          <EmployeeMobileCard canDelete={canDelete} employee={employee} onDelete={handleDelete} />
+        mobileItem={(employee, selectionCheckbox) => (
+          <EmployeeMobileCard
+            canDelete={canDelete}
+            employee={employee}
+            selectionCheckbox={selectionCheckbox}
+            onDelete={handleDelete}
+          />
         )}
         state={state}
         tableLayout={{ width: 'fixed' }}

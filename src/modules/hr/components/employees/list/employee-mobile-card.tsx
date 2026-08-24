@@ -13,15 +13,21 @@ export function EmployeeMobileCard({
   employee,
   onDelete,
   canDelete,
+  selectionCheckbox,
 }: {
   employee: Employee;
   onDelete: (employee: { id: string; name: string }) => void;
   canDelete: boolean;
+  /** The row's checkbox, or null when the list has no selection. */
+  selectionCheckbox?: ReactNode;
 }) {
   return (
     <div className="min-w-0 max-w-full rounded-md border bg-background p-3 shadow-xs shadow-black/5">
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="flex min-w-0 items-start gap-3">
+          {selectionCheckbox && (
+            <div className="relative flex shrink-0 items-center pt-1">{selectionCheckbox}</div>
+          )}
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary ring-2 ring-background">
             {getInitials(employee.name, 2)}
           </div>
