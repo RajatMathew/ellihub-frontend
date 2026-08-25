@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import {
   TableCardHeader,
@@ -11,13 +11,13 @@ import {
   TableCardHeaderTrailing,
 } from '@/app/components/table-card-header';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
-import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 
 import { collectActiveFilterChips } from './active-filter-chips';
 import { DataTableFilterChips } from './data-table-chips';
 import {
+  DateRangeControl,
   DateRangePopoverControl,
   NumberRangeControl,
   SortSelectControl,
@@ -111,7 +111,14 @@ export function DataTableFilters<
   trailing,
   hideChips,
 }: DataTableFiltersProps<TDefs, TField>) {
-  const { hasActiveFilters, rawValues, searchInput, setFilterValue, setSearchInput } = state;
+  const {
+    hasActiveFilters,
+    rawValues,
+    searchInput,
+    setFilterValue,
+    setFilterValues,
+    setSearchInput,
+  } = state;
 
   // The one cast in the renderer. A schema is a tuple of concrete definitions;
   // the union it belongs to cannot be proven from the tuple's own variance.
@@ -211,34 +218,13 @@ export function DataTableFilters<
 
               if (def.kind === 'dateRange') {
                 return (
-                  <Fragment key={def.key}>
-                    <Input
-                      aria-label={def.fromLabel ?? 'From date'}
-                      className={cn(
-                        'w-full sm:w-36',
-                        dataTableFilterShadowClassName,
-                        def.className
-                      )}
-                      type="date"
-                      variant="toolbar"
-                      value={rawValues[def.key] ?? ''}
-                      onChange={(event) => setFilterValue(def.key, event.target.value || undefined)}
-                    />
-                    <Input
-                      aria-label={def.toLabel ?? 'To date'}
-                      className={cn(
-                        'w-full sm:w-36',
-                        dataTableFilterShadowClassName,
-                        def.className
-                      )}
-                      type="date"
-                      variant="toolbar"
-                      value={rawValues[def.toKey] ?? ''}
-                      onChange={(event) =>
-                        setFilterValue(def.toKey, event.target.value || undefined)
-                      }
-                    />
-                  </Fragment>
+                  <DateRangeControl
+                    key={def.key}
+                    def={def}
+                    from={rawValues[def.key]}
+                    to={rawValues[def.toKey]}
+                    onChange={setFilterValues}
+                  />
                 );
               }
 
@@ -272,10 +258,7 @@ export function DataTableFilters<
                     def={def}
                     from={rawValues[def.key]}
                     to={rawValues[def.toKey]}
-                    onChange={(from, to) => {
-                      setFilterValue(def.key, from);
-                      setFilterValue(def.toKey, to);
-                    }}
+                    onChange={setFilterValues}
                   />
                 );
               }
@@ -287,7 +270,7 @@ export function DataTableFilters<
                     def={def}
                     max={rawValues[def.toKey]}
                     min={rawValues[def.key]}
-                    onChange={setFilterValue}
+                    onChange={setFilterValues}
                   />
                 );
               }

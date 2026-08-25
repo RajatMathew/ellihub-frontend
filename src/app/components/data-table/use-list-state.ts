@@ -46,6 +46,11 @@ export interface ListState<TDefs extends readonly AnyFilterDef<never>[], TField 
   sortFields: readonly TField[];
   setSearchInput: (value: string) => void;
   setFilterValue: (key: string, value: string | undefined) => void;
+  /**
+   * Commits several keys in one URL write. Required for anything owning more
+   * than one key — two `setFilterValue` calls in a tick lose the first.
+   */
+  setFilterValues: (values: Record<string, string | undefined>) => void;
   setPage: (page: number) => void;
   setSize: (size: number) => void;
   setSort: (field: string, order: SortOrder) => void;
@@ -280,6 +285,38 @@ export function useListState<
     [filters, setSearchInput, updateParams]
   );
 
+  /**
+   * Commits several filter keys in one URL write.
+   *
+   * `setFilterValue` twice in a tick loses the first: each call starts its own
+   * navigation, and the second reads a location the first has not landed in yet.
+   * Anything owning more than one key — every range — has to come through here.
+   */
+  const setFilterValues = useCallback(
+    (values: Record<string, string | undefined>) => {
+      const patch: Record<string, string | undefined> = { page: undefined };
+
+      for (const [key, value] of Object.entries(values)) {
+        const def = filters.find((entry) => filterUrlKeys(entry).includes(key));
+
+        if (!def) continue;
+        if (value === undefined) def.onClear?.();
+
+        // Search keeps a draft value and its own debounce, so it never goes
+        // straight to the URL — route it the way a single set would.
+        if (def.kind === 'search') {
+          setSearchInput(value ?? '');
+          continue;
+        }
+
+        patch[key] = key === def.key ? writeFilterValue(def, value) : value || undefined;
+      }
+
+      updateParams(patch);
+    },
+    [filters, setSearchInput, updateParams]
+  );
+
   const clearFilters = useCallback(() => {
     commitSearch.cancel();
     setSearchInputState('');
@@ -306,6 +343,7 @@ export function useListState<
     resetSort,
     searchInput,
     setFilterValue,
+    setFilterValues,
     setPage,
     setSearchInput,
     setSize,

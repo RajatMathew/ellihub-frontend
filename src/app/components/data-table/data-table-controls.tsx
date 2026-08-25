@@ -1,9 +1,8 @@
 import { useState } from 'react';
 
+import { RangeField, RangeFields, RangePopover } from '@/app/components/range-popover';
 import { Button } from '@/app/components/ui/button';
 import { Calendar } from '@/app/components/ui/calendar';
-import { Input } from '@/app/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -14,10 +13,11 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
 import { formatDate } from '@/app/lib/helpers';
 import { cn } from '@/app/lib/utils';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, DollarSign } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 
 import type {
+  DateRangeFilterDef,
   DateRangePopoverFilterDef,
   NumberRangeFilterDef,
   SortSelectFilterDef,
@@ -46,7 +46,7 @@ interface DateRangePopoverControlProps {
   def: DateRangePopoverFilterDef<string, never>;
   from: string | undefined;
   to: string | undefined;
-  onChange: (from: string | undefined, to: string | undefined) => void;
+  onChange: (values: Record<string, string | undefined>) => void;
 }
 
 /**
@@ -58,99 +58,67 @@ interface DateRangePopoverControlProps {
  * list" from across the screen.
  */
 export function DateRangePopoverControl({ def, from, to, onChange }: DateRangePopoverControlProps) {
-  const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<DateRange | undefined>(() => {
     const start = parseDateString(from);
     return start ? { from: start, to: parseDateString(to) } : undefined;
   });
 
-  const hasRange = Boolean(from || to);
-  const label =
+  const summary =
     from && to
       ? `${formatDate(from)} - ${formatDate(to)}`
       : from
         ? `From ${formatDate(from)}`
         : to
           ? `Until ${formatDate(to)}`
-          : (def.placeholder ?? 'Date range');
+          : null;
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) {
-          const start = parseDateString(from);
-          setPending(start ? { from: start, to: parseDateString(to) } : undefined);
-        }
+    <RangePopover
+      className={def.className}
+      description={def.description ?? 'Pick a start and end date.'}
+      icon={CalendarDays}
+      label={def.placeholder ?? def.label ?? 'Date range'}
+      summary={summary}
+      onOpen={() => {
+        const start = parseDateString(from);
+        setPending(start ? { from: start, to: parseDateString(to) } : undefined);
+      }}
+      onApply={() =>
+        onChange({
+          [def.key]: pending?.from ? toDateString(pending.from) : undefined,
+          [def.toKey]: pending?.to ? toDateString(pending.to) : undefined,
+        })
+      }
+      onClear={() => {
+        setPending(undefined);
+        onChange({ [def.key]: undefined, [def.toKey]: undefined });
       }}
     >
-      <PopoverTrigger asChild>
-        <Button
-          size="toolbar"
-          variant="outline"
-          className={cn(
-            'min-w-0 justify-start lg:max-w-64',
-            CONTROL_SHADOW,
-            hasRange && 'border-primary bg-background text-primary',
-            def.className
-          )}
-        >
-          <CalendarDays />
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[min(calc(100vw-1rem),22rem)] p-0" align="start" sideOffset={6}>
-        <div className="flex min-w-0 flex-col">
-          {def.presets && def.presets.length > 0 && (
-            <div className="flex min-w-0 flex-wrap gap-1.5 border-b p-3">
-              {def.presets.map((preset) => (
-                <Button
-                  key={preset.label}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPending(preset.getValue())}
-                >
-                  {preset.label}
-                </Button>
-              ))}
-            </div>
-          )}
-          <Calendar
-            mode="range"
-            numberOfMonths={1}
-            selected={pending}
-            disabled={{ after: def.maxDate ?? new Date() }}
-            onSelect={setPending}
-          />
-          <div className="flex items-center justify-between border-t p-3">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setPending(undefined);
-                onChange(undefined, undefined);
-                setOpen(false);
-              }}
-            >
-              Clear
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                onChange(
-                  pending?.from ? toDateString(pending.from) : undefined,
-                  pending?.to ? toDateString(pending.to) : undefined
-                );
-                setOpen(false);
-              }}
-            >
-              Apply
-            </Button>
+      <div className="flex min-w-0 flex-col gap-3">
+        {def.presets && def.presets.length > 0 && (
+          <div className="flex min-w-0 flex-wrap gap-1.5">
+            {def.presets.map((preset) => (
+              <Button
+                key={preset.label}
+                size="sm"
+                variant="outline"
+                onClick={() => setPending(preset.getValue())}
+              >
+                {preset.label}
+              </Button>
+            ))}
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        )}
+        <Calendar
+          mode="range"
+          numberOfMonths={1}
+          selected={pending}
+          disabled={{ after: def.maxDate ?? new Date() }}
+          className="p-0"
+          onSelect={setPending}
+        />
+      </div>
+    </RangePopover>
   );
 }
 
@@ -198,37 +166,149 @@ interface NumberRangeControlProps {
   def: NumberRangeFilterDef<string, never>;
   min: string | undefined;
   max: string | undefined;
-  onChange: (key: string, value: string | undefined) => void;
+  onChange: (values: Record<string, string | undefined>) => void;
 }
 
+/**
+ * A min/max pair behind one trigger.
+ *
+ * Was two bare number inputs sitting directly in the header, which ate two of
+ * its slots and left the pair unlabelled once a value replaced the placeholder.
+ * Values are pending until Apply, so typing a minimum does not fire a request
+ * per keystroke — and it gives somewhere to catch a minimum above the maximum
+ * before it becomes a query that can only return nothing.
+ */
 export function NumberRangeControl({ def, min, max, onChange }: NumberRangeControlProps) {
-  const inputClassName = cn('w-full font-medium sm:w-32', CONTROL_SHADOW, def.className);
+  const [pendingMin, setPendingMin] = useState(min ?? '');
+  const [pendingMax, setPendingMax] = useState(max ?? '');
+
+  const format = def.formatValue ?? ((value: string) => value);
+  const summary =
+    min && max
+      ? `${format(min)} – ${format(max)}`
+      : min
+        ? `From ${format(min)}`
+        : max
+          ? `Up to ${format(max)}`
+          : null;
+
+  const invalid = pendingMin !== '' && pendingMax !== '' && Number(pendingMin) > Number(pendingMax);
 
   return (
-    <>
-      <Input
-        aria-label={def.minLabel ?? 'Minimum'}
-        className={inputClassName}
-        min={0}
-        placeholder={def.minLabel ?? 'Min'}
-        step={def.step ?? '1'}
-        type="number"
-        value={min ?? ''}
-        variant="toolbar"
-        onChange={(event) => onChange(def.key, event.target.value || undefined)}
-      />
-      <Input
-        aria-label={def.maxLabel ?? 'Maximum'}
-        className={inputClassName}
-        min={0}
-        placeholder={def.maxLabel ?? 'Max'}
-        step={def.step ?? '1'}
-        type="number"
-        value={max ?? ''}
-        variant="toolbar"
-        onChange={(event) => onChange(def.toKey, event.target.value || undefined)}
-      />
-    </>
+    <RangePopover
+      className={def.className}
+      description={def.description ?? 'Set a minimum and maximum amount.'}
+      error={invalid ? 'The minimum is above the maximum.' : undefined}
+      icon={def.prefix === '$' ? DollarSign : undefined}
+      label={def.placeholder ?? def.label ?? 'Range'}
+      summary={summary}
+      onOpen={() => {
+        setPendingMin(min ?? '');
+        setPendingMax(max ?? '');
+      }}
+      onApply={() =>
+        onChange({ [def.key]: pendingMin || undefined, [def.toKey]: pendingMax || undefined })
+      }
+      onClear={() => {
+        setPendingMin('');
+        setPendingMax('');
+        onChange({ [def.key]: undefined, [def.toKey]: undefined });
+      }}
+    >
+      <RangeFields>
+        <RangeField
+          id={`${def.key}-min`}
+          label={def.minLabel ?? 'Min'}
+          min="0"
+          placeholder={def.prefix ? `${def.prefix}0` : '0'}
+          prefix={def.prefix}
+          step={def.step ?? '1'}
+          value={pendingMin}
+          onChange={setPendingMin}
+        />
+        <RangeField
+          id={`${def.toKey}-max`}
+          label={def.maxLabel ?? 'Max'}
+          min="0"
+          placeholder={def.prefix ? `${def.prefix}0` : '0'}
+          prefix={def.prefix}
+          step={def.step ?? '1'}
+          value={pendingMax}
+          onChange={setPendingMax}
+        />
+      </RangeFields>
+    </RangePopover>
+  );
+}
+
+interface DateRangeControlProps {
+  def: DateRangeFilterDef<string, never>;
+  from: string | undefined;
+  to: string | undefined;
+  onChange: (values: Record<string, string | undefined>) => void;
+}
+
+/**
+ * A from/to date pair behind one trigger.
+ *
+ * The same shell as the number range and the calendar range, so all three read
+ * as one control rather than three. Two date fields rather than a calendar,
+ * because this is the "type a bound" case; reach for `f.dateRangePopover` when
+ * picking dates visually is the point.
+ */
+export function DateRangeControl({ def, from, to, onChange }: DateRangeControlProps) {
+  const [pendingFrom, setPendingFrom] = useState(from ?? '');
+  const [pendingTo, setPendingTo] = useState(to ?? '');
+
+  const summary =
+    from && to
+      ? `${formatDate(from)} - ${formatDate(to)}`
+      : from
+        ? `From ${formatDate(from)}`
+        : to
+          ? `Until ${formatDate(to)}`
+          : null;
+
+  const invalid = pendingFrom !== '' && pendingTo !== '' && pendingFrom > pendingTo;
+
+  return (
+    <RangePopover
+      className={def.className}
+      description={def.description ?? 'Set a start and end date.'}
+      error={invalid ? 'The start date is after the end date.' : undefined}
+      icon={CalendarDays}
+      label={def.placeholder ?? def.label ?? 'Date range'}
+      summary={summary}
+      onOpen={() => {
+        setPendingFrom(from ?? '');
+        setPendingTo(to ?? '');
+      }}
+      onApply={() =>
+        onChange({ [def.key]: pendingFrom || undefined, [def.toKey]: pendingTo || undefined })
+      }
+      onClear={() => {
+        setPendingFrom('');
+        setPendingTo('');
+        onChange({ [def.key]: undefined, [def.toKey]: undefined });
+      }}
+    >
+      <RangeFields>
+        <RangeField
+          id={`${def.key}-from`}
+          label={def.fromLabel ?? 'From'}
+          type="date"
+          value={pendingFrom}
+          onChange={setPendingFrom}
+        />
+        <RangeField
+          id={`${def.toKey}-to`}
+          label={def.toLabel ?? 'To'}
+          type="date"
+          value={pendingTo}
+          onChange={setPendingTo}
+        />
+      </RangeFields>
+    </RangePopover>
   );
 }
 

@@ -28,7 +28,15 @@ const ACTIVITY_FILTERS = [
     options: [...ACTIVITY_ACTION_OPTIONS],
     placeholder: 'All Actions',
   }),
-  f.dateRange({ fromLabel: 'Activity from', key: 'from', toKey: 'to', toLabel: 'Activity to' }),
+  f.dateRange({
+    description: 'Show activity recorded between two dates.',
+    fromLabel: 'Activity from',
+    key: 'from',
+    label: 'Activity date',
+    placeholder: 'Activity date',
+    toKey: 'to',
+    toLabel: 'Activity to',
+  }),
 ];
 
 export default function ActivityLogListPage() {

@@ -152,6 +152,10 @@ export interface DateRangeFilterDef<
   toApiKey?: string;
   fromLabel?: string;
   toLabel?: string;
+  /** Trigger text while empty, and the panel heading. */
+  placeholder?: string;
+  /** One line under the heading. */
+  description?: string;
   className?: string;
 }
 
@@ -181,8 +185,10 @@ export interface DateRangePopoverFilterDef<
   kind: 'dateRangePopover';
   toKey: string;
   toApiKey?: string;
-  /** Trigger text when nothing is picked. */
+  /** Trigger text when nothing is picked, and the panel heading. */
   placeholder?: string;
+  /** One line under the heading. */
+  description?: string;
   presets?: readonly { label: string; getValue: () => { from: Date; to: Date } }[];
   /** Latest selectable day. Defaults to today. */
   maxDate?: Date;
@@ -216,6 +222,14 @@ export interface NumberRangeFilterDef<
   minLabel?: string;
   maxLabel?: string;
   step?: string;
+  /** Trigger text while empty, and the panel heading. Defaults to `label`. */
+  placeholder?: string;
+  /** One line under the heading. */
+  description?: string;
+  /** A currency mark or unit rendered inside each field, e.g. `$`. */
+  prefix?: string;
+  /** Formats each end for the trigger summary. Defaults to the raw value. */
+  formatValue?: (value: string) => string;
   className?: string;
 }
 

@@ -6,6 +6,7 @@ import {
   AlertIcon,
   AlertTitle,
 } from '@/app/components/ui/alert';
+import { formatCurrency } from '@/app/lib/helpers';
 import {
   PrimeChangeOrderListHeader,
   PrimeChangeOrderNotConnected,
@@ -39,10 +40,14 @@ const PRIME_CHANGE_ORDER_FILTERS = [
     placeholder: 'All Statuses',
   }),
   f.numberRange({
+    description: 'Set a minimum and maximum amount.',
+    formatValue: (value) => formatCurrency(Number(value)),
     key: 'totalCostMin',
     label: 'Cost',
     maxLabel: 'Max cost',
     minLabel: 'Min cost',
+    placeholder: 'Cost range',
+    prefix: '$',
     step: '0.01',
     toKey: 'totalCostMax',
   }),

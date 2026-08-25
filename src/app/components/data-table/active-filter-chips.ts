@@ -52,11 +52,20 @@ export function collectActiveFilterChips(
 
       if (!min && !max) continue;
 
+      // Same formatter the trigger uses, so a cost reads as a cost in both
+      // places rather than as a bare number in one of them.
+      const format = def.formatValue ?? ((value: string) => value);
+
       chips.push({
         id: def.key,
         keys: [def.key, def.toKey],
         label: def.label ?? 'Range',
-        value: min && max ? `${min} – ${max}` : min ? `Min ${min}` : `Max ${max}`,
+        value:
+          min && max
+            ? `${format(min)} – ${format(max)}`
+            : min
+              ? `Min ${format(min)}`
+              : `Max ${format(max!)}`,
       });
       continue;
     }

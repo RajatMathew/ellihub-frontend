@@ -56,12 +56,12 @@ module hand-maintains them.
 | `f.select` | Single select. `isLoading` renders a skeleton while options load. |
 | `f.tabs` | Tab strip in the header's title slot. |
 | `f.infiniteSelect` | Picker backed by its own paginated query. |
-| `f.dateRange` | From/to pair owning two URL keys. |
+| `f.dateRange` | From/to date pair behind one trigger. Two typed bounds. |
 | `f.hidden` | No control. Arrives by deep link, still reaches the request and `clearFilters`. |
 | `f.multiSelect` | Not built. No paginated list needs one yet — see the plan doc. |
-| `f.dateRangePopover` | One trigger, presets, apply/clear. Prefer over `f.dateRange`. |
+| `f.dateRangePopover` | The same trigger, with presets and a calendar. For picking dates visually. |
 | `f.toggleGroup` | Segmented single choice — a view mode, a short option set. |
-| `f.numberRange` | Min/max pair owning two URL keys. |
+| `f.numberRange` | Min/max pair behind one trigger. Takes a `prefix` (`$`) and a `formatValue`. |
 | `f.sortSelect` | Sorts from the header rather than a column header. Owns no key; writes through `setSort`. |
 | `f.custom` | Anything else. If you reach for this more than twice across the app, widen the schema instead. Currently unused. |
 
@@ -75,6 +75,22 @@ list view or reset the sort.
 
 `f.search` also takes `scope`: a segmented control inside the input narrowing
 what the search covers. The scope key is owned by the search and cleared with it.
+
+## Ranges
+
+All three range kinds — `numberRange`, `dateRange`, `dateRangePopover` — render through
+one `RangePopover`: a trigger that reads as the applied range, a titled panel,
+and a Clear/Apply footer. Only the fields inside differ. Build a new range on
+that shell rather than putting bare inputs in the header, which is what the
+first two used to do and what cost the header two slots per range.
+
+Values are pending until Apply, so typing a bound does not fire a request per
+keystroke, and there is somewhere to catch a minimum above its maximum before it
+becomes a query that can only return nothing.
+
+**A filter owning more than one key must commit through `setFilterValues`.** Two
+`setFilterValue` calls in a tick lose the first: each starts its own navigation,
+and the second reads a location the first has not landed in yet.
 
 ## Columns
 
