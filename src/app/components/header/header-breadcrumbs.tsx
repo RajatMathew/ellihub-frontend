@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/app/components/ui/breadcrumb';
+import { BreadcrumbMenu } from '@/app/components/ui/breadcrumb-menu';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
+import { useBreadcrumbTrailValue } from '@/app/hooks/use-breadcrumb-trail';
 import { cn } from '@/app/lib/utils';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { CalendarDays, CheckSquare, ChevronDown, Eye, Mail, SunMedium } from 'lucide-react';
@@ -54,6 +56,20 @@ const DYNAMIC_SEGMENT_PENDING_LABELS: Record<string, string> = {
 };
 
 const STATIC_DETAIL_ACTION_SEGMENTS = new Set(['create', 'edit', 'new']);
+
+/**
+ * How many appended crumbs stay on the bar before the rest fold into the
+ * ellipsis menu. Path-derived crumbs are never folded: a route has at most a
+ * handful and each one names a section the user needs to see.
+ */
+const MAX_VISIBLE_TRAIL_ENTRIES = 2;
+
+/** A crumb as it is rendered, whether it came from the path or from a page. */
+interface RenderedCrumb {
+  key: string;
+  label: string;
+  to?: string;
+}
 
 const WORKSPACE_ITEMS = [
   { label: 'My Day', icon: SunMedium },
@@ -112,6 +128,7 @@ export function HeaderBreadcrumbs() {
   const location = useLocation();
   const params = useParams<{ projectId?: string }>();
   const breadcrumbLabels = useBreadcrumbLabels();
+  const trail = useBreadcrumbTrailValue();
 
   // Split path & remove empty + first "app"
   const pathSegments = location.pathname
@@ -197,6 +214,30 @@ export function HeaderBreadcrumbs() {
     }
   }
 
+  // Crumbs a page registered for state the path cannot express — the open
+  // folder in Files, for one. The last path crumb stops being the final one
+  // once they exist, and it is what the trail's own menu hangs off.
+  const pathCrumbs: RenderedCrumb[] = breadcrumbs.map((crumb, index) => ({
+    key: `${crumb.path}-${index}`,
+    label: crumb.label,
+    to: crumb.path,
+  }));
+  const trailEntries = trail ?? [];
+  const shouldCollapseTrail = trailEntries.length > MAX_VISIBLE_TRAIL_ENTRIES;
+  const hiddenTrailEntries = shouldCollapseTrail
+    ? trailEntries.slice(0, trailEntries.length - MAX_VISIBLE_TRAIL_ENTRIES)
+    : [];
+  const visibleTrailCrumbs: RenderedCrumb[] = (
+    shouldCollapseTrail ? trailEntries.slice(-MAX_VISIBLE_TRAIL_ENTRIES) : trailEntries
+  ).map((entry) => ({
+    key: `trail-${entry.id}`,
+    label: entry.label,
+    to: entry.to,
+  }));
+  const crumbs = [...pathCrumbs, ...visibleTrailCrumbs];
+  // Where the ellipsis goes, once the leading path crumbs have been rendered.
+  const ellipsisIndex = hiddenTrailEntries.length > 0 ? pathCrumbs.length : -1;
+
   const breadcrumbItemClassName = 'block min-w-0 truncate rounded-md px-2 py-1 font-medium';
   const breadcrumbLinkClassName = cn(
     breadcrumbItemClassName,
@@ -206,26 +247,41 @@ export function HeaderBreadcrumbs() {
   return (
     <Breadcrumb className="min-w-0 max-w-full overflow-hidden">
       <BreadcrumbList className="min-w-0 flex-nowrap gap-0.5 overflow-hidden text-sm font-medium">
-        {breadcrumbs.map((crumb, index) => {
+        {crumbs.map((crumb, index) => {
           const isEmailWorkspaceRoot = pathSegments[0] === 'email' && index === 0;
-          const itemWidthClassName = crumb.isLast
-            ? 'max-w-[min(28rem,42vw)]'
-            : 'max-w-[min(16rem,24vw)]';
+          const isLast = index === crumbs.length - 1;
+          const itemWidthClassName = isLast ? 'max-w-[min(28rem,42vw)]' : 'max-w-[min(16rem,24vw)]';
 
           return (
-            <Fragment key={`${crumb.path}-${index}`}>
+            <Fragment key={crumb.key}>
+              {index === ellipsisIndex && (
+                <>
+                  <BreadcrumbSeparator className="mx-0 shrink-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
+                  <BreadcrumbItem className="shrink-0">
+                    <BreadcrumbMenu label="Show hidden folders">
+                      {hiddenTrailEntries.map((entry) => (
+                        <DropdownMenuItem key={entry.id} asChild>
+                          <Link to={entry.to ?? '#'} className="min-h-9 truncate">
+                            {entry.label}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </BreadcrumbMenu>
+                  </BreadcrumbItem>
+                </>
+              )}
               {index > 0 && (
                 <BreadcrumbSeparator className="mx-0 shrink-0 text-muted-foreground [&>svg]:stroke-[2.5]" />
               )}
               <BreadcrumbItem className="min-w-0 gap-0.5">
                 {isEmailWorkspaceRoot ? (
                   <EmailWorkspaceSwitcher />
-                ) : crumb.isLast ? (
+                ) : isLast || !crumb.to ? (
                   <BreadcrumbPage
                     className={cn(
                       crumb.label ? breadcrumbItemClassName : 'block min-w-0 truncate py-1',
                       itemWidthClassName,
-                      crumb.isLast ? 'text-foreground' : 'text-muted-foreground'
+                      isLast ? 'text-foreground' : 'text-muted-foreground'
                     )}
                     title={crumb.label}
                   >
@@ -240,7 +296,7 @@ export function HeaderBreadcrumbs() {
                       'text-muted-foreground'
                     )}
                   >
-                    <Link to={crumb.path} title={crumb.label}>
+                    <Link to={crumb.to} title={crumb.label}>
                       {crumb.label}
                     </Link>
                   </BreadcrumbLink>

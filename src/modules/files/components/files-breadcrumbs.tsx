@@ -1,12 +1,13 @@
 import {
   Breadcrumb,
-  BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/app/components/ui/breadcrumb';
+import { BreadcrumbMenu } from '@/app/components/ui/breadcrumb-menu';
+import { DropdownMenuItem } from '@/app/components/ui/dropdown-menu';
 import { cn } from '@/app/lib/utils';
 import { Home } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export function FilesBreadcrumbs({
   const shouldCollapse = breadcrumbs.length > MAX_VISIBLE_ENTRIES;
   const visibleStartIndex = shouldCollapse ? breadcrumbs.length - MAX_VISIBLE_ENTRIES : 0;
   const visibleEntries = breadcrumbs.slice(visibleStartIndex);
+  const hiddenEntries = breadcrumbs.slice(0, visibleStartIndex);
 
   return (
     <Breadcrumb className={cn('mb-4 w-full min-w-0 max-w-full overflow-hidden', className)}>
@@ -58,7 +60,17 @@ export function FilesBreadcrumbs({
           <>
             <BreadcrumbSeparator className="shrink-0" />
             <BreadcrumbItem className="shrink-0">
-              <BreadcrumbEllipsis className="size-6" />
+              <BreadcrumbMenu label="Show hidden folders">
+                {hiddenEntries.map((entry) => (
+                  <DropdownMenuItem
+                    key={entry.id}
+                    className="min-h-9"
+                    onSelect={() => onBreadcrumbClick(entry.id)}
+                  >
+                    <span className="truncate">{entry.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </BreadcrumbMenu>
             </BreadcrumbItem>
           </>
         )}

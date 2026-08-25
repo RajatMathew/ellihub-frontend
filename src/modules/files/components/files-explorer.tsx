@@ -23,6 +23,7 @@ import { FilesPageToolbar } from '@/modules/files/components/files-page-toolbar'
 import { FolderExportProgressDialog } from '@/modules/files/components/folder-export-progress-dialog';
 import { FolderExportStatusCard } from '@/modules/files/components/folder-export-status-card';
 import { useBulkDeleteFilesMutation, useFilesSearchQuery } from '@/modules/files/hooks/files.hooks';
+import { useFilesBreadcrumbTrail } from '@/modules/files/hooks/use-files-breadcrumb-trail';
 import {
   sectionFileItems,
   useFilesDisplayData,
@@ -176,6 +177,9 @@ export function FilesExplorer({
     () => getScopedBreadcrumbs(folderDetail?.breadcrumbs, navigationRootId),
     [folderDetail?.breadcrumbs, navigationRootId]
   );
+  // The header owns the path on desktop; the in-page trail below is the mobile
+  // fallback, since the header hides its breadcrumbs under `lg`.
+  useFilesBreadcrumbTrail(breadcrumbs);
   const currentFolderName = getFolderDisplayName(
     folderDetail?.displayName || folderDetail?.name || breadcrumbs.at(-1)?.name,
     rootLabel
@@ -341,6 +345,7 @@ export function FilesExplorer({
       <FilesBreadcrumbs
         breadcrumbs={breadcrumbs}
         rootLabel={rootLabel}
+        className="lg:hidden"
         onBreadcrumbClick={handleBreadcrumbClick}
       />
 

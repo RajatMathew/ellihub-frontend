@@ -1,9 +1,14 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
-import { BreadcrumbLabelsContext } from '@/app/contexts/breadcrumbs';
+import {
+  BreadcrumbLabelsContext,
+  BreadcrumbTrailContext,
+  type BreadcrumbTrailEntry,
+} from '@/app/contexts/breadcrumbs';
 
 export function BreadcrumbLabelsProvider({ children }: { children: ReactNode }) {
   const [labels, setLabels] = useState<Record<string, string>>({});
+  const [trail, setTrail] = useState<BreadcrumbTrailEntry[] | null>(null);
 
   const setLabel = useCallback((path: string, label?: string) => {
     setLabels((current) => {
@@ -26,10 +31,13 @@ export function BreadcrumbLabelsProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const value = useMemo(() => ({ labels, setLabel }), [labels, setLabel]);
+  const trailValue = useMemo(() => ({ trail, setTrail }), [trail]);
 
   return (
     <BreadcrumbLabelsContext.Provider value={value}>
-      {children}
+      <BreadcrumbTrailContext.Provider value={trailValue}>
+        {children}
+      </BreadcrumbTrailContext.Provider>
     </BreadcrumbLabelsContext.Provider>
   );
 }
