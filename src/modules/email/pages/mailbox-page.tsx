@@ -26,6 +26,7 @@ import {
   type EmailWorkspaceView,
 } from '@/modules/email/components/email-workspace-header';
 import { EmailWorkspacePlaceholder } from '@/modules/email/components/email-workspace-placeholder';
+import { EmailCalendarView } from '@/modules/email/components/calendar/email-calendar-view';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   emailKeys,
@@ -963,6 +964,11 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                       })
               }
             />
+          ) : workspaceView === 'calendar' ? (
+            <EmailCalendarView
+              accountId={connectedAccount?.id ?? null}
+              provider={connectedAccount?.provider ?? null}
+            />
           ) : (
             <EmailWorkspacePlaceholder view={workspaceView} />
           )}
@@ -1324,6 +1330,11 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             </div>
           </div>
         </div>
+      ) : workspaceView === 'calendar' ? (
+        <EmailCalendarView
+              accountId={connectedAccount?.id ?? null}
+              provider={connectedAccount?.provider ?? null}
+            />
       ) : (
         <EmailWorkspacePlaceholder view={workspaceView} />
       )}
