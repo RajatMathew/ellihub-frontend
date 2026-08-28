@@ -27,6 +27,8 @@ interface EmailCalendarMonthViewProps {
   events: CalendarEvent[];
   onSelectDay?: (day: Date) => void;
   onSwitchView?: (view: CalendarView) => void;
+  /** Clicking an event chip opens the event dialog instead of the day view. */
+  onEditEvent?: (event: CalendarEvent) => void;
 }
 
 export function EmailCalendarMonthView({
@@ -34,6 +36,7 @@ export function EmailCalendarMonthView({
   events,
   onSelectDay,
   onSwitchView,
+  onEditEvent,
 }: EmailCalendarMonthViewProps) {
   const gridStart = startOfWeek(startOfMonth(cursor), { weekStartsOn: 0 });
   const gridEnd = endOfWeek(endOfMonth(cursor), { weekStartsOn: 0 });
@@ -71,16 +74,31 @@ export function EmailCalendarMonthView({
               const visible = dayEvents.slice(0, MAX_EVENTS_PER_CELL);
               const overflow = dayEvents.length - visible.length;
 
+              const openDay = () => {
+                onSelectDay?.(day);
+                onSwitchView?.('day');
+              };
+
               return (
-                <button
+                // The cell can't be a <button> — the event chips inside it are
+                // buttons themselves and interactive elements must not nest.
+                // The cell keeps mouse + keyboard day-navigation via
+                // role="button"; chips stop propagation and open the dialog.
+                <div
                   key={day.toISOString()}
-                  type="button"
-                  onClick={() => {
-                    onSelectDay?.(day);
-                    onSwitchView?.('day');
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${format(day, 'MMMM d, yyyy')} in day view`}
+                  onClick={openDay}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      openDay();
+                    }
                   }}
                   className={cn(
-                    'group relative flex min-h-24 min-w-0 flex-col gap-1 border-b border-r border-border bg-background p-1.5 text-left transition-colors',
+                    'group relative flex min-h-24 min-w-0 cursor-pointer flex-col gap-1 border-b border-r border-border bg-background p-1.5 text-left transition-colors',
                     'hover:bg-accent/40 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                     !inMonth && 'bg-muted/40 text-muted-foreground',
                     isWeekend(day) && inMonth && 'bg-muted/20'
@@ -112,7 +130,7 @@ export function EmailCalendarMonthView({
                   <ul className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
                     {visible.map((event) => (
                       <li key={event.id}>
-                        <MonthEventChip event={event} />
+                        <MonthEventChip event={event} onEdit={onEditEvent} />
                       </li>
                     ))}
                     {overflow > 0 && (
@@ -121,7 +139,7 @@ export function EmailCalendarMonthView({
                       </li>
                     )}
                   </ul>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -131,16 +149,29 @@ export function EmailCalendarMonthView({
   );
 }
 
-function MonthEventChip({ event }: { event: CalendarEvent }) {
+function MonthEventChip({
+  event,
+  onEdit,
+}: {
+  event: CalendarEvent;
+  onEdit?: (event: CalendarEvent) => void;
+}) {
   const style = CALENDAR_EVENT_STYLES[event.color];
   const timeLabel = event.allDay ? 'All day' : format(event.start, 'h:mm a').toLowerCase();
 
   return (
-    <span
+    <button
+      type="button"
       className={cn(
-        'flex min-w-0 items-center gap-1 rounded-sm border border-border/60 bg-background px-1.5 py-0.5 text-[11px] font-medium leading-tight text-foreground'
+        'flex w-full min-w-0 items-center gap-1 rounded-sm border border-border/60 bg-background px-1.5 py-0.5 text-left text-[11px] font-medium leading-tight text-foreground',
+        'hover:shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
       )}
       title={`${event.title} · ${timeLabel}`}
+      onClick={(e) => {
+        // Don't let the cell's day-view navigation swallow the event click.
+        e.stopPropagation();
+        onEdit?.(event);
+      }}
     >
       <span
         className={cn('inline-block size-1.5 shrink-0 rounded-full', style.accent)}
@@ -152,7 +183,7 @@ function MonthEventChip({ event }: { event: CalendarEvent }) {
         )}
         {event.title}
       </span>
-    </span>
+    </button>
   );
 }
 
