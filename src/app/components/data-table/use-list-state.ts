@@ -165,7 +165,13 @@ export function useListState<
 
     for (const def of filters) {
       if (!isClearableFilter(def)) continue;
-      for (const key of filterUrlKeys(def)) keys.add(key);
+      for (const key of filterUrlKeys(def)) {
+        // A search scope narrows the text it belongs to and filters nothing on
+        // its own, so it must not light up Clear on a list with an empty search
+        // box. `clearFilters` still resets it — it walks the schema itself.
+        if (def.kind === 'search' && key === def.scope?.key) continue;
+        keys.add(key);
+      }
     }
 
     return keys;
@@ -268,11 +274,14 @@ export function useListState<
 
       if (!def) return;
 
-      // Search owns a draft value, so it routes through the debounced setter
-      // rather than writing to the URL immediately.
-      if (value === undefined) def.onClear?.();
+      if (value === undefined && key === def.key) def.onClear?.();
 
-      if (def.kind === 'search') {
+      // Search owns a draft value, so it routes through the debounced setter
+      // rather than writing to the URL immediately. Only its *own* key does:
+      // a search that owns a scope key answers to that key too, and routing the
+      // scope through here typed the scope's value into the search box instead
+      // of narrowing anything.
+      if (def.kind === 'search' && key === def.key) {
         setSearchInput(value ?? '');
         return;
       }
@@ -300,11 +309,12 @@ export function useListState<
         const def = filters.find((entry) => filterUrlKeys(entry).includes(key));
 
         if (!def) continue;
-        if (value === undefined) def.onClear?.();
+        if (value === undefined && key === def.key) def.onClear?.();
 
         // Search keeps a draft value and its own debounce, so it never goes
-        // straight to the URL — route it the way a single set would.
-        if (def.kind === 'search') {
+        // straight to the URL — route it the way a single set would. A scope key
+        // is an ordinary URL key even though the search owns it.
+        if (def.kind === 'search' && key === def.key) {
           setSearchInput(value ?? '');
           continue;
         }

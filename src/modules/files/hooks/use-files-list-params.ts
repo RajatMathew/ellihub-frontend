@@ -36,11 +36,11 @@ const FILES_FILTERS = [
       key: 'searchMode',
       options: [
         { label: 'All', value: 'global' },
-        { label: 'Folder', value: 'folder' },
+        { label: 'This folder', value: 'folder' },
       ],
       placeholders: {
-        folder: 'Search this folder...',
-        global: 'Search all files...',
+        folder: 'Search this folder only',
+        global: 'Search every folder',
       },
     },
   }),

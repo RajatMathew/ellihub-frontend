@@ -57,7 +57,8 @@ interface TableCardHeaderTabsProps {
 
 type TableCardHeaderSearchScope = {
   value: string;
-  options: Array<{ label: string; value: string }>;
+  /** `title` is the hover/assistive hint — two-word labels alone say too little. */
+  options: Array<{ label: string; value: string; title?: string }>;
   onChange: (value: string) => void;
 };
 
@@ -388,7 +389,9 @@ function TableCardHeaderSearch({
             <button
               key={option.value}
               type="button"
+              aria-label={option.title ?? option.label}
               aria-pressed={scope.value === option.value}
+              title={option.title}
               className={cn(
                 'cursor-pointer rounded-sm px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none transition-colors',
                 scope.value === option.value

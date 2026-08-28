@@ -179,7 +179,12 @@ export function DataTableFilters<
                                 scope.key,
                                 value === scope.defaultValue ? undefined : value
                               ),
-                            options: scope.options,
+                            // The segment labels are two words; the placeholder
+                            // for that scope is the sentence that explains it.
+                            options: scope.options.map((option) => ({
+                              ...option,
+                              title: scope.placeholders?.[option.value],
+                            })),
                             value: scopeValue,
                           }
                         : undefined
