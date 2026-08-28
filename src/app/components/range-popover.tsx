@@ -91,10 +91,19 @@ export function RangePopover({
           aria-label={isActive ? `${label}: ${summary}` : label}
           className={cn(
             'min-w-0 justify-start shadow-xs shadow-black/10 sm:max-w-56',
-            // An applied range steps out of the header palette deliberately: it
-            // is the one control that has to read as "this is narrowing the
-            // list" without being opened.
-            isActive && 'border-primary bg-background text-primary',
+            // An applied range has to read as "this is narrowing the list"
+            // without being opened. It says so the way the search's scope
+            // segment already does — filled with a tint of the header's own
+            // foreground — so the header has one vocabulary for "on" rather
+            // than two.
+            //
+            // Not `--primary`, and not the tab accent. This control lives inside
+            // `data-surface="card-header"`, which remaps `--background` to the
+            // header's colour but leaves `--primary` as the page's: in the
+            // editorial theme both are navy, so an applied range rendered
+            // navy-on-navy and vanished. The tab accent is legible but is a gold
+            // that belongs to a 4px underline, not to a whole control.
+            isActive && 'border-current/70 bg-current/15 font-semibold hover:bg-current/20',
             className
           )}
         >
