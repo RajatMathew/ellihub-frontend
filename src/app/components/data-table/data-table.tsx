@@ -40,7 +40,7 @@ export interface DataTableFilteredEmptyState {
 export interface DataTableProps<
   TData extends object,
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 > {
   list: ListTable<TData>;
   state: ListState<TDefs, TField>;
@@ -68,6 +68,14 @@ export interface DataTableProps<
   titleDescription?: ReactNode;
   /** Extra controls in the header's trailing slot, beside Clear. */
   headerTrailing?: ReactNode;
+  /**
+   * Pinned above the filter header, inside the card.
+   *
+   * For a control the list is scoped *by* rather than filtered by — the register
+   * cannot show a row until an account is picked, so its picker is not one
+   * control among the filters and must not be swept up by Clear.
+   */
+  banner?: ReactNode;
   /** Hides the active-filter chip row. */
   hideFilterChips?: boolean;
   /**
@@ -108,7 +116,7 @@ export interface DataTableProps<
 export function DataTable<
   TData extends object,
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 >({
   list,
   state,
@@ -120,6 +128,7 @@ export function DataTable<
   title,
   titleDescription,
   headerTrailing,
+  banner,
   hideFilterChips,
   bulkActions,
   bulkItemLabel,
@@ -164,6 +173,8 @@ export function DataTable<
 
   return (
     <Card className={className}>
+      {banner}
+
       {showBulkBar ? (
         <DataTableBulkBar
           actions={bulkActions}

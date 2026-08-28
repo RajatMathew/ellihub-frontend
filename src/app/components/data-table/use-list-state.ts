@@ -20,9 +20,13 @@ import type {
   SortOrder,
 } from './types';
 
-export interface ListState<TDefs extends readonly AnyFilterDef<never>[], TField extends string> {
+export interface ListState<
+  TDefs extends readonly AnyFilterDef<never>[],
+  TField extends string = string,
+> {
   page: number;
   size: number;
+  /** Empty on a list declared without `sort`, which sorts nowhere. */
   sortBy: TField;
   sortOrder: SortOrder;
   /** Committed filter values, keyed by each filter's `key`. */
@@ -41,7 +45,8 @@ export interface ListState<TDefs extends readonly AnyFilterDef<never>[], TField 
   /**
    * The fields this list can actually sort by. Exposed so `useListTable` can
    * decide which columns render a sort control, rather than every column file
-   * hand-maintaining `enableSorting` against a list it cannot see.
+   * hand-maintaining `enableSorting` against a list it cannot see. Empty when
+   * the list declared no `sort`.
    */
   sortFields: readonly TField[];
   setSearchInput: (value: string) => void;
@@ -63,6 +68,9 @@ function isSearchDef(def: AnyFilterDef<never>): def is SearchFilterDef<'search',
   return def.kind === 'search';
 }
 
+/** Stable identity for a list that declares no sort, so memos do not churn. */
+const NO_SORT_FIELDS: readonly string[] = [];
+
 /**
  * Owns every piece of list URL state: page, size, sort and all filters.
  *
@@ -78,7 +86,7 @@ function isSearchDef(def: AnyFilterDef<never>): def is SearchFilterDef<'search',
  */
 export function useListState<
   const TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 >({
   filters,
   sort,
@@ -91,17 +99,23 @@ export function useListState<
   const sizeKey = apiKeys?.size ?? 'size';
   const sortByKey = apiKeys?.sortBy ?? 'sortBy';
   const sortOrderKey = apiKeys?.sortOrder ?? 'sortOrder';
-  const defaultSortOrder: SortOrder = sort.order ?? 'asc';
+  const defaultSortOrder: SortOrder = sort?.order ?? 'asc';
+  const defaultSortField = sort?.by;
+  const sortFields = (sort?.fields ?? NO_SORT_FIELDS) as readonly TField[];
 
   const page = parsePageParam(searchParams.get('page'));
   const size = parseSizeParam(searchParams.get('size'), pageSize);
 
   const rawSortBy = searchParams.get('sortBy');
-  const sortBy = sort.fields.find((field) => field === rawSortBy) ?? sort.by;
+  // An unsorted list reports an empty field rather than a placeholder: the table
+  // reads this to decide whether to hold any sorting state at all.
+  const sortBy = defaultSortField
+    ? (sortFields.find((field) => field === rawSortBy) ?? defaultSortField)
+    : ('' as TField);
 
   const rawSortOrder = searchParams.get('sortOrder');
   const sortOrder: SortOrder =
-    rawSortOrder === 'asc' || rawSortOrder === 'desc' ? rawSortOrder : defaultSortOrder;
+    sort && (rawSortOrder === 'asc' || rawSortOrder === 'desc') ? rawSortOrder : defaultSortOrder;
 
   const searchDef = useMemo(() => filters.find(isSearchDef), [filters]);
   const searchQuery = searchParams.get('search') ?? '';
@@ -184,12 +198,15 @@ export function useListState<
   );
 
   const apiParams = useMemo(() => {
-    const params: Record<string, unknown> = {
-      [pageKey]: page,
-      [sizeKey]: size,
-      [sortByKey]: sortBy,
-      [sortOrderKey]: sortOrder,
-    };
+    const params: Record<string, unknown> = { [pageKey]: page, [sizeKey]: size };
+
+    // An unsorted list must not send sort params at all — an API that does not
+    // sort should not be handed a field name it will either ignore or reject.
+    if (sortBy) {
+      params[sortByKey] = sortBy;
+      params[sortOrderKey] = sortOrder;
+    }
+
     const raw = rawValues;
 
     for (const def of filters) {
@@ -251,16 +268,17 @@ export function useListState<
     (field: string, order: SortOrder) => {
       // A column whose id is not a declared sort field cannot be sorted by the
       // API, so keep it out of the URL rather than writing a value that reads
-      // back as the default anyway.
-      if (!sort.fields.includes(field as TField)) return;
+      // back as the default anyway. A list with no `sort` declares none of them,
+      // so `sortFields` is empty and every field falls out here.
+      if (!defaultSortField || !sortFields.includes(field as TField)) return;
 
       updateParams({
         page: undefined,
-        sortBy: field === sort.by ? undefined : field,
+        sortBy: field === defaultSortField ? undefined : field,
         sortOrder: order === defaultSortOrder ? undefined : order,
       });
     },
-    [defaultSortOrder, sort.by, sort.fields, updateParams]
+    [defaultSortField, defaultSortOrder, sortFields, updateParams]
   );
 
   const resetSort = useCallback(
@@ -346,7 +364,7 @@ export function useListState<
     apiParams,
     clearFilters,
     filters,
-    sortFields: sort.fields,
+    sortFields,
     hasActiveFilters,
     page,
     rawValues,

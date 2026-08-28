@@ -65,7 +65,7 @@ function controlRank(def: AnyFilterDef<never>): number {
 
 interface DataTableFiltersProps<
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 > {
   state: ListState<TDefs, TField>;
   /**
@@ -100,7 +100,7 @@ interface DataTableFiltersProps<
  */
 export function DataTableFilters<
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 >({
   state,
   schema: schemaOverride,

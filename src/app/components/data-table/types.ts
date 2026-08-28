@@ -297,10 +297,15 @@ export interface SortConfig<TField extends string = string> {
 
 export interface ListStateConfig<
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 > {
   filters: TDefs;
-  sort: SortConfig<TField>;
+  /**
+   * Omit it for a list whose API does not sort — the QuickBooks register returns
+   * one fixed order. The list then declares no sort fields, so no column renders
+   * a sort control and neither sort param is sent.
+   */
+  sort?: SortConfig<TField>;
   /** Defaults to 10. Must be one of the shared page-size options. */
   pageSize?: number;
   /**

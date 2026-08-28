@@ -38,7 +38,7 @@ export interface ListQueryStatus {
 export interface UseListTableOptions<
   TData extends object,
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 > {
   state: ListState<TDefs, TField>;
   columns: ColumnDef<TData>[];
@@ -129,7 +129,7 @@ export interface ListTable<TData extends object> {
 export function useListTable<
   TData extends object,
   TDefs extends readonly AnyFilterDef<never>[],
-  TField extends string,
+  TField extends string = string,
 >({
   state,
   columns,
@@ -169,8 +169,10 @@ export function useListTable<
   const effectiveTotal = isClient || hasClientFilter ? filteredRows.length : totalCount;
   const pageCount = Math.max(1, Math.ceil(effectiveTotal / size));
 
+  // A list declared without `sort` reports an empty `sortBy`; hold no sorting
+  // state for it rather than a row naming a column that does not exist.
   const sorting = useMemo<SortingState>(
-    () => [{ desc: sortOrder === 'desc', id: sortBy }],
+    () => (sortBy ? [{ desc: sortOrder === 'desc', id: sortBy }] : []),
     [sortBy, sortOrder]
   );
 
