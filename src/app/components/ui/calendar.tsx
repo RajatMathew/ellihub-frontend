@@ -21,6 +21,13 @@ function Calendar({
       classNames={{
         months: 'relative flex flex-col sm:flex-row gap-4',
         month: 'w-full',
+        // The grid spans the month, so the caption's centre and the nav arrows —
+        // both positioned against the month box — line up with the days under
+        // them. Left at its intrinsic 7 x 32px it sat in the top-left corner of
+        // any container wider than 224px, with the next arrow floating past its
+        // last column. `min-w-8` per column keeps the intrinsic width intact, so
+        // a shrink-to-fit container still gets the compact calendar.
+        month_grid: 'w-full border-collapse',
         month_caption: 'relative mx-10 mb-1 flex h-8 items-center justify-center z-20',
         caption_label: 'text-sm font-medium',
         nav: 'absolute top-0 flex w-full justify-between z-10',
@@ -32,10 +39,10 @@ function Calendar({
           buttonVariants({ variant: 'ghost' }),
           'size-8 text-muted-foreground/80 hover:text-foreground p-0'
         ),
-        weekday: 'size-8 p-0 text-xs font-medium text-muted-foreground/80',
+        weekday: 'h-8 w-[calc(100%/7)] min-w-8 p-0 text-xs font-medium text-muted-foreground/80',
         day_button:
-          'cursor-pointer relative flex size-8 items-center justify-center whitespace-nowrap rounded-md p-0 text-foreground transition-200 group-[[data-selected]:not(.range-middle)]:[transition-property:color,background-color,border-radius,box-shadow] group-[[data-selected]:not(.range-middle)]:duration-150 group-data-disabled:pointer-events-none focus-visible:z-10 hover:not-in-data-selected:bg-accent group-data-selected:bg-primary hover:not-in-data-selected:text-foreground group-data-selected:text-primary-foreground group-data-disabled:text-foreground/30 group-data-disabled:line-through group-data-outside:text-foreground/30 group-data-selected:group-data-outside:text-primary-foreground outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] group-[.range-start:not(.range-end)]:rounded-e-none group-[.range-end:not(.range-start)]:rounded-s-none group-[.range-middle]:rounded-none group-[.range-middle]:group-data-selected:bg-accent group-[.range-middle]:group-data-selected:text-foreground',
-        day: 'group size-8 px-0 py-px text-sm',
+          'cursor-pointer relative flex h-8 w-full items-center justify-center whitespace-nowrap rounded-md p-0 text-foreground transition-200 group-[[data-selected]:not(.range-middle)]:[transition-property:color,background-color,border-radius,box-shadow] group-[[data-selected]:not(.range-middle)]:duration-150 group-data-disabled:pointer-events-none focus-visible:z-10 hover:not-in-data-selected:bg-accent group-data-selected:bg-primary hover:not-in-data-selected:text-foreground group-data-selected:text-primary-foreground group-data-disabled:text-foreground/30 group-data-disabled:line-through group-data-outside:text-foreground/30 group-data-selected:group-data-outside:text-primary-foreground outline-none focus-visible:ring-ring/50 focus-visible:ring-[3px] group-[.range-start:not(.range-end)]:rounded-e-none group-[.range-end:not(.range-start)]:rounded-s-none group-[.range-middle]:rounded-none group-[.range-middle]:group-data-selected:bg-accent group-[.range-middle]:group-data-selected:text-foreground',
+        day: 'group h-8 w-[calc(100%/7)] min-w-8 px-0 py-px text-sm',
         range_start: 'range-start',
         range_end: 'range-end',
         range_middle: 'range-middle',
