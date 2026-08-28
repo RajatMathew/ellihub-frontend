@@ -47,7 +47,7 @@ export function EmailCalendarDayView({
             stays aligned with the column while the hour grid scrolls. */}
         <div className="sticky top-0 z-20 bg-background">
           <DayHeader cursor={cursor} highlightToday={highlightToday} />
-          <CalendarAllDayRow days={[cursor]} events={events} onEdit={onEdit} />
+          <CalendarAllDayRow days={[cursor]} events={events} onEdit={onEdit} density="roomy" />
         </div>
         <div
           className="relative grid grid-cols-[64px_minmax(0,1fr)]"

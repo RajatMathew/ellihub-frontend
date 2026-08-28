@@ -372,6 +372,7 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
                   events={events}
                   onSelectDay={setCursor}
                   onSwitchView={setView}
+                  onEditEvent={openEdit}
                 />
               )}
               {view === 'week' && (

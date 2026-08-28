@@ -14,10 +14,13 @@ export function CalendarAllDayRow({
   days,
   events,
   onEdit,
+  density = 'tight',
 }: {
   days: Date[];
   events: CalendarEvent[];
   onEdit: (event: CalendarEvent) => void;
+  /** Matches TimedEventBlock: week is "tight" (text-xs), day is "roomy" (text-sm). */
+  density?: 'tight' | 'roomy';
 }) {
   const allDay = events.filter((event) => event.allDay);
   if (allDay.length === 0) return null;
@@ -49,7 +52,7 @@ export function CalendarAllDayRow({
           className="flex min-w-0 flex-col gap-0.5 border-r border-border p-1"
         >
           {list.map((event) => (
-            <AllDayChip key={event.id} event={event} onEdit={onEdit} />
+            <AllDayChip key={event.id} event={event} onEdit={onEdit} density={density} />
           ))}
         </div>
       ))}
@@ -60,9 +63,11 @@ export function CalendarAllDayRow({
 function AllDayChip({
   event,
   onEdit,
+  density,
 }: {
   event: CalendarEvent;
   onEdit: (event: CalendarEvent) => void;
+  density: 'tight' | 'roomy';
 }) {
   const style = CALENDAR_EVENT_STYLES[event.color];
   return (
@@ -71,7 +76,10 @@ function AllDayChip({
       title={`${event.title} · All day`}
       onClick={() => onEdit(event)}
       className={cn(
-        'flex min-w-0 items-center gap-1.5 rounded-sm border border-border/60 px-1.5 py-0.5 text-left text-[11px] font-medium leading-tight',
+        // Text size tracks the timed blocks of the same view so the all-day
+        // row and the timeline read as one surface.
+        'flex min-w-0 items-center rounded-sm border border-border/60 text-left font-medium leading-tight',
+        density === 'roomy' ? 'gap-2 px-2 py-1 text-sm' : 'gap-1.5 px-1.5 py-0.5 text-xs',
         'hover:shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         style.bg,
         event.done && 'opacity-70'
