@@ -20,7 +20,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns';
-import { CheckCircle2, MapPin } from 'lucide-react';
+import { CheckCircle2, MapPin, Repeat, Video } from 'lucide-react';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_EVENTS_PER_CELL = 3;
@@ -217,6 +217,12 @@ function MonthEventChip({
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-semibold leading-snug text-foreground">
                 <span className="min-w-0 truncate">{event.title}</span>
+                {event.isRecurring && (
+                  <Repeat
+                    aria-label="Repeating event"
+                    className="size-3 shrink-0 text-muted-foreground"
+                  />
+                )}
                 {event.done && (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
                     <CheckCircle2 aria-hidden="true" className="size-2.5" />
@@ -227,8 +233,19 @@ function MonthEventChip({
               <p className="mt-0.5 text-xs text-muted-foreground">{hoverCardWhen(event)}</p>
             </div>
           </div>
-          {(event.location || event.organizer || event.description) && (
+          {(event.location || event.organizer || event.description || event.onlineMeetingUrl) && (
             <div className="mt-2.5 grid gap-1.5 border-t border-border/60 pt-2.5">
+              {event.onlineMeetingUrl && (
+                <a
+                  href={event.onlineMeetingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex w-fit items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                >
+                  <Video aria-hidden="true" className="size-3 shrink-0" />
+                  Join Teams meeting
+                </a>
+              )}
               {event.location && (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin aria-hidden="true" className="size-3 shrink-0" />

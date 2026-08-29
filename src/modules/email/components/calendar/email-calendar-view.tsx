@@ -215,6 +215,9 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
           end: serializeEventDate(input.end, input.isAllDay),
           isAllDay: input.isAllDay,
           location: input.location,
+          timeZone: input.timeZone,
+          isOnlineMeeting: input.isOnlineMeeting,
+          recurrence: input.recurrence,
         };
         createMutation.mutate(payload, {
           onSuccess: () => setDialogState({ open: false, editing: null }),

@@ -43,6 +43,10 @@ const calendarEventSchema = z.object({
     })
     .nullable(),
   webLink: z.string().nullable(),
+  isOnlineMeeting: z.boolean().optional(),
+  onlineMeetingUrl: z.string().nullable().optional(),
+  isRecurring: z.boolean().optional(),
+  seriesMasterId: z.string().nullable().optional(),
   done: z.boolean(),
   doneAt: z.string().nullable(),
 });
@@ -77,6 +81,8 @@ export type ListCalendarEventsQuery = {
   signal?: AbortSignal;
 };
 
+export type CalendarRecurrenceOption = 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
+
 export type CreateCalendarEventInput = {
   accountId: string;
   calendarId: string;
@@ -86,6 +92,11 @@ export type CreateCalendarEventInput = {
   end: string;
   isAllDay?: boolean;
   location?: string;
+  /** IANA zone the event is anchored to (defaults to the mailbox/browser zone). */
+  timeZone?: string;
+  /** Attach a Teams meeting. */
+  isOnlineMeeting?: boolean;
+  recurrence?: CalendarRecurrenceOption;
 };
 
 export type UpdateCalendarEventInput = {

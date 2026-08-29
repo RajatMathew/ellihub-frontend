@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -21,14 +22,28 @@ import {
 import { Switch } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
-import type { CalendarSelectionRow } from '@/modules/email/api';
+import type { CalendarRecurrenceOption, CalendarSelectionRow } from '@/modules/email/api';
 import {
   CALENDAR_EVENT_STYLES,
   colorForCalendar,
   type CalendarEvent,
 } from '@/modules/email/components/calendar/email-calendar-types';
 import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay } from 'date-fns';
-import { AlignLeft, CalendarDays, Clock, MapPin, Trash2, type LucideIcon } from 'lucide-react';
+import {
+  AlignLeft,
+  CalendarDays,
+  Clock,
+  Globe,
+  MapPin,
+  Repeat,
+  Trash2,
+  Video,
+  type LucideIcon,
+} from 'lucide-react';
+
+const BROWSER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+type RecurrenceValue = 'none' | CalendarRecurrenceOption;
 
 // Quiet chip/ghost field styles — fields sit flat until you reach for them,
 // so the title and schedule carry the visual weight. Everything is sized to a
@@ -48,6 +63,9 @@ export type CalendarEventDialogSubmit =
       end: Date;
       isAllDay: boolean;
       location?: string;
+      timeZone?: string;
+      isOnlineMeeting?: boolean;
+      recurrence?: CalendarRecurrenceOption;
     }
   | {
       mode: 'edit';
@@ -102,6 +120,10 @@ export function EmailCalendarEventDialog({
   const [allDay, setAllDay] = useState(seed.allDay);
   const [location, setLocation] = useState(seed.location);
   const [calendarId, setCalendarId] = useState<string>(seed.calendarId);
+  const [timeZone, setTimeZone] = useState<string>(BROWSER_TIME_ZONE);
+  const [showTimeZone, setShowTimeZone] = useState(false);
+  const [teamsMeeting, setTeamsMeeting] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceValue>('none');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -114,6 +136,10 @@ export function EmailCalendarEventDialog({
     setAllDay(seed.allDay);
     setLocation(seed.location);
     setCalendarId(seed.calendarId);
+    setTimeZone(BROWSER_TIME_ZONE);
+    setShowTimeZone(false);
+    setTeamsMeeting(false);
+    setRecurrence('none');
     setError(null);
   }, [open, seed]);
 
@@ -131,10 +157,19 @@ export function EmailCalendarEventDialog({
       setError('Choose which calendar this event lives in.');
       return;
     }
-    const start = allDay ? startOfDay(parseDate(date)) : combineDateTime(date, startTime);
+    // A custom zone reinterprets the entered wall time in that zone; the
+    // default path keeps the browser-local interpretation.
+    const usesCustomZone = !allDay && timeZone !== BROWSER_TIME_ZONE;
+    const start = allDay
+      ? startOfDay(parseDate(date))
+      : usesCustomZone
+        ? zonedWallTimeToUtc(date, startTime, timeZone)
+        : combineDateTime(date, startTime);
     const end = allDay
       ? addMinutes(startOfDay(parseDate(date)), 24 * 60)
-      : combineDateTime(date, endTime);
+      : usesCustomZone
+        ? zonedWallTimeToUtc(date, endTime, timeZone)
+        : combineDateTime(date, endTime);
     if (!allDay && end.getTime() <= start.getTime()) {
       setError('End time must be after start time.');
       return;
@@ -170,6 +205,9 @@ export function EmailCalendarEventDialog({
           end,
           isAllDay: allDay,
           location: trimmedLocation,
+          timeZone: allDay ? undefined : timeZone,
+          isOnlineMeeting: teamsMeeting || undefined,
+          recurrence: recurrence === 'none' ? undefined : recurrence,
         },
         null
       );
@@ -283,7 +321,92 @@ export function EmailCalendarEventDialog({
                   <Switch id="calendar-event-allday" checked={allDay} onCheckedChange={setAllDay} />
                 </label>
               </div>
+              {!isEdit && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <Label htmlFor="calendar-event-recurrence" className="sr-only">
+                    Repeats
+                  </Label>
+                  <Select
+                    value={recurrence}
+                    onValueChange={(value) => setRecurrence(value as RecurrenceValue)}
+                  >
+                    <SelectTrigger
+                      id="calendar-event-recurrence"
+                      className={cn(CHIP_FIELD, 'w-fit gap-1.5')}
+                    >
+                      <Repeat aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recurrenceOptions(date).map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!allDay && (
+                    <button
+                      type="button"
+                      aria-label="Choose time zone"
+                      aria-pressed={showTimeZone}
+                      onClick={() => setShowTimeZone((value) => !value)}
+                      className={cn(
+                        'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                        (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
+                          'bg-muted text-foreground'
+                      )}
+                    >
+                      <Globe aria-hidden="true" className="size-4" />
+                    </button>
+                  )}
+                  {!allDay && showTimeZone && (
+                    <SearchableSelect
+                      options={TIME_ZONE_OPTIONS}
+                      value={timeZone}
+                      onValueChange={(value) => value && setTimeZone(value)}
+                      placeholder="Time zone"
+                      searchPlaceholder="Search time zones…"
+                      className="h-8 w-72 text-xs"
+                    />
+                  )}
+                </div>
+              )}
+              {isEdit && event?.isRecurring && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Repeat aria-hidden="true" className="size-3 shrink-0" />
+                  Part of a repeating series — changes apply to this occurrence only.
+                </p>
+              )}
             </FieldRow>
+
+            {(!isEdit || !!event?.onlineMeetingUrl) && (
+              <FieldRow icon={Video}>
+                {isEdit && event?.onlineMeetingUrl ? (
+                  <a
+                    href={event.onlineMeetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 w-fit items-center gap-1.5 rounded-md bg-muted/60 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Video aria-hidden="true" className="size-3.5" />
+                    Join Teams meeting
+                  </a>
+                ) : (
+                  <label
+                    htmlFor="calendar-event-teams"
+                    className="flex h-8 w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                  >
+                    <Switch
+                      id="calendar-event-teams"
+                      checked={teamsMeeting}
+                      onCheckedChange={setTeamsMeeting}
+                    />
+                    Teams meeting
+                  </label>
+                )}
+              </FieldRow>
+            )}
 
             <FieldRow icon={MapPin}>
               <Label htmlFor="calendar-event-location" className="sr-only">
@@ -518,6 +641,77 @@ function buildSeed(
     location: '',
     calendarId: fallbackCalendar,
   };
+}
+
+function recurrenceOptions(dateString: string): Array<{ value: RecurrenceValue; label: string }> {
+  const parsed = parseDate(dateString);
+  const valid = !Number.isNaN(parsed.getTime());
+  return [
+    { value: 'none', label: 'Does not repeat' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Every weekday' },
+    { value: 'weekly', label: valid ? `Weekly on ${format(parsed, 'EEEE')}` : 'Weekly' },
+    { value: 'monthly', label: valid ? `Monthly on day ${format(parsed, 'd')}` : 'Monthly' },
+    { value: 'yearly', label: valid ? `Yearly on ${format(parsed, 'MMMM d')}` : 'Yearly' },
+  ];
+}
+
+function zoneOffsetLabel(timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(new Date());
+    return parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
+  } catch {
+    return '';
+  }
+}
+
+const TIME_ZONE_OPTIONS = (() => {
+  try {
+    return Intl.supportedValuesOf('timeZone').map((timeZone) => ({
+      value: timeZone,
+      label: `${timeZone.replace(/_/g, ' ')} (${zoneOffsetLabel(timeZone)})`,
+    }));
+  } catch {
+    return [{ value: 'UTC', label: 'UTC' }];
+  }
+})();
+
+/** Wall time of a UTC instant in a zone, as UTC-parsed millis for diffing. */
+function wallTimeMillis(utcMillis: number, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+      .formatToParts(new Date(utcMillis))
+      .map((part) => [part.type, part.value])
+  );
+  const hour = parts.hour === '24' ? '00' : parts.hour;
+  return Date.parse(
+    `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:${parts.second}Z`
+  );
+}
+
+/**
+ * The UTC instant at which the given wall-clock time occurs in `timeZone`.
+ * Guess-and-correct via Intl; the second pass settles DST boundary cases.
+ */
+function zonedWallTimeToUtc(dateString: string, timeString: string, timeZone: string): Date {
+  const target = Date.parse(`${dateString}T${timeString}:00Z`);
+  let utc = target;
+  for (let pass = 0; pass < 2; pass += 1) {
+    utc += target - wallTimeMillis(utc, timeZone);
+  }
+  return new Date(utc);
 }
 
 function parseDate(dateString: string): Date {
