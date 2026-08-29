@@ -5,9 +5,48 @@ import {
   CALENDAR_START_HOUR,
   formatCalendarHour,
 } from '@/modules/email/components/calendar/email-calendar-grid';
+import { addMinutes, format, startOfDay } from 'date-fns';
+import { Plus } from 'lucide-react';
 
 // Visual chrome shared by the week and day timeline views. Geometry constants
 // live in email-calendar-grid.ts.
+
+/**
+ * Click-to-add layer: one hover tile per half hour. Hovering tints the slot
+ * and reveals a "+ time" hint; clicking opens the create dialog at that time.
+ * Event blocks render after this layer, so they cover their own slots and
+ * keep their own click behavior. Pointer convenience only — keyboard users
+ * create events via the toolbar's New event button.
+ */
+export function CalendarSlotLayer({
+  day,
+  onCreateSlot,
+}: {
+  day: Date;
+  onCreateSlot?: (start: Date) => void;
+}) {
+  if (!onCreateSlot) return null;
+  return (
+    <>
+      {Array.from({ length: CALENDAR_HOURS.length * 2 }, (_, index) => {
+        const start = addMinutes(startOfDay(day), index * 30);
+        return (
+          <div
+            key={index}
+            onClick={() => onCreateSlot(start)}
+            className="group/slot absolute inset-x-0.5 cursor-pointer rounded-sm transition-colors duration-75 hover:bg-accent/80"
+            style={{ top: (index * CALENDAR_HOUR_HEIGHT) / 2, height: CALENDAR_HOUR_HEIGHT / 2 }}
+          >
+            <span className="pointer-events-none hidden h-full items-center gap-1 px-2 text-[11px] font-medium text-muted-foreground group-hover/slot:flex">
+              <Plus aria-hidden="true" className="size-3" />
+              {format(start, 'h:mm a').toLowerCase()}
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 export function CalendarHourRail() {
   return (

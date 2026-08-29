@@ -16,7 +16,7 @@ import {
 } from '@/modules/email/components/calendar/email-calendar-event-dialog';
 import { EmailCalendarMonthView } from '@/modules/email/components/calendar/email-calendar-month-view';
 import { EmailCalendarOnboardingDialog } from '@/modules/email/components/calendar/email-calendar-onboarding-dialog';
-import { EmailCalendarSidebar } from '@/modules/email/components/calendar/email-calendar-sidebar';
+import { CalendarPickerMenu } from '@/modules/email/components/calendar/email-calendar-picker-menu';
 import {
   toCalendarEvent,
   type CalendarEvent,
@@ -49,7 +49,7 @@ import {
   subMonths,
   subWeeks,
 } from 'date-fns';
-import { CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 export type CalendarView = 'day' | 'week' | 'month';
 
@@ -97,20 +97,13 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
     () => new Map(selection.map((row) => [row.aurinkoCalendarId, row])),
     [selection]
   );
-  const visibleCalendarIds = useMemo(
-    () => selection.filter((row) => !row.hidden).map((row) => row.aurinkoCalendarId),
-    [selection]
-  );
+  // No calendarIds filter: the server defaults to the user's non-hidden
+  // selection, so the events fetch starts in PARALLEL with the selection
+  // query instead of waterfalling behind it. Selection/visibility mutations
+  // invalidate the events query, which re-reads the new server-side state.
   const eventsQuery = useCalendarEventsQuery(
-    accountId
-      ? {
-          accountId,
-          from,
-          to,
-          calendarIds: visibleCalendarIds,
-        }
-      : { accountId: undefined },
-    canQuery && selection.length > 0 && visibleCalendarIds.length > 0
+    accountId ? { accountId, from, to } : { accountId: undefined },
+    canQuery
   );
 
   // Derive onboarding open state so we never call setState from an effect.
@@ -291,30 +284,23 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
 
   // --- happy path ---------------------------------------------------------
 
-  const showSelectionSkeleton = selectionQuery.isLoading;
-  const showEmptySelection = !showSelectionSkeleton && selection.length === 0 && !onboardingOpen;
-  const showEventsSkeleton =
-    !showSelectionSkeleton && selection.length > 0 && eventsQuery.isLoading;
+  const selectionLoading = selectionQuery.isLoading;
+  const showEmptySelection = !selectionLoading && selection.length === 0 && !onboardingOpen;
+  // Full skeleton only when there is nothing to show yet; afterwards paging
+  // keeps the previous window rendered (keepPreviousData) with a subtle
+  // toolbar spinner while the next one loads.
+  const showEventsSkeleton = eventsQuery.isLoading && !eventsQuery.data;
+  const eventsRefreshing = eventsQuery.isFetching && !showEventsSkeleton;
   const showEventsError = eventsQuery.isError && !eventsQuery.isFetching;
 
   return (
     <section
-      className="flex min-h-0 flex-1 flex-row bg-background"
+      className="flex min-h-0 flex-1 flex-col bg-background"
       aria-labelledby="email-calendar-heading"
     >
       <h2 id="email-calendar-heading" className="sr-only">
         Calendar
       </h2>
-
-      {showSelectionSkeleton ? (
-        <SidebarSkeleton />
-      ) : (
-        <EmailCalendarSidebar
-          accountId={accountId}
-          selection={selection}
-          onManage={() => setOnboardingOpen(true)}
-        />
-      )}
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-background px-3 py-2 sm:px-4">
@@ -339,9 +325,21 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
             <p className="ml-2 min-w-40 truncate text-base font-semibold tracking-tight text-foreground">
               {periodLabel}
             </p>
+            {eventsRefreshing && (
+              <Loader2
+                aria-label="Refreshing events"
+                className="size-4 animate-spin text-muted-foreground"
+              />
+            )}
           </div>
 
           <div className="ms-auto flex flex-wrap items-center gap-2">
+            <CalendarPickerMenu
+              accountId={accountId}
+              selection={selection}
+              loading={selectionLoading}
+              onManage={() => setOnboardingOpen(true)}
+            />
             <ViewSwitcher view={view} onChange={setView} />
             <Button
               type="button"
@@ -373,6 +371,7 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
                   onSelectDay={setCursor}
                   onSwitchView={setView}
                   onEditEvent={openEdit}
+                  onDeleteEvent={remove}
                 />
               )}
               {view === 'week' && (
@@ -383,6 +382,7 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
                   onDuplicate={duplicate}
                   onDelete={remove}
                   onToggleDone={toggleDone}
+                  onCreateSlot={openCreate}
                 />
               )}
               {view === 'day' && (
@@ -393,6 +393,7 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
                   onDuplicate={duplicate}
                   onDelete={remove}
                   onToggleDone={toggleDone}
+                  onCreateSlot={openCreate}
                 />
               )}
             </>
@@ -535,25 +536,6 @@ function EventsErrorState({ onRetry }: { onRetry: () => void }) {
         </Button>
       </div>
     </div>
-  );
-}
-
-function SidebarSkeleton() {
-  return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-background">
-      <div className="border-b border-border px-3 py-2">
-        <Skeleton className="h-3 w-16" />
-        <Skeleton className="mt-2 h-2.5 w-24" />
-      </div>
-      <div className="grid gap-1.5 p-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="flex items-center gap-2 rounded-md px-2 py-1.5">
-            <Skeleton className="size-3 rounded-full" />
-            <Skeleton className="h-3 flex-1" />
-          </div>
-        ))}
-      </div>
-    </aside>
   );
 }
 

@@ -122,7 +122,12 @@ export function TimedEventBlock({
         tabIndex={0}
         aria-pressed={done}
         title={`${event.title} · ${timeLabel}`}
-        onClick={() => onEdit(event)}
+        onClick={(e) => {
+          // The day column beneath uses clicks for click-to-add — don't let
+          // an event click double as an empty-slot click.
+          e.stopPropagation();
+          onEdit(event);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
