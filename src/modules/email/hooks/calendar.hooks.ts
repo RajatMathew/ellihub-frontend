@@ -11,7 +11,7 @@ import {
   type UpdateCalendarEventInput,
 } from '@/modules/email/api';
 import { shouldRetryEmailRequest } from '@/modules/email/lib/email-errors';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 const CALENDAR_METADATA_STALE_TIME_MS = 5 * 60 * 1000;
@@ -81,6 +81,10 @@ export const useCalendarEventsQuery = (
     enabled: enabled && Boolean(accountId && from && to),
     staleTime: CALENDAR_EVENTS_STALE_TIME_MS,
     gcTime: CALENDAR_CACHE_TIME_MS,
+    // Paging to another week keeps the current grid on screen while the new
+    // window loads — the views show a subtle fetching indicator instead of
+    // flashing a skeleton.
+    placeholderData: keepPreviousData,
     retry: shouldRetryEmailRequest,
     // Always refetch when the calendar view opens, and when the window regains
     // focus (e.g. the user just deleted an event in Outlook and tabbed back) —

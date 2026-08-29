@@ -12,6 +12,7 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
+  description?: string;
   location?: string;
   organizer?: string;
   color: CalendarEventColor;
@@ -156,6 +157,7 @@ export function toCalendarEvent(
     title: record.subject ?? '(No subject)',
     start,
     end: Number.isNaN(end.getTime()) ? start : end,
+    description: record.description ?? undefined,
     location: record.location ?? undefined,
     organizer: record.organizer?.name ?? record.organizer?.email ?? undefined,
     color: row

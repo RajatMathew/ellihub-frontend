@@ -78,7 +78,7 @@ function AllDayChip({
       className={cn(
         // Text size tracks the timed blocks of the same view so the all-day
         // row and the timeline read as one surface.
-        'flex min-w-0 items-center rounded-sm border border-border/60 text-left font-medium leading-tight',
+        'flex min-w-0 cursor-pointer items-center rounded-sm border border-border/60 text-left font-medium leading-tight',
         density === 'roomy' ? 'gap-2 px-2 py-1 text-sm' : 'gap-1.5 px-1.5 py-0.5 text-xs',
         'hover:shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         style.bg,
