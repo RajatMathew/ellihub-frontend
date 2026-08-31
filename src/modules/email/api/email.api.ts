@@ -495,10 +495,20 @@ export const emailApi = {
     });
   },
 
-  async getAttachment(accountId: string, messageId: string, attachmentId: string): Promise<Blob> {
+  async getAttachment(
+    accountId: string,
+    messageId: string,
+    attachmentId: string,
+    onProgress?: (progress: { loaded: number; total: number | null }) => void
+  ): Promise<Blob> {
     const res = await api.get(
       `${BASE}/accounts/${accountId}/messages/${messageId}/attachments/${attachmentId}`,
-      { responseType: 'blob' }
+      {
+        responseType: 'blob',
+        onDownloadProgress: onProgress
+          ? (event) => onProgress({ loaded: event.loaded, total: event.total ?? null })
+          : undefined,
+      }
     );
     return res.data as Blob;
   },

@@ -92,15 +92,14 @@ export function EmailReferenceMarker({
   const [newTagName, setNewTagName] = useState('');
   const [closedOtherPanelKey, setClosedOtherPanelKey] = useState<string | null>(null);
   const selectedProjectIds = useMemo(
-    () =>
-      [
-        ...new Set(
-          state.references
-            .filter((reference) => reference.type === 'project')
-            .map((reference) => reference.entityId)
-            .filter((projectId): projectId is string => Boolean(projectId))
-        ),
-      ],
+    () => [
+      ...new Set(
+        state.references
+          .filter((reference) => reference.type === 'project')
+          .map((reference) => reference.entityId)
+          .filter((projectId): projectId is string => Boolean(projectId))
+      ),
+    ],
     [state.references]
   );
   const references = useMemo(
@@ -165,6 +164,12 @@ export function EmailReferenceMarker({
       return;
     }
     if (reference.type === 'other') {
+      if (isOtherSelected) {
+        // Toggle 'Other' off and fall back to project selection mode.
+        updateReferences([]);
+        setSelectedType('all');
+        return;
+      }
       updateReferences([reference]);
       setSelectedType('other');
       return;
@@ -178,7 +183,12 @@ export function EmailReferenceMarker({
     const exists = references.some(
       (item) => getReferenceIdentity(item) === getReferenceIdentity(reference)
     );
-    if (exists) return;
+    if (exists) {
+      // Clicking an already-selected option toggles it off. removeReference keeps
+      // the guard against removing the last project reference while dependents exist.
+      removeReference(reference);
+      return;
+    }
 
     updateReferences([...references.filter((item) => item.type !== 'other'), reference]);
   };
@@ -425,6 +435,8 @@ function ReferencePickerPopover({
   return (
     <PopoverContent
       align={align}
+      side="bottom"
+      avoidCollisions={false}
       sideOffset={8}
       collisionPadding={12}
       className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] flex-col overflow-hidden p-3"
@@ -958,7 +970,14 @@ function SearchReferencePicker({
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 200);
   const optionsQuery = useQuery({
-    queryKey: ['connected-email', 'reference-options', accountId, type, projectIds, debouncedSearch],
+    queryKey: [
+      'connected-email',
+      'reference-options',
+      accountId,
+      type,
+      projectIds,
+      debouncedSearch,
+    ],
     queryFn: () =>
       Promise.all(
         (type === 'project' ? [undefined] : projectIds).map((projectId) =>
@@ -1172,7 +1191,9 @@ function optionToReference(option: EmailReferenceOption): EmailReference {
 function dedupeReferenceOptions<T extends EmailReferenceOption>(options: T[]): T[] {
   const seen = new Set<string>();
   return options.filter((option) => {
-    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join('|');
+    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join(
+      '|'
+    );
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

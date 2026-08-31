@@ -141,16 +141,24 @@ export function EmailReadingPane({
     attachment: EmailAttachment;
   } | null>(null);
   const attachmentBlobCacheRef = useRef(new Map<string, Promise<Blob>>());
+  const [previewProgress, setPreviewProgress] = useState<{
+    loaded: number;
+    total: number | null;
+  } | null>(null);
   const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
   const loadEmailAttachment = useCallback(
-    (messageId: string, attachmentId: string) => {
+    (
+      messageId: string,
+      attachmentId: string,
+      onProgress?: (progress: { loaded: number; total: number | null }) => void
+    ) => {
       if (!accountId) return Promise.reject(new Error('Email account is unavailable'));
 
       const cacheKey = `${accountId}:${messageId}:${attachmentId}`;
       const cached = attachmentBlobCacheRef.current.get(cacheKey);
       if (cached) return cached;
 
-      const request = emailApi.getAttachment(accountId, messageId, attachmentId);
+      const request = emailApi.getAttachment(accountId, messageId, attachmentId, onProgress);
       attachmentBlobCacheRef.current.set(cacheKey, request);
 
       if (attachmentBlobCacheRef.current.size > MAX_CACHED_ATTACHMENT_PREVIEWS) {
@@ -170,7 +178,15 @@ export function EmailReadingPane({
   const loadPreviewAttachment = useCallback(
     (file: FilePreviewItem) => {
       if (!previewAttachment) return Promise.reject(new Error('No attachment selected'));
-      return loadEmailAttachment(previewAttachment.messageId, file.id);
+      setPreviewProgress({ loaded: 0, total: file.size && file.size > 0 ? file.size : null });
+      const request = loadEmailAttachment(previewAttachment.messageId, file.id, (progress) =>
+        setPreviewProgress(progress)
+      );
+      request.then(
+        () => setPreviewProgress(null),
+        () => setPreviewProgress(null)
+      );
+      return request;
     },
     [loadEmailAttachment, previewAttachment]
   );
@@ -492,6 +508,7 @@ export function EmailReadingPane({
             : null
         }
         loadFile={loadPreviewAttachment}
+        loadProgress={previewProgress}
         saveToFiles={
           previewAttachment
             ? {

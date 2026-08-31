@@ -6,12 +6,13 @@ import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
+import { EmailCalendarView } from '@/modules/email/components/calendar/email-calendar-view';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
-import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import {
   EmailBulkProgressPanel,
   type EmailBulkOperationState,
 } from '@/modules/email/components/email-bulk-progress-panel';
+import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import {
   EmailMailToolbar,
@@ -26,7 +27,6 @@ import {
   type EmailWorkspaceView,
 } from '@/modules/email/components/email-workspace-header';
 import { EmailWorkspacePlaceholder } from '@/modules/email/components/email-workspace-placeholder';
-import { EmailCalendarView } from '@/modules/email/components/calendar/email-calendar-view';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   emailKeys,
@@ -63,11 +63,12 @@ import {
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
+import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { PanelLeftOpen } from 'lucide-react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface MailboxPageProps {
   accountSlug?: string;
@@ -118,9 +119,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
   );
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{ messageId: string } | null>(
-    null
-  );
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ messageId: string } | null>(null);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
   const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
@@ -302,7 +301,15 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     mailStatusFilter,
     selectedCategoryTagId,
   ]);
-  const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? folderEmails[0]?.id;
+  // The list pane renders emails grouped by month (Today/This week/…), which can
+  // reorder them relative to the raw query order — server search results arrive in
+  // relevance order. Prev/next navigation must walk the list in the order the user
+  // actually sees, so flatten the same grouping the list pane renders.
+  const orderedEmails = useMemo(
+    () => groupEmailsByMonth(folderEmails).flatMap((group) => group.emails),
+    [folderEmails]
+  );
+  const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? orderedEmails[0]?.id;
   const viewKey = `account:${connectedAccount?.id ?? accountSlug ?? 'unknown'}`;
   const selectedEmailId =
     selectedTarget?.viewKey === viewKey && selectedTarget.folder === selectedFolder
@@ -449,12 +456,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     const accountId = connectedAccount.id;
     const ids = Array.from(checkedMessageIds);
     // Skip the per-item mutation toast: our progress panel handles feedback.
-    void runBulkPerId('archive', ids, (messageId) => emailApi.archiveMessage(accountId, messageId))
-      .then(() => {
-        setCheckedMessageIds(() => new Set());
-        if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
-        invalidateAfterBulk(accountId);
-      });
+    void runBulkPerId('archive', ids, (messageId) =>
+      emailApi.archiveMessage(accountId, messageId)
+    ).then(() => {
+      setCheckedMessageIds(() => new Set());
+      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      invalidateAfterBulk(accountId);
+    });
   }, [checkedMessageIds, connectedAccount, invalidateAfterBulk, runBulkPerId, selectedTarget]);
   const runBulkRestore = useCallback(() => {
     if (!connectedAccount || checkedMessageIds.size === 0 || !inboxFolderId) return;
@@ -483,20 +491,15 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     //   Inbox / other → Deleted Items
     //   Deleted Items → Recoverable Items (soft purge)
     // Matches Outlook's own semantics, so anything we do here reflects there.
-    void runBulkPerId('delete', ids, (messageId) => emailApi.deleteMessage(accountId, messageId))
-      .then(() => {
-        setCheckedMessageIds(() => new Set());
-        if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
-        invalidateAfterBulk(accountId);
-      });
+    void runBulkPerId('delete', ids, (messageId) =>
+      emailApi.deleteMessage(accountId, messageId)
+    ).then(() => {
+      setCheckedMessageIds(() => new Set());
+      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      invalidateAfterBulk(accountId);
+    });
     setBulkDeleteConfirm(null);
-  }, [
-    checkedMessageIds,
-    connectedAccount,
-    invalidateAfterBulk,
-    runBulkPerId,
-    selectedTarget,
-  ]);
+  }, [checkedMessageIds, connectedAccount, invalidateAfterBulk, runBulkPerId, selectedTarget]);
   const runEmptyFolder = useCallback(async () => {
     if (!connectedAccount || !emptyFolderConfirm) return;
     const folderId = emptyFolderConfirm.folderId;
@@ -537,13 +540,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       setBulkOperation((current) => (current ? { ...current, isRunning: false } : current));
       toast.error('Could not empty the folder.');
     }
-  }, [
-    connectedAccount,
-    emptyFolderConfirm,
-    folderEmails.length,
-    providerTotalCount,
-    queryClient,
-  ]);
+  }, [connectedAccount, emptyFolderConfirm, folderEmails.length, providerTotalCount, queryClient]);
 
   useEffect(() => {
     // Reset selection whenever the folder / account / project context changes.
@@ -730,11 +727,11 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     [connectedAccount, queryClient]
   );
 
-  const selectedEmailIndex = folderEmails.findIndex((email) => email.id === selectedEmailId);
-  const previousEmail = selectedEmailIndex > 0 ? folderEmails[selectedEmailIndex - 1] : null;
+  const selectedEmailIndex = orderedEmails.findIndex((email) => email.id === selectedEmailId);
+  const previousEmail = selectedEmailIndex > 0 ? orderedEmails[selectedEmailIndex - 1] : null;
   const nextEmail =
-    selectedEmailIndex >= 0 && selectedEmailIndex < folderEmails.length - 1
-      ? folderEmails[selectedEmailIndex + 1]
+    selectedEmailIndex >= 0 && selectedEmailIndex < orderedEmails.length - 1
+      ? orderedEmails[selectedEmailIndex + 1]
       : null;
 
   useEffect(() => {
@@ -917,10 +914,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     />
   );
   const bulkProgressPanel = (
-    <EmailBulkProgressPanel
-      operation={bulkOperation}
-      onDismiss={() => setBulkOperation(null)}
-    />
+    <EmailBulkProgressPanel operation={bulkOperation} onDismiss={() => setBulkOperation(null)} />
   );
 
   if (!accountsQuery.isLoading && !accountsQuery.isError && !connectedAccount) {
@@ -1058,10 +1052,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 : undefined
             }
             onEmptyFolder={
-              connectedAccount &&
-              isDeletedFolder &&
-              deletedFolderId &&
-              checkedMessageIds.size === 0
+              connectedAccount && isDeletedFolder && deletedFolderId && checkedMessageIds.size === 0
                 ? () => setEmptyFolderConfirm({ folderId: deletedFolderId })
                 : undefined
             }
@@ -1141,8 +1132,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                             folderEmails.length > 0 &&
                             folderEmails.every((email) => checkedMessageIds.has(email.id));
                           setCheckedMessageIds(
-                            () =>
-                              new Set(allChecked ? [] : folderEmails.map((email) => email.id))
+                            () => new Set(allChecked ? [] : folderEmails.map((email) => email.id))
                           );
                         }
                       : undefined
@@ -1332,9 +1322,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         </div>
       ) : workspaceView === 'calendar' ? (
         <EmailCalendarView
-              accountId={connectedAccount?.id ?? null}
-              provider={connectedAccount?.provider ?? null}
-            />
+          accountId={connectedAccount?.id ?? null}
+          provider={connectedAccount?.provider ?? null}
+        />
       ) : (
         <EmailWorkspacePlaceholder view={workspaceView} />
       )}
