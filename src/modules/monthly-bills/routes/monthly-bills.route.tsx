@@ -1,18 +1,12 @@
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ModuleLoader } from '@/app/components/loader/elegant';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { useAccess } from '@/app/contexts/access-context';
 import { useQuickBooksStatusQuery } from '@/modules/integrations/hooks/quickbooks.hooks';
 import { MonthYearPicker } from '@/modules/monthly-bills/components/month-year-picker';
-import { MonthlyBillsTabs } from '@/modules/monthly-bills/components/monthly-bills-tabs';
+import { getMonthlyBillTabs } from '@/modules/monthly-bills/components/monthly-bills-tabs';
 import {
   MONTHLY_BILLS_ALLOWED_ROLES,
   MONTHLY_BILLS_DEFAULT_PATH,
@@ -98,12 +92,10 @@ export default function MonthlyBillsRoute() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar className="gap-3 pt-5 pb-3 mb-4">
-        <ToolbarWrapper>
-          <ToolbarHeading className="gap-2">
-            <ToolbarPageTitle>Monthly Bills</ToolbarPageTitle>
-          </ToolbarHeading>
-          <ToolbarActions className="w-full justify-start sm:w-auto sm:justify-end">
+      <ListPageHeader
+        title="Monthly Bills"
+        leadingActions={
+          <>
             {qaClockAvailable ? (
               <RecurringBillsQaClockControl value={qaDate} onChange={handleQaDateChange} />
             ) : null}
@@ -112,11 +104,10 @@ export default function MonthlyBillsRoute() {
               onChange={handleMonthChange}
               currentPeriod={currentPeriod}
             />
-          </ToolbarActions>
-        </ToolbarWrapper>
-
-        <MonthlyBillsTabs selectedDate={selectedDate} />
-      </Toolbar>
+          </>
+        }
+        tabs={{ items: getMonthlyBillTabs(selectedDate), ariaLabel: 'Monthly bills sections' }}
+      />
 
       <div className="min-w-0">
         {statusQuery.isLoading ? (

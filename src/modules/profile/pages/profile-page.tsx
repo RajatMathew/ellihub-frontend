@@ -1,16 +1,9 @@
 import { useEffect, type ReactNode } from 'react';
 
+import { ListPageHeader, PageHeaderSkeleton } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
 import {
   Card,
   CardContent,
@@ -133,40 +126,30 @@ export default function ProfilePage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar sticky={false}>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Account / My Profile
-            </div>
-            <ToolbarPageTitle>My Profile</ToolbarPageTitle>
-            <span className="text-sm text-muted-foreground">
-              Keep your account and employee details current.
-            </span>
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              disabled={!form.formState.isDirty || updateProfile.isPending}
-              onClick={() => form.reset(getProfileFormValues(profile))}
-            >
-              <RotateCcw className="size-4" />
-              Reset
-            </Button>
-            <Button
-              size="sm"
-              type="button"
-              disabled={updateProfile.isPending}
-              onClick={form.handleSubmit(onSubmit, onInvalidFormSubmit)}
-            >
-              <Check className="size-4" />
-              Save Profile
-            </Button>
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+      <ListPageHeader
+        eyebrow="Account"
+        title="My Profile"
+        description={
+          <span className="text-sm text-muted-foreground">
+            Keep your account and employee details current.
+          </span>
+        }
+        actions={[
+          {
+            label: 'Reset',
+            icon: RotateCcw,
+            disabled: !form.formState.isDirty || updateProfile.isPending,
+            onClick: () => form.reset(getProfileFormValues(profile)),
+          },
+          {
+            label: 'Save Profile',
+            icon: Check,
+            placement: 'primary',
+            disabled: updateProfile.isPending,
+            onClick: form.handleSubmit(onSubmit, onInvalidFormSubmit),
+          },
+        ]}
+      />
 
       <div className="space-y-6">
         <Card>
@@ -328,9 +311,7 @@ function ProfileSection({
           <CardDescription>{description}</CardDescription>
         </CardHeading>
       </CardHeader>
-      <CardContent className="space-y-5">
-        {children}
-      </CardContent>
+      <CardContent className="space-y-5">{children}</CardContent>
     </Card>
   );
 }
@@ -377,19 +358,7 @@ function ProfileTextField({
 function ProfileLoading() {
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar sticky={false}>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-64" />
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-8 w-28" />
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+      <PageHeaderSkeleton actionCount={2} showEyebrow sticky={false} />
       <div className="space-y-6">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />

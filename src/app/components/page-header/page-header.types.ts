@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import type { PageTabItem } from '@/app/components/page-tabs';
+import type { PageTabItem, PageTabValue } from '@/app/components/page-tabs';
 import type { LucideIcon } from 'lucide-react';
 
 /**
@@ -80,7 +80,17 @@ export interface PanelDef {
   label?: string;
 }
 
+/**
+ * The tab strip inside the header bar.
+ *
+ * Mirrors `PageTabs`: items carrying a `to` navigate, and items carrying a
+ * `value` report through `onValueChange`. Both live here so a page never
+ * reaches for a second tab mechanism.
+ */
 export interface PageHeaderTabs {
   items: PageTabItem[];
   ariaLabel: string;
+  /** For value-driven tabs — omit when the items navigate. */
+  activeValue?: PageTabValue;
+  onValueChange?: (value: PageTabValue) => void;
 }

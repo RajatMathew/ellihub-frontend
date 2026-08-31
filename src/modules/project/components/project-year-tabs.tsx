@@ -1,24 +1,10 @@
-import { PageTabs, type PageTabItem } from '@/app/components/page-tabs';
+import type { PageTabItem } from '@/app/components/page-tabs';
 
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 7 }, (_, index) => currentYear - 2 + index);
-const YEAR_TABS: PageTabItem<number | null>[] = [
+
+/** Year filters for the project portfolio, rendered by the page header's tab strip. */
+export const PROJECT_YEAR_TABS: PageTabItem[] = [
   { label: 'ALL', value: null },
   ...YEARS.map((year) => ({ label: String(year), value: year })),
 ];
-
-interface ProjectYearTabsProps {
-  activeYear: number | null;
-  onYearChange: (year: number | null) => void;
-}
-
-export function ProjectYearTabs({ activeYear, onYearChange }: ProjectYearTabsProps) {
-  return (
-    <PageTabs
-      items={YEAR_TABS}
-      activeValue={activeYear}
-      onValueChange={onYearChange}
-      ariaLabel="Project year filters"
-    />
-  );
-}

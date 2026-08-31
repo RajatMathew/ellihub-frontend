@@ -1,14 +1,9 @@
 import type { ReactNode } from 'react';
 
 import { PageTabs } from '@/app/components/page-tabs';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
 import { cn } from '@/app/lib/utils';
 
+import { Toolbar, ToolbarHeading, ToolbarPageTitle, ToolbarWrapper } from './internal/toolbar';
 import { PageHeaderActions } from './page-header-actions';
 import type { ActionDef, MetaItem, PageHeaderTabs, PanelDef } from './page-header.types';
 
@@ -101,7 +96,14 @@ export function PageHeader({
         />
       </ToolbarWrapper>
 
-      {tabs && <PageTabs items={tabs.items} ariaLabel={tabs.ariaLabel} />}
+      {tabs && (
+        <PageTabs
+          items={tabs.items}
+          ariaLabel={tabs.ariaLabel}
+          activeValue={tabs.activeValue}
+          onValueChange={tabs.onValueChange}
+        />
+      )}
     </Toolbar>
   );
 }

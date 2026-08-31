@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type Ref } from 'react';
 
+import { ListPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { Button } from '@/app/components/ui/button';
-import { useAccess } from '@/app/contexts/access-context';
 import { useDebouncedCallback } from '@/app/hooks/use-debounced-callback';
 import { useUrlParamPatch } from '@/app/hooks/use-url-param-patch';
 import { cn } from '@/app/lib/utils';
@@ -23,7 +15,7 @@ import {
   ProjectViewSwitcher,
   type ProjectPortfolioView,
 } from '@/modules/project/components/project-view-switcher';
-import { ProjectYearTabs } from '@/modules/project/components/project-year-tabs';
+import { PROJECT_YEAR_TABS } from '@/modules/project/components/project-year-tabs';
 import { PROJECT_STATUS_ORDER } from '@/modules/project/constants/project-form.constants';
 import {
   getProjectListDefaultSortOrder,
@@ -36,7 +28,6 @@ import {
 import { useInfiniteProjectsQuery, useProjectStatsQuery } from '@/modules/project/hooks';
 import type { Division, ProjectStatusEnum } from '@/modules/project/schemas/project.schema';
 import { Loader2, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const parseProjectStatus = (value: string | null): ProjectStatusEnum | undefined => {
   if (!value) return undefined;
@@ -71,7 +62,6 @@ const parseProjectSortOrder = (
 };
 
 export function ProjectList() {
-  const { can } = useAccess();
   const { searchParams, updateParams } = useUrlParamPatch();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [isFilterPending, startFilterTransition] = useTransition();
@@ -260,26 +250,25 @@ export function ProjectList() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar className="gap-3 pt-5 pb-3 mb-4">
-        <ToolbarWrapper>
-          <ToolbarHeading className="gap-0 lg:gap-0">
-            <ToolbarPageTitle>Project Portfolio</ToolbarPageTitle>
-          </ToolbarHeading>
-          <ToolbarActions className="w-full justify-between sm:w-auto sm:justify-end">
-            <ProjectViewSwitcher value={viewMode} onValueChange={handleViewChange} />
-            {can('project', 'create') && (
-              <Button variant="primary" asChild>
-                <Link to="new">
-                  <Plus className="size-4" />
-                  New Project
-                </Link>
-              </Button>
-            )}
-          </ToolbarActions>
-        </ToolbarWrapper>
-
-        <ProjectYearTabs activeYear={year} onYearChange={handleYearChange} />
-      </Toolbar>
+      <ListPageHeader
+        title="Project Portfolio"
+        leadingActions={<ProjectViewSwitcher value={viewMode} onValueChange={handleViewChange} />}
+        actions={[
+          {
+            label: 'New Project',
+            icon: Plus,
+            to: 'new',
+            placement: 'primary',
+            enabled: { resource: 'project', action: 'create' },
+          },
+        ]}
+        tabs={{
+          items: PROJECT_YEAR_TABS,
+          ariaLabel: 'Project year filters',
+          activeValue: year,
+          onValueChange: (value) => handleYearChange(value as number | null),
+        }}
+      />
 
       {showProjectsInitialLoader ? (
         <ProjectListLoading viewMode={viewMode} />

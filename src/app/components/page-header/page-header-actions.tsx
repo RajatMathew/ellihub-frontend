@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-import { ToolbarActions } from '@/app/components/toolbar/toolbar';
 import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +12,7 @@ import { cn } from '@/app/lib/utils';
 import { MoreHorizontal, PanelRightOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { ToolbarActions } from './internal/toolbar';
 import type { ActionDef, PanelDef } from './page-header.types';
 import { usePageHeaderActions } from './use-page-header-actions';
 

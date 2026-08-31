@@ -1,4 +1,4 @@
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
+import { ToolbarSkeleton } from './internal/toolbar-skeleton';
 
 export interface PageHeaderSkeletonProps {
   /** Mirrors `PageHeader`'s eyebrow row. */

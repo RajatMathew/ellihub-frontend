@@ -51,6 +51,25 @@ async function mock(page: Page, permissions: Record<string, string[]>, email = '
       });
       return;
     }
+    if (path === '/api/v1/users/me/profile') {
+      await route.fulfill({
+        json: {
+          data: {
+            user: {
+              id: 'u1',
+              name: 'A',
+              email: 'a@e.com',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            employee: null,
+            signature: { name: 'A', role: 'Admin', email: 'a@e.com' },
+            missingFields: [],
+          },
+        },
+      });
+      return;
+    }
     await route.fulfill({
       json: {
         data: [],
@@ -65,7 +84,7 @@ async function mock(page: Page, permissions: Record<string, string[]>, email = '
 
 const H1 = 'h1';
 
-test.describe('finance, settings and integrations headers', () => {
+test.describe('pages that build their own header content', () => {
   test.describe.configure({ timeout: 90_000 });
 
   test('checking register', async ({ page }) => {
@@ -95,5 +114,27 @@ test.describe('finance, settings and integrations headers', () => {
     await page.goto('/app/settings/email-mailboxes');
     await expect(page.locator(H1)).toHaveText('Common inboxes', { timeout: 60_000 });
     await expect(page.getByRole('button', { name: 'Connect vendor account' })).toBeVisible();
+  });
+
+  test('project portfolio keeps its year tabs in the header', async ({ page }) => {
+    await mock(page, { project: ['read', 'create'] });
+    await page.goto('/app/projects');
+    await expect(page.locator('h1')).toHaveText('Project Portfolio', { timeout: 60_000 });
+    await expect(page.getByRole('link', { name: 'New Project' })).toBeVisible();
+    const tabs = page.getByRole('navigation', { name: 'Project year filters' });
+    await expect(tabs.getByRole('button', { name: 'ALL' })).toBeVisible();
+  });
+
+  test('profile', async ({ page }) => {
+    await mock(page, {});
+    await page.goto('/app/profile');
+    await expect(page.locator('h1')).toHaveText('My Profile', { timeout: 60_000 });
+    await expect(page.getByRole('button', { name: 'Save Profile' })).toBeVisible();
+  });
+
+  test('files', async ({ page }) => {
+    await mock(page, { file: ['read', 'create'] });
+    await page.goto('/app/files');
+    await expect(page.locator('h1')).toHaveText('Files', { timeout: 60_000 });
   });
 });

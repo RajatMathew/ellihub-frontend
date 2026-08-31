@@ -1,4 +1,4 @@
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
+import { PageHeaderSkeleton } from '@/app/components/page-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 interface ProjectDetailPageLoadingProps {
@@ -16,7 +16,7 @@ export function ProjectDetailPageLoading({
 }: ProjectDetailPageLoadingProps) {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
-      <ToolbarSkeleton />
+      <PageHeaderSkeleton actionCount={2} showEyebrow />
 
       <div className="space-y-5 pt-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -44,7 +44,7 @@ export function ProjectDetailPageLoading({
 export function ProjectFormPageLoading({ sections = 3 }: ProjectFormPageLoadingProps) {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
-      <ToolbarSkeleton />
+      <PageHeaderSkeleton actionCount={2} showEyebrow />
 
       <div className="space-y-5 pt-5">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">

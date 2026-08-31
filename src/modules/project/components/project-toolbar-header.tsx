@@ -1,11 +1,4 @@
-import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { PageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +8,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
+import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
 import { DIVISION_LABELS } from '@/modules/project/constants/project.constants';
 import { useProjectStagesQuery, useUpdateProjectMutation } from '@/modules/project/hooks';
 import {
@@ -144,110 +138,109 @@ export function ProjectToolbarHeader({
   const showProjectMetadata = location.pathname.endsWith('/prime-change-orders');
 
   return (
-    <Toolbar className="bg-page-header">
-      <ToolbarWrapper>
-        <ToolbarHeading>
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <ToolbarPageTitle>{title}</ToolbarPageTitle>
-            {(project?.status || project?.statusRef) &&
-              (() => {
-                const status = getStatusMeta(project?.statusRef ?? project?.status);
+    <PageHeader
+      className="bg-page-header"
+      title={title}
+      status={
+        <>
+          {(project?.status || project?.statusRef) &&
+            (() => {
+              const status = getStatusMeta(project?.statusRef ?? project?.status);
 
-                if (!status) return null;
+              if (!status) return null;
 
-                return <ProjectStatusBadge label={status.label} status={status.key} />;
-              })()}
-            {showStage ? (
-              canUpdateStage && stages && stages.length > 0 ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
-                      disabled={updateMutation.isPending}
-                    >
+              return <ProjectStatusBadge label={status.label} status={status.key} />;
+            })()}
+          {showStage ? (
+            canUpdateStage && stages && stages.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-60"
+                    disabled={updateMutation.isPending}
+                  >
+                    <span className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)} />
+                    {currentStageLabel}
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  {stages.map((stage) => (
+                    <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
                       <span
-                        className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)}
-                      />
-                      {currentStageLabel}
-                      <ChevronDown className="size-3 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {stages.map((stage) => (
-                      <DropdownMenuItem key={stage.id} onClick={() => handleStageChange(stage.id)}>
-                        <span
-                          className={cn(
-                            'size-2.5 shrink-0 rounded-sm',
-                            getProjectStageSwatchClassName(stage.name)
-                          )}
-                        />
-                        <span className="flex-1 font-normal">
-                          {formatProjectStageLabel(stage.name)}
-                        </span>
-                        {stage.id === project.stageId && (
-                          <Check className="size-3.5 text-foreground" />
+                        className={cn(
+                          'size-2.5 shrink-0 rounded-sm',
+                          getProjectStageSwatchClassName(stage.name)
                         )}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground"
-                      aria-disabled="true"
-                    >
-                      <span
-                        className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)}
                       />
-                      {currentStageLabel}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {canUpdateStage
-                      ? 'Stage options are loading.'
-                      : 'You do not have permission to update the project stage.'}
-                  </TooltipContent>
-                </Tooltip>
-              )
-            ) : null}
+                      <span className="flex-1 font-normal">
+                        {formatProjectStageLabel(stage.name)}
+                      </span>
+                      {stage.id === project.stageId && (
+                        <Check className="size-3.5 text-foreground" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex cursor-default items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                    aria-disabled="true"
+                  >
+                    <span className={cn('size-2 shrink-0 rounded-sm', currentStageDotClassName)} />
+                    {currentStageLabel}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {canUpdateStage
+                    ? 'Stage options are loading.'
+                    : 'You do not have permission to update the project stage.'}
+                </TooltipContent>
+              </Tooltip>
+            )
+          ) : null}
+        </>
+      }
+      description={
+        showProjectMetadata && (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {project?.name && title !== project.name && (
+              <span>
+                <span className="font-medium">Project:</span> {project.name}
+              </span>
+            )}
+            {project?.jobNumber && (
+              <span>
+                <span className="font-medium">Job #:</span> {project.jobNumber}
+              </span>
+            )}
+            {project?.division && (
+              <span>
+                <span className="font-medium">Division:</span>{' '}
+                {typeof project.division === 'string'
+                  ? (DIVISION_LABELS[project.division as Division] ?? project.division)
+                  : project.division?.label || project.division?.name || 'N/A'}
+              </span>
+            )}
+            {project?.gc && (
+              <span>
+                <span className="font-medium">GC:</span> {project.gc.name}
+              </span>
+            )}
+            {project?.leadPM && (
+              <span>
+                <span className="font-medium">Lead PM:</span> {project.leadPM.name}
+              </span>
+            )}
           </div>
-          {showProjectMetadata && (
-            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-              {project?.name && title !== project.name && (
-                <span>
-                  <span className="font-medium">Project:</span> {project.name}
-                </span>
-              )}
-              {project?.jobNumber && (
-                <span>
-                  <span className="font-medium">Job #:</span> {project.jobNumber}
-                </span>
-              )}
-              {project?.division && (
-                <span>
-                  <span className="font-medium">Division:</span>{' '}
-                  {typeof project.division === 'string'
-                    ? (DIVISION_LABELS[project.division as Division] ?? project.division)
-                    : project.division?.label || project.division?.name || 'N/A'}
-                </span>
-              )}
-              {project?.gc && (
-                <span>
-                  <span className="font-medium">GC:</span> {project.gc.name}
-                </span>
-              )}
-              {project?.leadPM && (
-                <span>
-                  <span className="font-medium">Lead PM:</span> {project.leadPM.name}
-                </span>
-              )}
-            </div>
-          )}
-        </ToolbarHeading>
-        <ToolbarActions>
+        )
+      }
+      leadingActions={
+        <>
           {/* Team Avatar Group Button */}
           {project && onTeamClick && (
             <Button
@@ -289,8 +282,8 @@ export function ProjectToolbarHeader({
             </Button>
           )}
           {children}
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+        </>
+      }
+    />
   );
 }
