@@ -71,8 +71,9 @@ export function SharedMailboxesPage() {
   if (!isSharedMailboxAdmin) {
     return (
       <main className="container-fluid py-7.5">
-        <section className="max-w-xl rounded-lg border border-border bg-background p-5">
-          <h1 className="text-base font-semibold text-foreground">Common inbox administration</h1>
+        <ListPageHeader eyebrow="Organization email" title="Common inboxes" />
+        <section className="mt-6 max-w-xl rounded-lg border border-border bg-background p-5">
+          <h2 className="text-base font-semibold text-foreground">Common inbox administration</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Only admin@elli.com can connect or manage the hidden Microsoft vendor accounts that keep
             common inboxes available to everyone.
@@ -88,10 +89,11 @@ export function SharedMailboxesPage() {
       <>
         <SharedMailboxDiscoveryFlow />
         <main className="container-fluid py-7.5">
-          <section className="flex max-w-xl flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-5">
+          <ListPageHeader eyebrow="Organization email" title="Common inboxes" />
+          <section className="mt-6 flex max-w-xl flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-5">
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle aria-hidden="true" className="size-4" />
-              <h1 className="text-sm font-semibold">Couldn&apos;t load common inboxes</h1>
+              <h2 className="text-sm font-semibold">Couldn&apos;t load common inboxes</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               This may be a temporary connection issue. Try again before reconnecting a vendor.

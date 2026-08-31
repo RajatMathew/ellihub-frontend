@@ -66,7 +66,7 @@ Nineteen defects from the read-only audit. Severity is blast radius, not effort.
 | F3 | Three HR list toolbars re-implemented `ResourcePageHeader` | High | ✅ P2 |
 | F4 | Breadcrumbs implemented four separate ways; two trails stack on every detail page | High | ✅ P3 |
 | F5 | `RouteDef.breadcrumb` declared, set once, never consumed | High | ✅ P5 |
-| F6 | Five different page-title typographies shipping at once | Medium | ✅ P6 |
+| F6 | Five different page-title typographies shipping at once | Medium | ✅ P6 (adopted scope; email/auth/help/public keep their own by decision) |
 | F7 | Two page-tab systems (`PageTabs` vs raw Radix `TabsList`) | Medium | 🔄 P7 — page tabs unified; in-card Radix stays |
 | F8 | Detail-header permission gating inconsistent — HR ungated, Directory gated | Medium | ✅ P3 |
 | F9 | Back-navigation targets and labels drift per entity | Medium | ✅ P5 |
@@ -316,6 +316,20 @@ Specs that directly exercise migrated pages, all passing: `page-header-kit`, `li
   which is why `page-header-kit.spec.ts` sets a 90s describe timeout.
 
 ---
+
+## What is not closed
+
+Thirteen of the nineteen findings are closed outright. The rest, honestly stated:
+
+| ID | State |
+| --- | --- |
+| F7 | Partly. Page-section tabs are unified on `PageTabs`; Radix `Tabs` remains correct inside cards, and payment conflicts needs a count badge `PageTabItem` cannot carry. |
+| F10 | **Open.** `core/ui`'s `PageHeader` and `SectionHeader` still exist, still dev-only, still using hard-coded colours. Their API was absorbed; the files were not deleted. |
+| F12 | Partly. `ProjectToolbarHeader` renders through `PageHeader`, but its 25-field `PUT /project` stage mutation is still inline. |
+| F17 | Partly. Affordances settled; form title copy deliberately untouched. |
+| F15, F16 | Out of scope by decision — dialog-based create/edit and Feedback's competing titles. |
+
+Email, auth, help and the public pages are out of scope by decision and keep their own headers.
 
 ## Open questions
 
