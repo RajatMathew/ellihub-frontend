@@ -54,6 +54,7 @@ import {
   useSaveEmailDraftMutation,
   useSendEmailDraftMutation,
   useStartEmailAuthMutation,
+  useToggleEmailFlagMutation,
   useUnarchiveEmailMessageMutation,
   useUpdateEmailAccountNicknameMutation,
   useUpdateEmailMeetingMutation,
@@ -208,6 +209,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const deleteMessageMutation = useDeleteEmailMessageMutation();
   const permanentlyDeleteMessageMutation = usePermanentlyDeleteEmailMessageMutation();
   const updateMessageStatusMutation = useUpdateEmailMessageStatusMutation();
+  const toggleFlagMutation = useToggleEmailFlagMutation();
   const updateTagsMutation = useUpdateEmailMessageTagsMutation();
   const respondToMeetingMutation = useRespondToEmailMeetingMutation();
   const updateMeetingMutation = useUpdateEmailMeetingMutation();
@@ -264,6 +266,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     let list = emailsForActiveSearch;
     if (mailFilter === 'unread') {
       list = list.filter((email) => email.unread);
+    } else if (mailFilter === 'flagged') {
+      list = list.filter((email) => email.flagged);
     } else if (mailFilter === 'attachments') {
       list = list.filter(
         (email) => Boolean(email.attachmentCount) || Boolean(email.attachments?.length)
@@ -1120,6 +1124,17 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                             accountId: connectedAccount.id,
                             messageId: email.latestMessageId ?? email.id,
                             targetFolderId: deletedFolderId,
+                          })
+                      : undefined
+                  }
+                  onToggleFlagEmail={
+                    connectedAccount
+                      ? (email) =>
+                          toggleFlagMutation.mutate({
+                            accountId: connectedAccount.id,
+                            messageId: email.latestMessageId ?? email.id,
+                            conversationKey: email.conversationKey ?? email.threadId ?? undefined,
+                            flagged: !email.flagged,
                           })
                       : undefined
                   }

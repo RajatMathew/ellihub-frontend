@@ -183,6 +183,7 @@ const emailListItemSchema = z.object({
   folder: z.string(),
   mailbox: z.string(),
   unread: z.boolean(),
+  flagged: z.boolean().optional(),
   to: z.array(emailAddressSchema).optional(),
   cc: z.array(emailAddressSchema).optional(),
   bcc: z.array(emailAddressSchema).optional(),
@@ -601,7 +602,7 @@ export const emailApi = {
   async updateMessageStatus(
     accountId: string,
     messageId: string,
-    payload: { unread?: boolean }
+    payload: { unread?: boolean; flagged?: boolean }
   ): Promise<void> {
     await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/status`, payload);
   },

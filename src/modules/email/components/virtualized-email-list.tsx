@@ -15,6 +15,7 @@ interface VirtualizedEmailListProps {
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
   onToggleChecked?: (email: EmailListItem, next: boolean) => void;
   bulkSelectActive?: boolean;
@@ -32,6 +33,7 @@ export function VirtualizedEmailList({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -46,6 +48,7 @@ export function VirtualizedEmailList({
         onPrefetchEmail={onPrefetchEmail}
         onArchiveEmail={onArchiveEmail}
         onDeleteEmail={onDeleteEmail}
+        onToggleFlagEmail={onToggleFlagEmail}
         checkedIds={checkedIds}
         onToggleChecked={onToggleChecked}
         bulkSelectActive={bulkSelectActive}
@@ -62,6 +65,7 @@ export function VirtualizedEmailList({
       onPrefetchEmail={onPrefetchEmail}
       onArchiveEmail={onArchiveEmail}
       onDeleteEmail={onDeleteEmail}
+      onToggleFlagEmail={onToggleFlagEmail}
       checkedIds={checkedIds}
       onToggleChecked={onToggleChecked}
       bulkSelectActive={bulkSelectActive}
@@ -77,6 +81,7 @@ function VirtualizedFlatEmailList({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -119,10 +124,9 @@ function VirtualizedFlatEmailList({
               onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
               onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
               onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+              onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
               isChecked={checkedIds?.has(email.id) ?? false}
-              onCheckedChange={
-                onToggleChecked ? (next) => onToggleChecked(email, next) : undefined
-              }
+              onCheckedChange={onToggleChecked ? (next) => onToggleChecked(email, next) : undefined}
               bulkSelectActive={bulkSelectActive}
             />
           </div>
@@ -140,6 +144,7 @@ function VirtualizedMonthGroups({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -190,6 +195,7 @@ function VirtualizedMonthGroups({
               onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
               checkedIds={checkedIds}
               onToggleChecked={onToggleChecked}
               bulkSelectActive={bulkSelectActive}
@@ -220,6 +226,7 @@ function MonthGroupSection({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -232,6 +239,7 @@ function MonthGroupSection({
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
   onToggleChecked?: (email: EmailListItem, next: boolean) => void;
   bulkSelectActive?: boolean;
@@ -283,6 +291,7 @@ function MonthGroupSection({
                   onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
                   onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
                   onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+                  onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
                   isChecked={checkedIds?.has(email.id) ?? false}
                   onCheckedChange={
                     onToggleChecked ? (next) => onToggleChecked(email, next) : undefined
