@@ -34,6 +34,9 @@ const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.rou
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
 
 const UIKit = lazy(() => DelayForDemo(import('@/core/ui/pages/page'), 5000));
+const PageHeaderKit = lazy(() =>
+  import('@/core/ui/pages/page-header-kit').then((m) => ({ default: m.PageHeaderKit }))
+);
 
 function ProjectIndexRedirect() {
   const projectsQuery = useInfiniteProjectOptionsQuery({
@@ -68,7 +71,17 @@ export const routeTree: RouteDef[] = [
     component: Outlet,
     children: [
       { path: 'lookup/*', component: LookupRoutes, title: 'Lookups', access: 'dev' },
-      ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit', access: 'dev' }] : []),
+      ...(isDev
+        ? [
+            { path: 'ui', component: UIKit, title: 'UI Kit', access: 'dev' as const },
+            {
+              path: 'ui/page-header',
+              component: PageHeaderKit,
+              title: 'Page Header Kit',
+              access: 'dev' as const,
+            },
+          ]
+        : []),
 
       { path: 'profile', component: ProfilePage, title: 'My Profile' },
       {
