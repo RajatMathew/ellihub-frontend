@@ -90,7 +90,12 @@ export function RangePopover({
           variant="outline"
           aria-label={isActive ? `${label}: ${summary}` : label}
           className={cn(
-            'min-w-0 justify-start shadow-xs shadow-black/10 sm:max-w-56',
+            // A fixed width, like every other control on this row. With
+            // `max-w` the trigger was sized by its own text, so applying a range
+            // grew it from ~134px to its 224px cap and slid the whole
+            // right-justified row 176px sideways — under a panel still animating
+            // out, anchored to the trigger that moved.
+            'min-w-0 justify-start shadow-xs shadow-black/10 sm:w-56',
             // An applied range has to read as "this is narrowing the list"
             // without being opened. It says so the way the search's scope
             // segment already does — filled with a tint of the header's own
@@ -119,7 +124,18 @@ export function RangePopover({
         collisionPadding={12}
         // Never wider than the viewport allows. At 320px this lands at 288px,
         // which still fits two fields side by side.
-        className="w-[min(calc(100vw-1.5rem),20rem)] p-0"
+        //
+        // No exit animation. Applying a range mounts the header's Clear button,
+        // which shifts the right-justified control row — and the trigger this
+        // panel is anchored to — sideways. Fading out over 150ms left the panel
+        // being repositioned mid-flight against a row moving underneath it,
+        // which reads as the panel reopening. With no animation to wait for,
+        // Radix unmounts it in the same commit that applies the filter.
+        //
+        // `!` because `animate-none` and `PopoverContent`'s own
+        // `data-[state=closed]:animate-out` are the same variant at the same
+        // specificity, so source order decides and `animate-out` is emitted last.
+        className="w-[min(calc(100vw-1.5rem),20rem)] p-0 data-[state=closed]:animate-none!"
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
