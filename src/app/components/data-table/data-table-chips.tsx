@@ -22,10 +22,23 @@ export function DataTableFilterChips({ chips, onRemove }: DataTableFilterChipsPr
   return (
     <div
       aria-label="Active filters"
-      className="flex flex-wrap items-center gap-1.5 border-b border-card-border px-4 py-2 sm:px-5"
+      // `bg-card` explicitly: the row sits between the header and the table, so
+      // in a framed card it would otherwise show the mat through the gap and read
+      // as a band of page behind the list. Same colour as the card elsewhere, so
+      // this is inert when the card is not framed.
+      className="flex flex-wrap items-center gap-1.5 border-b border-card-border bg-card px-4 py-2 sm:px-5"
     >
       {chips.map((chip) => (
-        <Badge key={chip.id} variant="secondary" appearance="outline" size="sm">
+        <Badge
+          key={chip.id}
+          variant="secondary"
+          appearance="outline"
+          size="sm"
+          // A chip states a filter's *value* — a vendor name, a trade — which is
+          // data, not a label. It opts out of the uppercase mono treatment
+          // `Badge` gives a status or a type.
+          className="font-sans normal-case tracking-normal"
+        >
           <span className="text-muted-foreground">{chip.label}:</span>
           <span className="max-w-40 truncate font-medium">{chip.value}</span>
           <BadgeButton

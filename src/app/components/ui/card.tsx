@@ -8,7 +8,7 @@ import { cn } from '@app/lib/utils';
 
 // Define CardContext
 type CardContextType = {
-  variant: 'default' | 'accent' | 'themed';
+  variant: 'default' | 'accent' | 'themed' | 'framed';
 };
 
 const CardContext = React.createContext<CardContextType>({
@@ -36,6 +36,15 @@ const cardVariants = cva(
         default: 'bg-card border border-card-border shadow-xs black/5',
         accent: 'bg-muted shadow-xs p-1',
         themed: 'bg-card border border-card-border shadow-xs',
+        // `themed` inset in a mat: the card keeps its own surface, and the muted
+        // gutter around it separates the table from the page rather than letting
+        // the two whites run together.
+        //
+        // `rounded-2xl` (16px) is not decoration — the outer radius has to exceed
+        // the inner one or the corners read as pinched. Inner is `rounded-xl`
+        // (12px) plus the 6px gutter, so 18px is exact and 16px is the nearest
+        // step on the scale.
+        framed: 'bg-muted/50 border border-card-border shadow-xs p-1.5 rounded-2xl',
       },
     },
     defaultVariants: {
@@ -44,6 +53,19 @@ const cardVariants = cva(
   }
 );
 
+// Headings and links are still reached by descendant selector: they carry no
+// palette of their own and there is nothing to hand them a token. Controls are
+// NOT — `[data-surface=card-header]` in globals.css remaps --background /
+// --foreground / --input-border / --accent for this subtree, so Button, Input
+// and Select render correctly here on their own. Restyling them from out here is
+// what forced every header control to carry an `!important` string. See
+// docs/table-consistency-plan.md.
+//
+// Shared by `themed` and `framed`, which differ only in what surrounds the card,
+// never in how the header paints itself.
+const themedCardHeaderClassName =
+  'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_[data-slot=card-description]]:!text-card-header-foreground/80 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline';
+
 const cardHeaderVariants = cva(
   'flex min-w-0 max-w-full items-center justify-between flex-wrap px-4 py-3 gap-2.5 w-full sm:px-5',
   {
@@ -51,15 +73,8 @@ const cardHeaderVariants = cva(
       variant: {
         default: 'border-b border-card-border',
         accent: '',
-        // Headings and links are still reached by descendant selector: they carry
-        // no palette of their own and there is nothing to hand them a token.
-        // Controls are NOT — `[data-surface=card-header]` in globals.css remaps
-        // --background / --foreground / --input-border / --accent for this
-        // subtree, so Button, Input and Select render correctly here on their own.
-        // Restyling them from out here is what forced every header control to
-        // carry an `!important` string. See docs/table-consistency-plan.md.
-        themed:
-          'bg-card-header text-card-header-foreground rounded-t-xl [&_h1]:text-card-header-foreground [&_h2]:text-card-header-foreground [&_h3]:text-card-header-foreground [&_h4]:text-card-header-foreground [&_h5]:text-card-header-foreground [&_[data-slot=card-description]]:!text-card-header-foreground/80 [&_a]:text-card-header-foreground [&_a:hover]:text-card-header-foreground [&_a:hover]:underline',
+        themed: themedCardHeaderClassName,
+        framed: themedCardHeaderClassName,
       },
     },
     defaultVariants: {
@@ -74,6 +89,8 @@ const cardContentVariants = cva('min-w-0 max-w-full grow p-4 sm:p-5', {
       default: '',
       accent: 'bg-card rounded-t-xl [&:last-child]:rounded-b-xl',
       themed: '',
+      // The inner panel keeps the card surface; the mat is the Card around it.
+      framed: 'bg-card [&:last-child]:rounded-b-xl',
     },
   },
   defaultVariants: {
@@ -87,6 +104,7 @@ const cardTableVariants = cva('grid min-w-0 max-w-full grow', {
       default: '',
       accent: 'bg-card rounded-xl',
       themed: '',
+      framed: 'bg-card rounded-b-xl',
     },
   },
   defaultVariants: {
@@ -100,6 +118,10 @@ const cardFooterVariants = cva('flex min-w-0 max-w-full items-center px-5 min-h-
       default: 'border-t border-card-border',
       accent: 'bg-card rounded-b-xl mt-[2px]',
       themed: 'border-t border-card-border',
+      // No surface and no top border: the footer sits on the mat, so the
+      // pagination reads as a band under the table rather than as one more row
+      // of it. The table above keeps `bg-card`, which is what draws the edge.
+      framed: 'rounded-b-xl',
     },
   },
   defaultVariants: {
@@ -126,9 +148,13 @@ function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement
   return (
     <div
       data-slot="card-header"
-      // Only the themed header paints its own background, so only it needs the
-      // token remap. See the `[data-surface='card-header']` block in globals.css.
-      data-surface={variant === 'themed' ? 'card-header' : undefined}
+      // Stamped wherever the header paints its own background, which is what
+      // makes the page palette wrong for the controls inside it. Keyed off that
+      // rather than off one variant name, so a variant that reuses the themed
+      // header cannot silently lose the remap and send every control back to
+      // carrying an `!important` string. See the `[data-surface='card-header']`
+      // block in globals.css.
+      data-surface={variant === 'themed' || variant === 'framed' ? 'card-header' : undefined}
       className={cn(cardHeaderVariants({ variant }), className)}
       {...props}
     />

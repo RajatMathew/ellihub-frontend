@@ -98,7 +98,10 @@ export function formatDate(
   return date.toLocaleDateString(
     'en-US',
     options || {
-      month: 'long',
+      // Abbreviated, not full: a table has several date columns side by side, and
+      // "September" costs a column most of its width for no information a reader
+      // does not already get from "Sep".
+      month: 'short',
       day: 'numeric',
       year: 'numeric',
     }

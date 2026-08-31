@@ -35,7 +35,7 @@ const ALL_VALUE = 'all';
 /**
  * Controls carry no colour here: the header stamps `data-surface="card-header"`
  * and the token block in globals.css remaps the palette for the subtree. All a
- * control needs is `size="toolbar"` — the 32px row this header sits on — and its
+ * control needs is `size="toolbar"` — the 36px row this header sits on — and its
  * width. See docs/table-consistency-plan.md, phase 1.
  */
 const dataTableFilterShadowClassName = 'shadow-xs shadow-black/10';
@@ -228,7 +228,7 @@ export function DataTableFilters<
                 // with a skeleton rather than flashing an empty select.
                 if (def.isLoading) {
                   return (
-                    <Skeleton key={def.key} className={cn('h-8 w-full sm:w-44', def.className)} />
+                    <Skeleton key={def.key} className={cn('h-9 w-full sm:w-44', def.className)} />
                   );
                 }
 
@@ -288,7 +288,7 @@ export function DataTableFilters<
                 // than flashing an empty control.
                 if (def.isLoading) {
                   return (
-                    <Skeleton key={def.key} className={cn('h-8 w-full sm:w-52', def.className)} />
+                    <Skeleton key={def.key} className={cn('h-9 w-full sm:w-52', def.className)} />
                   );
                 }
 

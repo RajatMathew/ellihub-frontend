@@ -164,7 +164,7 @@ interface MultiSelectFilterBase<TKey extends string, TData>
   emptyMessage?: string;
   /**
    * Selected labels shown before the rest collapse into a `+N more` badge.
-   * Defaults to 1 — the trigger sits on a 32px header row and must not grow.
+   * Defaults to 1 — the trigger sits on a 36px header row and must not grow.
    */
   maxVisibleSelectedOptions?: number;
   overflowLabel?: (count: number) => string;

@@ -51,7 +51,7 @@ export function DataTableBulkBar({ count, itemLabel, actions, onClear }: DataTab
       // the bar sizes them itself rather than trusting each caller to pass
       // `size="toolbar"` — without it the page's Delete sat 4px shorter than Clear.
       actions={
-        <TableCardHeaderFilters className="[&>[data-slot=button]]:h-8">
+        <TableCardHeaderFilters className="[&>[data-slot=button]]:h-9">
           {actions}
         </TableCardHeaderFilters>
       }

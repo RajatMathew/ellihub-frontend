@@ -103,6 +103,15 @@ export interface DataTableProps<
   mobileBreakpoint?: 'lg' | 'xl' | '2xl';
   tableLayout?: DataGridProps<TData>['tableLayout'];
   tableClassNames?: DataGridProps<TData>['tableClassNames'];
+  /**
+   * Insets the card in a muted mat, so the table reads as an object on the page
+   * rather than as a white block on a near-white background. On by default —
+   * every resource list should look the same.
+   *
+   * Turn it off for a table nested inside something that already frames it: a
+   * second mat inside a card is one border too many.
+   */
+  framed?: boolean;
   className?: string;
 }
 
@@ -137,6 +146,7 @@ export function DataTable<
   mobileBreakpoint,
   tableLayout,
   tableClassNames,
+  framed = true,
   className,
 }: DataTableProps<TData, TDefs, TField>) {
   const showBulkBar = Boolean(bulkActions) && list.selection.count > 0;
@@ -172,7 +182,7 @@ export function DataTable<
     : empty;
 
   return (
-    <Card className={className}>
+    <Card className={className} variant={framed ? 'framed' : 'themed'}>
       {banner}
 
       {showBulkBar ? (

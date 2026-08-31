@@ -33,7 +33,7 @@ import { ChevronLeft, ChevronRight, Search, X, type LucideProps } from 'lucide-r
  * palette for the subtree — so `Button`, `Input` and `Select` render correctly
  * against the header's background without being told they are in one.
  *
- * `size="toolbar"` is the 32px row every control here sits on. Anything added to
+ * `size="toolbar"` is the 36px row every control here sits on. Anything added to
  * this header takes that size; nothing hand-writes a height.
  */
 

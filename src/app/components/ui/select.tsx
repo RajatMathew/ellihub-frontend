@@ -58,7 +58,7 @@ const selectTriggerVariants = cva(
         md: 'h-8.5 px-3 text-[0.8125rem] leading-(--text-sm--line-height) gap-1 rounded-md',
         lg: 'h-10 px-4 text-sm gap-1.5 rounded-md',
         // 32px table-card-header row. See docs/table-consistency-plan.md, phase 1.
-        toolbar: 'h-8 px-3 text-xs gap-2 rounded-md',
+        toolbar: 'h-9 px-3 text-2sm gap-2 rounded-md',
       },
     },
     defaultVariants: {
