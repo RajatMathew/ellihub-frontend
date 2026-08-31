@@ -48,6 +48,77 @@ Because the schema owns each filter's URL key, API key, parser and what counts a
 unset, `hasActiveFilters`, `clearFilters` and the request params are all derived. No
 module hand-maintains them.
 
+## Framing
+
+`DataTable` insets the card in a muted mat by default — `Card variant="framed"`:
+a `bg-muted` gutter with the card surface rounded inside it. Without it a white
+table on a near-white page has only a hairline to separate the two.
+
+Pass `framed={false}` for a table nested inside something that already frames it.
+
+The variant reuses the themed header verbatim, including the
+`data-surface="card-header"` stamp — the stamp is keyed off *whether the header
+paints its own background*, not off one variant name, so a new variant cannot
+silently lose the token remap and send every control back to carrying an
+`!important` string.
+
+## Link roles
+
+Two, and they are not interchangeable:
+
+| Role | Where | Treatment |
+| --- | --- | --- |
+| **Identifier** | `ListingIdentifierLink` — PO-1001, INV-023, an RFQ number | `text-link` (cyan) |
+| **Name** | `col.link` — the vendor, the contact, the row's title | `text-foreground hover:text-primary` |
+
+An identifier is a small token of text that has to announce itself as somewhere
+to go. A name is already the most prominent thing in its row; colouring it too
+gives a list where everything is a link and nothing stands out.
+
+`--link` is its own token, not `--info` or `--primary`. `--info` means
+"informational status" and is read by alerts and badges; `--primary` is the brand
+and paints filled buttons. A link borrowing either would change colour the next
+time that meaning was retuned. Its value is lighter than `--primary` while still
+clearing WCAG AA (4.5:1) on both `--card` and `--background` — identifiers are
+small text, so 3:1 is not enough.
+
+### The cross-record mark
+
+`ListingIdentifierLink` takes `crossRecord`, which adds an external-link icon.
+Set it where a link opens a **different record than the row it sits in** — the
+purchase order a change order belongs to, the RFQ a purchase order came from. A
+row's own identifier does not get one.
+
+The distinction is the whole point. In a list whose every first cell is a link,
+an icon on all of them says nothing; an icon on the one link that leaves the list
+is worth reading.
+
+`col.link` takes an optional `icon` on the same reasoning; it is off by default.
+
+## Status badges
+
+Every status in the app goes through `StatusBadge`. It fixes the whole treatment
+— tone, appearance, shape and the dot — so the same status cannot render two ways
+in two places:
+
+```tsx
+<StatusBadge status={po.status} label={PO_STATUS_LABELS[po.status]} />
+```
+
+The colour comes from `statusTone`, a shared vocabulary that maps a status *name*
+to what it **means** (`neutral` · `active` · `info` · `positive` · `caution` ·
+`negative`), normalised so `Pending Approval`, `PENDING_APPROVAL` and
+`pendingApproval` all land together. Extend that map rather than writing a new
+one; pass `tones` only where a domain genuinely disagrees — a completed *project*
+is a finished job, not a good outcome, which is why `ProjectStatusBadge` exists.
+
+The shape is deliberately not the `Badge` pill. A status is the one badge that
+carries a colour *meaning* rather than a name, so it takes a softer chip and a dot
+that states the tone even where the fill is too pale to read as one.
+
+Reach for `Badge` directly only when it is **not** a status — a type, a category,
+a count. Those keep the pill and take no dot.
+
 ## Header slot order
 
 Fixed for every list, so none of them re-decides its own layout:

@@ -669,3 +669,188 @@ The button carries `self-start sm:self-auto`, because the filters group is a str
 mobile and Clear would otherwise run the full width of the card above the controls it clears. That is
 the whole of the mobile story — it was already the last thing in a stacked column before, and it is
 now the first.
+
+---
+
+## Visual pass — bringing `feat/table-refactor`'s look onto the kit ✅
+
+`feat/table-refactor` is a fork, not an ancestor: it branched before this plan's
+phases landed and carries an older visual language. Its *look* was wanted; its
+*mechanism* was the thing phase 1 removed. It painted header controls with a
+`--table-shell-*` token family and a file of `!important` class strings
+(`data-table-control-styles.ts`), which is exactly what
+`[data-surface='card-header']` replaced.
+
+So the look was reproduced through the token and variant architecture, and none
+of that file came back.
+
+**The frame.** `Card` gains a `framed` variant — the themed card inset in a
+`bg-muted` mat. `DataTable` takes `framed` (default on), so every list on the kit
+picks it up from one prop. Two details worth keeping:
+
+- The `data-surface="card-header"` stamp was keyed off `variant === 'themed'`.
+  Any new variant reusing the themed header would have lost the remap and sent
+  every control back to the page palette. It is now keyed off whether the header
+  paints its own background.
+- The active-filter chip row sits between the header and the table and painted no
+  background of its own, so in a framed card it showed the mat through the gap and
+  read as a band of page cut into the list. It now paints `bg-card`, which is
+  inert when the card is not framed.
+
+**Links.** `ListingIdentifierLink` had been changed from `text-info` to
+`text-primary` on this branch, which is why identifiers read as navy. Rather than
+restore `--info` — 31 consumers, and it means "informational status", not "link" —
+links get their own `--link` / `--link-hover` pair across all four themes.
+Measured before choosing: `#0e7490` gives 5.36:1 on card and 5.09:1 on page in the
+light and editorial themes, so it clears AA for small text while sitting well
+above `--primary`'s 11.57:1. `#0891b2` — the more obvious "lighter cyan" — fails
+at 3.68:1 and was rejected. Dark themes use `#22d3ee` (10.19:1).
+
+Name links (`col.link`) deliberately did **not** get the link colour — see "Link
+roles" in resource-list-tables.md.
+
+**The cross-record mark.** The icon marks a link that opens a *different record
+than the row it sits in* (`crossRecord`), not every identifier. A first pass put
+an arrow on all of them, which in a list whose every first cell is a link says
+nothing. Five call sites carry it: the purchase order on a change order and on an
+invoice, and the RFQ on a purchase order, in both table and mobile-card form.
+
+**Two global primitives moved with it**, because the difference from the branch
+was in them rather than in any list:
+
+- `Badge` is a mono, uppercase, letter-spaced pill again, not a title-case
+  `rounded-md` chip. A badge is a *label* — a status, a type — and setting it
+  apart from the row's own text is what keeps a table scannable. 117 usages.
+  Only the base and the size steps changed; the colour compounds are untouched.
+- `formatDate` defaults to an abbreviated month, so a date column reads
+  "Mar 1, 2026" rather than "March 1, 2026". 62 call sites, 6 of which pass
+  explicit options and are unaffected.
+
+The badge change needed one carve-out. A badge holding a **name** — the vendor in
+a multi-select trigger, the value in an active-filter chip — is data, not a
+label, and "ACME STEEL" is not what the record is called. Those three places opt
+back out to `font-sans normal-case tracking-normal`.
+
+It also surfaced a live defect. The wider badge pushed its own remove `×` under
+the centre of the multi-select trigger, so a click aimed at the middle of the
+control deselected a vendor instead of opening the picker. The e2e caught it as
+two failures. A person aims at the chevron, which is what the test now does; the
+`×` remains a deliberate, separate target.
+
+**The mat is `bg-muted/50`, not `bg-muted`** — the branch's own value. At full
+strength the gutter and the pagination band read heavier than the reference.
+
+**Controls.** The branch's proportions, not its border treatment: `toolbar` moves
+from `h-8`/`text-xs` to `h-9`/`text-2sm` (13px — already on the scale as
+`--text-2sm`, and the exact size the branch hard-coded as `text-[0.8125rem]`).
+Defined in five places, all named `toolbar`, so all 34 usages follow.
+
+The branch's controls also blended into the header with an inset ring; that was
+**not** taken. The outlined treatment carries a measured WCAG 1.4.11 rationale —
+45% is 3.17:1 in the tightest theme and 40% drops it to 2.69:1 — and a blend-in
+control would erode it.
+
+### Not done
+
+The four table surfaces that build their own `Card` rather than going through
+`DataTable` are still unframed: both monthly-bills pages, the recurring-bills
+workspace, and the files explorer. Two of them render their table outside
+`CardContent`/`CardTable`, so the mat would show through behind the body; they
+need their bodies wrapped first. Framing the ones that already fit and leaving the
+rest would be worse than leaving all four, so all four wait for that.
+
+---
+
+## Badge palette — restoring the branch's colours ✅
+
+The badge *component* was already the branch's after the visual pass. What still
+differed was the **tokens it reads**, and almost all of it was in `editorial` —
+the theme the app actually forces. Outside it, only `--info` had drifted.
+
+| Token family | dev had | restored to |
+| --- | --- | --- |
+| `--primary-soft`, `--secondary` | `#ebeef3` cool blue-grey | `#ebe7df` warm beige |
+| `--success*` | `#2d6a4f` forest green | teal 600/50/200/700 |
+| `--warning-accent` | `#b8860b` goldenrod | `amber-800` |
+| `--info*` | `#1a3a5f` navy | `#0e7490`, sky 50/200/700 |
+
+Contrast was measured for every restored pair before changing anything, against
+the 11px `size="sm"` badge that is 96 of the 112 call sites — so AA is 4.5:1, not
+3:1. Success 5.14, warning 6.18, info 5.49, secondary 11.66. All clear.
+
+**One value was deliberately not restored.** `--destructive-soft-foreground` is
+`#dc2626` on the branch, which reads 4.10:1 on its own soft surface. dev had
+already caught this and darkened it to `#b91c1c` (5.49:1) with the measurement in
+a comment. That fix stands; the branch is wrong there.
+
+**One workaround was deleted rather than kept.** `--warning-soft-foreground` had
+been split off from `--warning-accent` and darkened to `#7a5707`, because dev's
+goldenrod accent measured 2.84:1 on the soft surface. The branch's `amber-800`
+measures 6.18:1, so the split is no longer earning anything and the token points
+back at the accent.
+
+**And one more, in `StatusBadge`.** Neutral statuses carried a `bg-muted`
+override whose comment explained it exactly: `--secondary` was "a cool blue-grey
+on a warm cream page … the only cold thing on the screen". That was a symptom of
+the token drift, not a property of neutral statuses. With `--secondary` warm
+again the override is gone.
+
+### Not changed
+
+`--accent` (179 usages), `--muted`, `--surface-hover` and the two hover
+backgrounds are the same warm family on the branch and are still cool here. No
+badge variant reads any of them, so they are outside this change — but they are
+why hover tints still read cooler than the branch. Retuning them is a theme-wide
+pass, not a badge one.
+
+`StatusBadge` is also still only 12 call sites against 112 raw `<Badge>` tags.
+The tone vocabulary exists and works; adoption is a separate migration.
+
+---
+
+## Status badges — one component, six systems retired ✅
+
+The badge *primitive* matched the branch after the palette pass. What did not was
+everything around it: **six parallel status-to-style systems**, only one of which
+was the shared one.
+
+| System | Fate |
+| --- | --- |
+| `statusTone` / `StatusBadge` | kept — now the only one, 12 → 36 call sites |
+| `PO_` / `SCO_STATUS_BADGE_VARIANTS` | absorbed into the vocabulary, deleted |
+| `PO_` / `GC_` / `VENDOR_` / `RFQ_STATUS_COLORS` | raw `bg-*` classes for hand-built dots — deleted |
+| `PROJECT_STATUS_VARIANTS` | a local `const` in one tab — deleted |
+| `STATUS_META.badgeClassName` | raw classes in the project toolbar — deleted |
+| `GC_TYPE_BADGE_VARIANTS` | was duplicated in two files — now re-exported from one |
+
+The symptoms were concrete. Project status rendered **three** different ways.
+SCO status rendered two — a map in one place, `status === 'APPROVED' ? … : …` in
+another, with different appearances. Five screens hand-built a `size-2 rounded-full`
+dot beside a label, which is exactly what `StatusBadge` now draws.
+
+**`StatusBadge` is now the branch's PO treatment** — `appearance="light"`, a
+`BadgeDot`, and the squarer `rounded-md` chip — applied everywhere rather than
+overridden at one call site as the branch did it. That was the way to satisfy
+both "match the branch" and "one reusable component": the branch was internally
+inconsistent (88 `light` / 25 `outline`), so copying it literally would have
+copied the inconsistency.
+
+Two vocabulary decisions, both confirmed with the product owner:
+
+- **`DRAFT` is `active`, not `neutral`.** A draft is a record someone is working
+  on, not one put away. Every per-module map already said `primary`, which is
+  what `active` renders.
+- **The dot is on every status**, not only where the branch had it.
+
+Absorbing the maps needed three vocabulary additions: an `info` tone (in flight —
+`ISSUED`, `SENT`, `SUBMITTED`, which every map painted `info` and the five
+existing tones could not express), plus `DELIVERED`, `PARTIALLY_PAID`, `ACTIVE`
+and `CLOSED`. `VOID` moved from `negative` to `neutral` — withdrawn is not
+failed, and every module map had said so.
+
+### Still on raw `Badge`, correctly
+
+`GC_TYPE_`, `VENDOR_TYPE_`, `TRADE_CATEGORY_` and `PRIORITY_BADGE_VARIANTS` map a
+**type or category**, not a status. They keep the pill and take no dot, because
+their colour is decoration rather than meaning. If those ever want unifying it is
+a `TypeBadge`, not this component.
