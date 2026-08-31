@@ -1,13 +1,8 @@
 import { useMemo } from 'react';
 
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { RegisterAccountSummary } from '@/modules/finance/components/register-account-summary';
 import { useRegisterTransactionColumns } from '@/modules/finance/components/register-transaction-columns';
@@ -161,16 +156,14 @@ export default function CheckingRegisterPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <Toolbar className="mb-4 gap-3 pt-5 pb-3">
-        <ToolbarWrapper>
-          <ToolbarHeading className="gap-1.5">
-            <ToolbarPageTitle>Checking Register</ToolbarPageTitle>
-            <p className="text-sm text-muted-foreground">
-              Search QuickBooks bank accounts and review register transactions
-            </p>
-          </ToolbarHeading>
-        </ToolbarWrapper>
-      </Toolbar>
+      <ListPageHeader
+        title="Checking Register"
+        description={
+          <span className="text-sm text-muted-foreground">
+            Search QuickBooks bank accounts and review register transactions
+          </span>
+        }
+      />
 
       {statusQuery.isError ? (
         <Card>
