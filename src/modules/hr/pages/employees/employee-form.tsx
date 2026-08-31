@@ -1,13 +1,11 @@
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import {
-  EmployeeFormContent,
-  EmployeeFormLoading,
-  EmployeeFormToolbar,
-} from '@/modules/hr/components/employees/form';
+import { EmployeeFormContent, EmployeeFormLoading } from '@/modules/hr/components/employees/form';
 import { EMPLOYEE_FORM_SECTIONS } from '@/modules/hr/constants/employees/employee-form.constants';
 import { useEmployeeFormState } from '@/modules/hr/hooks/employees/use-employee-form-state';
 import { useSaveEmployee } from '@/modules/hr/hooks/employees/use-save-employee';
@@ -71,10 +69,11 @@ export default function EmployeeFormPage() {
       activeSection={state.activeSection}
       onSectionChange={state.setActiveSection}
       renderToolbar={(className) => (
-        <EmployeeFormToolbar
-          isEdit={state.isEdit}
+        <FormPageHeader
+          title={state.isEdit ? 'Update Profile' : 'Add New Employee'}
+          submitLabel={state.isEdit ? 'Save Profile' : 'Create Employee'}
           isSubmitting={isSubmitting}
-          onFillSample={state.fillSample}
+          leadingActions={state.isEdit ? undefined : <MockDataButton onClick={state.fillSample} />}
           className={className}
         />
       )}

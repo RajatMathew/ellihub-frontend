@@ -1,12 +1,13 @@
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import {
   DepartmentFormContent,
   DepartmentFormLoading,
-  DepartmentFormToolbar,
 } from '@/modules/hr/components/departments/form';
 import { useDepartmentFormState } from '@/modules/hr/hooks/departments/use-department-form-state';
 import { useSaveDepartment } from '@/modules/hr/hooks/departments/use-save-department';
@@ -43,10 +44,11 @@ export default function DepartmentFormPage() {
       onSubmit={form.handleSubmit(saveDepartment, onInvalidFormSubmit)}
       fullHeight
       renderToolbar={(className) => (
-        <DepartmentFormToolbar
-          isEdit={isEdit}
+        <FormPageHeader
+          title={isEdit ? 'Edit Department' : 'Create Department'}
+          submitLabel={isEdit ? 'Save Changes' : 'Create Department'}
           isSubmitting={isSubmitting}
-          onFillSample={fillSample}
+          leadingActions={isEdit ? undefined : <MockDataButton onClick={fillSample} />}
           className={className}
         />
       )}

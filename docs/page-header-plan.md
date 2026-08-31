@@ -6,7 +6,7 @@ One page-header system for every list, detail, and form page in the app, at
 This is the header equivalent of the [table unification](./table-unification-plan.md) work: five
 competing header systems shipping side by side, collapsed into one primitive with three presets.
 
-**Status: P0–P3 complete and verified. P4 next.**
+**Status: P0–P4 complete and verified. P5 next.**
 
 Typechecks, lints, and the production build pass. Behaviour is verified in a real browser via the
 Playwright auth-mock pattern — the sign-in wall that blocked the table plans is bypassed the way the
@@ -71,13 +71,13 @@ Nineteen defects from the read-only audit. Severity is blast radius, not effort.
 | F8 | Detail-header permission gating inconsistent — HR ungated, Directory gated | Medium | ✅ P3 |
 | F9 | Back-navigation targets and labels drift per entity | Medium | 🔄 P3 form / P5 derivation |
 | F10 | `core/ui` `PageHeader` is the best API and unusable — hard-coded colours | Medium | ⬜ P3 follow-on |
-| F11 | Nine near-identical wrapper components | Medium | ✅ P2 (list) / ⬜ P4 (form) |
+| F11 | Nine near-identical wrapper components | Medium | ✅ P2 + P4 |
 | F12 | `ProjectToolbarHeader` runs a 25-field mutation inside a header, 297 lines | Medium | ⬜ P3 follow-on |
 | F13 | Email and Finance are off the header system entirely | Medium | ⬜ P6 (Finance only) |
 | F14 | `/app/settings/email-mailboxes` unregistered — no title, no breadcrumb, no sidebar link | Medium | ⬜ P5 |
 | F15 | Dialogs stand in for create/edit headers with four different title styles | Medium | ❌ out of scope |
 | F16 | Feedback renders two competing titles at once | Medium | ❌ out of scope |
-| F17 | Header copy and affordances drift entity to entity | Low | 🔄 P4 |
+| F17 | Header copy and affordances drift entity to entity | Low | 🔄 P4 — affordances settled, titles open |
 | F18 | Dead header code still in the tree | Low | ✅ P0 |
 | F19 | `.claude/rules/routing.md` contradicted the implementation | Low | ✅ P0 |
 
@@ -283,10 +283,10 @@ Run after every phase. A phase is not done until all four pass.
 
 | Check | Command | P0 | P1 | P2 |
 | --- | --- | --- | --- | --- |
-| Types | `npx tsc -b` | ✅ | ✅ | ✅ | ✅ |
-| Lint (vs baseline) | `npm run lint` | ✅ | ✅ | ✅ | ✅ |
-| Build | `npm run build` | ✅ | ✅ | ✅ | ✅ |
-| E2E | `npx playwright test` | ✅ | ✅ | ✅ | ✅ |
+| Types | `npx tsc -b` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Lint (vs baseline) | `npm run lint` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Build | `npm run build` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| E2E | `npx playwright test` | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Lint baseline is 21 problems (12 errors, 9 warnings)**, all pre-existing and none in touched files.
 Verified by stashing the working tree and re-running. A phase that changes this number has

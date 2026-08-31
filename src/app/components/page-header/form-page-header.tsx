@@ -16,8 +16,10 @@ export interface FormPageHeaderProps {
   /** Defaults to the parent path — where Cancel also goes. */
   backTo?: string;
   description?: ReactNode;
-  /** Extra controls, e.g. a fill-with-mock-data button. */
+  /** Extra controls the action model covers. */
   actions?: ActionDef[];
+  /** Rendered controls that own their own visibility, e.g. `MockDataButton`. */
+  leadingActions?: ReactNode;
   cancelLabel?: string;
   cancelIcon?: ReactNode;
   className?: string;
@@ -38,6 +40,7 @@ export function FormPageHeader({
   backTo = '..',
   description,
   actions,
+  leadingActions,
   cancelLabel = 'Cancel',
   cancelIcon,
   className,
@@ -46,6 +49,7 @@ export function FormPageHeader({
     <PageHeader
       actions={actions}
       className={className}
+      leadingActions={leadingActions}
       description={
         description ? <span className="text-sm text-muted-foreground">{description}</span> : null
       }

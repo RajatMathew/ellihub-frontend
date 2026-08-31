@@ -1,11 +1,13 @@
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
-import { VendorFormContent, VendorFormToolbar } from '@/modules/directory/components/vendors/form';
+import { VendorFormContent } from '@/modules/directory/components/vendors/form';
 import { VENDOR_FORM_SECTIONS } from '@/modules/directory/constants/vendors.constants';
 import { useSaveVendor } from '@/modules/directory/hooks/vendors/use-save-vendor';
 import { useVendorFormState } from '@/modules/directory/hooks/vendors/use-vendor-form-state';
@@ -72,10 +74,13 @@ export function VendorFormPage() {
         activeSection={state.activeSection}
         onSectionChange={state.setActiveSection}
         renderToolbar={(className) => (
-          <VendorFormToolbar
-            isEdit={state.isEdit}
+          <FormPageHeader
+            title={state.isEdit ? 'Edit Vendor' : 'Add New Vendor'}
+            submitLabel={state.isEdit ? 'Save Changes' : 'Create Vendor'}
             isSubmitting={isSubmitting}
-            onFillRandom={state.fillRandom}
+            leadingActions={
+              state.isEdit ? undefined : <MockDataButton onClick={state.fillRandom} />
+            }
             className={className}
           />
         )}
