@@ -23,6 +23,13 @@ import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { CalendarDays, CheckSquare, ChevronDown, Eye, Mail, SunMedium } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 
+/**
+ * Id of the empty slot rendered after the last breadcrumb. Pages portal
+ * contextual actions into it (see EmailWorkspaceHeader) so the actions read as
+ * part of the trail without the header knowing about any specific page.
+ */
+export const BREADCRUMB_PAGE_ACTIONS_ID = 'breadcrumb-page-actions';
+
 const ROUTE_LABELS: Record<string, string> = {
   hr: 'HR',
   rfqs: 'RFQs',
@@ -305,6 +312,13 @@ export function HeaderBreadcrumbs() {
             </Fragment>
           );
         })}
+        {/* Portal target: pages can dock contextual actions (e.g. the mailbox
+            settings menu) right after their final crumb. */}
+        <li
+          id={BREADCRUMB_PAGE_ACTIONS_ID}
+          className="flex shrink-0 items-center"
+          aria-hidden={undefined}
+        />
       </BreadcrumbList>
     </Breadcrumb>
   );
