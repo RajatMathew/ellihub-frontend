@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- the factories and the
    cells they render belong together, as in ui/data-grid.tsx */
 
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import { StatusBadge } from '@/app/components/status-badge';
 import type { StatusTone } from '@/app/components/status-tone';
@@ -9,6 +9,7 @@ import { DataGridColumnHeader } from '@/app/components/ui/data-grid-column-heade
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import type { ColumnDef } from '@tanstack/react-table';
+import type { LucideProps } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { RowActions, type RowAction } from './row-actions';
@@ -114,6 +115,12 @@ export interface LinkColumnOptions<TData> extends BaseColumnOptions<TData> {
   label: (row: TData) => ReactNode;
   secondary?: (row: TData) => ReactNode;
   skeletonWidth?: string;
+  /**
+   * An affordance mark after the label. Off by default: a name column is not an
+   * identifier, and an arrow on every row of a list whose every row is a link is
+   * noise. Set it where a column links somewhere the row itself does not.
+   */
+  icon?: ComponentType<LucideProps>;
 }
 
 /**
@@ -125,6 +132,8 @@ export interface LinkColumnOptions<TData> extends BaseColumnOptions<TData> {
  * no key handler — which left its primary action mouse-only.
  */
 export function linkColumn<TData>(options: LinkColumnOptions<TData>): ColumnDef<TData> {
+  const LinkIcon = options.icon;
+
   return {
     id: options.key,
     accessorKey: options.key,
@@ -133,10 +142,19 @@ export function linkColumn<TData>(options: LinkColumnOptions<TData>): ColumnDef<
       <div className="flex min-w-0 flex-col gap-0.5">
         <Link
           to={options.to(row.original)}
-          className="truncate text-sm font-semibold text-foreground hover:text-primary hover:underline"
+          // Deliberately NOT `--link`. That token marks an *identifier* — a PO
+          // number, an RFQ number — which is a small token of text that has to
+          // announce itself as somewhere to go. This column holds the row's
+          // name, which is already the most prominent thing in the row; colouring
+          // it too would leave a list where everything is a link and nothing
+          // stands out. Contacts, GCs and RFQ titles all read this way already.
+          className="inline-flex max-w-full items-center gap-1 text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline"
           onClick={(event) => event.stopPropagation()}
         >
-          {options.label(row.original)}
+          <span className="truncate">{options.label(row.original)}</span>
+          {LinkIcon && (
+            <LinkIcon aria-hidden="true" className="size-3.5 shrink-0 opacity-70" strokeWidth={2.5} />
+          )}
         </Link>
         {options.secondary && (
           <span className="truncate text-xs text-muted-foreground">

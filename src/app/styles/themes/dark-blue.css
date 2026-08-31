@@ -54,6 +54,22 @@
   --info-alpha: rgba(34, 211, 238, 0.28);
   --info-accent: #67e8f9;
   --info-soft-foreground: var(--info-accent);
+
+  /**
+   * Links.
+   *
+   * Its own token rather than `--info` or `--primary`. `--info` means
+   * "informational status" and is read by alerts and badges; `--primary` is the
+   * brand and is what a filled button is painted with. A link that borrowed
+   * either would change colour the next time that meaning was retuned.
+   *
+   * The value is deliberately lighter than `--primary` so an identifier reads as
+   * actionable against body text, while still clearing WCAG AA (4.5:1) on both
+   * `--card` and `--background` — table identifiers are small text, so 3:1 is not
+   * enough. Measured 10.01:1 on card. Hover lightens rather than darkens.
+   */
+  --link: #22d3ee;
+  --link-hover: #67e8f9;
   --destructive: #f87171;
   --destructive-foreground: #0a0f1a;
   --destructive-soft: rgba(248, 113, 113, 0.14);

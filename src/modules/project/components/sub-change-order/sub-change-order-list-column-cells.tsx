@@ -46,6 +46,7 @@ export function SubChangeOrderPurchaseOrderCell({
     <div className="flex flex-col gap-0.5">
       {sco.purchaseOrder?.id ? (
         <ListingIdentifierLink
+          crossRecord
           to={`/app/project/${projectId}/purchase-orders/${sco.purchaseOrder.id}`}
           value={purchaseOrderLabel}
           className="text-sm"

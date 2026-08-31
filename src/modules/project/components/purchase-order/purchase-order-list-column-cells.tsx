@@ -56,6 +56,7 @@ export function PurchaseOrderRfqCell({ po, projectId }: { po: POListItem; projec
 
   return (
     <ListingIdentifierLink
+      crossRecord
       to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
       value={rfqLabel ?? po.rfqId}
       className="font-mono text-xs"

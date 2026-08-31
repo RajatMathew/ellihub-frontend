@@ -102,6 +102,8 @@
   --color-info-alpha: var(--info-alpha);
   --color-info-accent: var(--info-accent);
   --color-info-soft-foreground: var(--info-soft-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-fieldwire-status-draft: var(--fieldwire-status-draft);
   --color-fieldwire-status-neutral: var(--fieldwire-status-neutral);
   --color-fieldwire-status-pending: var(--fieldwire-status-pending);

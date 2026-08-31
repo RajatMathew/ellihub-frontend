@@ -98,7 +98,14 @@ function SubChangeOrderMobileMetric({
     <div className="min-w-0">
       <p className="text-muted-foreground">{label}</p>
       {to ? (
-        <ListingIdentifierLink to={to} value={value} className="mt-1 block truncate text-xs" />
+        // The only linked metric is the purchase order this change order belongs
+        // to, which is a different record than the card itself.
+        <ListingIdentifierLink
+          crossRecord
+          to={to}
+          value={value}
+          className="mt-1 block truncate text-xs"
+        />
       ) : (
         <p className="mt-1 truncate font-medium tabular-nums text-foreground" title={value}>
           {value}

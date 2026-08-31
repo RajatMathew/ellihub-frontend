@@ -67,6 +67,7 @@ export function PurchaseOrderMobileCard({
         <PurchaseOrderTradeCategoryCell po={po} />
         {rfqLabel && po.rfqId && (
           <ListingIdentifierLink
+            crossRecord
             to={`/app/project/${po.projectId}/rfqs/${po.rfqId}`}
             value={`RFQ ${rfqLabel}`}
             className="inline-flex max-w-full items-center rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-xs"

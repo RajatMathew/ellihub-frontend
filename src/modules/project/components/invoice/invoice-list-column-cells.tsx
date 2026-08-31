@@ -57,6 +57,7 @@ export function PurchaseOrderCell({
   if (invoice.purchaseOrder?.id) {
     return (
       <ListingIdentifierLink
+        crossRecord
         to={`/app/project/${projectId}/purchase-orders/${invoice.purchaseOrder.id}`}
         value={invoice.purchaseOrder.poNumber}
         className="text-sm"
