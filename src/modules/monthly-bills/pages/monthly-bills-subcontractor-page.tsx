@@ -243,6 +243,7 @@ export function MonthlyBillsSubcontractorPage({
           <TableCardHeader
             actions={
               <TableCardHeaderFilters>
+                <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
                 <div className="min-w-0 xl:w-auto xl:shrink-0">
                   <MonthlyBillsFilters
                     searchInput={searchInput}
@@ -310,7 +311,6 @@ export function MonthlyBillsSubcontractorPage({
                       Bulk Edit
                     </Button>
                   ))}
-                <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
               </TableCardHeaderTrailing>
             }
           />

@@ -144,6 +144,7 @@ Placement must be settled before new filter kinds are added, or each new kind re
 
 - [x] Three explicit header slots — *title* / *filters* / *trailing* — replacing the free-form wrap.
       Clear is pinned to trailing at every breakpoint, in every header variant **(H1)**
+      — *superseded: Clear now leads the filters group instead. See "Clear moved out of trailing".*
 - [x] Control order becomes a property of the filter kind, declared once in the renderer. Nothing
       outside the kit chooses it **(H2)**
 - [x] `title` accepts a string and one component renders it; keep the `ReactNode` overload for the RFQ
@@ -649,3 +650,22 @@ instrument, not the result.
 - [ ] Motion over time — that a filter change no longer *feels* like a page load. `keepPreviousData`
       and the held body height are correct in code and the indicator no longer displaces anything,
       but nobody has watched it.
+
+---
+
+## Clear moved out of trailing ✅
+
+Phase 1 pinned Clear to the trailing slot, and phase 3's `f.multiSelect` work is what made the cost
+of that visible: trailing is where a list's *own* actions live — Add recurring bill, Bulk Edit, the
+column toggle — and Clear is not one of those. It acts on the controls beside it, so sitting at the
+far end of the row put it furthest from everything it affects, and next to buttons it has nothing to
+do with.
+
+Clear is now the **first item in the filters group**, ahead of search. Three call sites, all of which
+had been hand-placing it in trailing: the kit's own `DataTableFilters`, and the two monthly-bills
+pages that still build their headers by hand.
+
+The button carries `self-start sm:self-auto`, because the filters group is a stretched flex column on
+mobile and Clear would otherwise run the full width of the card above the controls it clears. That is
+the whole of the mobile story — it was already the last thing in a stacked column before, and it is
+now the first.

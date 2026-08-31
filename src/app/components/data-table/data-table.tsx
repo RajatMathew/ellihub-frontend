@@ -66,7 +66,7 @@ export interface DataTableProps<
   title?: ReactNode;
   /** Second line under a string title. */
   titleDescription?: ReactNode;
-  /** Extra controls in the header's trailing slot, beside Clear. */
+  /** The list's own actions, pinned to the end of the header row. */
   headerTrailing?: ReactNode;
   /**
    * Pinned above the filter header, inside the card.

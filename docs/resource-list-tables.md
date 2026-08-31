@@ -48,6 +48,15 @@ Because the schema owns each filter's URL key, API key, parser and what counts a
 unset, `hasActiveFilters`, `clearFilters` and the request params are all derived. No
 module hand-maintains them.
 
+## Header slot order
+
+Fixed for every list, so none of them re-decides its own layout:
+
+1. **Title** — a string, a node, or the `tabs` filter when neither is given.
+2. **Clear** — first in the filters group, ahead of search, and only once something
+   is filtered. It acts on the controls that follow it.
+3. **Filter controls** — ordered by kind, not by schema order.
+4. **Trailing** — the list's own actions (`headerTrailing`), pinned to the end.
 
 ## Filter kinds
 

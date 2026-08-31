@@ -322,7 +322,12 @@ function TableCardHeaderToolbar({
   );
 }
 
-/** The filters group. Wraps freely; always sits before `trailing`. */
+/**
+ * The filters group. Wraps freely; always sits before `trailing`.
+ *
+ * Clear is the first thing in here when a list has one, so it reads with the
+ * controls it clears rather than beside the page's own actions.
+ */
 function TableCardHeaderFilters({
   children,
   className,
@@ -448,15 +453,22 @@ function TableCardHeaderSelect({
  * list, including the ones nobody has filtered — which is most of them, most of
  * the time. Unmounting shifts the controls once, on a click the user just made,
  * at the same moment the chip row appears anyway.
+ *
+ * It belongs at the *start* of the filters group, not in `trailing`. Trailing is
+ * where a list's own actions live — Add recurring bill, and whatever a page
+ * passes — and Clear is not one of those: it acts on the controls beside it, so
+ * it reads as the first of them rather than as the last thing on the row.
  */
 function TableCardHeaderClearButton({
   active,
   onClick,
   label = 'Clear',
+  className,
 }: {
   active: boolean;
   onClick: () => void;
   label?: string;
+  className?: string;
 }) {
   if (!active) return null;
 
@@ -464,7 +476,9 @@ function TableCardHeaderClearButton({
     <Button
       variant="outline"
       size="toolbar"
-      className="shadow-xs shadow-black/10"
+      // The filters group is a stretched column on mobile, so the button would
+      // otherwise run the full width of the card above the controls it clears.
+      className={cn('shadow-xs shadow-black/10 self-start sm:self-auto', className)}
       onClick={onClick}
     >
       <X strokeWidth={2} />

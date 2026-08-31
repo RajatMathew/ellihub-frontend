@@ -106,7 +106,7 @@ interface DataTableFiltersProps<
   description?: ReactNode;
   /** Holds the title's shape with a skeleton while the list's first page loads. */
   isTitleLoading?: boolean;
-  /** Extra controls for the trailing slot, beside Clear. */
+  /** The list's own actions, pinned to the end of the row. */
   trailing?: ReactNode;
   /** Hides the active-filter chip row. */
   hideChips?: boolean;
@@ -115,9 +115,10 @@ interface DataTableFiltersProps<
 /**
  * Renders a filter schema into the shared table card header.
  *
- * Slot order is fixed — tabs or a title, then the controls in `CONTROL_ORDER`,
- * then the trailing group holding Clear — so every list in the app reads the same
- * way without each module re-deciding its own layout.
+ * Slot order is fixed — tabs or a title, then Clear, then the controls in
+ * `CONTROL_ORDER`, then the trailing group holding the page's own actions — so
+ * every list in the app reads the same way without each module re-deciding its
+ * own layout.
  */
 export function DataTableFilters<
   TDefs extends readonly AnyFilterDef<never>[],
@@ -177,6 +178,9 @@ export function DataTableFilters<
         title={titleContent}
         actions={
           <TableCardHeaderFilters>
+            {/* First, not in `trailing`: it acts on the controls that follow it,
+                while trailing holds the page's own actions. */}
+            <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearAll} />
             {controls.map((def) => {
               if (def.kind === 'search') {
                 const scope = def.scope;
@@ -387,12 +391,7 @@ export function DataTableFilters<
             })}
           </TableCardHeaderFilters>
         }
-        trailing={
-          <TableCardHeaderTrailing>
-            {trailing}
-            <TableCardHeaderClearButton active={hasActiveFilters} onClick={onClearAll} />
-          </TableCardHeaderTrailing>
-        }
+        trailing={<TableCardHeaderTrailing>{trailing}</TableCardHeaderTrailing>}
       />
 
       <DataTableFilterChips

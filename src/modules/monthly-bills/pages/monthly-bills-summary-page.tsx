@@ -6,7 +6,6 @@ import {
   TableCardHeaderClearButton,
   TableCardHeaderFilters,
   TableCardHeaderTitle,
-  TableCardHeaderTrailing,
 } from '@/app/components/table-card-header';
 import { Card, CardContent } from '@/app/components/ui/card';
 import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
@@ -107,6 +106,7 @@ export function MonthlyBillsSummaryPage({ selectedDate, enabled }: MonthlyBillsS
           }
           actions={
             <TableCardHeaderFilters>
+              <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
               <MonthlyBillsFilters
                 showSearch={false}
                 vendorIds={vendorIds}
@@ -121,13 +121,6 @@ export function MonthlyBillsSummaryPage({ selectedDate, enabled }: MonthlyBillsS
                 onTradeCategorySearchChange={setTradeCategorySearch}
               />
             </TableCardHeaderFilters>
-          }
-          trailing={
-            <TableCardHeaderTrailing>
-              {/* Always rendered, so the row does not reflow the moment a filter
-                  is applied — the table sits directly under it. */}
-              <TableCardHeaderClearButton active={hasActiveFilters} onClick={clearFilters} />
-            </TableCardHeaderTrailing>
           }
         />
 
