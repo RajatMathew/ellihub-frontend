@@ -26,9 +26,12 @@ function EditableStatus({ status }: { status: StatusDef }) {
         if (id !== (status.selectedId ?? status.value)) status.onChange?.(id);
       }}
     >
+      {/* `w-auto` matters: the trigger is full-width by default, which strands
+          the chevron at the far edge of the header and wraps the badge onto its
+          own line. It has to hug the badge to read as one control. */}
       <SelectTrigger
         aria-label="Change status"
-        className="h-8 min-w-24 border-none bg-transparent p-0 focus:ring-0"
+        className="h-auto w-auto gap-1.5 rounded-md border-none bg-transparent p-0 focus:ring-0 [&>svg]:size-3.5"
       >
         {badge}
       </SelectTrigger>
