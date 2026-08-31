@@ -1,5 +1,5 @@
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { useAccess } from '@/app/contexts/access-context';
 import { useActivityLogQuery } from '@/app/hooks/use-activity-log';
 import { useActivityLogColumns } from '@/modules/activity-log/components/activity-log-columns';
@@ -63,11 +63,13 @@ export default function ActivityLogListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
+      <ListPageHeader
         title="Activity Log"
-        totalCount={list.totalCount}
-        hasActiveFilters={state.hasActiveFilters}
-        resultLabel="activity logs"
+        summary={{
+          total: list.totalCount,
+          filtered: state.hasActiveFilters,
+          label: 'activity logs',
+        }}
         description={
           <span className="text-sm text-muted-foreground">
             {access.isAdmin

@@ -8,9 +8,10 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
-import { PTOListStats, PTOListToolbar, usePTOListColumns } from '@/modules/hr/components/pto/list';
+import { PTOListStats, usePTOListColumns } from '@/modules/hr/components/pto/list';
 import {
   getPTOEmployeeName,
   PTODecisionDialog,
@@ -30,7 +31,7 @@ import {
   useRejectPTOMutation,
 } from '@/modules/hr/hooks/pto.hooks';
 import type { ListPTOParams, PTO } from '@/modules/hr/schemas/pto.schema';
-import { Calendar, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Trash2 } from 'lucide-react';
 
 const PTO_FILTERS = [f.search({ className: 'sm:w-72', placeholder: 'Search requests...' })];
 
@@ -122,10 +123,16 @@ export default function PTOListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <PTOListToolbar
+      <ListPageHeader
+        eyebrow="Employee Directory"
+        title="Time Off Requests"
         isLoading={list.isInitialLoading}
-        searchQuery={state.values.search ?? ''}
-        totalCount={list.totalCount}
+        summary={{
+          total: list.totalCount,
+          filtered: Boolean(state.values.search),
+          label: 'Requests',
+        }}
+        actions={[{ label: 'New Request', icon: Plus, to: 'create', placement: 'primary' }]}
       />
       <PTOListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 
