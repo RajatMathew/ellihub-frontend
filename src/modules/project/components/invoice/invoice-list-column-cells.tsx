@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
 import {
@@ -113,9 +114,10 @@ export function PaymentCell({ invoice }: { invoice: InvoiceListItem }) {
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant={invoice.isPaid ? 'success' : 'warning'} appearance="outline" size="sm">
-          {getPaymentLabel(invoice)}
-        </Badge>
+        <StatusBadge
+          label={getPaymentLabel(invoice)}
+          status={invoice.isPaid ? 'PAID' : 'PENDING'}
+        />
         {invoice.isDisputed && (
           <Badge variant="destructive" appearance="outline" size="sm">
             Disputed

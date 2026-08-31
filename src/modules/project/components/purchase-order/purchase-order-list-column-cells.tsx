@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
@@ -7,7 +8,6 @@ import {
 } from '@/modules/project/components/purchase-order/purchase-order-totals';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
-  PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
@@ -84,13 +84,7 @@ export function PurchaseOrderTradeCategoryCell({
 
 export function PurchaseOrderStatusCell({ po }: { po: POListItem }) {
   return (
-    <Badge
-      variant={PO_STATUS_BADGE_VARIANTS[po.status] ?? 'primary'}
-      appearance="outline"
-      size="sm"
-    >
-      {PO_STATUS_LABELS[po.status] ?? po.status}
-    </Badge>
+    <StatusBadge label={PO_STATUS_LABELS[po.status]} status={po.status} />
   );
 }
 

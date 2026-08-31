@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
@@ -6,7 +7,6 @@ import { ContactCard } from '@/modules/directory/components/contact-card';
 import type { DirectoryContactSnapshot } from '@/modules/directory/components/shared';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
 import {
-  VENDOR_STATUS_COLORS,
   VENDOR_STATUS_LABELS,
 } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
@@ -127,16 +127,7 @@ function VendorInfoCard({ vendor }: { vendor: VendorDetail }) {
         <Separator />
         <div className="flex min-w-0 items-start justify-between gap-4">
           <span className="text-sm text-muted-foreground">Default Status</span>
-          <div className="flex min-w-0 items-center gap-1.5 text-right">
-            <span
-              className={`size-2 rounded-full ${
-                VENDOR_STATUS_COLORS[vendor.status] ?? 'bg-muted-foreground'
-              }`}
-            />
-            <span className="break-words text-sm font-medium">
-              {VENDOR_STATUS_LABELS[vendor.status] ?? vendor.status}
-            </span>
-          </div>
+          <StatusBadge label={VENDOR_STATUS_LABELS[vendor.status]} status={vendor.status} />
         </div>
         <Separator />
         <div className="flex min-w-0 items-start justify-between gap-4">

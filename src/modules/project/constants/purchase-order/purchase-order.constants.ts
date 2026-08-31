@@ -41,27 +41,6 @@ export const PO_STATUS_LABELS: Record<POStatusName, string> = {
   CANCELLED: 'Cancelled',
 };
 
-export const PO_STATUS_COLORS: Record<POStatusName, string> = {
-  DRAFT: 'bg-muted-foreground',
-  ISSUED: 'bg-primary',
-  DELIVERED: 'bg-success',
-  PARTIALLY_PAID: 'bg-warning',
-  PAID: 'bg-success',
-  CANCELLED: 'bg-destructive',
-};
-
-export const PO_STATUS_BADGE_VARIANTS: Record<
-  POStatusName,
-  'primary' | 'success' | 'info' | 'warning' | 'destructive'
-> = {
-  DRAFT: 'primary',
-  ISSUED: 'info',
-  DELIVERED: 'success',
-  PARTIALLY_PAID: 'warning',
-  PAID: 'success',
-  CANCELLED: 'destructive',
-};
-
 export const TRADE_CATEGORY_LABELS: Record<TradeCategory, string> = {
   MATERIAL: 'Material',
   FABRICATION: 'Fabrication',

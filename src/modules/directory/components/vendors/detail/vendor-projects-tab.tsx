@@ -1,6 +1,6 @@
+import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
 import { useMemo } from 'react';
 
-import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency } from '@/app/lib/helpers';
 import { getPurchaseOrderTotalCommitment } from '@/modules/directory/components/vendors/vendor-commitment-utils';
@@ -103,11 +103,7 @@ function CommittedProjectRow({ project }: { project: VendorCommittedProject }) {
           >
             {project.projectName}
           </Link>
-          {status && (
-            <Badge variant="secondary" appearance="outline" size="sm" className="w-fit shrink-0">
-              {status}
-            </Badge>
-          )}
+          {status && <ProjectStatusBadge className="w-fit shrink-0" status={status} />}
         </div>
         <p className="text-sm text-muted-foreground">
           {project.jobNumber || 'No job number'} · {project.purchaseOrderCount} purchase order

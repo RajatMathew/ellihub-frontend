@@ -12,23 +12,6 @@ export const SUB_CHANGE_ORDER_SORT_BY_OPTIONS = [
 
 export type SubChangeOrderSortByField = (typeof SUB_CHANGE_ORDER_SORT_BY_OPTIONS)[number];
 
-export const SCO_STATUS_BADGE_VARIANTS: Record<
-  string,
-  'primary' | 'success' | 'info' | 'warning' | 'destructive' | 'secondary'
-> = {
-  DRAFT: 'primary',
-  APPROVED: 'success',
-  REJECTED: 'destructive',
-  VOID: 'secondary',
-};
-
-export const SCO_STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'bg-muted-foreground',
-  APPROVED: 'bg-success',
-  REJECTED: 'bg-destructive',
-  VOID: 'bg-muted-foreground',
-};
-
 export function getSCOPriorityVariant(priority: string | null | undefined) {
   switch (priority) {
     case 'URGENT':

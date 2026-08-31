@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import {
   Toolbar,
   ToolbarActions,
@@ -14,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import {
-  VENDOR_STATUS_COLORS,
   VENDOR_STATUS_LABELS,
 } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
@@ -61,16 +61,7 @@ export function VendorDetailToolbar({
                 Tax ID: <span className="text-foreground">{vendor.taxId}</span>
               </span>
             )}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`size-2 rounded-full ${
-                  VENDOR_STATUS_COLORS[vendor.status] ?? 'bg-muted-foreground'
-                }`}
-              />
-              <span className="text-foreground">
-                {VENDOR_STATUS_LABELS[vendor.status] ?? vendor.status}
-              </span>
-            </div>
+            <StatusBadge label={VENDOR_STATUS_LABELS[vendor.status]} status={vendor.status} />
           </div>
         </ToolbarHeading>
         <ToolbarActions className="w-full sm:w-auto sm:justify-end">

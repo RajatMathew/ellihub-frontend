@@ -12,11 +12,3 @@ export const RFQ_FORM_SECTIONS = [
   { id: 'documents', label: 'Documents' },
 ] as const;
 
-export const RFQ_STATUS_COLORS: Record<string, string> = {
-  DRAFT: 'bg-muted-foreground',
-  PUBLISHED: 'bg-primary',
-  EVALUATION: 'bg-warning',
-  AWARDED: 'bg-success',
-  CANCELLED: 'bg-destructive',
-  VOID: 'bg-muted-foreground',
-};

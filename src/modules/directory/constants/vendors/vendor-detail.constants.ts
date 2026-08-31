@@ -7,11 +7,6 @@ export const VENDOR_TYPE_LABELS: Record<VendorTypeEnum, string> = {
   SUBCONTRACTOR: 'Subcontractor',
 };
 
-export const VENDOR_STATUS_COLORS: Record<VendorStatus, string> = {
-  ACTIVE: 'bg-success',
-  INACTIVE: 'bg-muted-foreground',
-};
-
 export const VENDOR_STATUS_LABELS: Record<VendorStatus, string> = {
   ACTIVE: 'Active',
   INACTIVE: 'Inactive',

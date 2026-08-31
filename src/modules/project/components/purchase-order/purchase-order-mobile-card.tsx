@@ -1,7 +1,6 @@
-import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/status-badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
 import {
-  PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import type { POListItem } from '@/modules/project/schemas/purchase-order';
@@ -57,13 +56,7 @@ export function PurchaseOrderMobileCard({
       </div>
 
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5">
-        <Badge
-          variant={PO_STATUS_BADGE_VARIANTS[po.status] ?? 'primary'}
-          appearance="outline"
-          size="sm"
-        >
-          {PO_STATUS_LABELS[po.status] ?? po.status}
-        </Badge>
+        <StatusBadge label={PO_STATUS_LABELS[po.status]} status={po.status} />
         <PurchaseOrderTradeCategoryCell po={po} />
         {rfqLabel && po.rfqId && (
           <ListingIdentifierLink

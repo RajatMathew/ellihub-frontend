@@ -1,13 +1,12 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { useMemo } from 'react';
 
-import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
-  PO_STATUS_BADGE_VARIANTS,
   PO_STATUS_LABELS,
 } from '@/modules/project/constants/purchase-order';
 import { usePOsQuery } from '@/modules/project/hooks/purchase-order';
@@ -86,13 +85,10 @@ function PurchaseOrderSummaryCard({ purchaseOrder }: { purchaseOrder: POListItem
           <CardTitle className="text-sm">
             <ListingIdentifierText value={purchaseOrder.poNumber} fallback="Draft PO" />
           </CardTitle>
-          <Badge
-            variant={PO_STATUS_BADGE_VARIANTS[purchaseOrder.status] ?? 'primary'}
-            appearance="outline"
-            size="sm"
-          >
-            {PO_STATUS_LABELS[purchaseOrder.status] ?? purchaseOrder.status}
-          </Badge>
+          <StatusBadge
+            label={PO_STATUS_LABELS[purchaseOrder.status]}
+            status={purchaseOrder.status}
+          />
         </div>
         <Link
           to={purchaseOrderPath}

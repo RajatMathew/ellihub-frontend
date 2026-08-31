@@ -1,4 +1,4 @@
-import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/status-badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
@@ -75,13 +75,7 @@ export function PurchaseOrderDetailLinkedSCOsCard({
                         <span className="break-words text-sm font-medium [overflow-wrap:anywhere]">
                           {sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
                         </span>
-                        <Badge
-                          variant={sco.status === 'APPROVED' ? 'success' : 'primary'}
-                          appearance="light"
-                          size="sm"
-                        >
-                          {sco.status}
-                        </Badge>
+                        <StatusBadge status={sco.status} />
                       </div>
                       {sco.title && (
                         <div className="mt-1 line-clamp-2 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">

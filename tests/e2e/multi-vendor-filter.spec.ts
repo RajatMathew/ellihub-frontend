@@ -180,7 +180,16 @@ function vendorTrigger(page: Page) {
 }
 
 async function openVendorPicker(page: Page) {
-  await vendorTrigger(page).click();
+  // Clicked near the chevron rather than at the trigger's centre. Once a vendor
+  // is selected its badge fills the middle of the trigger, and the badge carries
+  // its own remove button — a centre click lands on that and deselects instead
+  // of opening. A person aims at the chevron or the empty space beside it.
+  const trigger = vendorTrigger(page);
+  const box = await trigger.boundingBox();
+
+  if (!box) throw new Error('vendor trigger has no layout');
+
+  await trigger.click({ position: { x: box.width - 12, y: box.height / 2 } });
   await expect(page.getByPlaceholder('Search vendors...')).toBeVisible({ timeout: ROUTE_TIMEOUT });
 }
 

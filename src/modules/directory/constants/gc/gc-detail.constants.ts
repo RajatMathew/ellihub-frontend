@@ -1,17 +1,9 @@
 import type { GCStatus } from '@/modules/directory/schemas/gc.schema';
 
-export const GC_TYPE_BADGE_VARIANTS: Record<string, 'primary' | 'success' | 'info' | 'warning'> = {
-  PUBLIC_STATE: 'primary',
-  PRIVATE: 'success',
-  INSTITUTIONAL: 'info',
-  CIVIL: 'warning',
-  SCA: 'primary',
-};
-
-export const GC_STATUS_COLORS: Record<GCStatus, string> = {
-  ACTIVE: 'bg-success',
-  INACTIVE: 'bg-muted-foreground',
-};
+// Re-exported rather than restated: the detail header and the list cell paint a
+// GC's type identically, and the two copies of this map had already drifted out
+// of anyone's sight of each other.
+export { GC_TYPE_BADGE_VARIANTS } from './gc-list.constants';
 
 export const GC_STATUS_LABELS: Record<GCStatus, string> = {
   ACTIVE: 'Active',

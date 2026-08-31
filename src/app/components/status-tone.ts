@@ -8,7 +8,7 @@
  * Its own module because `StatusBadge` is a component, and a component file that
  * also exports functions breaks fast refresh.
  */
-export type StatusTone = 'neutral' | 'active' | 'positive' | 'caution' | 'negative';
+export type StatusTone = 'neutral' | 'active' | 'info' | 'positive' | 'caution' | 'negative';
 
 /**
  * The shared vocabulary, normalised — case, spaces, hyphens and underscores are
@@ -16,6 +16,7 @@ export type StatusTone = 'neutral' | 'active' | 'positive' | 'caution' | 'negati
  * `pendingApproval` all land in the same place.
  */
 const TONE_BY_STATUS: Record<string, StatusTone> = {
+  ACTIVE: 'positive',
   APPROVED: 'positive',
   AWARDED: 'positive',
   COMPLETE: 'positive',
@@ -27,7 +28,17 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   SUCCESS: 'positive',
   SYNCED: 'positive',
 
+  DELIVERED: 'positive',
+
+  // In flight: handed to the other side, nothing owed back yet. Distinct from
+  // `active`, which is work still on our side, and from `caution`, which is
+  // waiting on someone. The per-module maps all painted these `info`.
+  ISSUED: 'info',
+  SENT: 'info',
+  SUBMITTED: 'info',
+
   EVALUATION: 'caution',
+  PARTIALLYPAID: 'caution',
   INREVIEW: 'caution',
   ONHOLD: 'caution',
   PARTIAL: 'caution',
@@ -47,21 +58,25 @@ const TONE_BY_STATUS: Record<string, StatusTone> = {
   FAILED: 'negative',
   OVERDUE: 'negative',
   REJECTED: 'negative',
-  VOID: 'negative',
-  VOIDED: 'negative',
 
   INPROGRESS: 'active',
-  ISSUED: 'active',
   OPEN: 'active',
   PUBLISHED: 'active',
-  SENT: 'active',
+  // A draft is a record someone is working on, not one that has been put away.
+  // It reads as live for the same reason `OPEN` does. The per-module maps this
+  // vocabulary absorbed all said `primary` here, which is what `active` renders.
+  DRAFT: 'active',
 
   // Explicit rather than defaulted: these are known statuses that genuinely mean
   // "nothing has happened yet", not statuses the vocabulary failed to recognise.
   ARCHIVED: 'neutral',
-  DRAFT: 'neutral',
+  CLOSED: 'neutral',
   INACTIVE: 'neutral',
   NEW: 'neutral',
+  // Withdrawn rather than failed — nothing went wrong, so it does not take the
+  // negative tone that `REJECTED` and `CANCELLED` do. Every module map agreed.
+  VOID: 'neutral',
+  VOIDED: 'neutral',
 };
 
 function normalise(status: string): string {

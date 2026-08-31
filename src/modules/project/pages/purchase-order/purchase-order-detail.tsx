@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
@@ -63,7 +64,6 @@ import {
 } from '@/modules/project/components/shared';
 import { getSubChangeOrderTotalAmount } from '@/modules/project/components/sub-change-order';
 import {
-  PO_STATUS_COLORS,
   TRADE_CATEGORY_BADGE_VARIANTS,
   TRADE_CATEGORY_LABELS,
 } from '@/modules/project/constants/purchase-order';
@@ -467,14 +467,7 @@ export function PODetailPage() {
                   {readableRfq}
                 </Link>
               )}
-              {po.status && (
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`size-2 rounded-full ${PO_STATUS_COLORS[statusName] ?? 'bg-muted-foreground'}`}
-                  />
-                  <span className="text-sm text-muted-foreground">{po.status.label}</span>
-                </div>
-              )}
+              {po.status && <StatusBadge label={po.status.label} status={statusName} />}
               <FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />
               {po.tradeCategory && (
                 <Badge

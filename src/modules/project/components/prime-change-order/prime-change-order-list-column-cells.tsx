@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { ListingIdentifierText } from '@/app/components/ui/listing-identifier';
@@ -6,7 +7,6 @@ import {
   formatPrimeChangeOrderDate,
   formatPrimeChangeOrderTitleCase,
   getPrimeChangeOrderFieldwireUrl,
-  getPrimeChangeOrderStatusDotClass,
 } from '@/modules/project/components/prime-change-order/prime-change-order-list-utils';
 import type { PrimeChangeOrder } from '@/modules/project/schemas/prime-change-order';
 import { ExternalLink } from 'lucide-react';
@@ -29,10 +29,7 @@ export function PrimeChangeOrderNameCell({ order }: { order: PrimeChangeOrder })
 export function PrimeChangeOrderStatusCell({ order }: { order: PrimeChangeOrder }) {
   return (
     <div className="flex items-center gap-2 text-sm text-foreground">
-      <span
-        className={`size-2 rounded-full ${getPrimeChangeOrderStatusDotClass(order.statusName)}`}
-      />
-      <span>{order.statusName}</span>
+      <StatusBadge status={order.statusName} />
       {order.deletedAt && (
         <Badge variant="destructive" appearance="light" size="sm">
           Deleted

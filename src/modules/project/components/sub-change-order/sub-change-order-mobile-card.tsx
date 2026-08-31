@@ -1,6 +1,5 @@
-import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/status-badge';
 import { ListingIdentifierLink } from '@/app/components/ui/listing-identifier';
-import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 
 import {
@@ -43,13 +42,7 @@ export function SubChangeOrderMobileCard({
       </div>
 
       <div className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5">
-        <Badge
-          variant={SCO_STATUS_BADGE_VARIANTS[sco.status] ?? 'primary'}
-          appearance="outline"
-          size="sm"
-        >
-          {sco.status}
-        </Badge>
+        <StatusBadge status={sco.status} />
         <SubChangeOrderTypeCell sco={sco} fallback={changeTypeFallback} />
       </div>
 

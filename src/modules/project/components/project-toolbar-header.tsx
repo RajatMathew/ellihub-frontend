@@ -1,3 +1,4 @@
+import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
 import {
   Toolbar,
   ToolbarActions,
@@ -5,7 +6,6 @@ import {
   ToolbarPageTitle,
   ToolbarWrapper,
 } from '@/app/components/toolbar/toolbar';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
@@ -37,41 +37,21 @@ interface ProjectToolbarHeaderProps {
   onTeamClick?: () => void;
 }
 
-const STATUS_META: Record<string, { label: string; badgeClassName: string }> = {
-  ACTIVE: {
-    label: 'Active',
-    badgeClassName: 'bg-success text-success-foreground',
-  },
-  INACTIVE: {
-    label: 'Inactive',
-    badgeClassName: 'bg-warning text-warning-foreground',
-  },
-  CLOSED: {
-    label: 'Closed',
-    badgeClassName: 'bg-muted text-muted-foreground',
-  },
-  COMPLETED: {
-    label: 'Completed',
-    badgeClassName: 'bg-primary text-primary-foreground',
-  },
-};
-
+/**
+ * Resolves a project's status to a vocabulary key and its display text.
+ *
+ * The status arrives either as a plain string or as a lookup record with its own
+ * wording. Colour is not decided here — `ProjectStatusBadge` owns that, so the
+ * toolbar and the five other places a project status appears cannot disagree.
+ */
 const getStatusMeta = (status: ProjectDetail['statusRef'] | ProjectDetail['status']) => {
   if (!status) return undefined;
 
-  if (typeof status === 'string') {
-    return (
-      STATUS_META[status] ?? { label: status, badgeClassName: STATUS_META.COMPLETED.badgeClassName }
-    );
-  }
+  if (typeof status === 'string') return { key: status, label: undefined };
 
-  const statusKey = (status.name || status.label || status.id).toUpperCase();
-  const configuredStatus = STATUS_META[statusKey];
+  const key = (status.name || status.label || status.id).toUpperCase();
 
-  return {
-    label: status.label || status.name || configuredStatus?.label || 'N/A',
-    badgeClassName: configuredStatus?.badgeClassName ?? STATUS_META.COMPLETED.badgeClassName,
-  };
+  return { key, label: status.label || status.name || undefined };
 };
 
 export function ProjectToolbarHeader({
@@ -175,11 +155,7 @@ export function ProjectToolbarHeader({
 
                 if (!status) return null;
 
-                return (
-                  <Badge className={status.badgeClassName} size="sm">
-                    {status.label}
-                  </Badge>
-                );
+                return <ProjectStatusBadge label={status.label} status={status.key} />;
               })()}
             {showStage ? (
               canUpdateStage && stages && stages.length > 0 ? (

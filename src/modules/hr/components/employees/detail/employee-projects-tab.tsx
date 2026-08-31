@@ -1,3 +1,4 @@
+import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -19,10 +20,6 @@ function formatProjectDate(value: string | null | undefined) {
     day: 'numeric',
     year: 'numeric',
   });
-}
-
-function formatStatus(value: string) {
-  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 export function EmployeeProjectsTab({ projects, isLoading }: EmployeeProjectsTabProps) {
@@ -56,9 +53,7 @@ export function EmployeeProjectsTab({ projects, isLoading }: EmployeeProjectsTab
                         {project.name}
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary" appearance="light" size="sm">
-                          {formatStatus(project.status)}
-                        </Badge>
+                        <ProjectStatusBadge status={project.status} />
                         {project.isLead && (
                           <Badge variant="primary" appearance="light" size="sm">
                             Lead PM

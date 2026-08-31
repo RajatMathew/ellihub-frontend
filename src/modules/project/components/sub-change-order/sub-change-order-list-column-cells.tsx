@@ -1,10 +1,10 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { RowActions } from '@/app/components/data-table';
 import { Badge } from '@/app/components/ui/badge';
 import {
   ListingIdentifierLink,
   ListingIdentifierText,
 } from '@/app/components/ui/listing-identifier';
-import { SCO_STATUS_BADGE_VARIANTS } from '@/modules/project/constants/sub-change-order';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
 import { useParams } from 'react-router-dom';
@@ -111,13 +111,7 @@ export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
 
 export function SubChangeOrderStatusCell({ sco }: { sco: SCOListItem }) {
   return (
-    <Badge
-      variant={SCO_STATUS_BADGE_VARIANTS[sco.status] ?? 'primary'}
-      appearance="outline"
-      size="sm"
-    >
-      {sco.status}
-    </Badge>
+    <StatusBadge status={sco.status} />
   );
 }
 

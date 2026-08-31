@@ -13,11 +13,6 @@ export const GC_TYPE_BADGE_VARIANTS: Record<string, 'primary' | 'success' | 'inf
   SCA: 'primary',
 };
 
-export const GC_STATUS_COLORS: Record<GCStatus, string> = {
-  ACTIVE: 'bg-success',
-  INACTIVE: 'bg-muted-foreground',
-};
-
 export const GC_STATUS_LABELS: Record<GCStatus, string> = {
   ACTIVE: 'Active',
   INACTIVE: 'Inactive',

@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import {
   Toolbar,
   ToolbarActions,
@@ -15,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import {
-  GC_STATUS_COLORS,
   GC_STATUS_LABELS,
   GC_TYPE_BADGE_VARIANTS,
 } from '@/modules/directory/constants/gc/gc-detail.constants';
@@ -66,16 +66,7 @@ export function GCDetailToolbar({
             >
               {getGCTypeName(gc)}
             </Badge>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`size-2 rounded-full ${
-                  GC_STATUS_COLORS[gc.status] ?? 'bg-muted-foreground'
-                }`}
-              />
-              <span className="text-sm text-muted-foreground">
-                {GC_STATUS_LABELS[gc.status] ?? gc.status}
-              </span>
-            </div>
+            <StatusBadge label={GC_STATUS_LABELS[gc.status]} status={gc.status} />
           </div>
         </ToolbarHeading>
         <ToolbarActions className="w-full sm:w-auto sm:justify-end">

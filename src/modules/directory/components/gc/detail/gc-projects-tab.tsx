@@ -1,6 +1,6 @@
+import { ProjectStatusBadge } from '@/modules/project/components/project-status-badge';
 import type { ReactNode } from 'react';
 
-import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
 import type { GCProject } from '@/modules/directory/schemas/gc.schema';
@@ -12,23 +12,6 @@ import { getProjectMetricsFromProjects } from './gc-project-metrics';
 interface GCProjectsTabProps {
   projects: GCProject[];
 }
-
-const PROJECT_STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Active',
-  INACTIVE: 'Inactive',
-  CLOSED: 'Closed',
-  COMPLETED: 'Completed',
-};
-
-const PROJECT_STATUS_VARIANTS: Record<
-  string,
-  'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive'
-> = {
-  ACTIVE: 'success',
-  INACTIVE: 'secondary',
-  CLOSED: 'info',
-  COMPLETED: 'primary',
-};
 
 export function GCProjectsTab({ projects }: GCProjectsTabProps) {
   const { activeProjects, totalCommitted } = getProjectMetricsFromProjects(projects);
@@ -89,14 +72,7 @@ function ProjectRow({ project }: { project: GCProject }) {
           >
             {project.name}
           </Link>
-          <Badge
-            variant={PROJECT_STATUS_VARIANTS[status] ?? 'secondary'}
-            appearance="outline"
-            size="sm"
-            className="w-fit shrink-0"
-          >
-            {PROJECT_STATUS_LABELS[status] ?? project.status}
-          </Badge>
+          <ProjectStatusBadge className="w-fit shrink-0" status={status} />
         </div>
 
         <div className="grid min-w-0 gap-2 text-sm text-muted-foreground md:grid-cols-3">

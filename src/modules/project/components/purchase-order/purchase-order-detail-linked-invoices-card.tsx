@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { formatCurrency, formatDate } from '@/app/lib/helpers';
@@ -53,13 +54,10 @@ export function PurchaseOrderDetailLinkedInvoicesCard({
                           Disputed
                         </Badge>
                       )}
-                      <Badge
-                        variant={invoice.isPaid ? 'success' : 'warning'}
-                        appearance="light"
-                        size="sm"
-                      >
-                        {invoice.isPaid ? 'Paid' : 'Unpaid'}
-                      </Badge>
+                      <StatusBadge
+                        label={invoice.isPaid ? 'Paid' : 'Unpaid'}
+                        status={invoice.isPaid ? 'PAID' : 'PENDING'}
+                      />
                     </div>
                     {invoice.externalInvoiceNumber && (
                       <div className="mt-1 break-words text-xs text-muted-foreground [overflow-wrap:anywhere]">

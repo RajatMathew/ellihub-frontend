@@ -1,10 +1,10 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import type { ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Separator } from '@/app/components/ui/separator';
 import { formatCurrency } from '@/app/lib/helpers';
 import {
-  GC_STATUS_COLORS,
   GC_STATUS_LABELS,
 } from '@/modules/directory/constants/gc/gc-detail.constants';
 import { PAYMENT_TERMS_LABELS } from '@/modules/directory/constants/shared.constants';
@@ -43,14 +43,7 @@ export function GCOverviewTab({ gc }: GCOverviewTabProps) {
             {getGCTypeName(gc)}
           </GCInfoRow>
           <GCInfoRow icon={<Briefcase className="size-4" />} label="Status">
-            <span className="flex items-center gap-2">
-              <span
-                className={`size-2 rounded-full ${
-                  GC_STATUS_COLORS[gc.status] ?? 'bg-muted-foreground'
-                }`}
-              />
-              {GC_STATUS_LABELS[gc.status] ?? gc.status}
-            </span>
+            <StatusBadge label={GC_STATUS_LABELS[gc.status]} status={gc.status} />
           </GCInfoRow>
           <Separator />
           <GCInfoRow icon={<FolderOpen className="size-4" />} label="Total Projects">

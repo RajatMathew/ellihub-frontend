@@ -1,3 +1,4 @@
+import { StatusBadge } from '@/app/components/status-badge';
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
@@ -53,7 +54,6 @@ import {
   ProjectActivityPanel,
   ProjectDetailPageLoading,
 } from '@/modules/project/components/shared';
-import { SCO_STATUS_COLORS } from '@/modules/project/constants/sub-change-order';
 import { useProjectCostCodesQuery, useProjectDetailQuery } from '@/modules/project/hooks';
 import { usePODetailQuery } from '@/modules/project/hooks/purchase-order';
 import {
@@ -553,14 +553,7 @@ export function SCODetailPage() {
               <ToolbarPageTitle>
                 {sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
               </ToolbarPageTitle>
-              {sco.status && (
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`size-2 rounded-full ${SCO_STATUS_COLORS[statusName] ?? 'bg-muted-foreground'}`}
-                  />
-                  <span className="text-sm text-muted-foreground">{statusLabel}</span>
-                </div>
-              )}
+              {sco.status && <StatusBadge label={statusLabel} status={statusName} />}
               <FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />
               {sco.changeType && (
                 <Badge variant="primary" appearance="outline" size="sm">
