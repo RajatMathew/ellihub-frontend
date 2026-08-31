@@ -13,6 +13,7 @@
  * Drop to `PageHeader` only for a header no preset describes.
  */
 export { DetailPageHeader, type DetailPageHeaderProps } from './detail-page-header';
+export { DetailTitleRow } from './detail-title-row';
 export { FormPageHeader, type FormPageHeaderProps } from './form-page-header';
 export { formatSummary } from './format-summary';
 export { ListPageHeader, type ListPageHeaderProps } from './list-page-header';
@@ -20,11 +21,14 @@ export { PageHeader, type PageHeaderProps } from './page-header';
 export { PageHeaderSkeleton, type PageHeaderSkeletonProps } from './page-header-skeleton';
 export type {
   ActionDef,
+  BadgeDef,
   ActionPlacement,
   CapabilityRef,
   EnabledCondition,
   MetaItem,
   PageHeaderTabs,
   PanelDef,
+  ReferenceDef,
+  StatusDef,
   SummaryDef,
 } from './page-header.types';

@@ -6,8 +6,15 @@ import {
   ListPageHeader,
   type ActionDef,
 } from '@/app/components/page-header';
-import { Badge } from '@/app/components/ui/badge';
-import { Calendar, Pencil, Plus, RefreshCcw, ShieldAlert, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  Pencil,
+  Plus,
+  RefreshCcw,
+  ShieldAlert,
+  Trash2,
+} from 'lucide-react';
 
 /**
  * Dev-only preview of the page-header system.
@@ -93,22 +100,40 @@ export function PageHeaderKit() {
         />
       </Section>
 
-      <Section label="DetailPageHeader — status, meta, overflow, panel toggle">
+      <Section label="DetailPageHeader — every title-row region at once">
         <DetailPageHeader
-          backLabel="Vendors"
-          title="Millwood LLC"
-          status={
-            <Badge variant="success" appearance="outline" size="sm">
-              Active
-            </Badge>
-          }
+          backLabel="Purchase Orders"
+          title="PO-1042"
+          identifier="Rev 2"
+          status={{ value: 'ISSUED' }}
+          badges={[
+            { label: 'Material' },
+            { label: 'Overdue', variant: 'destructive', icon: AlertTriangle },
+          ]}
+          references={[{ label: 'RFQ-014', to: 'rfqs/014' }]}
           meta={[
-            { label: 'Type', value: 'Fabrication', icon: ShieldAlert },
-            { label: 'Tax ID', value: '583920-XT' },
-            { label: 'Joined', value: '14 Mar 2024', icon: Calendar },
+            { label: 'Vendor', value: 'Millwood LLC', icon: ShieldAlert },
+            { label: 'Expected', value: '14 Mar 2024', icon: Calendar },
           ]}
           actions={detailActions}
           panel={{ open: panelOpen, onOpen: () => setPanelOpen(true) }}
+        />
+      </Section>
+
+      <Section label="DetailPageHeader — editable status">
+        <DetailPageHeader
+          backLabel="RFQs"
+          title="Classroom Casework"
+          identifier="RFQ #014"
+          status={{
+            value: 'DRAFT',
+            selectedId: 'draft',
+            options: [
+              { id: 'draft', label: 'Draft' },
+              { id: 'published', label: 'Published' },
+            ],
+            onChange: () => {},
+          }}
         />
       </Section>
 

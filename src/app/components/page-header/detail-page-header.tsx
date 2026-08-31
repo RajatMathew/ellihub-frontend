@@ -3,9 +3,18 @@ import type { ReactNode } from 'react';
 import { useParentResourceRoute } from '@/app/hooks/use-parent-resource-route';
 import { Link } from 'react-router-dom';
 
+import { DetailTitleRow } from './detail-title-row';
 import { PageHeader } from './page-header';
 import { PageHeaderSkeleton } from './page-header-skeleton';
-import type { ActionDef, MetaItem, PageHeaderTabs, PanelDef } from './page-header.types';
+import type {
+  ActionDef,
+  BadgeDef,
+  MetaItem,
+  PageHeaderTabs,
+  PanelDef,
+  ReferenceDef,
+  StatusDef,
+} from './page-header.types';
 
 export interface DetailPageHeaderProps {
   /**
@@ -19,8 +28,16 @@ export interface DetailPageHeaderProps {
    */
   backTo?: string;
   title: ReactNode;
-  /** Badges qualifying the record — status, type, sync state. */
-  status?: ReactNode;
+  /** The record's own number or reference, when the title is its name. */
+  identifier?: ReactNode;
+  /** The record's lifecycle state. Editable when it carries `options`. */
+  status?: StatusDef;
+  /** Qualifiers: type, category, flags. Not the lifecycle state. */
+  badges?: BadgeDef[];
+  /** Links to related records. */
+  references?: ReferenceDef[];
+  /** A one-off beside the title that carries its own logic. Use sparingly. */
+  titleSlot?: ReactNode;
   /** A prose subtitle. Records that describe themselves in labelled pairs use `meta` instead. */
   description?: ReactNode;
   meta?: MetaItem[];
@@ -51,7 +68,11 @@ export function DetailPageHeader({
   backLabel,
   backTo,
   title,
+  identifier,
   status,
+  badges,
+  references,
+  titleSlot,
   description,
   meta,
   actions,
@@ -91,7 +112,15 @@ export function DetailPageHeader({
       leadingActions={leadingActions}
       meta={meta}
       panel={panel}
-      status={status}
+      identifier={identifier}
+      status={
+        <DetailTitleRow
+          status={status}
+          badges={badges}
+          references={references}
+          titleSlot={titleSlot}
+        />
+      }
       tabs={tabs}
       title={title}
     />

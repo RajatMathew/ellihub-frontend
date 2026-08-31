@@ -61,15 +61,23 @@ test.describe('page header kit', () => {
     ).toBeVisible();
   });
 
-  test('renders detail title, status and metadata row', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Millwood LLC' })).toBeVisible();
-    await expect(page.getByText('Active', { exact: true })).toBeVisible();
-    await expect(page.getByText('Fabrication')).toBeVisible();
-    await expect(page.getByText('583920-XT')).toBeVisible();
+  test('renders every title-row region in a fixed order', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'PO-1042' })).toBeVisible();
+    await expect(page.getByText('Rev 2')).toBeVisible();
+    await expect(page.getByText('Issued', { exact: true })).toBeVisible();
+    await expect(page.getByText('Material', { exact: true })).toBeVisible();
+    await expect(page.getByText('Overdue', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'RFQ-014' })).toBeVisible();
+  });
+
+  test('an editable status renders as a control, not a static badge', async ({ page }) => {
+    await expect(page.getByRole('combobox', { name: 'Change status' })).toBeVisible();
   });
 
   test('back link points at the parent route', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Vendors', exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Purchase Orders', exact: true }).first()
+    ).toBeVisible();
   });
 
   test('overflow menu holds the destructive action, not the button row', async ({ page }) => {

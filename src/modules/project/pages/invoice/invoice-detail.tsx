@@ -206,23 +206,13 @@ export function InvoiceDetailPage() {
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <DetailPageHeader
         title={invoice.invoiceNumber ?? 'Invoice'}
-        status={
-          <>
-            <Badge variant={isPaid ? 'success' : 'warning'} appearance="outline" size="sm">
-              {isPaid ? 'Paid' : 'Unpaid'}
-            </Badge>
-            {isDisputed && (
-              <Badge variant="destructive" appearance="outline" size="sm">
-                Disputed
-              </Badge>
-            )}
-            {isPastDue && (
-              <Badge variant="destructive" appearance="outline" size="sm">
-                Past Due
-              </Badge>
-            )}
-          </>
-        }
+        // Paid/Unpaid is the invoice's lifecycle state; disputed and past due
+        // are flags that can qualify either of them.
+        status={{ value: isPaid ? 'PAID' : 'UNPAID', tones: { UNPAID: 'caution' } }}
+        badges={[
+          ...(isDisputed ? [{ label: 'Disputed', variant: 'destructive' as const }] : []),
+          ...(isPastDue ? [{ label: 'Past Due', variant: 'destructive' as const }] : []),
+        ]}
         actions={[
           {
             label: 'Mark Paid',

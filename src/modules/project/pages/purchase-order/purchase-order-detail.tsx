@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { DetailPageHeader } from '@/app/components/page-header';
-import { StatusBadge } from '@/app/components/status-badge';
-import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
@@ -433,35 +431,26 @@ export function PODetailPage() {
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
         title={po.poNumber ?? 'Draft PO'}
-        status={
-          <>
-            {po.rfqId && (
-              <Link
-                to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
-                className="text-xs text-primary hover:underline"
-              >
-                {readableRfq}
-              </Link>
-            )}
-            {po.status && <StatusBadge label={po.status.label} status={statusName} />}
-            <FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />
-            {po.tradeCategory && (
-              <Badge
-                variant={TRADE_CATEGORY_BADGE_VARIANTS[po.tradeCategory] ?? 'primary'}
-                appearance="outline"
-                size="sm"
-              >
-                {tradeLabel}
-              </Badge>
-            )}
-            {isOverdue && (
-              <Badge variant="destructive" size="sm">
-                <AlertTriangle className="size-3" />
-                Overdue
-              </Badge>
-            )}
-          </>
+        status={po.status ? { value: statusName, label: po.status.label } : undefined}
+        badges={[
+          ...(po.tradeCategory
+            ? [
+                {
+                  label: tradeLabel ?? '',
+                  variant: TRADE_CATEGORY_BADGE_VARIANTS[po.tradeCategory] ?? 'primary',
+                },
+              ]
+            : []),
+          ...(isOverdue
+            ? [{ label: 'Overdue', variant: 'destructive' as const, icon: AlertTriangle }]
+            : []),
+        ]}
+        references={
+          po.rfqId
+            ? [{ label: readableRfq ?? 'RFQ', to: `/app/project/${projectId}/rfqs/${po.rfqId}` }]
+            : undefined
         }
+        titleSlot={<FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />}
         actions={[
           { label: 'Generate PDF', icon: FileText, onClick: openPdfOptions },
           { label: 'Email PO', icon: Mail, onClick: openEmailFlow, enabled: canEmailPO },

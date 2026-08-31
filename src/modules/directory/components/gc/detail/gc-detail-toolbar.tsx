@@ -1,6 +1,4 @@
 import { DetailPageHeader } from '@/app/components/page-header';
-import { StatusBadge } from '@/app/components/status-badge';
-import { Badge } from '@/app/components/ui/badge';
 import {
   GC_STATUS_LABELS,
   GC_TYPE_BADGE_VARIANTS,
@@ -32,18 +30,13 @@ export function GCDetailToolbar({
   return (
     <DetailPageHeader
       title={gc.name}
-      status={
-        <>
-          <Badge
-            variant={typeCode ? (GC_TYPE_BADGE_VARIANTS[typeCode] ?? 'primary') : 'primary'}
-            appearance="outline"
-            size="sm"
-          >
-            {getGCTypeName(gc)}
-          </Badge>
-          <StatusBadge label={GC_STATUS_LABELS[gc.status]} status={gc.status} />
-        </>
-      }
+      status={{ value: gc.status, label: GC_STATUS_LABELS[gc.status] }}
+      badges={[
+        {
+          label: getGCTypeName(gc),
+          variant: typeCode ? (GC_TYPE_BADGE_VARIANTS[typeCode] ?? 'primary') : 'primary',
+        },
+      ]}
       actions={[
         { label: 'Edit Profile', icon: Pencil, to: 'edit', enabled: canUpdate },
         {

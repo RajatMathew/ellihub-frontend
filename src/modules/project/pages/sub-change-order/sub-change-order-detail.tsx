@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { DetailTable } from '@/app/components/detail-table';
 import { DetailPageHeader } from '@/app/components/page-header';
-import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -536,17 +535,9 @@ export function SCODetailPage() {
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
         title={sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
-        status={
-          <>
-            {sco.status && <StatusBadge label={statusLabel} status={statusName} />}
-            <FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />
-            {sco.changeType && (
-              <Badge variant="primary" appearance="outline" size="sm">
-                {lookupLabel(sco.changeType)}
-              </Badge>
-            )}
-          </>
-        }
+        status={sco.status ? { value: statusName, label: statusLabel } : undefined}
+        badges={sco.changeType ? [{ label: lookupLabel(sco.changeType) ?? '' }] : undefined}
+        titleSlot={<FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />}
         actions={[
           { label: 'Generate PDF', icon: FileText, onClick: openPdfOptions },
           { label: 'Email SCO', icon: Mail, onClick: openEmailFlow, enabled: canEmailSCO },

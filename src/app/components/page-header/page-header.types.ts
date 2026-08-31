@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
 
 import type { PageTabItem, PageTabValue } from '@/app/components/page-tabs';
+import type { StatusTone } from '@/app/components/status-tone';
+import type { BadgeProps } from '@/app/components/ui/badge';
 import type { LucideIcon } from 'lucide-react';
+
+type BadgeVariant = NonNullable<BadgeProps['variant']>;
 
 /**
  * A capability the header resolves itself against the access context.
@@ -54,6 +58,45 @@ export interface ActionDef {
    * on both record state and a permission is expressed.
    */
   enabled?: EnabledCondition | EnabledCondition[];
+}
+
+/**
+ * A record's lifecycle state — the one badge carrying a colour *meaning*.
+ *
+ * Give `options` and the badge becomes an inline editor. Two headers had built
+ * that by hand: RFQ's draft/published select and the project stage dropdown.
+ */
+export interface StatusDef {
+  /** Vocabulary key. `StatusBadge` resolves the tone from it. */
+  value: string | null | undefined;
+  /** Overrides the humanised `value`. */
+  label?: string;
+  /** Per-module vocabulary additions, forwarded to `StatusBadge`. */
+  tones?: Record<string, StatusTone>;
+  /** Present ⇒ editable. Omit for a read-only badge. */
+  options?: { id: string; label: string }[];
+  /** Which option is selected, when the id differs from `value`. */
+  selectedId?: string;
+  onChange?: (id: string) => void;
+  pending?: boolean;
+}
+
+/**
+ * A qualifier beside the title: a type, a category, a flag.
+ *
+ * Not the lifecycle state — that is {@link StatusDef}, which is styled
+ * differently on purpose.
+ */
+export interface BadgeDef {
+  label: string;
+  variant?: BadgeVariant;
+  icon?: LucideIcon;
+}
+
+/** A link from this record to a related one, e.g. a PO back to its RFQ. */
+export interface ReferenceDef {
+  label: string;
+  to: string;
 }
 
 /** One `LABEL: value` pair in a detail header's metadata row. */

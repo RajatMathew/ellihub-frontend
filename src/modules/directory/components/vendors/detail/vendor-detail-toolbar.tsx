@@ -1,5 +1,4 @@
 import { DetailPageHeader } from '@/app/components/page-header';
-import { StatusBadge } from '@/app/components/status-badge';
 import { VENDOR_STATUS_LABELS } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -26,7 +25,7 @@ export function VendorDetailToolbar({
   return (
     <DetailPageHeader
       title={vendor.name}
-      status={<StatusBadge label={VENDOR_STATUS_LABELS[vendor.status]} status={vendor.status} />}
+      status={{ value: vendor.status, label: VENDOR_STATUS_LABELS[vendor.status] }}
       meta={[
         { label: 'Type', value: getVendorTypeLabel(vendor) },
         ...(vendor.taxId ? [{ label: 'Tax ID', value: vendor.taxId }] : []),

@@ -11,6 +11,8 @@ export interface PageHeaderProps {
   /** Back link or parent label. One line, above the title. */
   eyebrow?: ReactNode;
   title: ReactNode;
+  /** The record's own number or reference, shown immediately after the title. */
+  identifier?: ReactNode;
   /** Badges that qualify the title — status, type, sync state. Sits beside it. */
   status?: ReactNode;
   /** The result-set or record descriptor, below the title. */
@@ -41,6 +43,7 @@ export interface PageHeaderProps {
 export function PageHeader({
   eyebrow,
   title,
+  identifier,
   status,
   description,
   meta,
@@ -66,6 +69,9 @@ export function PageHeader({
 
           <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
             <ToolbarPageTitle>{title}</ToolbarPageTitle>
+            {identifier ? (
+              <span className="text-sm text-muted-foreground">{identifier}</span>
+            ) : null}
             {status}
           </div>
 

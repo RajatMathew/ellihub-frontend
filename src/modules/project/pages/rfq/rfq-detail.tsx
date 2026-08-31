@@ -3,7 +3,6 @@ import { useMemo, useRef, useState } from 'react';
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { DetailPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -21,7 +20,6 @@ import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-se
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/app/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
 import { StatsBar, StatsBarItem } from '@/app/components/ui/stats-bar';
 import { Textarea } from '@/app/components/ui/textarea';
@@ -1013,41 +1011,29 @@ export default function RFQDetailPage() {
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
         title={rfq.title}
+        identifier={rfq.rfqNumber ? `RFQ #${rfq.rfqNumber}` : undefined}
         status={
-          <>
-            {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
-              <Select
-                disabled={updateStatusMutation.isPending}
-                value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
-                onValueChange={(statusId) => {
-                  if (statusId !== (statusObj?.id || rfq.status)) {
-                    const selectedStatus = draftPublishedStatuses.find(
-                      (status) => status.id === statusId
-                    );
-                    if (selectedStatus) {
-                      updateStatusMutation.mutate({ id: rfqId, statusName: selectedStatus.name });
-                    }
+          rfq.status
+            ? {
+                value: statusName,
+                label: statusObj?.label || statusName,
+                selectedId: statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : ''),
+                pending: updateStatusMutation.isPending,
+                options:
+                  canChangeDraftPublishedState && draftPublishedStatuses.length > 0
+                    ? draftPublishedStatuses.map((status) => ({
+                        id: status.id,
+                        label: status.label ?? status.name ?? status.id,
+                      }))
+                    : undefined,
+                onChange: (statusId) => {
+                  const selected = draftPublishedStatuses.find((s) => s.id === statusId);
+                  if (selected) {
+                    updateStatusMutation.mutate({ id: rfqId, statusName: selected.name });
                   }
-                }}
-              >
-                <SelectTrigger className="h-8 min-w-24 border-none bg-transparent p-0 focus:ring-0">
-                  <StatusBadge label={statusObj?.label || statusName} status={statusName} />
-                </SelectTrigger>
-                <SelectContent>
-                  {draftPublishedStatuses.map((status) => (
-                    <SelectItem key={status.id} value={status.id}>
-                      {status.label ?? status.name ?? status.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : rfq.status ? (
-              <StatusBadge label={statusObj?.label || statusName} status={statusName} />
-            ) : null}
-            {rfq.rfqNumber && (
-              <span className="text-sm text-muted-foreground">RFQ #{rfq.rfqNumber}</span>
-            )}
-          </>
+                },
+              }
+            : undefined
         }
         actions={[
           { label: 'Edit', icon: Pencil, to: 'edit', enabled: canEditRfq },

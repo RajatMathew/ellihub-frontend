@@ -4,7 +4,6 @@ import {
   formatPTOReference,
   getPTOEmployeeName,
   getPTOTypeLabel,
-  PTOStatusBadge,
 } from '@/modules/hr/components/pto/shared';
 import type { PTO } from '@/modules/hr/schemas/pto.schema';
 import { CalendarDays, Pencil, Tag, Trash2 } from 'lucide-react';
@@ -27,7 +26,7 @@ export function PTODetailToolbar({
   return (
     <DetailPageHeader
       title={getPTOEmployeeName(pto)}
-      status={<PTOStatusBadge status={pto.status} />}
+      status={{ value: pto.status }}
       meta={[
         {
           label: 'Dates',
