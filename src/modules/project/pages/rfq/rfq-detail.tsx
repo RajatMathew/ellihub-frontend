@@ -1012,7 +1012,6 @@ export default function RFQDetailPage() {
 
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
-        backLabel="RFQs"
         title={rfq.title}
         status={
           <>

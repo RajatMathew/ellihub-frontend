@@ -28,7 +28,6 @@ export function ContactDetailToolbar({
 
   return (
     <DetailPageHeader
-      backLabel="Contacts"
       title={contactName}
       description={
         <span className="max-w-full break-words text-sm text-muted-foreground">

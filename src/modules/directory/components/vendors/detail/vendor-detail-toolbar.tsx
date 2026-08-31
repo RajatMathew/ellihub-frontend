@@ -25,8 +25,6 @@ export function VendorDetailToolbar({
 }: VendorDetailToolbarProps) {
   return (
     <DetailPageHeader
-      backLabel="Vendors"
-      backTo="../.."
       title={vendor.name}
       status={<StatusBadge label={VENDOR_STATUS_LABELS[vendor.status]} status={vendor.status} />}
       meta={[

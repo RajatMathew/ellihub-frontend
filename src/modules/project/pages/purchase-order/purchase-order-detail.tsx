@@ -432,8 +432,6 @@ export function PODetailPage() {
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
-        backLabel="Purchase Orders"
-        backTo={`/app/project/${projectId}/purchase-orders`}
         title={po.poNumber ?? 'Draft PO'}
         status={
           <>

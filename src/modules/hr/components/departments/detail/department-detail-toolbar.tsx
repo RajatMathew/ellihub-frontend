@@ -21,8 +21,6 @@ export function DepartmentDetailToolbar({
 
   return (
     <DetailPageHeader
-      backLabel="Departments"
-      backTo="../.."
       title={department.name}
       meta={[
         { label: 'Employees', value: employeeCount, icon: Users },

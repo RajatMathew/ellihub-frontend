@@ -26,7 +26,6 @@ export function PTODetailToolbar({
 
   return (
     <DetailPageHeader
-      backLabel="Time Off Requests"
       title={getPTOEmployeeName(pto)}
       status={<PTOStatusBadge status={pto.status} />}
       meta={[

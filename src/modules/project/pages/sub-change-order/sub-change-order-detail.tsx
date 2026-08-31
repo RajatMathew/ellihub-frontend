@@ -535,7 +535,6 @@ export function SCODetailPage() {
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
       <DetailPageHeader
-        backLabel="Sub Change Order"
         title={sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
         status={
           <>

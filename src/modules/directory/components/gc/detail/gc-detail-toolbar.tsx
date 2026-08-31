@@ -31,7 +31,6 @@ export function GCDetailToolbar({
 
   return (
     <DetailPageHeader
-      backLabel="General Contractors"
       title={gc.name}
       status={
         <>

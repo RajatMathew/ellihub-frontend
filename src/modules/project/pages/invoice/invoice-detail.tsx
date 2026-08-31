@@ -205,7 +205,6 @@ export function InvoiceDetailPage() {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       <DetailPageHeader
-        backLabel="Invoices"
         title={invoice.invoiceNumber ?? 'Invoice'}
         status={
           <>

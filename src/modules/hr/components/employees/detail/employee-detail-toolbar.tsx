@@ -17,7 +17,6 @@ export function EmployeeDetailToolbar({
 }: EmployeeDetailToolbarProps) {
   return (
     <DetailPageHeader
-      backLabel="Employees"
       title={employee.name}
       meta={[
         {
