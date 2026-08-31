@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Check, ChevronDown, Loader2, X } from 'lucide-react';
 
@@ -224,8 +224,28 @@ export function InfiniteMultiSearchSelect({
     }
   }, [open]);
 
+  /**
+   * The selection each toggle builds on.
+   *
+   * Not `value` directly, because a toggle can happen before the previous one
+   * has been committed back as a prop: selecting two options in quick succession
+   * runs both handlers against the same empty selection, and the second write
+   * drops the first choice. The parent cannot fix this — it has not re-rendered
+   * either — so the pending selection is held here and updated the moment it is
+   * emitted, then re-synced from the prop on every commit, which stays
+   * authoritative.
+   */
+  const valueRef = useRef(value);
+
+  useLayoutEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
   const emitValueChange = useCallback(
     (nextValue: string[]) => {
+      // Before the callbacks, so a second toggle in the same batch builds on
+      // this selection rather than on the one this component was rendered with.
+      valueRef.current = nextValue;
       onValueChange(nextValue);
       onOptionsChange?.(nextValue.map((optionValue) => resolveOption(optionValue)));
     },
@@ -244,13 +264,15 @@ export function InfiniteMultiSearchSelect({
         return next;
       });
 
+      const current = valueRef.current;
+
       emitValueChange(
-        value.includes(option.value)
-          ? value.filter((item) => item !== option.value)
-          : [...value, option.value]
+        current.includes(option.value)
+          ? current.filter((item) => item !== option.value)
+          : [...current, option.value]
       );
     },
-    [emitValueChange, value]
+    [emitValueChange]
   );
 
   return (

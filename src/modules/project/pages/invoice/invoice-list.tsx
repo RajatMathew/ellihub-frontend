@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
-import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
+import { useVendorMultiFilterOptions } from '@/modules/directory/hooks/vendors/use-vendor-multi-filter-options';
 import {
   InvoiceListHeader,
   InvoiceListStats,
@@ -15,7 +15,6 @@ import {
   useInvoiceListQuery,
   useInvoiceStatsQuery,
   usePurchaseOrderFilterOptions,
-  useVendorFilterOptions,
   type InvoiceFilterOptionsResult,
 } from '@/modules/project/hooks/invoice';
 import type { ListInvoiceParams } from '@/modules/project/schemas/invoice';
@@ -32,19 +31,24 @@ const noop = () => {};
 /**
  * A picker definition carrying its keys but no live data yet.
  *
- * The pickers cannot be built before the rows are on screen, because a picker's
- * trigger label is recovered from those rows — but the rows need the request
- * params, which need the schema. Declaring the keys up front breaks that cycle:
- * `useListState` only ever reads `key` and `apiKey`, and the live data is
- * attached afterwards for rendering through `DataTable`'s `filters` prop.
+ * The picker's own query cannot be built before `useListState` exists, because
+ * the selected ids it has to resolve labels for live in the URL state — but
+ * `useListState` needs the schema. Declaring the keys up front breaks that
+ * cycle: it only ever reads `key` and `apiKey`, and the live data is attached
+ * afterwards for rendering through `DataTable`'s `filters` prop.
+ *
+ * Both pickers take several values at once. The URL holds the comma-separated
+ * list the API's filters already accept; `state.listValues[key]` is the same
+ * value as an array.
  */
 function pickerShell(key: 'vendorId' | 'purchaseOrderId') {
   const isVendor = key === 'vendorId';
 
-  return f.infiniteSelect({
+  return f.infiniteMultiSelect({
     className: isVendor ? 'w-full sm:w-52' : 'w-full sm:w-56',
     emptyMessage: isVendor ? 'No vendors found.' : 'No purchase orders found.',
     key,
+    label: isVendor ? 'Vendors' : 'Purchase Orders',
     onSearchChange: noop,
     options: [],
     placeholder: isVendor ? 'All Vendors' : 'All Purchase Orders',
@@ -61,13 +65,11 @@ function withPickerData(
 ): ReturnType<typeof pickerShell> {
   return {
     ...shell,
-    hasNextPage: picker.hasNextPage,
-    isFetchingNextPage: picker.isFetchingNextPage,
-    isLoading: picker.isLoading,
+    ...picker,
+    // Clearing the filter clears the picker's own search box too — the URL knows
+    // nothing about it, so nothing else would.
     onClear: () => onSearchChange(''),
-    onFetchNextPage: picker.fetchNextPage,
     onSearchChange,
-    options: picker.options,
     search,
   };
 }
@@ -104,43 +106,18 @@ export function InvoiceListPage() {
   const statsQuery = useInvoiceStatsQuery(projectId);
 
   const listData = useMemo(() => invoicesQuery.data?.data ?? [], [invoicesQuery.data?.data]);
-  const vendorFilter = state.values.vendorId;
-  const purchaseOrderFilter = state.values.purchaseOrderId;
 
-  const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
-    if (!vendorFilter) return undefined;
-
-    const invoice = listData.find(
-      (item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter
-    );
-
-    return { label: invoice?.vendor?.name ?? vendorFilter, value: vendorFilter };
-  }, [listData, vendorFilter]);
-
-  const selectedPurchaseOrderOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
-    if (!purchaseOrderFilter) return undefined;
-
-    const invoice = listData.find(
-      (item) =>
-        item.purchaseOrderId === purchaseOrderFilter ||
-        item.purchaseOrder?.id === purchaseOrderFilter
-    );
-
-    return {
-      description: invoice?.vendor?.name ?? undefined,
-      label: invoice?.purchaseOrder?.poNumber ?? purchaseOrderFilter,
-      value: purchaseOrderFilter,
-    };
-  }, [listData, purchaseOrderFilter]);
-
-  const vendorPicker = useVendorFilterOptions({
+  // Labels come from each picker's own endpoint rather than from the rows: with
+  // several values selected, one of them may own no row on this page, and on a
+  // deep link none of them do.
+  const vendorPicker = useVendorMultiFilterOptions({
     search: vendorSearch,
-    selectedOption: selectedVendorOption,
+    selectedIds: state.listValues.vendorId ?? [],
   });
   const purchaseOrderPicker = usePurchaseOrderFilterOptions({
     projectId,
     search: purchaseOrderSearch,
-    selectedOption: selectedPurchaseOrderOption,
+    selectedIds: state.listValues.purchaseOrderId ?? [],
   });
 
   const renderFilters = useMemo(

@@ -10,6 +10,7 @@ import {
   TableCardHeaderTitle,
   TableCardHeaderTrailing,
 } from '@/app/components/table-card-header';
+import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
@@ -19,14 +20,17 @@ import { DataTableFilterChips } from './data-table-chips';
 import {
   DateRangeControl,
   DateRangePopoverControl,
+  MultiSelectControl,
   NumberRangeControl,
   SortSelectControl,
   ToggleGroupControl,
 } from './data-table-controls';
+import { parseMultiValue } from './filters';
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
 
 const ALL_VALUE = 'all';
+
 
 /**
  * Controls carry no colour here: the header stamps `data-surface="card-header"`
@@ -35,6 +39,18 @@ const ALL_VALUE = 'all';
  * width. See docs/table-consistency-plan.md, phase 1.
  */
 const dataTableFilterShadowClassName = 'shadow-xs shadow-black/10';
+
+/**
+ * The multi pickers need one addition to the above.
+ *
+ * Their selected values render as badges *on* the trigger rather than in the
+ * header, so they sit outside the `data-surface="card-header"` token scope and
+ * do not inherit its palette. Everything else about the control still does.
+ */
+const dataTableMultiFilterTriggerClassName = cn(
+  dataTableFilterShadowClassName,
+  '[&_[data-slot=badge]]:border-primary-alpha [&_[data-slot=badge]]:bg-primary-soft [&_[data-slot=badge]]:text-primary-soft-foreground'
+);
 
 /**
  * The order controls are rendered in, by kind.
@@ -47,7 +63,12 @@ const dataTableFilterShadowClassName = 'shadow-xs shadow-black/10';
 const CONTROL_ORDER: Record<string, number> = {
   search: 0,
   select: 1,
+  // Beside their single-value twins: whether a filter takes one value or several
+  // is a property of the filter, not a reason to move it in the row. A list that
+  // widens its vendor picker to multi must not have its header reshuffle.
+  multiSelect: 1,
   infiniteSelect: 2,
+  infiniteMultiSelect: 2,
   numberRange: 3,
   dateRange: 4,
   dateRangePopover: 4,
@@ -115,6 +136,7 @@ export function DataTableFilters<
     hasActiveFilters,
     rawValues,
     searchInput,
+    setFilterListValue,
     setFilterValue,
     setFilterValues,
     setSearchInput,
@@ -251,6 +273,52 @@ export function DataTableFilters<
                       onFetchNextPage={def.onFetchNextPage}
                       onSearchChange={def.onSearchChange}
                       onValueChange={(value) => setFilterValue(def.key, value ?? undefined)}
+                    />
+                  </div>
+                );
+              }
+
+              if (def.kind === 'multiSelect') {
+                // Same reason `select` does it: options usually arrive from
+                // their own query, and a skeleton holds the row's shape rather
+                // than flashing an empty control.
+                if (def.isLoading) {
+                  return (
+                    <Skeleton key={def.key} className={cn('h-8 w-full sm:w-52', def.className)} />
+                  );
+                }
+
+                return (
+                  <MultiSelectControl
+                    key={def.key}
+                    def={def}
+                    values={parseMultiValue(rawValues[def.key])}
+                    onChange={(values) => setFilterListValue(def.key, values)}
+                  />
+                );
+              }
+
+              if (def.kind === 'infiniteMultiSelect') {
+                return (
+                  <div className={def.className ?? 'w-full sm:w-52'} key={def.key}>
+                    <InfiniteMultiSearchSelect
+                      emptyMessage={def.emptyMessage ?? 'No results found.'}
+                      hasNextPage={def.hasNextPage}
+                      isFetchingNextPage={def.isFetchingNextPage}
+                      isLoading={def.isLoading}
+                      maxVisibleSelectedOptions={def.maxVisibleSelectedOptions}
+                      options={def.options}
+                      overflowLabel={def.overflowLabel}
+                      placeholder={def.placeholder}
+                      search={def.search}
+                      searchPlaceholder={def.searchPlaceholder ?? 'Search...'}
+                      selectedOptions={def.selectedOptions}
+                      size="toolbar"
+                      triggerClassName={dataTableMultiFilterTriggerClassName}
+                      value={parseMultiValue(rawValues[def.key])}
+                      onFetchNextPage={def.onFetchNextPage}
+                      onSearchChange={def.onSearchChange}
+                      onValueChange={(values) => setFilterListValue(def.key, values)}
                     />
                   </div>
                 );

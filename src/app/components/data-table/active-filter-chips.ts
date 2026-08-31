@@ -1,3 +1,4 @@
+import { isMultiFilter, parseMultiValue } from './filters';
 import type { AnyFilterDef } from './types';
 
 export interface ActiveFilterChip {
@@ -77,7 +78,7 @@ export function collectActiveFilterChips(
       id: def.key,
       keys: [def.key],
       label: filterLabel(def),
-      value: displayValue(def, raw),
+      value: isMultiFilter(def) ? multiDisplayValue(def, raw) : displayValue(def, raw),
     });
   }
 
@@ -86,7 +87,14 @@ export function collectActiveFilterChips(
 
 function filterLabel(def: AnyFilterDef<never>): string {
   if (def.label) return def.label;
-  if (def.kind === 'select' || def.kind === 'infiniteSelect') return def.placeholder;
+  if (
+    def.kind === 'select' ||
+    def.kind === 'infiniteSelect' ||
+    def.kind === 'multiSelect' ||
+    def.kind === 'infiniteMultiSelect'
+  ) {
+    return def.placeholder;
+  }
   return def.key;
 }
 
@@ -108,4 +116,24 @@ function displayValue(def: AnyFilterDef<never>, raw: string): string {
   }
 
   return raw;
+}
+
+/**
+ * One chip for a whole multi-value filter, not one per value.
+ *
+ * Two reasons. A filter with eight vendors would otherwise push every other
+ * chip — and the table — off the row; and per-value removal already exists,
+ * on the badges inside the control's own trigger. So the chip names the first
+ * selection and counts the rest, and removing it clears the filter, which is
+ * what every other chip in the row does.
+ */
+function multiDisplayValue(def: AnyFilterDef<never>, raw: string): string {
+  const values = parseMultiValue(raw);
+  if (values.length === 0) return raw;
+
+  const options =
+    def.kind === 'multiSelect' || def.kind === 'infiniteMultiSelect' ? def.options : [];
+  const first = optionLabel(options, values[0]!) ?? values[0]!;
+
+  return values.length === 1 ? first : `${first} +${values.length - 1}`;
 }

@@ -9,7 +9,10 @@ import {
   filterApiKey,
   filterUrlKeys,
   isClearableFilter,
+  isMultiFilter,
+  parseMultiValue,
   readFilterValue,
+  serializeMultiValue,
   writeFilterValue,
 } from './filters';
 import type {
@@ -36,6 +39,16 @@ export interface ListState<
    * iterate the schema without re-casting `values` at every call site.
    */
   rawValues: Record<string, string | undefined>;
+  /**
+   * Multi-value filters parsed into lists, keyed by filter key.
+   *
+   * The URL and `rawValues` hold the comma-separated string — the one shape both
+   * ends of the stack can carry, see `MultiSelectFilterBase`. This is the same
+   * data as a list, so a page never splits the string itself. Every multi filter
+   * in the schema has an entry; an unset one is an empty array, so a caller can
+   * read `.length` without a null check.
+   */
+  listValues: Record<string, string[]>;
   /** Draft search text. Debounced into the URL; never used for requests. */
   searchInput: string;
   /** Ready-to-spread request params, with `apiKey` renames and value conversion applied. */
@@ -51,6 +64,13 @@ export interface ListState<
   sortFields: readonly TField[];
   setSearchInput: (value: string) => void;
   setFilterValue: (key: string, value: string | undefined) => void;
+  /**
+   * Commits a multi-value filter from a list. Serializing is the kit's job, so
+   * a page hands the picker's `string[]` straight through. An empty list clears
+   * the filter, firing its `onClear` like any other clear would.
+   *
+   */
+  setFilterListValue: (key: string, values: readonly string[]) => void;
   /**
    * Commits several keys in one URL write. Required for anything owning more
    * than one key — two `setFilterValue` calls in a tick lose the first.
@@ -170,6 +190,16 @@ export function useListState<
   // The only cast in the hook. `rawValues` is assembled dynamically from the
   // schema, so its keys cannot be proven to TypeScript; the schema guarantees them.
   const values = rawValues as FilterValues<TDefs>;
+
+  const listValues = useMemo(() => {
+    const next: Record<string, string[]> = {};
+
+    for (const def of filters) {
+      if (isMultiFilter(def)) next[def.key] = parseMultiValue(rawValues[def.key]);
+    }
+
+    return next;
+  }, [filters, rawValues]);
 
   // Persistent controls — a view toggle, a sort select — live in the same row and
   // the same URL, but they are not filters. Counting them would light up Clear on
@@ -312,6 +342,11 @@ export function useListState<
     [filters, setSearchInput, updateParams]
   );
 
+  const setFilterListValue = useCallback(
+    (key: string, values: readonly string[]) => setFilterValue(key, serializeMultiValue(values)),
+    [setFilterValue]
+  );
+
   /**
    * Commits several filter keys in one URL write.
    *
@@ -366,10 +401,12 @@ export function useListState<
     filters,
     sortFields,
     hasActiveFilters,
+    listValues,
     page,
     rawValues,
     resetSort,
     searchInput,
+    setFilterListValue,
     setFilterValue,
     setFilterValues,
     setPage,

@@ -220,9 +220,9 @@ Every remaining bespoke header exists because a kind is missing. Add the kinds, 
 **Touches ~12 files, 2 deleted. Risk: medium — files is the sanctioned exception; re-verify its three
 render hatches.**
 
-- [ ] ⛔ `f.multiSelect` — plain and infinite-backed. Comma-joined URL value; participates in
-      `hasActiveFilters` and `clearFilters`. Today these filters live entirely outside the schema, so
-      they have no URL state at all **(B3)**
+- [x] `f.multiSelect` / `f.infiniteMultiSelect` — plain and infinite-backed. Comma-joined URL value;
+      participates in `hasActiveFilters` and `clearFilters`. Landed later than the rest of phase 3,
+      once purchase orders and invoices needed one — see below **(B3)**
 - [x] `f.dateRangePopover` — one trigger, presets, apply/clear. Replaces both the two-input
       `f.dateRange` and the files popover **(F3)**
 - [x] `f.toggleGroup` — view mode, scope toggles **(F3)**
@@ -267,7 +267,7 @@ the first table row. Files still renders its own body — that part was always t
 **`DataTableFilters` derives its own schema.** Modules pass `state` and, optionally, a live-data
 override. The one unavoidable cast lives in the kit rather than at each call site.
 
-### `f.multiSelect` deliberately not built ⛔
+### `f.multiSelect` — deferred here, built later ✅
 
 Its only would-be consumer is monthly-bills, and monthly-bills is not going onto `useListState`.
 
@@ -284,6 +284,32 @@ matrix editor — and belongs with Track C, not here. Its header controls did ge
 phase-2 treatment: the `!important` strings are gone and Clear is in the trailing slot.
 
 Build `f.multiSelect` the day a *paginated* list needs one.
+
+#### That day came ✅
+
+Purchase orders and invoices needed to filter by several vendors at once — both are paginated, both
+were already on `useListState`, so the kind was built to the shape this section specified: comma-joined
+URL value, full participation in `hasActiveFilters` and `clearFilters`. Two builders, `f.multiSelect`
+(fixed options, searched locally) and `f.infiniteMultiSelect` (paginated query), both rendering the
+`InfiniteMultiSearchSelect` that phase 1 had already built and only monthly-bills was using.
+
+Three things came out of it that the original entry did not anticipate:
+
+- **CSV is required, not chosen.** `useUrlParamPatch` writes with `URLSearchParams.set` and the API
+  reads with Hono's `c.req.query()` — the first cannot write a repeated param, the second returns only
+  the first value of one. Both ends had already independently landed on CSV (`csvNanoIdsSchema`,
+  `excludeIds`); the kind just made it a convention instead of a coincidence.
+- **The value stays a `string`.** Widening `rawValues` to `string | string[]` would have rippled through
+  `clearFilters`, `hasActiveFilters`, the chips and every `clientPredicate`. Instead `state.listValues`
+  exposes the parsed list beside the raw value, and `setFilterListValue` serializes on the way back.
+- **Selected labels cannot come from the rows.** The single-value pickers recovered their trigger label
+  by finding a matching row — which already broke on deep links, and breaks reliably once a selection
+  can contain a vendor that owns no row on this page. `useOptionsByIds` resolves them against the source
+  endpoint instead, which needed an `ids` filter on the vendor and purchase-order lists.
+
+**Monthly-bills is still not migrated** — the blocker above is unchanged, it runs on infinite scroll
+with no sort while `useListState` requires a sort config. It can now adopt the kind whenever that is
+resolved; the duplicated `tableHeaderMultiSelectTriggerClassName` it owns has moved into the kit.
 
 ### One judgement call to review
 

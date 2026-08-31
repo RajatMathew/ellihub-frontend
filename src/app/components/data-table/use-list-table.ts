@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table';
 
 import { createSelectionColumn, type ListSelectionConfig } from './data-table-selection';
+import { isMultiFilter, parseMultiValue } from './filters';
 import type { AnyFilterDef } from './types';
 import type { ListState } from './use-list-state';
 
@@ -21,8 +22,13 @@ import type { ListState } from './use-list-state';
  * its own value type. Reading the predicate off the union collapses its parameter
  * to `never` through contravariance, so predicates are collected through this
  * widened shape — the schema guarantees the value belongs to that filter.
+ *
+ * `string[]` is in the union for the multi kinds. Their URL value is a
+ * comma-separated string like every other filter's, but a predicate written
+ * against one wants the list, not the delimiter — so the split happens here,
+ * once, rather than in each predicate.
  */
-type ClientPredicate<TData> = (row: TData, value: string) => boolean;
+type ClientPredicate<TData> = (row: TData, value: string | string[]) => boolean;
 
 /**
  * The slice of a React Query result this hook needs. Kept structural so callers
@@ -150,13 +156,16 @@ export function useListTable<
   const { rawValues } = state;
 
   const filteredRows = useMemo(() => {
-    const active: { predicate: ClientPredicate<TData>; value: string }[] = [];
+    const active: { predicate: ClientPredicate<TData>; value: string | string[] }[] = [];
 
     for (const def of state.filters as readonly AnyFilterDef<TData>[]) {
-      const value = rawValues[def.key];
+      const raw = rawValues[def.key];
 
-      if (def.clientPredicate && value !== undefined) {
-        active.push({ predicate: def.clientPredicate as ClientPredicate<TData>, value });
+      if (def.clientPredicate && raw !== undefined) {
+        active.push({
+          predicate: def.clientPredicate as ClientPredicate<TData>,
+          value: isMultiFilter(def) ? parseMultiValue(raw) : raw,
+        });
       }
     }
 

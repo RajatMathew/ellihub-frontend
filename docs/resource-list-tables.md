@@ -48,6 +48,7 @@ Because the schema owns each filter's URL key, API key, parser and what counts a
 unset, `hasActiveFilters`, `clearFilters` and the request params are all derived. No
 module hand-maintains them.
 
+
 ## Filter kinds
 
 | Builder | Control |
@@ -58,7 +59,8 @@ module hand-maintains them.
 | `f.infiniteSelect` | Picker backed by its own paginated query. |
 | `f.dateRange` | From/to date pair behind one trigger. Two typed bounds. |
 | `f.hidden` | No control. Arrives by deep link, still reaches the request and `clearFilters`. |
-| `f.multiSelect` | Not built. No paginated list needs one yet — see the plan doc. |
+| `f.multiSelect` | Several values from a fixed option set. Searched in the browser. |
+| `f.infiniteMultiSelect` | Several values from a paginated query. The infinite twin of the above. |
 | `f.dateRangePopover` | The same trigger, with presets and a calendar. For picking dates visually. |
 | `f.toggleGroup` | Segmented single choice — a view mode, a short option set. |
 | `f.numberRange` | Min/max pair behind one trigger. Takes a `prefix` (`$`) and a `formatValue`. |
@@ -67,6 +69,44 @@ module hand-maintains them.
 
 Options shared by every kind: `apiKey`, `parse`, `serialize`, `toApiValue`,
 `defaultValue`, `clientPredicate`, `onClear`, `label`, `persistent`.
+
+## Multi-value filters
+
+A multi filter's URL value is a **comma-separated string**, not an array — and
+so is the value it sends. Two constraints force it and they meet in the middle:
+`useUrlParamPatch` writes with `URLSearchParams.set`, one value per key, so a
+repeated param cannot be written; and the API reads through Hono's
+`c.req.query()`, which returns only the *first* value of a repeated key, so a
+repeated param could not be read either.
+
+Keeping the value a string is also what lets the kinds drop into the schema
+untouched: `rawValues`, `clearFilters`, `hasActiveFilters` and the chips all keep
+working on `string | undefined`.
+
+Read the selection as a list off `state.listValues[key]`, and write it with
+`state.setFilterListValue(key, ids)` — the kit serializes:
+
+```tsx
+const vendorPicker = useVendorMultiFilterOptions({
+  search: vendorSearch,
+  selectedIds: state.listValues.vendorId ?? [],
+});
+```
+
+On the API side, name the key in `paginationMiddleware`'s `multiValueFields` and
+build the `where` with `idFilter` / `enumFilter` from `@utils/filters`. A single
+value still compiles to a scalar equality, so existing links keep working.
+
+**Selected labels come from the source, not the rows.** A single-value picker can
+recover its label from the rows on screen — the one vendor being filtered on owns
+every row. A multi-value one cannot: filter by three vendors and the third may own
+no row on this page, so its badge would read as a raw id, and on a deep link every
+badge would. Resolve them with `useOptionsByIds` against an endpoint that takes an
+`ids` filter, and pass the result as `selectedOptions`.
+
+Its chip names the first selection and counts the rest (`Acme Steel +2`), and
+removing it clears the filter. Per-value removal already exists on the badges
+inside the control's own trigger.
 
 `persistent` marks a control that lives in the filter row and the URL without
 being a filter — a view toggle, a sort select. `clearFilters` skips it and

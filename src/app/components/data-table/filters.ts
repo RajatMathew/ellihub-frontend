@@ -4,7 +4,9 @@ import type {
   DateRangeFilterDef,
   DateRangePopoverFilterDef,
   HiddenFilterDef,
+  InfiniteMultiSelectFilterDef,
   InfiniteSelectFilterDef,
+  MultiSelectFilterDef,
   NumberRangeFilterDef,
   SearchFilterDef,
   SelectFilterDef,
@@ -50,6 +52,18 @@ function infiniteSelect<TKey extends string, TData = unknown>(
   def: Omit<InfiniteSelectFilterDef<TKey, TData>, 'kind'>
 ): InfiniteSelectFilterDef<TKey, TData> {
   return { ...def, kind: 'infiniteSelect' };
+}
+
+function multiSelect<TKey extends string, TData = unknown>(
+  def: Omit<MultiSelectFilterDef<TKey, TData>, 'kind'>
+): MultiSelectFilterDef<TKey, TData> {
+  return { ...def, kind: 'multiSelect' };
+}
+
+function infiniteMultiSelect<TKey extends string, TData = unknown>(
+  def: Omit<InfiniteMultiSelectFilterDef<TKey, TData>, 'kind'>
+): InfiniteMultiSelectFilterDef<TKey, TData> {
+  return { ...def, kind: 'infiniteMultiSelect' };
 }
 
 function dateRange<TKey extends string, TData = unknown>(
@@ -107,7 +121,9 @@ export const f = {
   dateRange,
   dateRangePopover,
   hidden,
+  infiniteMultiSelect,
   infiniteSelect,
+  multiSelect,
   numberRange,
   search,
   select,
@@ -115,6 +131,43 @@ export const f = {
   tabs,
   toggleGroup,
 };
+
+/**
+ * Whether this filter holds several values in one comma-separated URL param.
+ *
+ * The kit branches on this rather than on each kind, so adding a third multi
+ * control does not mean revisiting `readFilterValue`, the chips and the
+ * client-side predicates.
+ */
+export function isMultiFilter(def: AnyFilterDef<never>): boolean {
+  return def.kind === 'multiSelect' || def.kind === 'infiniteMultiSelect';
+}
+
+/**
+ * Reads a multi filter's URL value as a list.
+ *
+ * Order is preserved and duplicates are dropped, so `?vendorId=a,,b,a` and
+ * `?vendorId=a,b` are the same selection — and, more usefully, the same React
+ * Query cache key.
+ */
+export function parseMultiValue(raw: string | undefined): string[] {
+  if (!raw) return [];
+
+  const seen = new Set<string>();
+
+  for (const entry of raw.split(',')) {
+    const trimmed = entry.trim();
+    if (trimmed) seen.add(trimmed);
+  }
+
+  return [...seen];
+}
+
+/** Writes a list back to its URL value. An empty selection drops the param. */
+export function serializeMultiValue(values: readonly string[]): string | undefined {
+  const joined = parseMultiValue(values.join(','));
+  return joined.length > 0 ? joined.join(',') : undefined;
+}
 
 /**
  * Every URL key a filter owns.
@@ -160,6 +213,12 @@ export function readFilterValue(
   if (parsed === undefined || parsed === '') return undefined;
   if (def.defaultValue !== undefined && parsed === def.defaultValue) return undefined;
 
+  // A multi filter is normalised on the way in as well as out, so a value typed
+  // or pasted into the address bar reaches the request in the one canonical
+  // form. Without this, `?vendorId=a,b` and `?vendorId=b,a,b` are the same
+  // filter but two React Query cache entries and two API round trips.
+  if (isMultiFilter(def)) return serializeMultiValue(parseMultiValue(parsed));
+
   return parsed;
 }
 
@@ -170,6 +229,15 @@ export function writeFilterValue(
 ): string | undefined {
   if (value === undefined || value === '') return undefined;
   if (def.defaultValue !== undefined && value === def.defaultValue) return undefined;
+
+  // Deselecting the last option leaves an empty list, which is "no filter" —
+  // not "match nothing". `serializeMultiValue` collapses it to `undefined` so
+  // the param is dropped rather than written as a bare `?vendorId=`.
+  if (isMultiFilter(def)) {
+    const normalized = serializeMultiValue(parseMultiValue(value));
+    if (normalized === undefined) return undefined;
+    return def.serialize ? def.serialize(normalized) : normalized;
+  }
 
   return def.serialize ? def.serialize(value) : value;
 }

@@ -262,8 +262,11 @@ export const listPOsParamsSchema = z.object({
   projectId: z.string().optional(),
   status: poStatusNameSchema.optional(),
   tradeCategoryId: z.string().optional(),
+  /** One id or a comma-separated list. */
   vendorId: z.string().optional(),
   rfqId: z.string().optional(),
+  /** Narrows to an explicit set. How a picker resolves labels for ids it has not paged to. */
+  ids: z.array(z.string()).optional(),
   search: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),

@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 
+import type { InfiniteMultiSearchSelectOption } from '@/app/components/ui/infinite-multi-search-select';
 import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
 import type { LucideProps } from 'lucide-react';
 
@@ -141,6 +142,81 @@ export interface InfiniteSelectFilterDef<
 }
 
 /**
+ * Shared by both multi-value pickers.
+ *
+ * A multi filter's value is a **comma-separated string**, not an array. Two
+ * constraints force it and they meet in the middle: `useUrlParamPatch` writes
+ * with `URLSearchParams.set`, one value per key, so a repeated param cannot be
+ * written; and the API's `paginationMiddleware` reads through Hono's
+ * `c.req.query()`, which returns only the *first* value of a repeated key, so a
+ * repeated param could not be read either. CSV is the shape both ends already
+ * agreed on before this kind existed — see `csvNanoIdsSchema` in the API.
+ *
+ * Keeping the value a string is also what lets these kinds drop into the
+ * existing schema untouched: `rawValues`, `clearFilters`, `hasActiveFilters` and
+ * the chips all keep working on `string | undefined`. Read the parsed list off
+ * `state.listValues[key]`, or with `parseMultiValue`.
+ */
+interface MultiSelectFilterBase<TKey extends string, TData>
+  extends FilterBase<TKey, string, TData> {
+  placeholder: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  /**
+   * Selected labels shown before the rest collapse into a `+N more` badge.
+   * Defaults to 1 — the trigger sits on a 32px header row and must not grow.
+   */
+  maxVisibleSelectedOptions?: number;
+  overflowLabel?: (count: number) => string;
+  isLoading?: boolean;
+  /** Width wrapper, e.g. `w-full sm:w-52`. */
+  className?: string;
+}
+
+/**
+ * A multi-value select over a fixed option set, searched in the browser.
+ *
+ * For options that arrive whole — a lookup table, an enum. When the option list
+ * is paginated, use `infiniteMultiSelect` instead.
+ */
+export interface MultiSelectFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends MultiSelectFilterBase<TKey, TData> {
+  kind: 'multiSelect';
+  options: FilterOption[];
+}
+
+/**
+ * A multi-value picker backed by its own paginated query.
+ *
+ * The infinite-scroll twin of `infiniteSelect`. Like it, the definition carries
+ * the query's state and callbacks rather than owning them.
+ */
+export interface InfiniteMultiSelectFilterDef<
+  TKey extends string = string,
+  TData = unknown,
+> extends MultiSelectFilterBase<TKey, TData> {
+  kind: 'infiniteMultiSelect';
+  options: InfiniteMultiSearchSelectOption[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onFetchNextPage?: () => void;
+  /**
+   * Labels for values the loaded pages do not contain.
+   *
+   * A single-value picker can recover its label from the rows on screen. A
+   * multi-value one cannot: filter by three vendors and the third may own no row
+   * on this page, so its badge would read as a raw id — and on a deep link, before
+   * the first page lands, every badge would. Resolve the selected ids against
+   * their own source and pass the results here.
+   */
+  selectedOptions?: InfiniteMultiSearchSelectOption[];
+}
+
+/**
  * A from/to pair owning two URL keys. `key` holds the start, `toKey` the end.
  */
 export interface DateRangeFilterDef<
@@ -271,6 +347,8 @@ export type AnyFilterDef<TData = unknown> =
   | SelectFilterDef<string, string, TData>
   | TabsFilterDef<string, string, TData>
   | InfiniteSelectFilterDef<string, TData>
+  | MultiSelectFilterDef<string, TData>
+  | InfiniteMultiSelectFilterDef<string, TData>
   | DateRangeFilterDef<string, TData>
   | DateRangePopoverFilterDef<string, TData>
   | ToggleGroupFilterDef<string, string, TData>

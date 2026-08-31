@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { RangeField, RangeFields, RangePopover } from '@/app/components/range-popover';
 import { Button } from '@/app/components/ui/button';
 import { Calendar } from '@/app/components/ui/calendar';
+import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import type { DateRange } from 'react-day-picker';
 import type {
   DateRangeFilterDef,
   DateRangePopoverFilterDef,
+  MultiSelectFilterDef,
   NumberRangeFilterDef,
   SortSelectFilterDef,
   ToggleGroupFilterDef,
@@ -26,6 +28,73 @@ import type {
 
 /** Shared with the other header controls so all of them sit on the same row. */
 const CONTROL_SHADOW = 'shadow-xs shadow-black/10';
+
+/**
+ * Selected values render as badges *on* the trigger rather than in the header,
+ * so they sit outside the `data-surface="card-header"` token scope and do not
+ * inherit its palette. Mirrors the constant in `data-table-filters`.
+ */
+const MULTI_CONTROL_TRIGGER = cn(
+  CONTROL_SHADOW,
+  '[&_[data-slot=badge]]:border-primary-alpha [&_[data-slot=badge]]:bg-primary-soft [&_[data-slot=badge]]:text-primary-soft-foreground'
+);
+
+interface MultiSelectControlProps {
+  def: MultiSelectFilterDef<string, never>;
+  values: string[];
+  onChange: (values: string[]) => void;
+}
+
+/**
+ * A multi-value select over a fixed option set.
+ *
+ * Its search box filters the options already in hand rather than issuing a
+ * request, which is the whole difference from `infiniteMultiSelect`. That local
+ * search is component state on purpose: it narrows what the open popover shows
+ * and means nothing once it closes, so putting it in the URL would leave a
+ * param behind that no longer describes the list.
+ */
+export function MultiSelectControl({ def, values, onChange }: MultiSelectControlProps) {
+  const [search, setSearch] = useState('');
+
+  const options = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return def.options;
+
+    return def.options.filter((option) => option.label.toLowerCase().includes(query));
+  }, [def.options, search]);
+
+  // Selected options survive the search filtering them out — the picker renders
+  // them regardless, so their badges keep their labels instead of falling back
+  // to raw ids while the user types.
+  const selectedOptions = useMemo(
+    () => def.options.filter((option) => values.includes(option.value)),
+    [def.options, values]
+  );
+
+  return (
+    <div className={def.className ?? 'w-full sm:w-52'}>
+      <InfiniteMultiSearchSelect
+        emptyMessage={def.emptyMessage ?? 'No results found.'}
+        isLoading={def.isLoading}
+        maxVisibleSelectedOptions={def.maxVisibleSelectedOptions}
+        options={options}
+        overflowLabel={def.overflowLabel}
+        placeholder={def.placeholder}
+        search={search}
+        searchPlaceholder={def.searchPlaceholder ?? 'Search...'}
+        // Options are already in hand, so there is nothing to debounce.
+        searchDebounceMs={0}
+        selectedOptions={selectedOptions}
+        size="toolbar"
+        triggerClassName={MULTI_CONTROL_TRIGGER}
+        value={values}
+        onSearchChange={setSearch}
+        onValueChange={onChange}
+      />
+    </div>
+  );
+}
 
 function toDateString(date: Date): string {
   const year = date.getFullYear();

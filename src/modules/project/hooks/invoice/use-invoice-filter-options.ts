@@ -1,127 +1,97 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useInfiniteQuery } from '@tanstack/react-query';
 
-import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
+import { useOptionsByIds, type ResolvedOption } from '@/app/hooks/use-options-by-ids';
 import { formatCurrency } from '@/app/lib/helpers';
-import { vendorsApi } from '@/modules/directory/api/vendors.api';
 import { poApi } from '@/modules/project/api/purchase-order';
-import type { POListItem } from '@/modules/project/schemas/purchase-order';
+import type { POListItem, POPaginatedResponse } from '@/modules/project/schemas/purchase-order';
 
-interface InvoiceFilterOptionsParams {
-  search: string;
-  selectedOption?: InfiniteSearchSelectOption;
-}
-
-interface PurchaseOrderFilterOptionsParams extends InvoiceFilterOptionsParams {
+interface PurchaseOrderFilterOptionsParams {
   projectId: string;
+  /** The picker's own search box. Not URL state — it means nothing once closed. */
+  search: string;
+  /** Currently selected purchase order ids, so their labels can be resolved. */
+  selectedIds: readonly string[];
 }
 
 export interface InvoiceFilterOptionsResult {
-  options: InfiniteSearchSelectOption[];
+  options: ResolvedOption[];
+  selectedOptions: ResolvedOption[];
   isLoading: boolean;
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
-  fetchNextPage: () => void;
+  onFetchNextPage: () => void;
 }
 
-function formatPurchaseOrderOption(po: POListItem): InfiniteSearchSelectOption {
+function toOption(po: POListItem): ResolvedOption {
   return {
-    value: po.id,
-    label: po.poNumber ?? po.id,
     description: [po.vendor?.name, po.total ? formatCurrency(Number(po.total)) : undefined]
       .filter(Boolean)
       .join(' - '),
+    label: po.poNumber ?? po.id,
+    value: po.id,
   };
 }
 
-export function useVendorFilterOptions({
-  search,
-  selectedOption,
-}: InvoiceFilterOptionsParams): InvoiceFilterOptionsResult {
-  const query = useInfiniteQuery({
-    queryKey: ['vendors', 'invoice-filter-picker', search],
-    queryFn: ({ pageParam }) =>
-      vendorsApi.list({
-        search: search || undefined,
-        page: pageParam,
-        limit: 25,
-        sortBy: 'name',
-        sortOrder: 'asc',
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
-  });
-
-  const options = useMemo(() => {
-    const next =
-      query.data?.pages.flatMap((page) =>
-        page.data.map((vendor) => ({
-          value: vendor.id,
-          label: vendor.name,
-          description: vendor.email ?? vendor.phone ?? undefined,
-        })),
-      ) ?? [];
-
-    if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
-      return [selectedOption, ...next];
-    }
-
-    return next;
-  }, [query.data?.pages, selectedOption]);
-
-  return {
-    options,
-    isLoading: query.isLoading,
-    isFetchingNextPage: query.isFetchingNextPage,
-    hasNextPage: !!query.hasNextPage,
-    fetchNextPage: () => {
-      void query.fetchNextPage();
-    },
-  };
-}
-
+/**
+ * The purchase-order picker behind the invoice list's multi-value filter.
+ *
+ * Its vendor twin lives in the directory module as `useVendorMultiFilterOptions`
+ * — vendors are filtered on from more than one list, purchase orders only from
+ * this one.
+ */
 export function usePurchaseOrderFilterOptions({
   projectId,
   search,
-  selectedOption,
+  selectedIds,
 }: PurchaseOrderFilterOptionsParams): InvoiceFilterOptionsResult {
   const query = useInfiniteQuery({
-    queryKey: ['purchase-orders', 'invoice-filter-picker', projectId, search],
+    enabled: !!projectId,
+    getNextPageParam: (lastPage: POPaginatedResponse) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+    initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       poApi.list({
+        page: pageParam,
         projectId,
         search: search || undefined,
-        page: pageParam,
         size: 25,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
-    enabled: !!projectId,
+    queryKey: ['purchase-orders', 'invoice-filter-picker', projectId, search],
   });
 
-  const options = useMemo(() => {
-    const next =
-      query.data?.pages.flatMap((page) => page.data.map(formatPurchaseOrderOption)) ?? [];
+  const options = useMemo<ResolvedOption[]>(
+    () => query.data?.pages.flatMap((page) => page.data.map(toOption)) ?? [],
+    [query.data?.pages]
+  );
 
-    if (selectedOption && !next.some((option) => option.value === selectedOption.value)) {
-      return [selectedOption, ...next];
-    }
+  const fetchByIds = useCallback(async (ids: string[]) => {
+    // One page wide enough for the whole selection: these are the *selected*
+    // purchase orders, so paginating them would leave badges unresolved. No
+    // `projectId` — a selected id is already scoped by how it was chosen.
+    const response = await poApi.list({ ids, page: 1, size: Math.max(ids.length, 1) });
+    return response.data;
+  }, []);
 
-    return next;
-  }, [query.data?.pages, selectedOption]);
+  const selectedOptions = useOptionsByIds({
+    fetchByIds,
+    ids: selectedIds,
+    known: options,
+    queryKey: ['purchase-orders', 'by-ids'],
+    toOption,
+  });
 
   return {
-    options,
-    isLoading: query.isLoading,
-    isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: !!query.hasNextPage,
-    fetchNextPage: () => {
+    isFetchingNextPage: query.isFetchingNextPage,
+    isLoading: query.isLoading,
+    onFetchNextPage: () => {
       void query.fetchNextPage();
     },
+    options,
+    selectedOptions,
   };
 }

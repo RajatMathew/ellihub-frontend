@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
-import type { InfiniteSearchSelectOption } from '@/app/components/ui/infinite-search-select';
+import { useVendorMultiFilterOptions } from '@/modules/directory/hooks/vendors/use-vendor-multi-filter-options';
 import {
   getPurchaseOrderRfqLabel,
   PurchaseOrderCancelDialog,
@@ -20,7 +20,6 @@ import {
   useCancelPOMutation,
   usePOsQuery,
   usePOStatsQuery,
-  usePurchaseOrderVendorFilterOptions,
 } from '@/modules/project/hooks/purchase-order';
 import type { ListPOsParams, POListItem } from '@/modules/project/schemas/purchase-order';
 import { ClipboardList, ListFilterPlus } from 'lucide-react';
@@ -33,14 +32,19 @@ const SEARCH_FILTER = f.search({ className: 'sm:w-60', placeholder: 'Search POs.
 
 /**
  * Declared without live data so `useListState` can produce the request params
- * before the vendor picker exists — the picker's trigger label is recovered from
- * the rows, which only arrive after the request. See invoice-list for the same
- * pattern.
+ * before the picker's own query runs — `useListState` reads only `key` here, and
+ * the options, search state and callbacks are attached below for rendering. See
+ * invoice-list for the same pattern.
+ *
+ * Several vendors at once: the value is the comma-separated list the API's
+ * `vendorId` filter already accepts, and `state.listValues.vendorId` is the same
+ * value as an array.
  */
-const VENDOR_SHELL = f.infiniteSelect({
+const VENDOR_SHELL = f.infiniteMultiSelect({
   className: 'w-full sm:w-52',
   emptyMessage: 'No vendors found.',
   key: 'vendorId',
+  label: 'Vendors',
   onSearchChange: noop,
   options: [],
   placeholder: 'All Vendors',
@@ -97,21 +101,13 @@ export default function ProjectPOs() {
     () => purchaseOrdersQuery.data?.data ?? [],
     [purchaseOrdersQuery.data?.data]
   );
-  const vendorFilter = state.values.vendorId;
 
-  const selectedVendorOption = useMemo<InfiniteSearchSelectOption | undefined>(() => {
-    if (!vendorFilter) return undefined;
-
-    const po = listData.find(
-      (item) => item.vendorId === vendorFilter || item.vendor?.id === vendorFilter
-    );
-
-    return { label: po?.vendor?.name ?? vendorFilter, value: vendorFilter };
-  }, [listData, vendorFilter]);
-
-  const vendorPicker = usePurchaseOrderVendorFilterOptions({
+  // Labels come from the vendors endpoint rather than from the rows: with
+  // several vendors selected, one of them may own no row on this page, and on a
+  // deep link none of them do.
+  const vendorPicker = useVendorMultiFilterOptions({
     search: vendorSearch,
-    selectedOption: selectedVendorOption,
+    selectedIds: state.listValues.vendorId ?? [],
   });
 
   const renderFilters = useMemo(
@@ -213,19 +209,17 @@ export default function ProjectPOs() {
 }
 
 function withVendorData(
-  picker: ReturnType<typeof usePurchaseOrderVendorFilterOptions>,
+  picker: ReturnType<typeof useVendorMultiFilterOptions>,
   search: string,
   onSearchChange: (value: string) => void
 ): typeof VENDOR_SHELL {
   return {
     ...VENDOR_SHELL,
-    hasNextPage: picker.hasNextPage,
-    isFetchingNextPage: picker.isFetchingNextPage,
-    isLoading: picker.isLoading,
+    ...picker,
+    // Clearing the filter clears the picker's own search box too — the URL knows
+    // nothing about it, so nothing else would.
     onClear: () => onSearchChange(''),
-    onFetchNextPage: picker.fetchNextPage,
     onSearchChange,
-    options: picker.options,
     search,
   };
 }

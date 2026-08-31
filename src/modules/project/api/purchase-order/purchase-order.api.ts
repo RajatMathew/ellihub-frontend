@@ -168,6 +168,7 @@ export const poApi = {
     if (params?.tradeCategoryId) query.tradeCategoryId = params.tradeCategoryId;
     if (params?.vendorId) query.vendorId = params.vendorId;
     if (params?.rfqId) query.rfqId = params.rfqId;
+    if (params?.ids?.length) query.ids = params.ids.join(',');
     if (params?.startDate) query.startDate = params.startDate;
     if (params?.endDate) query.endDate = params.endDate;
     if (params?.overdue) query.overdue = params.overdue;

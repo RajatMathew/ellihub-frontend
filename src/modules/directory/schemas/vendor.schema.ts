@@ -331,6 +331,8 @@ export const listVendorsParamsSchema = z.object({
   type: vendorTypeSchema.optional(),
   status: vendorStatusSchema.optional(),
   categoryTag: z.string().optional(),
+  /** Narrows to an explicit set. How a picker resolves labels for ids it has not paged to. */
+  ids: z.array(z.string()).optional(),
   excludeIds: z.array(z.string()).optional(),
   page: z.number().min(1).optional(),
   limit: z.number().min(1).optional(),
