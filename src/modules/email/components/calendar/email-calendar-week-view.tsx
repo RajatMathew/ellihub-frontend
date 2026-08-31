@@ -10,6 +10,7 @@ import {
   CalendarHourLines,
   CalendarHourRail,
   CalendarNowIndicator,
+  CalendarSlotLayer,
 } from '@/modules/email/components/calendar/email-calendar-grid-chrome';
 import { TimedEventBlock } from '@/modules/email/components/calendar/email-calendar-timed-block';
 import type { CalendarEvent } from '@/modules/email/components/calendar/email-calendar-types';
@@ -30,6 +31,8 @@ interface EmailCalendarWeekViewProps {
   onDuplicate: (event: CalendarEvent) => void;
   onDelete: (event: CalendarEvent) => void;
   onToggleDone: (event: CalendarEvent) => void;
+  /** Click-to-add: an empty-slot click opens the create dialog at that time. */
+  onCreateSlot?: (start: Date) => void;
 }
 
 export function EmailCalendarWeekView({
@@ -39,6 +42,7 @@ export function EmailCalendarWeekView({
   onDuplicate,
   onDelete,
   onToggleDone,
+  onCreateSlot,
 }: EmailCalendarWeekViewProps) {
   const weekStart = startOfWeek(cursor, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(cursor, { weekStartsOn: 0 });
@@ -72,6 +76,7 @@ export function EmailCalendarWeekView({
               onDuplicate={onDuplicate}
               onDelete={onDelete}
               onToggleDone={onToggleDone}
+              onCreateSlot={onCreateSlot}
             />
           ))}
         </div>
@@ -119,9 +124,18 @@ interface DayColumnProps {
   onDuplicate: (event: CalendarEvent) => void;
   onDelete: (event: CalendarEvent) => void;
   onToggleDone: (event: CalendarEvent) => void;
+  onCreateSlot?: (start: Date) => void;
 }
 
-function DayColumn({ day, events, onEdit, onDuplicate, onDelete, onToggleDone }: DayColumnProps) {
+function DayColumn({
+  day,
+  events,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  onToggleDone,
+  onCreateSlot,
+}: DayColumnProps) {
   const highlightToday = isToday(day);
   const laidOut = layoutOverlappingEvents(events);
 
@@ -134,6 +148,7 @@ function DayColumn({ day, events, onEdit, onDuplicate, onDelete, onToggleDone }:
       )}
     >
       <CalendarHourLines />
+      <CalendarSlotLayer day={day} onCreateSlot={onCreateSlot} />
 
       {highlightToday && <CalendarNowIndicator />}
 

@@ -10,6 +10,7 @@ import {
   CalendarHourLines,
   CalendarHourRail,
   CalendarNowIndicator,
+  CalendarSlotLayer,
 } from '@/modules/email/components/calendar/email-calendar-grid-chrome';
 import { TimedEventBlock } from '@/modules/email/components/calendar/email-calendar-timed-block';
 import type { CalendarEvent } from '@/modules/email/components/calendar/email-calendar-types';
@@ -22,6 +23,8 @@ interface EmailCalendarDayViewProps {
   onDuplicate: (event: CalendarEvent) => void;
   onDelete: (event: CalendarEvent) => void;
   onToggleDone: (event: CalendarEvent) => void;
+  /** Click-to-add: an empty-slot click opens the create dialog at that time. */
+  onCreateSlot?: (start: Date) => void;
 }
 
 export function EmailCalendarDayView({
@@ -31,6 +34,7 @@ export function EmailCalendarDayView({
   onDuplicate,
   onDelete,
   onToggleDone,
+  onCreateSlot,
 }: EmailCalendarDayViewProps) {
   const timed = events.filter((event) => !event.allDay && isSameDay(event.start, cursor));
   const laidOut = layoutOverlappingEvents(timed);
@@ -58,6 +62,7 @@ export function EmailCalendarDayView({
             className={cn('relative border-r border-border', highlightToday && 'bg-primary/[0.03]')}
           >
             <CalendarHourLines />
+            <CalendarSlotLayer day={cursor} onCreateSlot={onCreateSlot} />
 
             {highlightToday && <CalendarNowIndicator />}
 

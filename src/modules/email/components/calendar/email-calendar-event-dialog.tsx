@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -21,10 +22,36 @@ import {
 import { Switch } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
-import type { CalendarSelectionRow } from '@/modules/email/api';
-import type { CalendarEvent } from '@/modules/email/components/calendar/email-calendar-types';
-import { addMinutes, format, parse, startOfDay } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import type { CalendarRecurrenceOption, CalendarSelectionRow } from '@/modules/email/api';
+import {
+  CALENDAR_EVENT_STYLES,
+  colorForCalendar,
+  type CalendarEvent,
+} from '@/modules/email/components/calendar/email-calendar-types';
+import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay } from 'date-fns';
+import {
+  AlignLeft,
+  CalendarDays,
+  Clock,
+  Globe,
+  MapPin,
+  Repeat,
+  Trash2,
+  Video,
+  type LucideIcon,
+} from 'lucide-react';
+
+const BROWSER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+type RecurrenceValue = 'none' | CalendarRecurrenceOption;
+
+// Quiet chip/ghost field styles — fields sit flat until you reach for them,
+// so the title and schedule carry the visual weight. Everything is sized to a
+// compact 32px rhythm so the rows read as one dense block, not a form.
+const CHIP_FIELD =
+  'h-8 rounded-md border-transparent bg-muted/60 px-1.5 text-xs font-medium shadow-none transition-colors hover:bg-muted focus-visible:border-border focus-visible:bg-background focus-visible:ring-1';
+const GHOST_FIELD =
+  'h-8 rounded-md border-transparent bg-transparent px-2 text-sm shadow-none transition-colors hover:bg-muted/50 focus-visible:border-border focus-visible:bg-background focus-visible:ring-1';
 
 export type CalendarEventDialogSubmit =
   | {
@@ -36,6 +63,9 @@ export type CalendarEventDialogSubmit =
       end: Date;
       isAllDay: boolean;
       location?: string;
+      timeZone?: string;
+      isOnlineMeeting?: boolean;
+      recurrence?: CalendarRecurrenceOption;
     }
   | {
       mode: 'edit';
@@ -90,6 +120,10 @@ export function EmailCalendarEventDialog({
   const [allDay, setAllDay] = useState(seed.allDay);
   const [location, setLocation] = useState(seed.location);
   const [calendarId, setCalendarId] = useState<string>(seed.calendarId);
+  const [timeZone, setTimeZone] = useState<string>(BROWSER_TIME_ZONE);
+  const [showTimeZone, setShowTimeZone] = useState(false);
+  const [teamsMeeting, setTeamsMeeting] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceValue>('none');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -102,6 +136,10 @@ export function EmailCalendarEventDialog({
     setAllDay(seed.allDay);
     setLocation(seed.location);
     setCalendarId(seed.calendarId);
+    setTimeZone(BROWSER_TIME_ZONE);
+    setShowTimeZone(false);
+    setTeamsMeeting(false);
+    setRecurrence('none');
     setError(null);
   }, [open, seed]);
 
@@ -119,10 +157,19 @@ export function EmailCalendarEventDialog({
       setError('Choose which calendar this event lives in.');
       return;
     }
-    const start = allDay ? startOfDay(parseDate(date)) : combineDateTime(date, startTime);
+    // A custom zone reinterprets the entered wall time in that zone; the
+    // default path keeps the browser-local interpretation.
+    const usesCustomZone = !allDay && timeZone !== BROWSER_TIME_ZONE;
+    const start = allDay
+      ? startOfDay(parseDate(date))
+      : usesCustomZone
+        ? zonedWallTimeToUtc(date, startTime, timeZone)
+        : combineDateTime(date, startTime);
     const end = allDay
       ? addMinutes(startOfDay(parseDate(date)), 24 * 60)
-      : combineDateTime(date, endTime);
+      : usesCustomZone
+        ? zonedWallTimeToUtc(date, endTime, timeZone)
+        : combineDateTime(date, endTime);
     if (!allDay && end.getTime() <= start.getTime()) {
       setError('End time must be after start time.');
       return;
@@ -131,11 +178,15 @@ export function EmailCalendarEventDialog({
     const trimmedLocation = location.trim() || undefined;
 
     if (isEdit) {
+      // Only send the description when the user actually changed it. The
+      // pre-filled value can be a truncated preview of the stored body —
+      // echoing it back on an unrelated edit would overwrite the real text.
+      const descriptionChanged = description.trim() !== seed.description.trim();
       onSubmit(
         {
           mode: 'edit',
           subject: trimmed,
-          description: trimmedDescription,
+          description: descriptionChanged ? description.trim() : undefined,
           start,
           end,
           isAllDay: allDay,
@@ -154,6 +205,9 @@ export function EmailCalendarEventDialog({
           end,
           isAllDay: allDay,
           location: trimmedLocation,
+          timeZone: allDay ? undefined : timeZone,
+          isOnlineMeeting: teamsMeeting || undefined,
+          recurrence: recurrence === 'none' ? undefined : recurrence,
         },
         null
       );
@@ -163,114 +217,272 @@ export function EmailCalendarEventDialog({
   const activeCalendar = writableCalendars.find(
     (cal) => cal.aurinkoCalendarId === (isEdit ? event.calendarId : calendarId)
   );
+  const headline = buildHeadline(date, startTime, endTime, allDay);
+  // In edit mode, "Save changes" only means something once a field differs
+  // from what the event already says.
+  const isDirty =
+    subject !== seed.subject ||
+    description !== seed.description ||
+    date !== seed.date ||
+    startTime !== seed.startTime ||
+    endTime !== seed.endTime ||
+    allDay !== seed.allDay ||
+    location !== seed.location ||
+    calendarId !== seed.calendarId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-0 p-0">
-        <DialogHeader className="border-b border-border px-5 py-4">
-          <DialogTitle className="text-base">{isEdit ? 'Edit event' : 'New event'}</DialogTitle>
+      <DialogContent
+        className="max-w-lg gap-0 p-0"
+        // Radix focuses the first tabbable element on open, which puts a live
+        // caret in the title of an event the user only wants to READ. Keep
+        // that for create mode; suppress it for edit.
+        onOpenAutoFocus={(e) => {
+          if (isEdit) e.preventDefault();
+        }}
+      >
+        <DialogHeader className="gap-0.5 border-b border-border px-6 py-3.5">
+          <DialogTitle className="text-lg">{isEdit ? 'Edit event' : 'New event'}</DialogTitle>
+          {headline && (
+            // Live readback of the schedule — updates as the fields change so
+            // the header always says what you're about to put on the calendar.
+            <p className="text-xs font-medium tracking-wide text-muted-foreground">{headline}</p>
+          )}
         </DialogHeader>
         <form onSubmit={submit} className="flex min-h-0 flex-col">
-          <DialogBody className="grid gap-4 px-5 py-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="calendar-event-title">Title</Label>
+          <DialogBody className="flex flex-col gap-1.5 px-6 pb-4 pt-3">
+            {/* The title is the one thing every event needs — give it the stage. */}
+            <div className="mb-2">
+              <Label htmlFor="calendar-event-title" className="sr-only">
+                Title
+              </Label>
               <Input
                 id="calendar-event-title"
-                autoFocus
+                // Only a fresh event wants the caret waiting — an existing
+                // title reads as text until the user clicks into it.
+                autoFocus={!isEdit}
                 required
                 value={subject}
-                placeholder="What's on your calendar?"
+                placeholder="Add a title"
                 onChange={(e) => setSubject(e.target.value)}
+                className={cn(
+                  'h-10 rounded-none border-0 border-b bg-transparent px-0 text-lg font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-0',
+                  isEdit
+                    ? 'cursor-text border-transparent transition-colors hover:border-border'
+                    : 'border-border'
+                )}
               />
             </div>
 
-            {canPickCalendar ? (
-              <div className="grid gap-1.5">
-                <Label htmlFor="calendar-event-calendar">Calendar</Label>
-                <Select value={calendarId} onValueChange={setCalendarId}>
-                  <SelectTrigger id="calendar-event-calendar">
-                    <SelectValue placeholder="Pick a calendar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {writableCalendars.map((cal) => (
-                      <SelectItem key={cal.aurinkoCalendarId} value={cal.aurinkoCalendarId}>
-                        {cal.name}
-                        {cal.isPrimary ? ' · primary' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : isEdit && activeCalendar ? (
-              <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                Calendar: <span className="font-medium text-foreground">{activeCalendar.name}</span>
-              </div>
-            ) : null}
-
-            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2">
-              <div className="min-w-0">
-                <Label htmlFor="calendar-event-allday" className="text-sm font-medium">
-                  All day
+            <FieldRow icon={Clock}>
+              <div className="flex flex-nowrap items-center gap-1">
+                <Label htmlFor="calendar-event-date" className="sr-only">
+                  Date
                 </Label>
-                <p className="text-xs text-muted-foreground">Skip the timeline — spans the day.</p>
-              </div>
-              <Switch id="calendar-event-allday" checked={allDay} onCheckedChange={setAllDay} />
-            </div>
-
-            <div className={cn('grid gap-3', allDay ? 'grid-cols-1' : 'grid-cols-3')}>
-              <div className="grid gap-1.5">
-                <Label htmlFor="calendar-event-date">Date</Label>
                 <Input
                   id="calendar-event-date"
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
+                  className={cn(CHIP_FIELD, 'w-fit shrink-0')}
                 />
-              </div>
-              {!allDay && (
-                <>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="calendar-event-start">Start</Label>
+                {!allDay && (
+                  <>
+                    <Label htmlFor="calendar-event-start" className="sr-only">
+                      Start time
+                    </Label>
                     <Input
                       id="calendar-event-start"
                       type="time"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
+                      className={cn(CHIP_FIELD, 'w-fit shrink-0')}
                     />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="calendar-event-end">End</Label>
+                    <span aria-hidden="true" className="shrink-0 text-sm text-muted-foreground">
+                      –
+                    </span>
+                    <Label htmlFor="calendar-event-end" className="sr-only">
+                      End time
+                    </Label>
                     <Input
                       id="calendar-event-end"
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
+                      className={cn(CHIP_FIELD, 'w-fit shrink-0')}
                     />
-                  </div>
-                </>
+                  </>
+                )}
+                <label
+                  htmlFor="calendar-event-allday"
+                  className="ml-auto flex shrink-0 cursor-pointer items-center gap-1.5 pl-1 text-xs font-medium text-muted-foreground"
+                >
+                  All day
+                  <Switch id="calendar-event-allday" checked={allDay} onCheckedChange={setAllDay} />
+                </label>
+              </div>
+              {!isEdit && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <Label htmlFor="calendar-event-recurrence" className="sr-only">
+                    Repeats
+                  </Label>
+                  <Select
+                    value={recurrence}
+                    onValueChange={(value) => setRecurrence(value as RecurrenceValue)}
+                  >
+                    <SelectTrigger
+                      id="calendar-event-recurrence"
+                      className={cn(CHIP_FIELD, 'w-fit gap-1.5')}
+                    >
+                      <Repeat aria-hidden="true" className="size-3.5 text-muted-foreground" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recurrenceOptions(date).map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!allDay && (
+                    <button
+                      type="button"
+                      aria-label="Choose time zone"
+                      aria-pressed={showTimeZone}
+                      onClick={() => setShowTimeZone((value) => !value)}
+                      className={cn(
+                        'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                        (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
+                          'bg-muted text-foreground'
+                      )}
+                    >
+                      <Globe aria-hidden="true" className="size-4" />
+                    </button>
+                  )}
+                  {!allDay && showTimeZone && (
+                    <SearchableSelect
+                      options={TIME_ZONE_OPTIONS}
+                      value={timeZone}
+                      onValueChange={(value) => value && setTimeZone(value)}
+                      placeholder="Time zone"
+                      searchPlaceholder="Search time zones…"
+                      className="h-8 w-72 text-xs"
+                    />
+                  )}
+                </div>
               )}
-            </div>
+              {isEdit && event?.isRecurring && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Repeat aria-hidden="true" className="size-3 shrink-0" />
+                  Part of a repeating series — changes apply to this occurrence only.
+                </p>
+              )}
+            </FieldRow>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="calendar-event-location">Location</Label>
+            {(!isEdit || !!event?.onlineMeetingUrl) && (
+              <FieldRow icon={Video}>
+                {isEdit && event?.onlineMeetingUrl ? (
+                  <a
+                    href={event.onlineMeetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-8 w-fit items-center gap-1.5 rounded-md bg-muted/60 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Video aria-hidden="true" className="size-3.5" />
+                    Join Teams meeting
+                  </a>
+                ) : (
+                  <label
+                    htmlFor="calendar-event-teams"
+                    className="flex h-8 w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+                  >
+                    <Switch
+                      id="calendar-event-teams"
+                      checked={teamsMeeting}
+                      onCheckedChange={setTeamsMeeting}
+                    />
+                    Teams meeting
+                  </label>
+                )}
+              </FieldRow>
+            )}
+
+            <FieldRow icon={MapPin}>
+              <Label htmlFor="calendar-event-location" className="sr-only">
+                Location
+              </Label>
               <Input
                 id="calendar-event-location"
                 value={location}
-                placeholder="Zoom / Room / Address"
+                placeholder="Add a location"
                 onChange={(e) => setLocation(e.target.value)}
+                className={GHOST_FIELD}
               />
-            </div>
+            </FieldRow>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="calendar-event-description">Description</Label>
+            <FieldRow icon={AlignLeft} align="start">
+              <Label htmlFor="calendar-event-description" className="sr-only">
+                Description
+              </Label>
               <Textarea
                 id="calendar-event-description"
                 value={description}
-                placeholder="Optional notes, agenda, or dial-in details."
-                rows={3}
+                placeholder="Add notes, an agenda, or dial-in details"
+                rows={2}
                 onChange={(e) => setDescription(e.target.value)}
+                // field-sizing-content grows the box with the text (capped,
+                // then scrolls) so long agendas never cram into one line.
+                className={cn(
+                  GHOST_FIELD,
+                  'h-auto min-h-14 max-h-48 resize-none py-1.5 leading-5 field-sizing-content'
+                )}
               />
-            </div>
+            </FieldRow>
+
+            <FieldRow icon={CalendarDays}>
+              {canPickCalendar ? (
+                <>
+                  <Label htmlFor="calendar-event-calendar" className="sr-only">
+                    Calendar
+                  </Label>
+                  <Select value={calendarId} onValueChange={setCalendarId}>
+                    <SelectTrigger
+                      id="calendar-event-calendar"
+                      className={cn(CHIP_FIELD, 'w-fit gap-2')}
+                    >
+                      <SelectValue placeholder="Pick a calendar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {writableCalendars.map((cal) => (
+                        <SelectItem key={cal.aurinkoCalendarId} value={cal.aurinkoCalendarId}>
+                          <span className="flex items-center gap-2">
+                            <span
+                              aria-hidden="true"
+                              className={cn('size-2 shrink-0 rounded-full', calendarDotClass(cal))}
+                            />
+                            {cal.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <p className="flex h-8 items-center gap-2 px-2 text-sm text-foreground">
+                  {activeCalendar && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'size-2 shrink-0 rounded-full',
+                        calendarDotClass(activeCalendar)
+                      )}
+                    />
+                  )}
+                  {activeCalendar?.name ?? 'Calendar'}
+                </p>
+              )}
+            </FieldRow>
 
             {error && (
               <p
@@ -281,7 +493,7 @@ export function EmailCalendarEventDialog({
               </p>
             )}
           </DialogBody>
-          <DialogFooter className="flex items-center gap-2 border-t border-border px-5 py-3">
+          <DialogFooter className="flex items-center gap-2 border-t border-border px-6 py-3">
             {isEdit && onDelete && (
               <Button
                 type="button"
@@ -304,7 +516,12 @@ export function EmailCalendarEventDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" disabled={submitting || deleting}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={submitting || deleting || (isEdit && !isDirty)}
+            >
               {submitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create event'}
             </Button>
           </DialogFooter>
@@ -315,6 +532,66 @@ export function EmailCalendarEventDialog({
 }
 
 // --- helpers --------------------------------------------------------------
+
+/** Icon-led form row: a muted glyph on a shared left rail, the field beside it. */
+function FieldRow({
+  icon: Icon,
+  align = 'center',
+  children,
+}: {
+  icon: LucideIcon;
+  /** "start" for multi-line fields so the glyph pins to the first line. */
+  align?: 'center' | 'start';
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-[1.75rem_minmax(0,1fr)]',
+        align === 'center' ? 'items-center' : 'items-start'
+      )}
+    >
+      <Icon
+        aria-hidden="true"
+        className={cn('size-4 text-muted-foreground/60', align === 'start' && 'mt-2')}
+      />
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function calendarDotClass(row: CalendarSelectionRow): string {
+  return CALENDAR_EVENT_STYLES[
+    colorForCalendar({ aurinkoCalendarId: row.aurinkoCalendarId, isPrimary: row.isPrimary })
+  ].accent;
+}
+
+/**
+ * Header readback: "Tuesday, August 25 · 9:30 am – 10:30 am · 1h". Falls back
+ * gracefully while a field is mid-edit (cleared date, unparsable time).
+ */
+function buildHeadline(
+  date: string,
+  startTime: string,
+  endTime: string,
+  allDay: boolean
+): string | null {
+  const parsedDate = parseDate(date);
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  const day = format(parsedDate, 'EEEE, MMMM d');
+  if (allDay) return `${day} · all day`;
+  const start = parse(startTime, 'HH:mm', parsedDate);
+  const end = parse(endTime, 'HH:mm', parsedDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return day;
+  const span = `${format(start, 'h:mm a').toLowerCase()} – ${format(end, 'h:mm a').toLowerCase()}`;
+  const minutes = differenceInMinutes(end, start);
+  if (minutes <= 0) return `${day} · ${span}`;
+  const duration =
+    minutes >= 60
+      ? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ''}`
+      : `${minutes}m`;
+  return `${day} · ${span} · ${duration}`;
+}
 
 interface DialogSeed {
   subject: string;
@@ -336,7 +613,7 @@ function buildSeed(
   if (event) {
     return {
       subject: event.title,
-      description: '',
+      description: event.description ?? '',
       date: format(event.start, 'yyyy-MM-dd'),
       startTime: format(event.start, 'HH:mm'),
       endTime: format(event.end, 'HH:mm'),
@@ -351,16 +628,90 @@ function buildSeed(
     writableCalendars.find((cal) => cal.isPrimary)?.aurinkoCalendarId ??
     writableCalendars[0]?.aurinkoCalendarId ??
     '';
+  // A late-night start (23:30) would put the default one-hour end past
+  // midnight — the form only edits one date, so clamp to end of day.
+  const defaultEnd = addMinutes(base, 60);
   return {
     subject: '',
     description: '',
     date: format(base, 'yyyy-MM-dd'),
     startTime: format(base, 'HH:mm'),
-    endTime: format(addMinutes(base, 60), 'HH:mm'),
+    endTime: isSameDay(defaultEnd, base) ? format(defaultEnd, 'HH:mm') : '23:59',
     allDay: false,
     location: '',
     calendarId: fallbackCalendar,
   };
+}
+
+function recurrenceOptions(dateString: string): Array<{ value: RecurrenceValue; label: string }> {
+  const parsed = parseDate(dateString);
+  const valid = !Number.isNaN(parsed.getTime());
+  return [
+    { value: 'none', label: 'Does not repeat' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekdays', label: 'Every weekday' },
+    { value: 'weekly', label: valid ? `Weekly on ${format(parsed, 'EEEE')}` : 'Weekly' },
+    { value: 'monthly', label: valid ? `Monthly on day ${format(parsed, 'd')}` : 'Monthly' },
+    { value: 'yearly', label: valid ? `Yearly on ${format(parsed, 'MMMM d')}` : 'Yearly' },
+  ];
+}
+
+function zoneOffsetLabel(timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(new Date());
+    return parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
+  } catch {
+    return '';
+  }
+}
+
+const TIME_ZONE_OPTIONS = (() => {
+  try {
+    return Intl.supportedValuesOf('timeZone').map((timeZone) => ({
+      value: timeZone,
+      label: `${timeZone.replace(/_/g, ' ')} (${zoneOffsetLabel(timeZone)})`,
+    }));
+  } catch {
+    return [{ value: 'UTC', label: 'UTC' }];
+  }
+})();
+
+/** Wall time of a UTC instant in a zone, as UTC-parsed millis for diffing. */
+function wallTimeMillis(utcMillis: number, timeZone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+      .formatToParts(new Date(utcMillis))
+      .map((part) => [part.type, part.value])
+  );
+  const hour = parts.hour === '24' ? '00' : parts.hour;
+  return Date.parse(
+    `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}:${parts.second}Z`
+  );
+}
+
+/**
+ * The UTC instant at which the given wall-clock time occurs in `timeZone`.
+ * Guess-and-correct via Intl; the second pass settles DST boundary cases.
+ */
+function zonedWallTimeToUtc(dateString: string, timeString: string, timeZone: string): Date {
+  const target = Date.parse(`${dateString}T${timeString}:00Z`);
+  let utc = target;
+  for (let pass = 0; pass < 2; pass += 1) {
+    utc += target - wallTimeMillis(utc, timeZone);
+  }
+  return new Date(utc);
 }
 
 function parseDate(dateString: string): Date {

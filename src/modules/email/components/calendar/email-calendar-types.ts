@@ -12,8 +12,13 @@ export interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
+  description?: string;
   location?: string;
   organizer?: string;
+  /** Teams (or other provider) join link, when the event is an online meeting. */
+  onlineMeetingUrl?: string;
+  /** Part of a recurring series (occurrence or master). */
+  isRecurring?: boolean;
   color: CalendarEventColor;
   /** Full-day banner (spans the top row on week/day, whole cell on month). */
   allDay?: boolean;
@@ -156,7 +161,10 @@ export function toCalendarEvent(
     title: record.subject ?? '(No subject)',
     start,
     end: Number.isNaN(end.getTime()) ? start : end,
+    description: record.description ?? undefined,
     location: record.location ?? undefined,
+    onlineMeetingUrl: record.onlineMeetingUrl ?? undefined,
+    isRecurring: record.isRecurring ?? false,
     organizer: record.organizer?.name ?? record.organizer?.email ?? undefined,
     color: row
       ? colorForCalendar({ aurinkoCalendarId: row.aurinkoCalendarId, isPrimary: row.isPrimary })
