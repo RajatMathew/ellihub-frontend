@@ -1,15 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
+import { DetailPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { StatusBadge } from '@/app/components/status-badge';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -21,13 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { InfiniteMultiSearchSelect } from '@/app/components/ui/infinite-multi-search-select';
@@ -119,7 +106,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 type RFQMutableStatusName = 'DRAFT' | 'PUBLISHED';
@@ -452,7 +439,6 @@ export default function RFQDetailPage() {
   const canUnawardRfq = projectActions?.rfq?.unaward === true;
   const canVoidRfq = projectActions?.rfq?.void === true && (isPublished || isAwarded);
   const canDeleteDraftRfq = projectActions?.rfq?.delete === true && isDraft;
-  const canUseRfqActions = !isTerminal && (canVoidRfq || canDeleteDraftRfq);
   const canCreatePurchaseOrder = projectActions?.purchaseOrder?.create === true && isAwarded;
   const canEmailVendors = can('mail', 'send');
   const canSaveVendorPdf = projectActions?.rfq?.update === true;
@@ -1025,117 +1011,82 @@ export default function RFQDetailPage() {
       />
 
       {/* ---- Toolbar ---- */}
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-normal text-muted-foreground uppercase">
-              <Link to=".." relative="path" className="hover:text-foreground">
-                Back to RFQs
-              </Link>
-            </div>
-            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
-              <ToolbarPageTitle>{rfq.title}</ToolbarPageTitle>
-              {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
-                <Select
-                  disabled={updateStatusMutation.isPending}
-                  value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
-                  onValueChange={(statusId) => {
-                    if (statusId !== (statusObj?.id || rfq.status)) {
-                      const selectedStatus = draftPublishedStatuses.find(
-                        (status) => status.id === statusId
-                      );
-                      if (selectedStatus) {
-                        updateStatusMutation.mutate({
-                          id: rfqId,
-                          statusName: selectedStatus.name,
-                        });
-                      }
+      <DetailPageHeader
+        backLabel="RFQs"
+        title={rfq.title}
+        status={
+          <>
+            {rfq.status && canChangeDraftPublishedState && draftPublishedStatuses.length > 0 ? (
+              <Select
+                disabled={updateStatusMutation.isPending}
+                value={statusObj?.id || (typeof rfq.status === 'string' ? rfq.status : '')}
+                onValueChange={(statusId) => {
+                  if (statusId !== (statusObj?.id || rfq.status)) {
+                    const selectedStatus = draftPublishedStatuses.find(
+                      (status) => status.id === statusId
+                    );
+                    if (selectedStatus) {
+                      updateStatusMutation.mutate({ id: rfqId, statusName: selectedStatus.name });
                     }
-                  }}
-                >
-                  <SelectTrigger className="h-8 min-w-24 bg-transparent border-none p-0 focus:ring-0">
-                    <StatusBadge label={statusObj?.label || statusName} status={statusName} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {draftPublishedStatuses.map((status) => (
-                      <SelectItem key={status.id} value={status.id}>
-                        {status.label ?? status.name ?? status.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : rfq.status ? (
-                <StatusBadge label={statusObj?.label || statusName} status={statusName} />
-              ) : null}
-              {rfq.rfqNumber && (
-                <span className="text-sm text-muted-foreground">RFQ #{rfq.rfqNumber}</span>
-              )}
-            </div>
-          </ToolbarHeading>
-          <ToolbarActions>
-            {canEditRfq && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit
-                </Link>
-              </Button>
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 min-w-24 border-none bg-transparent p-0 focus:ring-0">
+                  <StatusBadge label={statusObj?.label || statusName} status={statusName} />
+                </SelectTrigger>
+                <SelectContent>
+                  {draftPublishedStatuses.map((status) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.label ?? status.name ?? status.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : rfq.status ? (
+              <StatusBadge label={statusObj?.label || statusName} status={statusName} />
+            ) : null}
+            {rfq.rfqNumber && (
+              <span className="text-sm text-muted-foreground">RFQ #{rfq.rfqNumber}</span>
             )}
-            {canPublishRfq && (
-              <Button size="sm" onClick={() => setPublishOpen(true)}>
-                <Send className="size-4" />
-                Publish
-              </Button>
-            )}
-            {canAwardRfq && (isPublished || isEvaluation) && quotes.length > 0 && (
-              <Button size="sm" onClick={() => setAwardOpen(true)}>
-                <Trophy className="size-4" />
-                Award
-              </Button>
-            )}
-
-            {canUseRfqActions && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Actions
-                    <ChevronDown className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {canVoidRfq && (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => {
-                        setCancelReason('');
-                        setCancelOpen(true);
-                      }}
-                    >
-                      Void RFQ
-                    </DropdownMenuItem>
-                  )}
-                  {canDeleteDraftRfq && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
-                        <Trash2 className="size-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {!sidebarOpen && (
-              <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
-                <PanelRightOpen className="size-4" />
-                Details
-              </Button>
-            )}
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+          </>
+        }
+        actions={[
+          { label: 'Edit', icon: Pencil, to: 'edit', enabled: canEditRfq },
+          {
+            label: 'Publish',
+            icon: Send,
+            placement: 'primary',
+            onClick: () => setPublishOpen(true),
+            enabled: canPublishRfq,
+          },
+          {
+            label: 'Award',
+            icon: Trophy,
+            placement: 'primary',
+            onClick: () => setAwardOpen(true),
+            enabled: [canAwardRfq, isPublished || isEvaluation, quotes.length > 0],
+          },
+          {
+            label: 'Void RFQ',
+            placement: 'overflow',
+            destructive: true,
+            enabled: canVoidRfq,
+            onClick: () => {
+              setCancelReason('');
+              setCancelOpen(true);
+            },
+          },
+          {
+            label: 'Delete',
+            icon: Trash2,
+            placement: 'overflow',
+            destructive: true,
+            onClick: () => setDeleteOpen(true),
+            enabled: canDeleteDraftRfq,
+          },
+        ]}
+        panel={{ open: sidebarOpen, onOpen: () => setSidebarOpen(true), label: 'Details' }}
+      />
 
       {/* ---- Two-column layout ---- */}
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">

@@ -1,14 +1,8 @@
-import { StatusBadge } from '@/app/components/status-badge';
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { DetailPageHeader } from '@/app/components/page-header';
+import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -20,12 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
@@ -92,8 +80,6 @@ import {
   ExternalLink,
   FileText,
   Mail,
-  MoreHorizontal,
-  PanelRightOpen,
   Pencil,
   ShieldAlert,
   Truck,
@@ -387,7 +373,6 @@ export function PODetailPage() {
     projectActions?.purchaseOrder?.deliver === true && isIssued && !isDelivered;
   const canCreateSCO = projectActions?.subChangeOrder?.create === true && isIssued;
   const canEmailPO = can('mail', 'send') && (isIssued || isDelivered);
-  const canUseActionsMenu = canEdit || canCancel;
 
   const isOverdue =
     !!po?.expectedDate &&
@@ -446,128 +431,72 @@ export function PODetailPage() {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-normal text-muted-foreground uppercase">
+      <DetailPageHeader
+        backLabel="Purchase Orders"
+        backTo={`/app/project/${projectId}/purchase-orders`}
+        title={po.poNumber ?? 'Draft PO'}
+        status={
+          <>
+            {po.rfqId && (
               <Link
-                to={`/app/project/${projectId}/purchase-orders`}
-                className="hover:text-foreground"
+                to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
+                className="text-xs text-primary hover:underline"
               >
-                Purchase Orders
+                {readableRfq}
               </Link>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <ToolbarPageTitle>{po.poNumber ?? 'Draft PO'}</ToolbarPageTitle>
-              {po.rfqId && (
-                <Link
-                  to={`/app/project/${projectId}/rfqs/${po.rfqId}`}
-                  className="text-xs text-primary hover:underline"
-                >
-                  {readableRfq}
-                </Link>
-              )}
-              {po.status && <StatusBadge label={po.status.label} status={statusName} />}
-              <FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />
-              {po.tradeCategory && (
-                <Badge
-                  variant={TRADE_CATEGORY_BADGE_VARIANTS[po.tradeCategory] ?? 'primary'}
-                  appearance="outline"
-                  size="sm"
-                >
-                  {tradeLabel}
-                </Badge>
-              )}
-              {isOverdue && (
-                <Badge variant="destructive" size="sm">
-                  <AlertTriangle className="size-3" />
-                  Overdue
-                </Badge>
-              )}
-            </div>
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Button variant="outline" size="sm" onClick={openPdfOptions}>
-              <FileText className="size-4" />
-              Generate PDF
-            </Button>
-            {canEmailPO && (
-              <Button variant="outline" size="sm" onClick={openEmailFlow}>
-                <Mail className="size-4" />
-                Email PO
-              </Button>
             )}
-            {canIssue && (
-              <Button size="sm" onClick={() => setIssueOpen(true)}>
-                <CheckCircle2 className="size-4" />
-                Issue PO
-              </Button>
-            )}
-            {canRecordDelivery && (
-              <Button
-                variant="outline"
+            {po.status && <StatusBadge label={po.status.label} status={statusName} />}
+            <FeatureEmailSentBadge sentAt={po.sentAt} log={po.latestEmailLog} />
+            {po.tradeCategory && (
+              <Badge
+                variant={TRADE_CATEGORY_BADGE_VARIANTS[po.tradeCategory] ?? 'primary'}
+                appearance="outline"
                 size="sm"
-                onClick={() => {
-                  setDeliveryDate(new Date().toISOString().slice(0, 10));
-                  setDeliveryOpen(true);
-                }}
               >
-                <Truck className="size-4" />
-                Mark Delivered
-              </Button>
+                {tradeLabel}
+              </Badge>
             )}
-            {canEdit && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit
-                </Link>
-              </Button>
+            {isOverdue && (
+              <Badge variant="destructive" size="sm">
+                <AlertTriangle className="size-3" />
+                Overdue
+              </Badge>
             )}
-            {canUseActionsMenu && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    mode="icon"
-                    aria-label="Purchase order actions"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {canEdit && (
-                    <DropdownMenuItem asChild>
-                      <Link to="edit">
-                        <Pencil className="size-4" />
-                        Edit
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {canCancel && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setCancelReason('');
-                        setCancelOpen(true);
-                      }}
-                    >
-                      <XCircle className="size-4" />
-                      Cancel PO
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            {!sidebarOpen && (
-              <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
-                <PanelRightOpen className="size-4" />
-                Details
-              </Button>
-            )}
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+          </>
+        }
+        actions={[
+          { label: 'Generate PDF', icon: FileText, onClick: openPdfOptions },
+          { label: 'Email PO', icon: Mail, onClick: openEmailFlow, enabled: canEmailPO },
+          {
+            label: 'Issue PO',
+            icon: CheckCircle2,
+            placement: 'primary',
+            onClick: () => setIssueOpen(true),
+            enabled: canIssue,
+          },
+          {
+            label: 'Mark Delivered',
+            icon: Truck,
+            enabled: canRecordDelivery,
+            onClick: () => {
+              setDeliveryDate(new Date().toISOString().slice(0, 10));
+              setDeliveryOpen(true);
+            },
+          },
+          { label: 'Edit', icon: Pencil, to: 'edit', enabled: canEdit },
+          {
+            label: 'Cancel PO',
+            icon: XCircle,
+            placement: 'overflow',
+            enabled: canCancel,
+            onClick: () => {
+              setCancelReason('');
+              setCancelOpen(true);
+            },
+          },
+        ]}
+        panel={{ open: sidebarOpen, onOpen: () => setSidebarOpen(true), label: 'Details' }}
+      />
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">

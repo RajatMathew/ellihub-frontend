@@ -1,13 +1,7 @@
 import { useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { DetailPageHeader } from '@/app/components/page-header';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -19,12 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { Field, FieldError, FieldLabel } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import { Separator } from '@/app/components/ui/separator';
@@ -68,8 +56,6 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle2,
-  MoreHorizontal,
-  PanelRightOpen,
   Pencil,
   RefreshCcw,
   Upload,
@@ -182,7 +168,6 @@ export function InvoiceDetailPage() {
     },
   });
 
-
   if (isLoading) {
     return <ProjectDetailPageLoading />;
   }
@@ -219,123 +204,73 @@ export function InvoiceDetailPage() {
 
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              <Link to=".." relative="path" className="hover:text-foreground">
-                Invoices
-              </Link>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <ToolbarPageTitle>{invoice.invoiceNumber ?? 'Invoice'}</ToolbarPageTitle>
-              <Badge variant={isPaid ? 'success' : 'warning'} appearance="outline" size="sm">
-                {isPaid ? 'Paid' : 'Unpaid'}
+      <DetailPageHeader
+        backLabel="Invoices"
+        title={invoice.invoiceNumber ?? 'Invoice'}
+        status={
+          <>
+            <Badge variant={isPaid ? 'success' : 'warning'} appearance="outline" size="sm">
+              {isPaid ? 'Paid' : 'Unpaid'}
+            </Badge>
+            {isDisputed && (
+              <Badge variant="destructive" appearance="outline" size="sm">
+                Disputed
               </Badge>
-              {isDisputed && (
-                <Badge variant="destructive" appearance="outline" size="sm">
-                  Disputed
-                </Badge>
-              )}
-              {isPastDue && (
-                <Badge variant="destructive" appearance="outline" size="sm">
-                  Past Due
-                </Badge>
-              )}
-            </div>
-          </ToolbarHeading>
-          <ToolbarActions>
-            {canMarkInvoicePaid && !isPaid && (
-              <Button
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => {
-                  markPaidForm.reset({
-                    paidDate: getTodayDateInputValue(),
-                  });
-                  setMarkPaidOpen(true);
-                }}
-              >
-                <CheckCircle2 className="size-4" />
-                Mark Paid
-              </Button>
             )}
-            {canMarkInvoiceUnpaid && isPaid && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => setMarkUnpaidOpen(true)}
-              >
-                <RefreshCcw className="size-4" />
-                Mark Unpaid
-              </Button>
+            {isPastDue && (
+              <Badge variant="destructive" appearance="outline" size="sm">
+                Past Due
+              </Badge>
             )}
-            {canDisputeInvoice && !isDisputed && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => {
-                  setDisputeReason('');
-                  setDisputeOpen(true);
-                }}
-              >
-                <AlertTriangle className="size-4" />
-                Dispute
-              </Button>
-            )}
-            {canResolveInvoiceDispute && isDisputed && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() => setResolveOpen(true)}
-              >
-                <XCircle className="size-4" />
-                Resolve Dispute
-              </Button>
-            )}
-            {canEditInvoice && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit
-                </Link>
-              </Button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon" aria-label="Invoice actions">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                {canEditInvoice && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canEditInvoice && invoiceUploadFolderId && (
-                  <DropdownMenuItem onClick={() => setUploadOpen(true)}>
-                    <Upload className="size-4" />
-                    Upload Document
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {!sidebarOpen && (
-              <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
-                <PanelRightOpen className="size-4" />
-                Details
-              </Button>
-            )}
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+          </>
+        }
+        actions={[
+          {
+            label: 'Mark Paid',
+            icon: CheckCircle2,
+            placement: 'primary',
+            disabled: isActionPending,
+            enabled: [canMarkInvoicePaid, !isPaid],
+            onClick: () => {
+              markPaidForm.reset({ paidDate: getTodayDateInputValue() });
+              setMarkPaidOpen(true);
+            },
+          },
+          {
+            label: 'Mark Unpaid',
+            icon: RefreshCcw,
+            disabled: isActionPending,
+            enabled: [canMarkInvoiceUnpaid, isPaid],
+            onClick: () => setMarkUnpaidOpen(true),
+          },
+          {
+            label: 'Dispute',
+            icon: AlertTriangle,
+            disabled: isActionPending,
+            enabled: [canDisputeInvoice, !isDisputed],
+            onClick: () => {
+              setDisputeReason('');
+              setDisputeOpen(true);
+            },
+          },
+          {
+            label: 'Resolve Dispute',
+            icon: XCircle,
+            disabled: isActionPending,
+            enabled: [canResolveInvoiceDispute, isDisputed],
+            onClick: () => setResolveOpen(true),
+          },
+          { label: 'Edit', icon: Pencil, to: 'edit', enabled: canEditInvoice },
+          {
+            label: 'Upload Document',
+            icon: Upload,
+            placement: 'overflow',
+            enabled: [canEditInvoice, Boolean(invoiceUploadFolderId)],
+            onClick: () => setUploadOpen(true),
+          },
+        ]}
+        panel={{ open: sidebarOpen, onOpen: () => setSidebarOpen(true), label: 'Details' }}
+      />
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
@@ -396,9 +331,7 @@ export function InvoiceDetailPage() {
                       Invoice Alert
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">
-                    Dispute Reason
-                  </h3>
+                  <h3 className="text-lg font-bold text-foreground">Dispute Reason</h3>
                   <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                     {invoice.disputeReason}
                   </p>

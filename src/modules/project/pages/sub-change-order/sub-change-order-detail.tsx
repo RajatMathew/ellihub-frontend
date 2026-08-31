@@ -1,15 +1,9 @@
-import { StatusBadge } from '@/app/components/status-badge';
 import { useMemo, useState } from 'react';
 
 import { DetailSidebar } from '@/app/components/detail-sidebar';
 import { DetailTable } from '@/app/components/detail-table';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
+import { DetailPageHeader } from '@/app/components/page-header';
+import { StatusBadge } from '@/app/components/status-badge';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -79,7 +73,6 @@ import {
   ExternalLink,
   FileText,
   Mail,
-  PanelRightOpen,
   Pencil,
   ShieldAlert,
   Trash2,
@@ -541,110 +534,63 @@ export function SCODetailPage() {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
       {/* ---- Toolbar ---- */}
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-normal text-muted-foreground uppercase">
-              <Link to=".." relative="path" className="hover:text-foreground">
-                Sub Change Order
-              </Link>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <ToolbarPageTitle>
-                {sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
-              </ToolbarPageTitle>
-              {sco.status && <StatusBadge label={statusLabel} status={statusName} />}
-              <FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />
-              {sco.changeType && (
-                <Badge variant="primary" appearance="outline" size="sm">
-                  {lookupLabel(sco.changeType)}
-                </Badge>
-              )}
-            </div>
-          </ToolbarHeading>
-          <ToolbarActions>
-            <Button variant="outline" size="sm" onClick={openPdfOptions}>
-              <FileText className="size-4" />
-              Generate PDF
-            </Button>
-            {canEmailSCO && (
-              <Button variant="outline" size="sm" onClick={openEmailFlow}>
-                <Mail className="size-4" />
-                Email SCO
-              </Button>
+      <DetailPageHeader
+        backLabel="Sub Change Order"
+        title={sco.scoNumber ?? sco.title ?? 'Sub Change Order'}
+        status={
+          <>
+            {sco.status && <StatusBadge label={statusLabel} status={statusName} />}
+            <FeatureEmailSentBadge sentAt={sco.sentAt} log={sco.latestEmailLog} />
+            {sco.changeType && (
+              <Badge variant="primary" appearance="outline" size="sm">
+                {lookupLabel(sco.changeType)}
+              </Badge>
             )}
-
-            {/* Approve - only on DRAFT */}
-            {canApprove && (
-              <Button
-                size="sm"
-                disabled={isActionPending}
-                onClick={() =>
-                  handleActionClick({ label: 'Approve', endpoint: 'approve', needsReason: false })
-                }
-              >
-                <CheckCircle2 className="size-4" />
-                Approve
-              </Button>
-            )}
-
-            {/* Reject - only on DRAFT */}
-            {canReject && (
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() =>
-                  handleActionClick({
-                    label: 'Reject',
-                    endpoint: 'reject',
-                    needsReason: true,
-                    destructive: true,
-                  })
-                }
-              >
-                <XCircle className="size-4" />
-                Reject
-              </Button>
-            )}
-
-            {/* Void - on APPROVED */}
-            {canVoid && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isActionPending}
-                onClick={() =>
-                  handleActionClick({
-                    label: 'Void',
-                    endpoint: 'void',
-                    needsReason: true,
-                    destructive: true,
-                  })
-                }
-              >
-                <ShieldAlert className="size-4" />
-                Void
-              </Button>
-            )}
-            {canEdit && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="edit">
-                  <Pencil className="size-4" />
-                  Edit
-                </Link>
-              </Button>
-            )}
-
-            {!sidebarOpen && (
-              <Button variant="outline" size="sm" onClick={() => setSidebarOpen(true)}>
-                <PanelRightOpen className="size-4" />
-                Details
-              </Button>
-            )}
-          </ToolbarActions>
-        </ToolbarWrapper>
-      </Toolbar>
+          </>
+        }
+        actions={[
+          { label: 'Generate PDF', icon: FileText, onClick: openPdfOptions },
+          { label: 'Email SCO', icon: Mail, onClick: openEmailFlow, enabled: canEmailSCO },
+          {
+            label: 'Approve',
+            icon: CheckCircle2,
+            placement: 'primary',
+            disabled: isActionPending,
+            enabled: canApprove,
+            onClick: () =>
+              handleActionClick({ label: 'Approve', endpoint: 'approve', needsReason: false }),
+          },
+          {
+            label: 'Reject',
+            icon: XCircle,
+            destructive: true,
+            disabled: isActionPending,
+            enabled: canReject,
+            onClick: () =>
+              handleActionClick({
+                label: 'Reject',
+                endpoint: 'reject',
+                needsReason: true,
+                destructive: true,
+              }),
+          },
+          {
+            label: 'Void',
+            icon: ShieldAlert,
+            disabled: isActionPending,
+            enabled: canVoid,
+            onClick: () =>
+              handleActionClick({
+                label: 'Void',
+                endpoint: 'void',
+                needsReason: true,
+                destructive: true,
+              }),
+          },
+          { label: 'Edit', icon: Pencil, to: 'edit', enabled: canEdit },
+        ]}
+        panel={{ open: sidebarOpen, onOpen: () => setSidebarOpen(true), label: 'Details' }}
+      />
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-5">
