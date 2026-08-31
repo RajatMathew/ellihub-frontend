@@ -1277,6 +1277,77 @@ export const useUpdateEmailMessageStatusMutation = () => {
   });
 };
 
+type EmailFlagPayload = {
+  accountId: string;
+  messageId: string;
+  conversationKey?: string;
+  flagged: boolean;
+};
+
+function updateMessageFlagInPages(
+  current: EmailMessagePages | undefined,
+  payload: EmailFlagPayload
+) {
+  return current
+    ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.map((item) =>
+            item.id === payload.messageId ||
+            (payload.conversationKey &&
+              (item.conversationKey === payload.conversationKey ||
+                item.threadId === payload.conversationKey))
+              ? { ...item, flagged: payload.flagged }
+              : item
+          ),
+        })),
+      }
+    : current;
+}
+
+export const useToggleEmailFlagMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: EmailFlagPayload) =>
+      emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
+        flagged: payload.flagged,
+      }),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+      const snapshot = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageFlagInPages(current, payload)
+      );
+      return snapshot;
+    },
+    onSuccess: (_result, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageFlagInPages(current, payload)
+      );
+    },
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, data] of snapshot ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+      toastApiError(
+        error,
+        payload.flagged ? 'Failed to flag the email.' : 'Failed to remove the flag.'
+      );
+    },
+    onSettled: (_result, _error, payload) =>
+      queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      }),
+  });
+};
+
 const invalidateMeetingQueries = (
   queryClient: ReturnType<typeof useQueryClient>,
   accountId: string

@@ -9,6 +9,7 @@ import {
   startOfMonth,
   startOfWeek,
   subMonths,
+  subWeeks,
 } from 'date-fns';
 
 export type EmailMonthGroup = {
@@ -24,8 +25,9 @@ type MutableEmailMonthGroup = EmailMonthGroup & {
 
 const UNKNOWN_MONTH_KEY = 'unknown-date';
 const RELATIVE_GROUP_PRIORITIES = {
-  today: 4,
-  thisWeek: 3,
+  today: 5,
+  thisWeek: 4,
+  lastWeek: 3,
   thisMonth: 2,
   lastMonth: 1,
   olderMonth: 0,
@@ -38,6 +40,7 @@ export function groupEmailsByMonth(
 ): EmailMonthGroup[] {
   const currentDay = startOfDay(now);
   const currentWeek = startOfWeek(now, { weekStartsOn: 1 });
+  const previousWeek = subWeeks(currentWeek, 1);
   const currentMonth = startOfMonth(now);
   const previousMonth = subMonths(currentMonth, 1);
   const groups = new Map<string, MutableEmailMonthGroup>();
@@ -48,6 +51,7 @@ export function groupEmailsByMonth(
       isValid(receivedAt) ? receivedAt : null,
       currentDay,
       currentWeek,
+      previousWeek,
       currentMonth,
       previousMonth
     );
@@ -76,6 +80,7 @@ function getDateGroupDescriptor(
   receivedAt: Date | null,
   currentDay: Date,
   currentWeek: Date,
+  previousWeek: Date,
   currentMonth: Date,
   previousMonth: Date
 ) {
@@ -103,6 +108,15 @@ function getDateGroupDescriptor(
       label: 'This week',
       priority: RELATIVE_GROUP_PRIORITIES.thisWeek,
       sortValue: currentWeek.getTime(),
+    };
+  }
+
+  if (receivedAt >= previousWeek && receivedAt < currentWeek) {
+    return {
+      key: 'last-week',
+      label: 'Last week',
+      priority: RELATIVE_GROUP_PRIORITIES.lastWeek,
+      sortValue: previousWeek.getTime(),
     };
   }
 

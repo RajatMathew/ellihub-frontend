@@ -29,6 +29,7 @@ interface EmailListPaneProps {
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
 
   /**
    * Bulk-selection wiring. When any callback is provided the list renders
@@ -71,6 +72,7 @@ export function EmailListPane({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   onToggleCheckedAll,
@@ -134,7 +136,9 @@ export function EmailListPane({
   const checkedCount = checkedIds?.size ?? 0;
   const isBulkActive = checkedCount > 0;
   const allInViewChecked =
-    isBulkActive && filteredEmails.length > 0 && filteredEmails.every((email) => checkedIds?.has(email.id));
+    isBulkActive &&
+    filteredEmails.length > 0 &&
+    filteredEmails.every((email) => checkedIds?.has(email.id));
 
   return (
     <section
@@ -231,6 +235,7 @@ export function EmailListPane({
             onPrefetchEmail={onPrefetchEmail}
             onArchiveEmail={onArchiveEmail}
             onDeleteEmail={onDeleteEmail}
+            onToggleFlagEmail={onToggleFlagEmail}
             checkedIds={checkedIds}
             onToggleChecked={onToggleChecked}
             bulkSelectActive={isBulkActive}

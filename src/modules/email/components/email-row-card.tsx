@@ -6,7 +6,7 @@ import { cn } from '@/app/lib/utils';
 import type { EmailMeetingEvent, EmailThreadClassification } from '@/modules/email/api';
 import { EmailThreadStatusPill } from '@/modules/email/components/email-reference-marker';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { Archive, BriefcaseBusiness, Paperclip, Trash2 } from 'lucide-react';
+import { Archive, BriefcaseBusiness, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -23,6 +23,7 @@ export type EmailListItem = {
   folder: string;
   mailbox: string;
   unread: boolean;
+  flagged?: boolean;
   keywords?: string[];
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
@@ -92,6 +93,7 @@ interface EmailRowCardProps {
   onPrefetch?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  onToggleFlag?: () => void;
   /**
    * Bulk-selection state (separate from `selected`, which tracks the row
    * currently open in the reading pane).
@@ -112,6 +114,7 @@ export function EmailRowCard({
   onPrefetch,
   onArchive,
   onDelete,
+  onToggleFlag,
   isChecked = false,
   onCheckedChange,
   bulkSelectActive = false,
@@ -121,7 +124,7 @@ export function EmailRowCard({
   const cardRef = useRef<HTMLElement>(null);
   const visibleTags = (email.keywords ?? []).slice(0, 2);
   const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
-  const hasQuickActions = Boolean(onArchive || onDelete);
+  const hasQuickActions = Boolean(onArchive || onDelete || onToggleFlag);
   const threadState = email.classification?.status ?? 'open';
   const projectReference = email.classification?.references?.find(
     (reference) => reference.type === 'project'
@@ -165,7 +168,9 @@ export function EmailRowCard({
             checked={isChecked}
             onCheckedChange={(next) => onCheckedChange?.(next === true)}
             aria-label={
-              isChecked ? `Deselect email from ${email.senderName}` : `Select email from ${email.senderName}`
+              isChecked
+                ? `Deselect email from ${email.senderName}`
+                : `Select email from ${email.senderName}`
             }
           />
         </span>
@@ -213,14 +218,26 @@ export function EmailRowCard({
               {email.threadMessageCount}
             </span>
           )}
-          <span
-            className={cn(
-              'shrink-0 font-mono text-xs tabular-nums',
-              email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
+          {/* The header row aligns children by text baseline, which an icon doesn't
+              have — pair the flag with the date inside an items-center span so the
+              group still sits on the date's baseline while the icon centers on it. */}
+          <span className="flex shrink-0 items-center gap-1.5">
+            {email.flagged && (
+              <Flag
+                aria-label="Flagged"
+                className="size-3.5 shrink-0 fill-destructive text-destructive"
+                strokeWidth={1.8}
+              />
             )}
-            title={email.receivedAt}
-          >
-            {formatEmailDate(email.receivedAt)}
+            <span
+              className={cn(
+                'font-mono text-xs tabular-nums',
+                email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
+              )}
+              title={email.receivedAt}
+            >
+              {formatEmailDate(email.receivedAt)}
+            </span>
           </span>
         </span>
 
@@ -306,13 +323,42 @@ export function EmailRowCard({
 
       {hasQuickActions && (
         <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md border border-border bg-background p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+          {onToggleFlag && (
+            <button
+              type="button"
+              className={cn(
+                'flex size-10 cursor-pointer items-center justify-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100',
+                email.flagged
+                  ? 'text-destructive hover:bg-destructive/10'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+              aria-label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
+              aria-pressed={email.flagged ?? false}
+              title={email.flagged ? 'Unflag' : 'Flag'}
+              onClick={(event) => {
+                // A mouse click leaves the button focused, and the action bar is
+                // kept visible by group-focus-within — release focus so the bar
+                // hides again once the pointer leaves the row.
+                event.currentTarget.blur();
+                onToggleFlag();
+              }}
+            >
+              <Flag
+                aria-hidden="true"
+                className={cn('size-3.5', email.flagged && 'fill-current')}
+              />
+            </button>
+          )}
           {onArchive && (
             <button
               type="button"
               className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
               aria-label={`Archive ${email.subject}`}
               title="Archive"
-              onClick={onArchive}
+              onClick={(event) => {
+                event.currentTarget.blur();
+                onArchive();
+              }}
             >
               <Archive aria-hidden="true" className="size-3.5" />
             </button>
@@ -323,7 +369,10 @@ export function EmailRowCard({
               className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
               aria-label={`Delete ${email.subject}`}
               title="Delete"
-              onClick={onDelete}
+              onClick={(event) => {
+                event.currentTarget.blur();
+                onDelete();
+              }}
             >
               <Trash2 aria-hidden="true" className="size-3.5" />
             </button>

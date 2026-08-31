@@ -59,7 +59,10 @@ export function EmailThreadMessageCard({
   saveToFilesRootFolderId,
   saveToFilesRootLabel,
 }: EmailThreadMessageCardProps) {
-  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
+  // null = no manual choice yet; the default is then "expanded when this is the
+  // newest message in the thread", so every conversation opens with exactly one
+  // message readable — matching single-message threads, which are always open.
+  const [manuallyExpanded, setManuallyExpanded] = useState<boolean | null>(null);
   const attachments = message.attachments ?? [];
   const visibleAttachments = attachments.filter(
     (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
@@ -67,7 +70,8 @@ export function EmailThreadMessageCard({
   // Attachments must not lock a thread card open: every message in a
   // conversation remains collapsible unless it is the only message displayed.
   const isAlwaysExpanded = singleMessage;
-  const isExpanded = isAlwaysExpanded || Boolean(replyOpen) || isManuallyExpanded;
+  const isExpanded =
+    isAlwaysExpanded || Boolean(replyOpen) || (manuallyExpanded ?? Boolean(latest));
   const canCollapse = !isAlwaysExpanded && !replyOpen;
   const hasBodyContent = hasVisibleEmailBodyContent(message.body);
   const isSingleAttachmentOnly =
@@ -88,7 +92,7 @@ export function EmailThreadMessageCard({
           aria-expanded="false"
           aria-controls={contentId}
           aria-label={`Expand message from ${message.senderName}`}
-          onClick={() => setIsManuallyExpanded(true)}
+          onClick={() => setManuallyExpanded(true)}
         >
           <SenderAvatar name={message.senderName} className="size-9" />
 
@@ -132,7 +136,7 @@ export function EmailThreadMessageCard({
             aria-expanded="true"
             aria-controls={contentId}
             aria-label={`Collapse message from ${message.senderName}`}
-            onClick={() => setIsManuallyExpanded(false)}
+            onClick={() => setManuallyExpanded(false)}
           />
         )}
 

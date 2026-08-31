@@ -27,9 +27,19 @@ import type {
   EmailReferenceProject,
 } from '@/modules/email/api';
 import { EMAIL_FOLDERS } from '@/modules/email/constants/email-folders';
-import { ChevronDown, FolderPlus, Inbox, Plus, RefreshCcw, Search, Tag, Trash2, X } from 'lucide-react';
+import {
+  ChevronDown,
+  FolderPlus,
+  Inbox,
+  Plus,
+  RefreshCcw,
+  Search,
+  Tag,
+  Trash2,
+  X,
+} from 'lucide-react';
 
-export type EmailListFilter = 'all' | 'unread' | 'attachments' | 'other';
+export type EmailListFilter = 'all' | 'unread' | 'flagged' | 'attachments' | 'other';
 
 /**
  * Thread state filter — independent of the "show messages" filter.
@@ -117,6 +127,7 @@ export function EmailMailToolbar({
   const filterLabels: Record<EmailListFilter, string> = {
     all: 'All emails',
     unread: 'Unread',
+    flagged: 'Flagged',
     attachments: 'Attachments',
     other: 'Other',
   };
@@ -302,6 +313,7 @@ export function EmailMailToolbar({
                   >
                     <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="unread">Unread only</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="flagged">Flagged</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="attachments">
                       With attachments
                     </DropdownMenuRadioItem>
@@ -312,9 +324,7 @@ export function EmailMailToolbar({
                       <DropdownMenuLabel>Thread status</DropdownMenuLabel>
                       <DropdownMenuRadioGroup
                         value={statusFilter}
-                        onValueChange={(value) =>
-                          onStatusFilterChange(value as EmailStatusFilter)
-                        }
+                        onValueChange={(value) => onStatusFilterChange(value as EmailStatusFilter)}
                       >
                         <DropdownMenuRadioItem value="all">Any</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
