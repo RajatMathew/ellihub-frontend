@@ -48,7 +48,7 @@
   --warning-alpha: var(--color-amber-200);
   --warning-accent: var(--color-amber-700);
   --warning-soft-foreground: var(--warning-accent);
-  --info: var(--color-green-600);
+  --info: #0e7490;
   --info-foreground: var(--color-white);
   --info-soft: var(--color-sky-50);
   --info-alpha: var(--color-sky-200);

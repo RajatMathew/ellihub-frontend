@@ -49,7 +49,11 @@ const dataTableFilterShadowClassName = 'shadow-xs shadow-black/10';
  */
 const dataTableMultiFilterTriggerClassName = cn(
   dataTableFilterShadowClassName,
-  '[&_[data-slot=badge]]:border-primary-alpha [&_[data-slot=badge]]:bg-primary-soft [&_[data-slot=badge]]:text-primary-soft-foreground'
+  '[&_[data-slot=badge]]:border-primary-alpha [&_[data-slot=badge]]:bg-primary-soft [&_[data-slot=badge]]:text-primary-soft-foreground',
+  // A badge here holds a *name* — a vendor, a trade — not a label, so it
+  // opts out of the uppercase mono treatment `Badge` gives a status or a
+  // type. "ACME STEEL" is not what the record is called.
+  '[&_[data-slot=badge]]:font-sans [&_[data-slot=badge]]:normal-case [&_[data-slot=badge]]:tracking-normal'
 );
 
 /**

@@ -17,10 +17,10 @@
   --primary: #1a3a5f;
   --primary-hover: #112b47;
   --primary-foreground: #fdfbf6;
-  --primary-soft: #ebeef3;
+  --primary-soft: #ebe7df;
   --primary-alpha: #d5cfc0;
   --primary-soft-foreground: #1a3a5f;
-  --secondary: #ebeef3;
+  --secondary: #ebe7df;
   --secondary-foreground: #112b47;
   --accent: #ebeef3;
   --accent-foreground: #1a3a5f;
@@ -36,26 +36,25 @@
   --brand-clay: #c75e40;
 
   /** Feedback colors **/
-  --success: #2d6a4f;
+  --success: var(--color-teal-600);
   --success-foreground: #ffffff;
-  --success-soft: #e5efe8;
-  --success-alpha: #c6decf;
-  --success-accent: #2d6a4f;
+  --success-soft: var(--color-teal-50);
+  --success-alpha: var(--color-teal-200);
+  --success-accent: var(--color-teal-700);
   --success-soft-foreground: var(--success-accent);
   --warning: #b8860b;
   --warning-foreground: #f7efd9;
   --warning-soft: #f7efd9;
   --warning-alpha: #ead7a5;
-  --warning-accent: #b8860b;
-  /* Not `--warning-accent`: #b8860b on the #f7efd9 soft surface is 2.84:1,
-     under AA for badge-sized text. Darkened within the same goldenrod family
-     to 5.73:1. */
-  --warning-soft-foreground: #7a5707;
-  --info: #1a3a5f;
+  --warning-accent: var(--color-amber-800);
+  /* Reads on the #f7efd9 soft surface at 6.18:1, so it needs no darkening of
+     its own — the amber-800 accent is already well clear of AA. */
+  --warning-soft-foreground: var(--warning-accent);
+  --info: #0e7490;
   --info-foreground: #fdfbf6;
-  --info-soft: #ebeef3;
-  --info-alpha: #d5cfc0;
-  --info-accent: #1a3a5f;
+  --info-soft: var(--color-sky-50);
+  --info-alpha: var(--color-sky-200);
+  --info-accent: var(--color-sky-700);
   --info-soft-foreground: var(--info-accent);
 
   /**

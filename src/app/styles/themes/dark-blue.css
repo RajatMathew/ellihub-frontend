@@ -48,7 +48,7 @@
   --warning-alpha: rgba(251, 191, 36, 0.3);
   --warning-accent: #fcd34d;
   --warning-soft-foreground: var(--warning-accent);
-  --info: #22d3ee;
+  --info: #06b6d4;
   --info-foreground: #0a0f1a;
   --info-soft: rgba(34, 211, 238, 0.14);
   --info-alpha: rgba(34, 211, 238, 0.28);

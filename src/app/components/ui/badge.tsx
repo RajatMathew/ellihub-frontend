@@ -22,7 +22,14 @@ export interface BadgeButtonProps
 export type BadgeDotProps = React.HTMLAttributes<HTMLSpanElement>;
 
 const badgeVariants = cva(
-  'inline-flex items-center justify-center border border-transparent font-medium focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 [&_svg]:-ms-px [&_svg]:shrink-0',
+  // Mono, uppercase and letter-spaced, in a pill. A badge in this app is a
+  // *label* — a status, a type — not prose, and setting it apart from the row's
+  // own text is what keeps a table scannable.
+  //
+  // `border` with no colour: `globals.css` applies `border-border` to everything,
+  // so this is the theme's own edge. Every badge carries it unless its appearance
+  // says otherwise — `ghost` sets `border-transparent` for exactly that reason.
+  'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border font-mono font-semibold uppercase leading-none tracking-wider focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 [&_svg]:-ms-px [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -44,10 +51,12 @@ const badgeVariants = cva(
         true: 'opacity-50 pointer-events-none',
       },
       size: {
-        lg: 'rounded-md px-[0.5rem] h-7 min-w-7 gap-1.5 text-xs [&_svg]:size-3.5',
-        md: 'rounded-md px-[0.45rem] h-6 min-w-6 gap-1.5 text-xs [&_svg]:size-3.5 ',
-        sm: 'rounded-sm px-[0.325rem] h-5 min-w-5 gap-1 text-[0.6875rem] leading-[0.75rem] [&_svg]:size-3',
-        xs: 'rounded-sm px-[0.25rem] h-4 min-w-4 gap-1 text-[0.625rem] leading-[0.5rem] [&_svg]:size-3',
+        // No `rounded-*` here: the pill radius belongs to the base, and a radius
+        // set per size would win over it.
+        lg: 'h-7 min-w-7 gap-1.5 px-2.5 text-xs [&_svg]:size-3.5',
+        md: 'h-6 min-w-6 gap-1.5 px-2 text-xs [&_svg]:size-3.5',
+        sm: 'h-5 min-w-5 gap-1 px-1.5 text-[0.6875rem] [&_svg]:size-3',
+        xs: 'h-4 min-w-4 gap-1 px-1 text-[0.625rem] [&_svg]:size-3',
       },
       shape: {
         default: '',
@@ -91,6 +100,11 @@ const badgeVariants = cva(
         variant: 'primary',
         appearance: 'outline',
         className: 'border-primary-alpha bg-primary-soft text-primary-soft-foreground',
+      },
+      {
+        variant: 'secondary',
+        appearance: 'outline',
+        className: 'border-border bg-secondary text-secondary-foreground',
       },
       {
         variant: 'success',
@@ -214,7 +228,7 @@ function BadgeDot({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="badge-dot"
-      className={cn('size-1.5 rounded-full bg-[currentColor] opacity-75', className)}
+      className={cn('size-1.5 rounded-full bg-[currentColor]', className)}
       {...props}
     />
   );
