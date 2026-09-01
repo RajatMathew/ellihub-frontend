@@ -46,6 +46,7 @@ import {
   useEmailMessagesQuery,
   useEmailReferenceProjectsQuery,
   useEmailTagsQuery,
+  useForwardConnectedEmailMutation,
   useMoveEmailMessageMutation,
   useOpenEmailDraftMutation,
   usePermanentlyDeleteEmailMessageMutation,
@@ -204,6 +205,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const sendDraftMutation = useSendEmailDraftMutation();
   const deleteDraftMutation = useDeleteEmailDraftMutation();
   const replyMutation = useReplyConnectedEmailMutation();
+  const forwardMutation = useForwardConnectedEmailMutation();
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
   const moveMessageMutation = useMoveEmailMessageMutation();
@@ -1474,6 +1476,21 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   connectedAccount
                     ? (messageId, draft) =>
                         replyMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          body: plainTextToEmailHtml(draft.body),
+                          bodyType: 'html',
+                          subject: selectedEmail?.subject,
+                          to: parseEmailAddresses(draft.to),
+                          cc: parseEmailAddresses(draft.cc),
+                          bcc: parseEmailAddresses(draft.bcc),
+                        })
+                    : undefined
+                }
+                onForward={
+                  connectedAccount
+                    ? (messageId, draft) =>
+                        forwardMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
                           body: plainTextToEmailHtml(draft.body),

@@ -338,6 +338,17 @@ export type ReplyConnectedEmailPayload = {
   bcc?: Array<{ address: string; name?: string }>;
 };
 
+export type ForwardConnectedEmailPayload = {
+  accountId: string;
+  messageId: string;
+  body: string;
+  bodyType?: 'html' | 'text';
+  subject?: string;
+  to: Array<{ address: string; name?: string }>;
+  cc?: Array<{ address: string; name?: string }>;
+  bcc?: Array<{ address: string; name?: string }>;
+};
+
 export type SaveEmailThreadClassificationPayload = {
   accountId: string;
   conversationKey: string;
@@ -556,6 +567,20 @@ export const emailApi = {
   ): Promise<ConnectedEmailThreadMessage | null> {
     const { accountId, messageId, ...message } = payload;
     const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
+      bodyType: 'html',
+      cc: [],
+      bcc: [],
+      attachments: [],
+      ...message,
+    });
+    return emailReplyResponseSchema.parse(unwrapData(res.data)).message ?? null;
+  },
+
+  async forwardMessage(
+    payload: ForwardConnectedEmailPayload
+  ): Promise<ConnectedEmailThreadMessage | null> {
+    const { accountId, messageId, ...message } = payload;
+    const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/forward`, {
       bodyType: 'html',
       cc: [],
       bcc: [],

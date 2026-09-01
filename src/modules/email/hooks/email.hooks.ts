@@ -12,6 +12,7 @@ import {
   type EmailMessagePage,
   type EmailReferenceProject,
   type EmailThreadClassification,
+  type ForwardConnectedEmailPayload,
   type ReplyConnectedEmailPayload,
   type SaveEmailThreadClassificationPayload,
   type SendConnectedEmailPayload,
@@ -665,6 +666,25 @@ export const useReplyConnectedEmailMutation = () => {
     },
     onError: (error, payload) => {
       if (!payload.silent) toastApiError(error, 'Failed to send reply.');
+    },
+  });
+};
+
+export const useForwardConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ForwardConnectedEmailPayload & { silent?: boolean }) =>
+      emailApi.forwardMessage(payload),
+    onSuccess: (_result, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      if (!payload.silent) toast.success('Message forwarded.');
+    },
+    onError: (error, payload) => {
+      if (!payload.silent) toastApiError(error, 'Failed to forward message.');
     },
   });
 };

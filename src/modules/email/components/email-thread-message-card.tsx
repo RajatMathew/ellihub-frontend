@@ -10,6 +10,7 @@ import { EmailMessageBody } from '@/modules/email/components/email-message-body'
 import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
 import {
   EmailReplyComposer,
+  type EmailComposerMode,
   type EmailReplyDraft,
 } from '@/modules/email/components/email-reply-composer';
 import type {
@@ -31,8 +32,10 @@ interface EmailThreadMessageCardProps {
   singleMessage?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
+  replyMode?: EmailComposerMode;
   isSendingReply?: boolean;
   onReply: (messageId: string) => void;
+  onForward?: (messageId: string) => void;
   onSendReply: (messageId: string, draft: EmailReplyDraft) => Promise<void> | void;
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
@@ -51,8 +54,10 @@ export function EmailThreadMessageCard({
   singleMessage = false,
   latest,
   replyOpen,
+  replyMode = 'reply',
   isSendingReply = false,
   onReply,
+  onForward,
   onSendReply,
   onCancelReply,
   onOpenAttachment,
@@ -82,6 +87,10 @@ export function EmailThreadMessageCard({
   const contentId = useId();
   const handleReply = () => {
     if (canReply) onReply(message.id);
+  };
+  const canForward = canReply && Boolean(onForward);
+  const handleForward = () => {
+    if (canForward) onForward?.(message.id);
   };
 
   if (!isExpanded) {
@@ -184,6 +193,8 @@ export function EmailThreadMessageCard({
               <MessageIconAction
                 label={`Forward message from ${message.senderName}`}
                 icon={Forward}
+                disabled={!canForward}
+                onClick={handleForward}
               />
               {canCollapse && <ChevronUp aria-hidden="true" className="mx-2 size-3.5" />}
             </div>
@@ -223,7 +234,9 @@ export function EmailThreadMessageCard({
 
         {replyOpen && (
           <EmailReplyComposer
+            key={replyMode}
             message={message}
+            mode={replyMode}
             isSending={isSendingReply}
             onSend={(draft) => onSendReply(message.id, draft)}
             onCancel={onCancelReply}
@@ -242,7 +255,13 @@ export function EmailThreadMessageCard({
               <Reply aria-hidden="true" className="size-3.5" />
               Reply
             </Button>
-            <Button type="button" variant="outline" size="sm">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canForward}
+              onClick={handleForward}
+            >
               <Forward aria-hidden="true" className="size-3.5" />
               Forward
             </Button>
