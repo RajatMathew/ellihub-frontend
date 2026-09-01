@@ -72,7 +72,7 @@ export function TaskCard({
         </Badge>
         {task.assignee ? (
           <Avatar className="size-6" title={task.assignee.name}>
-            <AvatarFallback className="text-[10px]">{initials(task.assignee.name)}</AvatarFallback>
+            <AvatarFallback className="text-xs">{initials(task.assignee.name)}</AvatarFallback>
           </Avatar>
         ) : null}
       </div>
