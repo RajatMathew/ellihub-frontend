@@ -70,6 +70,8 @@ interface EmailComposeDialogProps {
   open: boolean;
   mailboxAddress: string;
   initialDraft?: EditableComposeDraft | null;
+  /** Prefill for a brand-new message (ignored when editing a draft). */
+  initialRecipient?: string;
   isSending?: boolean;
   onOpenChange: (open: boolean) => void;
   onSaveDraft?: (
@@ -84,6 +86,7 @@ export function EmailComposeDialog({
   open,
   mailboxAddress,
   initialDraft,
+  initialRecipient,
   isSending = false,
   onOpenChange,
   onSaveDraft,
@@ -225,7 +228,7 @@ export function EmailComposeDialog({
 
   useEffect(() => {
     if (!open) return;
-    const initialKey = initialDraft?.draftId ?? 'new';
+    const initialKey = initialDraft?.draftId ?? `new:${initialRecipient ?? ''}`;
     if (initializedDraftRef.current === initialKey) return;
     initializedDraftRef.current = initialKey;
 
@@ -237,7 +240,7 @@ export function EmailComposeDialog({
           subject: initialDraft.subject,
           body: initialDraft.body,
         }
-      : { to: '', cc: '', bcc: '', subject: '', body: '' };
+      : { to: initialRecipient ?? '', cc: '', bcc: '', subject: '', body: '' };
     const nextAttachments = initialDraft?.attachments ?? [];
     setForm(nextForm);
     setShowCc(Boolean(initialDraft?.cc));
@@ -258,7 +261,7 @@ export function EmailComposeDialog({
       existing: nextAttachments.map((attachment) => attachment.id),
       removed: [],
     });
-  }, [initialDraft, open]);
+  }, [initialDraft, initialRecipient, open]);
 
   async function handleRequestClose() {
     if (isBusy) return;

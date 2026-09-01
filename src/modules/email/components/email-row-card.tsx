@@ -9,8 +9,8 @@ import {
   EMAIL_THREAD_STATE_LABELS,
   isOpenEmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
+import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { getOutlookAvatarStyle, getOutlookInitials } from '@/modules/email/lib/outlook-avatar';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
@@ -93,6 +93,7 @@ export type EmailThreadMessage = {
 
 interface EmailRowCardProps {
   email: EmailListItem;
+  accountId?: string;
   selected?: boolean;
   onSelect?: () => void;
   onPrefetch?: () => void;
@@ -115,6 +116,7 @@ interface EmailRowCardProps {
 
 export function EmailRowCard({
   email,
+  accountId,
   selected,
   onSelect,
   onPrefetch,
@@ -181,6 +183,8 @@ export function EmailRowCard({
       >
         <SenderAvatar
           name={email.senderName}
+          email={email.senderEmail}
+          accountId={accountId}
           className={cn(
             'motion-safe:transition-opacity motion-safe:duration-100',
             showCheckbox && 'opacity-0'
@@ -433,21 +437,5 @@ function QuickAction({
     >
       {children}
     </button>
-  );
-}
-
-function SenderAvatar({ name, className }: { name: string; className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-        className
-      )}
-      // Exact Outlook avatar colours — see outlook-avatar.ts.
-      style={getOutlookAvatarStyle(name)}
-    >
-      {getOutlookInitials(name) || '?'}
-    </span>
   );
 }

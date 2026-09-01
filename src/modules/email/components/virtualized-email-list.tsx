@@ -8,6 +8,7 @@ import { ChevronRight } from 'lucide-react';
 
 interface VirtualizedEmailListProps {
   emails: EmailListItem[];
+  accountId?: string;
   scrollElement: HTMLDivElement;
   selectedEmailId?: string;
   groupByMonth?: boolean;
@@ -26,6 +27,7 @@ const ESTIMATED_MONTH_HEADER_HEIGHT = 33;
 
 export function VirtualizedEmailList({
   emails,
+  accountId,
   scrollElement,
   selectedEmailId,
   groupByMonth = false,
@@ -42,6 +44,7 @@ export function VirtualizedEmailList({
     return (
       <VirtualizedMonthGroups
         emails={emails}
+        accountId={accountId}
         scrollElement={scrollElement}
         selectedEmailId={selectedEmailId}
         onSelectEmail={onSelectEmail}
@@ -59,6 +62,7 @@ export function VirtualizedEmailList({
   return (
     <VirtualizedFlatEmailList
       emails={emails}
+      accountId={accountId}
       scrollElement={scrollElement}
       selectedEmailId={selectedEmailId}
       onSelectEmail={onSelectEmail}
@@ -75,6 +79,7 @@ export function VirtualizedEmailList({
 
 function VirtualizedFlatEmailList({
   emails,
+  accountId,
   scrollElement,
   selectedEmailId,
   onSelectEmail,
@@ -118,6 +123,7 @@ function VirtualizedFlatEmailList({
             style={{ transform: `translateY(${virtualRow.start}px)` }}
           >
             <EmailRowCard
+              accountId={accountId}
               email={email}
               selected={email.id === selectedEmailId}
               onSelect={() => onSelectEmail?.(email.id)}
@@ -142,6 +148,7 @@ function VirtualizedFlatEmailList({
 
 function VirtualizedMonthGroups({
   emails,
+  accountId,
   scrollElement,
   selectedEmailId,
   onSelectEmail,
@@ -192,6 +199,7 @@ function VirtualizedMonthGroups({
             style={{ transform: `translateY(${virtualRow.start}px)` }}
           >
             <MonthGroupSection
+              accountId={accountId}
               group={group}
               collapsed={collapsedMonthKeys.has(group.key)}
               selectedEmailId={selectedEmailId}
@@ -224,6 +232,7 @@ function VirtualizedMonthGroups({
 
 function MonthGroupSection({
   group,
+  accountId,
   collapsed,
   selectedEmailId,
   onSelectEmail,
@@ -237,6 +246,7 @@ function MonthGroupSection({
   onToggle,
 }: {
   group: EmailMonthGroup;
+  accountId?: string;
   collapsed: boolean;
   selectedEmailId?: string;
   onSelectEmail?: (emailId: string) => void;
@@ -289,6 +299,7 @@ function MonthGroupSection({
             {group.emails.map((email) => (
               <div key={email.id} role="listitem">
                 <EmailRowCard
+                  accountId={accountId}
                   email={email}
                   selected={email.id === selectedEmailId}
                   onSelect={() => onSelectEmail?.(email.id)}

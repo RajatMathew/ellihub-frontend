@@ -125,6 +125,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeLoaded, setComposeLoaded] = useState(false);
   const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
+  const [composeRecipient, setComposeRecipient] = useState<string | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
@@ -832,6 +833,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
   const openNewCompose = useCallback(() => {
     setComposeDraft(null);
+    setComposeRecipient(null);
+    setComposeLoaded(true);
+    setComposeOpen(true);
+  }, []);
+  const openComposeTo = useCallback((address: string) => {
+    setComposeDraft(null);
+    setComposeRecipient(address);
     setComposeLoaded(true);
     setComposeOpen(true);
   }, []);
@@ -1250,6 +1258,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                 )}
               >
                 <EmailListPane
+                  accountId={connectedAccount?.id}
                   mailbox={connectedAccount?.id ?? 'connected'}
                   folder={selectedFolder}
                   folderLabel={selectedFolderLabel}
@@ -1472,6 +1481,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     : undefined
                 }
                 isUpdatingReadStatus={updateMessageStatusMutation.isPending}
+                onComposeTo={openComposeTo}
+                onSearchSender={setMessageSearch}
                 onReply={
                   connectedAccount
                     ? (messageId, draft) =>
@@ -1594,6 +1605,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             open={composeOpen}
             mailboxAddress={address}
             initialDraft={composeDraft}
+            initialRecipient={composeRecipient ?? undefined}
             isSending={sendDraftMutation.isPending}
             onOpenChange={(nextOpen) => {
               setComposeOpen(nextOpen);

@@ -10,6 +10,7 @@ import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import { Archive, ArchiveRestore, Inbox, RefreshCcw, Trash2, X } from 'lucide-react';
 
 interface EmailListPaneProps {
+  accountId?: string;
   mailbox: string;
   folder: string;
   folderLabel?: string;
@@ -53,6 +54,7 @@ interface EmailListPaneProps {
 }
 
 export function EmailListPane({
+  accountId,
   mailbox,
   folder,
   folderLabel: folderLabelProp,
@@ -229,6 +231,7 @@ export function EmailListPane({
 
           {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
             <VirtualizedEmailList
+              accountId={accountId}
               key={`${mailbox}:${folder}:${search}`}
               emails={filteredEmails}
               scrollElement={scrollContainer}

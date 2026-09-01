@@ -6,6 +6,11 @@ import { z } from 'zod';
 
 const BASE = '/email';
 
+/** URL for a sender's profile photo — used directly as an <img> src. */
+export function getSenderPhotoUrl(accountId: string, address: string): string {
+  return `${import.meta.env.VITE_API_BASE_URL}/api/v1${BASE}/accounts/${accountId}/sender-photo?address=${encodeURIComponent(address)}`;
+}
+
 const emailFreshnessSchema = z.object({
   state: z.enum(['fresh', 'stale', 'syncing', 'error']),
   lastSyncedAt: z.string().nullable(),

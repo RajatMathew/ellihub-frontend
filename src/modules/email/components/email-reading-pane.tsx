@@ -86,6 +86,8 @@ interface EmailReadingPaneProps {
     messageId: string,
     draft: EmailReplyDraft
   ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
+  onComposeTo?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
   isRespondingToMeeting?: boolean;
   isUpdatingMeeting?: boolean;
   isCancellingMeeting?: boolean;
@@ -126,6 +128,8 @@ export function EmailReadingPane({
   isSendingReply = false,
   onReply,
   onForward,
+  onComposeTo,
+  onSearchSender,
   isRespondingToMeeting = false,
   isUpdatingMeeting = false,
   isCancellingMeeting = false,
@@ -457,6 +461,9 @@ export function EmailReadingPane({
                 inlineImageBaseUrl={inlineImageBaseUrl}
                 singleMessage={messages.length === 1}
                 latest={index === messages.length - 1}
+                accountId={accountId}
+                onComposeTo={onComposeTo}
+                onSearchSender={onSearchSender}
                 replyOpen={replyMessageId === message.id}
                 replyMode={replyTarget?.mode}
                 isSendingReply={isSendingReply}
