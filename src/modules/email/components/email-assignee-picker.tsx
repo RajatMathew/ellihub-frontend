@@ -130,7 +130,8 @@ export function EmailAssigneePicker({
                 value={`${user.name} ${user.email}`}
                 className="min-h-8 gap-2"
                 onSelect={() => {
-                  onChange(user);
+                  // Picking the current assignee again toggles them off.
+                  onChange(assignee?.id === user.id ? null : user);
                   setOpen(false);
                 }}
               >
