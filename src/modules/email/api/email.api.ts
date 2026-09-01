@@ -145,11 +145,19 @@ const emailThreadReferenceSchema = z.object({
   sortOrder: z.number().optional(),
 });
 
+const emailThreadAssigneeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  image: z.string().nullable().optional(),
+});
+
 const emailThreadClassificationSchema = z.object({
   id: z.string().nullable().optional(),
   conversationKey: z.string(),
   threadId: z.string().nullable().optional(),
-  status: z.enum(['open', 'closed']),
+  status: z.enum(['open', 'open_our_court', 'open_their_court', 'closed']),
+  assignedTo: emailThreadAssigneeSchema.nullable().optional(),
   references: z.array(emailThreadReferenceSchema),
 });
 
@@ -183,6 +191,7 @@ const emailListItemSchema = z.object({
   folder: z.string(),
   mailbox: z.string(),
   unread: z.boolean(),
+  flagged: z.boolean().optional(),
   to: z.array(emailAddressSchema).optional(),
   cc: z.array(emailAddressSchema).optional(),
   bcc: z.array(emailAddressSchema).optional(),
@@ -333,9 +342,12 @@ export type SaveEmailThreadClassificationPayload = {
   accountId: string;
   conversationKey: string;
   threadId?: string | null;
-  status: 'open' | 'closed';
+  status: EmailThreadClassification['status'];
+  assignedToId?: string | null;
   references: EmailThreadReference[];
 };
+
+export type EmailThreadAssignee = z.infer<typeof emailThreadAssigneeSchema>;
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
   const response = data as Record<string, unknown>;
@@ -420,6 +432,11 @@ export const emailApi = {
     return emailThreadClassificationSchema.parse(unwrapData(res.data));
   },
 
+  async listThreadAssignees(): Promise<EmailThreadAssignee[]> {
+    const res = await api.get(`${BASE}/thread-assignees`);
+    return z.array(emailThreadAssigneeSchema).parse(unwrapData(res.data));
+  },
+
   async listMessages(params: {
     accountId: string;
     folderKey?: EmailFolderKey;
@@ -495,10 +512,20 @@ export const emailApi = {
     });
   },
 
-  async getAttachment(accountId: string, messageId: string, attachmentId: string): Promise<Blob> {
+  async getAttachment(
+    accountId: string,
+    messageId: string,
+    attachmentId: string,
+    onProgress?: (progress: { loaded: number; total: number | null }) => void
+  ): Promise<Blob> {
     const res = await api.get(
       `${BASE}/accounts/${accountId}/messages/${messageId}/attachments/${attachmentId}`,
-      { responseType: 'blob' }
+      {
+        responseType: 'blob',
+        onDownloadProgress: onProgress
+          ? (event) => onProgress({ loaded: event.loaded, total: event.total ?? null })
+          : undefined,
+      }
     );
     return res.data as Blob;
   },
@@ -591,7 +618,7 @@ export const emailApi = {
   async updateMessageStatus(
     accountId: string,
     messageId: string,
-    payload: { unread?: boolean }
+    payload: { unread?: boolean; flagged?: boolean }
   ): Promise<void> {
     await api.patch(`${BASE}/accounts/${accountId}/messages/${messageId}/status`, payload);
   },

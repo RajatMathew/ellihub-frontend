@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import { Progress } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { FILE_TEXT_PREVIEW_BYTES, filesApi } from '@/modules/files/api/files.api';
@@ -17,6 +18,7 @@ import { useDownloadFile, useTextContentQuery } from '@/modules/files/hooks/file
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { Download, Eye, FolderPlus, Loader2, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { FileTypeIcon } from './file-type-icon';
 
@@ -242,6 +244,34 @@ function FileLoadingOverlay() {
   );
 }
 
+function FileDownloadingState({
+  progress,
+  fileSize,
+}: {
+  progress: FilePreviewLoadProgress | null | undefined;
+  fileSize?: number;
+}) {
+  const total = progress?.total ?? (fileSize && fileSize > 0 ? fileSize : null);
+  const percent =
+    progress && total ? Math.min(100, Math.round((progress.loaded / total) * 100)) : null;
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+      <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">
+        {percent != null ? `Downloading… ${percent}%` : 'Downloading…'}
+      </p>
+      {percent != null && <Progress value={percent} className="w-full max-w-xs" />}
+      {progress && progress.loaded > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {formatFileSize(progress.loaded)}
+          {total ? ` of ${formatFileSize(total)}` : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PreviewMessage({ message }: { message: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -302,11 +332,22 @@ function parseDelimitedRows(content: string, delimiter: string): string[][] {
   return rows.map((cells) => cells.slice(0, 50));
 }
 
+export interface FilePreviewLoadProgress {
+  loaded: number;
+  total: number | null;
+}
+
 interface FilePreviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   file: FilePreviewItem | null;
   loadFile?: (file: FilePreviewItem) => Promise<Blob>;
+  /**
+   * Live download progress for the `loadFile` fetch, when the caller can report
+   * it. Shown while the blob is still downloading so large files don't sit on a
+   * blank screen.
+   */
+  loadProgress?: FilePreviewLoadProgress | null;
   /**
    * Opt-in "Save to Files" action in the header. Requires `loadFile` so the
    * lazy source can fetch the bytes once the user picks a destination folder.
@@ -322,10 +363,13 @@ function PreviewActions({
   file,
   onPreview,
   showPreviewAction,
+  onDownload,
 }: {
   file: FilePreviewItem | null;
   onPreview?: () => void;
   showPreviewAction?: boolean;
+  /** Override for lazily-loaded files (e.g. email attachments) that the files download endpoint can't resolve. */
+  onDownload?: () => void;
 }) {
   const downloadFile = useDownloadFile();
 
@@ -345,7 +389,14 @@ function PreviewActions({
       <Button
         size="sm"
         className="h-8 gap-1.5 px-3 text-xs"
-        onClick={() => file && downloadFile.mutate(file)}
+        onClick={() => {
+          if (!file) return;
+          if (onDownload) {
+            onDownload();
+            return;
+          }
+          downloadFile.mutate(file);
+        }}
         disabled={!file}
       >
         <Download className="size-3.5" />
@@ -355,7 +406,15 @@ function PreviewActions({
   );
 }
 
-function FallbackPreview({ file, type }: { file: FilePreviewItem | null; type: string }) {
+function FallbackPreview({
+  file,
+  type,
+  onDownload,
+}: {
+  file: FilePreviewItem | null;
+  type: string;
+  onDownload?: () => void;
+}) {
   const displayName = getDisplayNameWithExtension(file);
 
   return (
@@ -377,7 +436,7 @@ function FallbackPreview({ file, type }: { file: FilePreviewItem | null; type: s
         </p>
 
         <div className="mt-4">
-          <PreviewActions file={file} />
+          <PreviewActions file={file} onDownload={onDownload} />
         </div>
       </div>
     </div>
@@ -388,10 +447,12 @@ function LargeFilePreview({
   file,
   type,
   onPreview,
+  onDownload,
 }: {
   file: FilePreviewItem | null;
   type: string;
   onPreview: () => void;
+  onDownload?: () => void;
 }) {
   const displayName = getDisplayNameWithExtension(file);
 
@@ -410,7 +471,7 @@ function LargeFilePreview({
           here when needed.
         </p>
       </div>
-      <PreviewActions file={file} onPreview={onPreview} showPreviewAction />
+      <PreviewActions file={file} onPreview={onPreview} showPreviewAction onDownload={onDownload} />
     </div>
   );
 }
@@ -462,6 +523,7 @@ export function FilePreviewDialog({
   onOpenChange,
   file,
   loadFile,
+  loadProgress,
   saveToFiles,
 }: FilePreviewDialogProps) {
   const isFile = open && !!file && file.type !== 'FOLDER';
@@ -471,18 +533,39 @@ export function FilePreviewDialog({
   const [loadedFilePreviewKey, setLoadedFilePreviewKey] = useState<string | null>(null);
   const [previewLargeFileId, setPreviewLargeFileId] = useState<string | null>(null);
   const [downloadTooltipOpen, setDownloadTooltipOpen] = useState(false);
-  const [loadedBlob, setLoadedBlob] = useState<Blob | null>(null);
+  // Keyed by file id so a result (or failure) from a previously previewed file
+  // is ignored instead of needing a synchronous reset inside the effect.
+  const [blobResult, setBlobResult] = useState<{
+    fileId: string;
+    blob: Blob | null;
+    failed: boolean;
+  } | null>(null);
   useEffect(() => {
-    setLoadedBlob(null);
     if (!open || !file || !loadFile) return;
     let active = true;
-    const fetchBlob = loadFile(file);
-    fetchBlob.then((blob) => active && setLoadedBlob(blob));
-    return () => { active = false; };
+    const fileId = file.id;
+    loadFile(file)
+      .then((blob) => active && setBlobResult({ fileId, blob, failed: false }))
+      .catch(() => active && setBlobResult({ fileId, blob: null, failed: true }));
+    return () => {
+      active = false;
+    };
   }, [file, loadFile, open]);
-  const blobUrl = useMemo(() => (loadedBlob ? URL.createObjectURL(loadedBlob) : undefined), [loadedBlob]);
-  useEffect(() => () => { if (blobUrl) URL.revokeObjectURL(blobUrl); }, [blobUrl]);
-  const url = isFile ? (blobUrl ?? (loadFile ? undefined : filesApi.getFileReadUrl(file.id))) : undefined;
+  const loadedBlob = open && blobResult && blobResult.fileId === file?.id ? blobResult.blob : null;
+  const blobLoadError = open && !!blobResult && blobResult.fileId === file?.id && blobResult.failed;
+  const blobUrl = useMemo(
+    () => (loadedBlob ? URL.createObjectURL(loadedBlob) : undefined),
+    [loadedBlob]
+  );
+  useEffect(
+    () => () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    },
+    [blobUrl]
+  );
+  const url = isFile
+    ? (blobUrl ?? (loadFile ? undefined : filesApi.getFileReadUrl(file.id)))
+    : undefined;
   const previewLargeFile = open && previewLargeFileId === file?.id;
   const shouldGateLargePreview = isLargeEmbeddedPreview(file, previewType) && !previewLargeFile;
   const {
@@ -513,13 +596,27 @@ export function FilePreviewDialog({
       ? `Showing the first ${formatFileSize(FILE_TEXT_PREVIEW_BYTES)}.`
       : null;
   const displayName = getDisplayNameWithExtension(file);
+  const isBlobLoading = isFile && !!loadFile && !loadedBlob && !blobLoadError;
+  const saveBlobToDisk = (blob: Blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = getDisplayNameWithExtension(file) || 'download';
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+  };
   const handleDownload = () => {
     if (!file) return;
     if (loadedBlob) {
-      const anchor = document.createElement('a');
-      anchor.href = blobUrl ?? URL.createObjectURL(loadedBlob);
-      anchor.download = getDisplayNameWithExtension(file) || 'download';
-      anchor.click();
+      saveBlobToDisk(loadedBlob);
+      return;
+    }
+    if (loadFile) {
+      // The file only exists behind the lazy loader (e.g. an email attachment) —
+      // the generic files download endpoint doesn't know this id.
+      loadFile(file)
+        .then(saveBlobToDisk)
+        .catch(() => toast.error('Failed to download the file.'));
       return;
     }
     downloadFile.mutate(file);
@@ -624,8 +721,23 @@ export function FilePreviewDialog({
               file={file}
               type={previewTypeLabel}
               onPreview={() => setPreviewLargeFileId(file?.id ?? null)}
+              onDownload={loadFile ? handleDownload : undefined}
             />
           )}
+
+          {!shouldGateLargePreview &&
+            !url &&
+            hasEmbeddedLoadState(previewType) &&
+            isBlobLoading && (
+              <FileDownloadingState progress={loadProgress} fileSize={file?.size ?? undefined} />
+            )}
+
+          {!shouldGateLargePreview &&
+            !url &&
+            hasEmbeddedLoadState(previewType) &&
+            blobLoadError && (
+              <PreviewMessage message="Failed to load the preview. Close and try again." />
+            )}
 
           {!shouldGateLargePreview && url && previewType === 'image' && (
             <div className="relative flex h-full items-center justify-center p-4">
@@ -730,19 +842,35 @@ export function FilePreviewDialog({
             )}
 
           {!shouldGateLargePreview && previewType === 'spreadsheet' && !canPreviewDelimited && (
-            <FallbackPreview file={file} type="Spreadsheet" />
+            <FallbackPreview
+              file={file}
+              type="Spreadsheet"
+              onDownload={loadFile ? handleDownload : undefined}
+            />
           )}
 
           {!shouldGateLargePreview && previewType === 'document' && (
-            <FallbackPreview file={file} type="Document" />
+            <FallbackPreview
+              file={file}
+              type="Document"
+              onDownload={loadFile ? handleDownload : undefined}
+            />
           )}
 
           {!shouldGateLargePreview && previewType === 'archive' && (
-            <FallbackPreview file={file} type="Archive" />
+            <FallbackPreview
+              file={file}
+              type="Archive"
+              onDownload={loadFile ? handleDownload : undefined}
+            />
           )}
 
           {!shouldGateLargePreview && previewType === 'generic' && (
-            <FallbackPreview file={file} type="File" />
+            <FallbackPreview
+              file={file}
+              type="File"
+              onDownload={loadFile ? handleDownload : undefined}
+            />
           )}
         </DialogBody>
       </DialogContent>

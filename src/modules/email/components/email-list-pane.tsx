@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { EmailListScrollbar } from '@/modules/email/components/email-list-scrollbar';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
@@ -29,13 +30,14 @@ interface EmailListPaneProps {
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
 
   /**
    * Bulk-selection wiring. When any callback is provided the list renders
    * checkboxes on each row and shows the bulk-action bar at the top.
    */
   checkedIds?: Set<string>;
-  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   onToggleCheckedAll?: () => void;
   onClearChecked?: () => void;
   onBulkArchive?: () => void;
@@ -71,6 +73,7 @@ export function EmailListPane({
   onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
+  onToggleFlagEmail,
   checkedIds,
   onToggleChecked,
   onToggleCheckedAll,
@@ -134,7 +137,9 @@ export function EmailListPane({
   const checkedCount = checkedIds?.size ?? 0;
   const isBulkActive = checkedCount > 0;
   const allInViewChecked =
-    isBulkActive && filteredEmails.length > 0 && filteredEmails.every((email) => checkedIds?.has(email.id));
+    isBulkActive &&
+    filteredEmails.length > 0 &&
+    filteredEmails.every((email) => checkedIds?.has(email.id));
 
   return (
     <section
@@ -207,58 +212,67 @@ export function EmailListPane({
         </div>
       )}
 
-      <div ref={setScrollContainer} className="kt-scrollable-y-auto min-h-0 flex-1">
-        {isLoading && <EmailListSkeleton />}
+      <div className="relative min-h-0 flex-1">
+        <EmailListScrollbar scrollElement={scrollContainer} />
+        <div ref={setScrollContainer} className="kt-scrollable-y-auto scrollbar-hover h-full">
+          {isLoading && <EmailListSkeleton />}
 
-        {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
+          {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
 
-        {!isLoading && !isError && filteredEmails.length === 0 && (
-          <EmailListEmptyState
-            hasSearch={Boolean(search.trim())}
-            folderLabel={folderLabel}
-            onClearSearch={() => setSearch('')}
-          />
-        )}
+          {!isLoading && !isError && filteredEmails.length === 0 && (
+            <EmailListEmptyState
+              hasSearch={Boolean(search.trim())}
+              folderLabel={folderLabel}
+              onClearSearch={() => setSearch('')}
+            />
+          )}
 
-        {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
-          <VirtualizedEmailList
-            key={`${mailbox}:${folder}:${search}`}
-            emails={filteredEmails}
-            scrollElement={scrollContainer}
-            selectedEmailId={selectedEmailId}
-            groupByMonth={groupByMonth}
-            onSelectEmail={onSelectEmail}
-            onPrefetchEmail={onPrefetchEmail}
-            onArchiveEmail={onArchiveEmail}
-            onDeleteEmail={onDeleteEmail}
-            checkedIds={checkedIds}
-            onToggleChecked={onToggleChecked}
-            bulkSelectActive={isBulkActive}
-          />
-        )}
+          {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
+            <VirtualizedEmailList
+              key={`${mailbox}:${folder}:${search}`}
+              emails={filteredEmails}
+              scrollElement={scrollContainer}
+              selectedEmailId={selectedEmailId}
+              groupByMonth={groupByMonth}
+              onSelectEmail={onSelectEmail}
+              onPrefetchEmail={onPrefetchEmail}
+              onArchiveEmail={onArchiveEmail}
+              onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
+              checkedIds={checkedIds}
+              onToggleChecked={onToggleChecked}
+              bulkSelectActive={isBulkActive}
+            />
+          )}
 
-        {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
-          <div
-            ref={loadMoreSentinelRef}
-            className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
-            aria-live="polite"
-          >
-            {loadMoreError ? (
-              <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-xs text-muted-foreground">Couldn’t load more emails.</p>
-                <Button type="button" variant="secondary" size="sm" onClick={() => onLoadMore?.()}>
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
-                role="status"
-                aria-label={isLoadingMore ? 'Loading more emails' : 'Preparing more emails'}
-              />
-            )}
-          </div>
-        )}
+          {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
+            <div
+              ref={loadMoreSentinelRef}
+              className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
+              aria-live="polite"
+            >
+              {loadMoreError ? (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <p className="text-xs text-muted-foreground">Couldn’t load more emails.</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onLoadMore?.()}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
+                  role="status"
+                  aria-label={isLoadingMore ? 'Loading more emails' : 'Preparing more emails'}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

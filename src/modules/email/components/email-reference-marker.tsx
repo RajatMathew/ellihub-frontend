@@ -9,6 +9,13 @@ import {
   CommandItem,
   CommandList,
 } from '@/app/components/ui/command';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
@@ -19,6 +26,8 @@ import { emailApi } from '@/modules/email/api';
 import type { ConnectedEmailTag } from '@/modules/email/api';
 import {
   EMAIL_REFERENCE_TYPES,
+  EMAIL_THREAD_STATE_LABELS,
+  isOpenEmailThreadState,
   type EmailReference,
   type EmailReferenceMarkerState,
   type EmailReferenceOption,
@@ -26,7 +35,17 @@ import {
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
 import { useQuery } from '@tanstack/react-query';
-import { AtSign, CheckCircle2, CircleDotDashed, Info, Loader2, Plus, Tag, X } from 'lucide-react';
+import {
+  AtSign,
+  CheckCircle2,
+  ChevronDown,
+  CircleDotDashed,
+  Info,
+  Loader2,
+  Plus,
+  Tag,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 type EmailReferenceMarkerProps = {
@@ -92,15 +111,14 @@ export function EmailReferenceMarker({
   const [newTagName, setNewTagName] = useState('');
   const [closedOtherPanelKey, setClosedOtherPanelKey] = useState<string | null>(null);
   const selectedProjectIds = useMemo(
-    () =>
-      [
-        ...new Set(
-          state.references
-            .filter((reference) => reference.type === 'project')
-            .map((reference) => reference.entityId)
-            .filter((projectId): projectId is string => Boolean(projectId))
-        ),
-      ],
+    () => [
+      ...new Set(
+        state.references
+          .filter((reference) => reference.type === 'project')
+          .map((reference) => reference.entityId)
+          .filter((projectId): projectId is string => Boolean(projectId))
+      ),
+    ],
     [state.references]
   );
   const references = useMemo(
@@ -165,6 +183,12 @@ export function EmailReferenceMarker({
       return;
     }
     if (reference.type === 'other') {
+      if (isOtherSelected) {
+        // Toggle 'Other' off and fall back to project selection mode.
+        updateReferences([]);
+        setSelectedType('all');
+        return;
+      }
       updateReferences([reference]);
       setSelectedType('other');
       return;
@@ -178,7 +202,12 @@ export function EmailReferenceMarker({
     const exists = references.some(
       (item) => getReferenceIdentity(item) === getReferenceIdentity(reference)
     );
-    if (exists) return;
+    if (exists) {
+      // Clicking an already-selected option toggles it off. removeReference keeps
+      // the guard against removing the last project reference while dependents exist.
+      removeReference(reference);
+      return;
+    }
 
     updateReferences([...references.filter((item) => item.type !== 'other'), reference]);
   };
@@ -425,6 +454,8 @@ function ReferencePickerPopover({
   return (
     <PopoverContent
       align={align}
+      side="bottom"
+      avoidCollisions={false}
       sideOffset={8}
       collisionPadding={12}
       className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] flex-col overflow-hidden p-3"
@@ -715,17 +746,44 @@ export function EmailThreadStatusMarker({
   isSaving,
   onChange,
 }: EmailThreadStatusMarkerProps) {
+  const isOpen = isOpenEmailThreadState(state);
+
   return (
     <div className="shrink-0">
       <div className="inline-flex rounded-full border border-border bg-muted/30 p-0.5">
-        <ThreadStateButton
-          active={state === 'open'}
-          state="open"
-          label="Open"
-          icon={CircleDotDashed}
-          disabled={isSaving}
-          onClick={() => onChange('open')}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+                isOpen && 'bg-destructive/10 text-destructive shadow-xs'
+              )}
+              aria-pressed={isOpen}
+              disabled={isSaving}
+            >
+              <CircleDotDashed aria-hidden="true" className="size-3" />
+              {isOpen ? EMAIL_THREAD_STATE_LABELS[state] : 'Open'}
+              <ChevronDown aria-hidden="true" className="size-2.5 opacity-70" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-40 p-1">
+            <DropdownMenuRadioGroup
+              value={isOpen ? state : ''}
+              onValueChange={(value) => onChange(value as EmailThreadState)}
+            >
+              <DropdownMenuRadioItem value="open" className="min-h-8 text-xs">
+                Open
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="open_our_court" className="min-h-8 text-xs">
+                Open · our court
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="open_their_court" className="min-h-8 text-xs">
+                Open · their court
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ThreadStateButton
           active={state === 'closed'}
           state="closed"
@@ -744,7 +802,7 @@ export function EmailThreadStatusPill({ state }: { state: EmailThreadState }) {
     <span
       className={cn(
         'inline-flex h-6 items-center gap-1 rounded-full px-2 text-[0.6875rem] font-semibold',
-        state === 'open'
+        isOpenEmailThreadState(state)
           ? 'bg-destructive/10 text-destructive'
           : 'bg-success-soft text-success-soft-foreground'
       )}
@@ -753,10 +811,10 @@ export function EmailThreadStatusPill({ state }: { state: EmailThreadState }) {
         aria-hidden="true"
         className={cn(
           'size-1.5 rounded-full',
-          state === 'open' ? 'bg-destructive' : 'bg-success-accent'
+          isOpenEmailThreadState(state) ? 'bg-destructive' : 'bg-success-accent'
         )}
       />
-      {state === 'open' ? 'Open' : 'Closed'}
+      {EMAIL_THREAD_STATE_LABELS[state]}
     </span>
   );
 }
@@ -958,7 +1016,14 @@ function SearchReferencePicker({
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 200);
   const optionsQuery = useQuery({
-    queryKey: ['connected-email', 'reference-options', accountId, type, projectIds, debouncedSearch],
+    queryKey: [
+      'connected-email',
+      'reference-options',
+      accountId,
+      type,
+      projectIds,
+      debouncedSearch,
+    ],
     queryFn: () =>
       Promise.all(
         (type === 'project' ? [undefined] : projectIds).map((projectId) =>
@@ -1112,7 +1177,7 @@ function ThreadStateButton({
     <button
       type="button"
       className={cn(
-        'inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
         active &&
           (state === 'open'
             ? 'bg-destructive/10 text-destructive shadow-xs'
@@ -1122,7 +1187,7 @@ function ThreadStateButton({
       disabled={disabled}
       onClick={onClick}
     >
-      <Icon aria-hidden="true" className="size-3.5" />
+      <Icon aria-hidden="true" className="size-3" />
       {label}
     </button>
   );
@@ -1172,7 +1237,9 @@ function optionToReference(option: EmailReferenceOption): EmailReference {
 function dedupeReferenceOptions<T extends EmailReferenceOption>(options: T[]): T[] {
   const seen = new Set<string>();
   return options.filter((option) => {
-    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join('|');
+    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join(
+      '|'
+    );
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

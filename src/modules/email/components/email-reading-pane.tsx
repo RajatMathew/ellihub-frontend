@@ -16,6 +16,7 @@ import type {
   EmailMeetingResponseAction,
 } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
+import { EmailAssigneePicker } from '@/modules/email/components/email-assignee-picker';
 import { EmailMeetingEventCard } from '@/modules/email/components/email-meeting-event-card';
 import {
   EmailReadingPaneEmptyState,
@@ -141,16 +142,24 @@ export function EmailReadingPane({
     attachment: EmailAttachment;
   } | null>(null);
   const attachmentBlobCacheRef = useRef(new Map<string, Promise<Blob>>());
+  const [previewProgress, setPreviewProgress] = useState<{
+    loaded: number;
+    total: number | null;
+  } | null>(null);
   const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
   const loadEmailAttachment = useCallback(
-    (messageId: string, attachmentId: string) => {
+    (
+      messageId: string,
+      attachmentId: string,
+      onProgress?: (progress: { loaded: number; total: number | null }) => void
+    ) => {
       if (!accountId) return Promise.reject(new Error('Email account is unavailable'));
 
       const cacheKey = `${accountId}:${messageId}:${attachmentId}`;
       const cached = attachmentBlobCacheRef.current.get(cacheKey);
       if (cached) return cached;
 
-      const request = emailApi.getAttachment(accountId, messageId, attachmentId);
+      const request = emailApi.getAttachment(accountId, messageId, attachmentId, onProgress);
       attachmentBlobCacheRef.current.set(cacheKey, request);
 
       if (attachmentBlobCacheRef.current.size > MAX_CACHED_ATTACHMENT_PREVIEWS) {
@@ -170,7 +179,15 @@ export function EmailReadingPane({
   const loadPreviewAttachment = useCallback(
     (file: FilePreviewItem) => {
       if (!previewAttachment) return Promise.reject(new Error('No attachment selected'));
-      return loadEmailAttachment(previewAttachment.messageId, file.id);
+      setPreviewProgress({ loaded: 0, total: file.size && file.size > 0 ? file.size : null });
+      const request = loadEmailAttachment(previewAttachment.messageId, file.id, (progress) =>
+        setPreviewProgress(progress)
+      );
+      request.then(
+        () => setPreviewProgress(null),
+        () => setPreviewProgress(null)
+      );
+      return request;
     },
     [loadEmailAttachment, previewAttachment]
   );
@@ -183,6 +200,7 @@ export function EmailReadingPane({
             conversationKey: email.classification.conversationKey,
             threadId: email.classification.threadId ?? email.threadId ?? null,
             status: email.classification.status,
+            assignedTo: email.classification.assignedTo ?? null,
             references: email.classification.references,
           }
         : {
@@ -190,6 +208,7 @@ export function EmailReadingPane({
             conversationKey,
             threadId: email?.threadId ?? null,
             status: 'open',
+            assignedTo: null,
             references: [],
           },
     [conversationKey, email]
@@ -202,6 +221,7 @@ export function EmailReadingPane({
         conversationKey,
         threadId: nextState.threadId ?? email?.threadId ?? null,
         status: nextState.status,
+        assignedToId: nextState.assignedTo?.id ?? null,
         references: nextState.references,
       });
     },
@@ -369,13 +389,24 @@ export function EmailReadingPane({
               <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
                 {email.subject}
               </h1>
-              <EmailThreadStatusMarker
-                state={referenceMarkerState.status}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveThreadState}
-              />
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground">to {mailboxAddress}</p>
+              <span className="ms-auto flex shrink-0 items-center gap-1.5">
+                <EmailAssigneePicker
+                  assignee={referenceMarkerState.assignedTo ?? null}
+                  disabled={saveClassificationMutation.isPending}
+                  onChange={(assignee) =>
+                    saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
+                  }
+                />
+                <EmailThreadStatusMarker
+                  state={referenceMarkerState.status}
+                  isSaving={saveClassificationMutation.isPending}
+                  onChange={saveThreadState}
+                />
+              </span>
+            </div>
             {accountId && (
               <EmailReferenceMarker
                 accountId={accountId}
@@ -492,6 +523,7 @@ export function EmailReadingPane({
             : null
         }
         loadFile={loadPreviewAttachment}
+        loadProgress={previewProgress}
         saveToFiles={
           previewAttachment
             ? {
