@@ -1,19 +1,8 @@
 import { StatusBadge, type StatusBadgeProps } from '@/app/components/status-badge';
-import type { StatusTone } from '@/app/components/status-tone';
-import { PROJECT_STATUS_LABELS } from '@/modules/project/constants/project-form.constants';
-
-/**
- * Where a project's status reads differently than it would anywhere else.
- *
- * A completed *project* is a finished job rather than a good outcome, so it
- * takes the brand tone the way an issued document does, not the green that
- * `COMPLETED` earns on a task or a payment. This is the one project status the
- * shared vocabulary gets wrong, which is what `tones` exists for — everything
- * else (`ACTIVE`, `INACTIVE`, `CLOSED`) resolves from the shared map.
- */
-const PROJECT_STATUS_TONES: Record<string, StatusTone> = {
-  COMPLETED: 'active',
-};
+import {
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_TONES,
+} from '@/modules/project/constants/project-form.constants';
 
 interface ProjectStatusBadgeProps extends Pick<StatusBadgeProps, 'size' | 'className'> {
   status: string | null | undefined;

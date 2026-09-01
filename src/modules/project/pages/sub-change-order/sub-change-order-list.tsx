@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
+import { ProjectListHeader } from '@/modules/project/components/shared/project-list-header';
 import {
-  SubChangeOrderListHeader,
   SubChangeOrderListStats,
   SubChangeOrderMobileCard,
   useSubChangeOrderListColumns,
@@ -83,7 +83,8 @@ export function SubChangeOrderListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <SubChangeOrderListHeader
+      <ProjectListHeader
+        resource="subChangeOrder"
         hasActiveFilters={state.hasActiveFilters}
         isLoading={list.isInitialLoading}
         totalCount={list.totalCount}

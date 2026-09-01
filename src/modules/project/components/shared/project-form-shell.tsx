@@ -1,8 +1,7 @@
 import type { FormEventHandler, ReactNode } from 'react';
 
 import { FormPageShell } from '@/app/components/form-page-shell';
-
-import { ProjectFormToolbar } from './project-form-toolbar';
+import { FormPageHeader } from '@/app/components/page-header';
 
 interface ProjectFormShellProps {
   children: ReactNode;
@@ -38,12 +37,12 @@ export function ProjectFormShell({
       onSectionChange={onSectionChange}
       className="min-h-0 lg:min-h-[calc(100dvh-5rem)]"
       renderToolbar={(className) => (
-        <ProjectFormToolbar
+        <FormPageHeader
           title={title}
           submitLabel={submitLabel}
           isSubmitting={isSubmitting}
           className={className}
-          extraActions={extraActions}
+          leadingActions={extraActions}
         />
       )}
     >

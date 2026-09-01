@@ -1,21 +1,15 @@
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { Button } from '@/app/components/ui/button';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Download, FolderPlus, Loader2, Upload } from 'lucide-react';
 
 /**
- * The page-level actions for Files.
+ * The Files explorer header.
  *
- * Search used to live here, styled as a page control and with its scope on a
- * panel that appeared on focus. It now sits in the card header with every other
- * list's search, via `f.search`'s `scope` segment — so this is actions only.
+ * Search is deliberately absent: it lives in the card header alongside the
+ * scope segment, because searching "everywhere" and searching "this folder" are
+ * different questions and the control has to say which one it is asking.
  */
 interface FilesPageToolbarProps {
+  /** Overridden when the explorer is embedded under another resource. */
   title?: string;
   canCreateFolder: boolean;
   canUpload: boolean;
@@ -39,41 +33,30 @@ export function FilesPageToolbar({
   onUploadFile,
 }: FilesPageToolbarProps) {
   return (
-    <Toolbar>
-      <ToolbarWrapper>
-        <ToolbarHeading className="min-w-0 flex-1">
-          <ToolbarPageTitle>{title}</ToolbarPageTitle>
-        </ToolbarHeading>
-        <ToolbarActions className="w-full min-w-0 items-stretch sm:w-auto sm:items-center sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full sm:w-auto"
-            onClick={onExport}
-            disabled={!canExport}
-          >
-            {isExporting ? <Loader2 className="animate-spin" /> : <Download />}
-            {isExporting ? 'View Export' : 'Export ZIP'}
-          </Button>
-          {showMutationActions && canCreateFolder && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={onCreateFolder}
-            >
-              <FolderPlus />
-              New Folder
-            </Button>
-          )}
-          {showMutationActions && canUpload && (
-            <Button size="sm" className="w-full sm:w-auto" onClick={onUploadFile}>
-              <Upload />
-              Upload
-            </Button>
-          )}
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+    <ListPageHeader
+      title={title}
+      actions={[
+        {
+          label: isExporting ? 'View Export' : 'Export ZIP',
+          icon: isExporting ? Loader2 : Download,
+          pending: isExporting,
+          disabled: !canExport,
+          onClick: onExport,
+        },
+        {
+          label: 'New Folder',
+          icon: FolderPlus,
+          enabled: [showMutationActions, canCreateFolder],
+          onClick: onCreateFolder,
+        },
+        {
+          label: 'Upload',
+          icon: Upload,
+          placement: 'primary',
+          enabled: [showMutationActions, canUpload],
+          onClick: onUploadFile,
+        },
+      ]}
+    />
   );
 }

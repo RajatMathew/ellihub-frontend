@@ -1,13 +1,7 @@
 import { useEffect } from 'react';
 
+import { ListPageHeader, PageHeaderSkeleton } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
-import {
-  Toolbar,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { useAccess } from '@/app/contexts/access-context';
 import { QuickBooksReferenceSyncCard } from '@/modules/integrations/components/quickbooks-reference-sync-card';
@@ -26,7 +20,7 @@ import { toast } from 'sonner';
 function QuickBooksPageLoading() {
   return (
     <div className="container-fluid space-y-4 py-7.5">
-      <ToolbarSkeleton actionCount={0} showSubtitle={false} />
+      <PageHeaderSkeleton actionCount={0} showDescription={false} showEyebrow />
       <Skeleton className="h-72 w-full" />
     </div>
   );
@@ -88,16 +82,7 @@ export default function QuickBooksIntegrationPage() {
 
   return (
     <div className="container-fluid space-y-4 py-7.5">
-      <Toolbar>
-        <ToolbarWrapper>
-          <ToolbarHeading>
-            <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-              Settings
-            </div>
-            <ToolbarPageTitle>Integrations</ToolbarPageTitle>
-          </ToolbarHeading>
-        </ToolbarWrapper>
-      </Toolbar>
+      <ListPageHeader eyebrow="Settings" title="Integrations" />
 
       <QuickBooksStatusCard
         status={statusQuery.data}

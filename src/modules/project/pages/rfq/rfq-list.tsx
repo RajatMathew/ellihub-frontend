@@ -15,10 +15,10 @@ import {
   getRFQTrackValue,
   RFQ_DELETE_BLOCKED_REASON,
   RFQListConfirmDialogs,
-  RFQListHeader,
   RFQListStats,
   useRFQListColumns,
 } from '@/modules/project/components/rfq';
+import { ProjectListHeader } from '@/modules/project/components/shared/project-list-header';
 import { RFQ_DEFAULT_PAGE_SIZE, RFQ_SORT_BY_OPTIONS } from '@/modules/project/constants/rfq';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { useLookupsQuery } from '@/modules/project/hooks/lookup.hooks';
@@ -149,7 +149,8 @@ export default function RFQListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <RFQListHeader
+      <ProjectListHeader
+        resource="rfq"
         hasActiveFilters={state.hasActiveFilters}
         isLoading={list.isInitialLoading}
         totalCount={list.totalCount}

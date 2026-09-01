@@ -34,6 +34,9 @@ const SettingsRoutes = lazy(() => import('@/modules/settings/routes/settings.rou
 const ProjectRoutes = lazy(() => import('@/modules/project/routes/index.route'));
 
 const UIKit = lazy(() => DelayForDemo(import('@/core/ui/pages/page'), 5000));
+const PageHeaderKit = lazy(() =>
+  import('@/core/ui/pages/page-header-kit').then((m) => ({ default: m.PageHeaderKit }))
+);
 
 function ProjectIndexRedirect() {
   const projectsQuery = useInfiniteProjectOptionsQuery({
@@ -55,11 +58,21 @@ function ProjectIndexRedirect() {
   return <Navigate to="/app/projects" replace />;
 }
 
-function formRouteTitles(resourceName: string) {
-  return [
-    { path: 'create', title: `Create ${resourceName}` },
-    { path: ':id/edit', title: `Edit ${resourceName}` },
-  ];
+/**
+ * The create and edit routes every resource module owns.
+ *
+ * The singular name is declared once as `entityLabel` and drives three things:
+ * the two document titles below, the placeholder crumb shown while a record's
+ * own name loads, and the back link a detail header renders.
+ */
+function resourceRoutes(entityLabel: string) {
+  return {
+    breadcrumb: { entityLabel },
+    children: [
+      { path: 'create', title: `Create ${entityLabel}` },
+      { path: ':id/edit', title: `Edit ${entityLabel}` },
+    ],
+  };
 }
 
 export const routeTree: RouteDef[] = [
@@ -68,7 +81,17 @@ export const routeTree: RouteDef[] = [
     component: Outlet,
     children: [
       { path: 'lookup/*', component: LookupRoutes, title: 'Lookups', access: 'dev' },
-      ...(isDev ? [{ path: 'ui', component: UIKit, title: 'UI Kit', access: 'dev' }] : []),
+      ...(isDev
+        ? [
+            { path: 'ui', component: UIKit, title: 'UI Kit', access: 'dev' as const },
+            {
+              path: 'ui/page-header',
+              component: PageHeaderKit,
+              title: 'Page Header Kit',
+              access: 'dev' as const,
+            },
+          ]
+        : []),
 
       { path: 'profile', component: ProfilePage, title: 'My Profile' },
       {
@@ -79,6 +102,7 @@ export const routeTree: RouteDef[] = [
           { path: 'members', title: 'Members & Roles' },
           { path: 'templates', title: 'Templates' },
           { path: 'integrations', title: 'Integrations' },
+          { path: 'email-mailboxes', title: 'Common Inboxes' },
         ],
       },
 
@@ -132,39 +156,39 @@ export const routeTree: RouteDef[] = [
         path: 'directory/contacts/*',
         component: DirectoryContacts,
         title: 'Contacts',
-        children: formRouteTitles('Contact'),
+        ...resourceRoutes('Contact'),
       },
       {
         path: 'directory/general-contractors/*',
         component: DirectoryGC,
         title: 'General Contractors',
-        children: formRouteTitles('General Contractor'),
+        ...resourceRoutes('General Contractor'),
       },
       {
         path: 'directory/vendors/*',
         component: DirectoryVendors,
         title: 'Vendors',
-        children: formRouteTitles('Vendor'),
+        ...resourceRoutes('Vendor'),
       },
       {
         path: 'hr/employees/*',
         component: HrEmployees,
         title: 'Employees',
         access: { resource: 'employee', action: 'read' },
-        children: formRouteTitles('Employee'),
+        ...resourceRoutes('Employee'),
       },
       {
         path: 'hr/departments/*',
         component: HrDepartments,
         title: 'Departments',
         access: { resource: 'department', action: 'read' },
-        children: formRouteTitles('Department'),
+        ...resourceRoutes('Department'),
       },
       {
         path: 'hr/pto/*',
         component: HrPTO,
         title: 'Time Off',
-        children: formRouteTitles('Time Off Request'),
+        ...resourceRoutes('Time Off Request'),
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files', access: 'admin' },
       {
@@ -182,18 +206,18 @@ export const routeTree: RouteDef[] = [
           { path: 'overview', title: 'Project Overview' },
           { path: 'edit', title: 'Edit Project' },
           { path: 'files', title: 'Project Files' },
-          { path: 'rfqs/*', title: 'RFQs', children: formRouteTitles('RFQ') },
-          { path: 'invoices/*', title: 'Invoices', children: formRouteTitles('Invoice') },
+          { path: 'rfqs/*', title: 'RFQs', ...resourceRoutes('RFQ') },
+          { path: 'invoices/*', title: 'Invoices', ...resourceRoutes('Invoice') },
           {
             path: 'purchase-orders/*',
             title: 'Purchase Orders',
-            children: formRouteTitles('Purchase Order'),
+            ...resourceRoutes('Purchase Order'),
           },
           { path: 'prime-change-orders/*', title: 'Prime Change Orders' },
           {
             path: 'sub-change-order/*',
             title: 'Sub Change Orders',
-            children: formRouteTitles('Sub Change Order'),
+            ...resourceRoutes('Sub Change Order'),
           },
         ],
       },

@@ -62,6 +62,16 @@ export default defineConfig([
                 'Build lists with useListState/useListTable from @/app/components/data-table. Reach for the raw table via list.table if you genuinely need it.',
             },
           ],
+          // Page headers go through the shared presets. Composing the Toolbar
+          // primitives by hand is what produced five competing header systems
+          // and ten hand-rolled copies of the detail header.
+          patterns: [
+            {
+              group: ['**/page-header/internal/*', '@/app/components/page-header/internal/*'],
+              message:
+                'Import ListPageHeader, DetailPageHeader or FormPageHeader from @/app/components/page-header. The Toolbar primitives are internal to it — if no preset fits, add the region to PageHeader rather than assembling a header in a module.',
+            },
+          ],
         },
       ],
       // Reaching for `!important` means a primitive is missing a variant. Adding

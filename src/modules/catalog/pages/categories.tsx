@@ -8,7 +8,7 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
@@ -23,7 +23,6 @@ import {
 } from '@/modules/catalog/hooks';
 import type { CostCodeCategory } from '@/modules/catalog/schemas/costcode-category.schema';
 import { Plus, Tag, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 const CATEGORY_SORT_BY_OPTIONS = ['name', 'description'] as const;
 
@@ -117,22 +116,22 @@ export function CostCodeCategoriesListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
-        actions={
-          <Button asChild size="sm" variant="outline">
-            <Link to="/app/catalog/cost-codes">Back to Cost Codes</Link>
-          </Button>
-        }
-        addIcon={<Plus className="size-4" />}
-        addLabel="Add Category"
-        hasActiveFilters={state.hasActiveFilters}
-        isLoading={list.isInitialLoading}
+      <ListPageHeader
         title="Cost Code Categories"
-        totalCount={list.totalCount}
-        onAdd={() => {
-          setEditingCategory(null);
-          setDialogOpen(true);
-        }}
+        isLoading={list.isInitialLoading}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'Categories' }}
+        actions={[
+          { label: 'Back to Cost Codes', to: '/app/catalog/cost-codes' },
+          {
+            label: 'Add Category',
+            icon: Plus,
+            placement: 'primary',
+            onClick: () => {
+              setEditingCategory(null);
+              setDialogOpen(true);
+            },
+          },
+        ]}
       />
 
       <DataTable

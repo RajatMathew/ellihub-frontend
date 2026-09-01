@@ -8,11 +8,11 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { CostCodeDeleteDialog } from '@/modules/catalog/components/cost-code-delete-dialog';
 import { useCostCodeColumns } from '@/modules/catalog/components/cost-codes-columns';
-import { CostCodesPageHeader } from '@/modules/catalog/components/cost-codes-page-header';
 import { CostCodesStatsBar } from '@/modules/catalog/components/cost-codes-stats-bar';
 import { CostCodeFormDialog } from '@/modules/catalog/components/costcode-form-dialog';
 import {
@@ -29,7 +29,7 @@ import type {
   CostCodeCreate,
   CostCodeFilters,
 } from '@/modules/catalog/schemas/costcode.schema';
-import { Tag, Trash2 } from 'lucide-react';
+import { Edit, Plus, Tag, Trash2 } from 'lucide-react';
 
 const COST_CODE_DEFAULT_PAGE_SIZE = 10;
 const COST_CODE_SORT_BY_OPTIONS = ['name', 'code'] as const;
@@ -111,11 +111,19 @@ export function CostCodesListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <CostCodesPageHeader
-        hasActiveFilters={state.hasActiveFilters}
+      <ListPageHeader
+        title="Cost Codes"
         isLoading={list.isInitialLoading}
-        totalCount={list.totalCount}
-        onCreate={() => setCreateModalOpen(true)}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'Cost Codes' }}
+        actions={[
+          { label: 'Categories', icon: Edit, to: 'categories' },
+          {
+            label: 'Add Cost Code',
+            icon: Plus,
+            placement: 'primary',
+            onClick: () => setCreateModalOpen(true),
+          },
+        ]}
       />
 
       <CostCodesStatsBar

@@ -8,12 +8,12 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import {
   DepartmentDeleteDialog,
   DepartmentListStats,
-  DepartmentListToolbar,
   useDepartmentListColumns,
 } from '@/modules/hr/components/departments/list';
 import {
@@ -106,10 +106,15 @@ export default function DepartmentListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <DepartmentListToolbar
+      <ListPageHeader
+        title="Departments"
         isLoading={list.isInitialLoading}
-        searchQuery={state.values.search ?? ''}
-        totalCount={list.totalCount}
+        summary={{
+          total: list.totalCount,
+          filtered: Boolean(state.values.search),
+          label: 'Departments',
+        }}
+        actions={[{ label: 'Add Department', icon: Plus, to: 'create', placement: 'primary' }]}
       />
       <DepartmentListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 

@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import { ListPageHeader } from '@/app/components/page-header';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
@@ -79,31 +80,29 @@ export default function PaymentConflictsPage() {
       : 'Check QuickBooks now';
 
   return (
-    <div className="container-fluid py-8 md:py-10">
-      <div className="mx-auto w-full max-w-3xl sm:px-6">
-        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">
-              QB Sync Conflicts
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {activeCount} {activeCount === 1 ? 'conflict needs' : 'conflicts need'} review
-            </p>
-          </div>
-          {canSync ? (
-            <Button
-              variant="outline"
-              size="md"
-              className="w-full sm:w-auto"
-              onClick={() => syncMutation.mutate()}
-              disabled={isSyncActive || !response?.connection}
-            >
-              {isSyncActive ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-              {syncButtonLabel}
-            </Button>
-          ) : null}
-        </header>
+    <div className="container-fluid py-7.5">
+      {/* The header spans the page like every other one; the conflict cards keep
+          their narrow measure below it. */}
+      <ListPageHeader
+        title="QB Sync Conflicts"
+        description={
+          <span className="text-sm text-muted-foreground">
+            {activeCount} {activeCount === 1 ? 'conflict needs' : 'conflicts need'} review
+          </span>
+        }
+        actions={[
+          {
+            label: syncButtonLabel,
+            icon: isSyncActive ? Loader2 : RefreshCcw,
+            pending: isSyncActive,
+            disabled: isSyncActive || !response?.connection,
+            enabled: canSync,
+            onClick: () => syncMutation.mutate(),
+          },
+        ]}
+      />
 
+      <div className="mx-auto w-full max-w-3xl pt-6 sm:px-6">
         {!conflictsQuery.isLoading && response?.connection === null ? (
           <QuickBooksDisconnectedState />
         ) : (

@@ -1,9 +1,10 @@
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { PTOFormContent, PTOFormLoading, PTOFormToolbar } from '@/modules/hr/components/pto/form';
+import { PTOFormContent, PTOFormLoading } from '@/modules/hr/components/pto/form';
 import { getPTOEmployeeName, getPTOTypeLabel } from '@/modules/hr/components/pto/shared';
 import { usePTOFormState } from '@/modules/hr/hooks/pto/use-pto-form-state';
 import { useSavePTO } from '@/modules/hr/hooks/pto/use-save-pto';
@@ -53,7 +54,12 @@ export default function PTOFormPage() {
       onSubmit={form.handleSubmit(savePTO, onInvalidFormSubmit)}
       fullHeight
       renderToolbar={(className) => (
-        <PTOFormToolbar isEdit={isEdit} isSubmitting={isSubmitting} className={className} />
+        <FormPageHeader
+          title={isEdit ? 'Modify Request' : 'Submit Time Off'}
+          submitLabel={isEdit ? 'Save Changes' : 'Submit Request'}
+          isSubmitting={isSubmitting}
+          className={className}
+        />
       )}
     >
       <PTOFormContent

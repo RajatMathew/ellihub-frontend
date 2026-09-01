@@ -1,7 +1,7 @@
 import { cn } from '@/app/lib/utils';
 import { NavLink } from 'react-router-dom';
 
-type PageTabValue = string | number | null;
+export type PageTabValue = string | number | null;
 
 interface BasePageTabItem<TValue extends PageTabValue = PageTabValue> {
   label: string;

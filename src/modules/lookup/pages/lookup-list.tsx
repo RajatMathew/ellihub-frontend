@@ -8,7 +8,7 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
@@ -131,17 +131,21 @@ export function LookupListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
-        addIcon={<Plus className="size-4" />}
-        addLabel="Add Lookup"
-        hasActiveFilters={state.hasActiveFilters}
-        isLoading={list.isInitialLoading}
+      <ListPageHeader
         title="Lookups"
-        totalCount={list.totalCount}
-        onAdd={() => {
-          setEditingLookup(null);
-          setDialogOpen(true);
-        }}
+        isLoading={list.isInitialLoading}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'Lookups' }}
+        actions={[
+          {
+            label: 'Add Lookup',
+            icon: Plus,
+            placement: 'primary',
+            onClick: () => {
+              setEditingLookup(null);
+              setDialogOpen(true);
+            },
+          },
+        ]}
       />
 
       <DataTable
