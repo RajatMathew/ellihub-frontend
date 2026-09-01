@@ -301,6 +301,19 @@ function normalizeClassificationReferences(
   return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
 }
 
+export const useEmailThreadAssigneesQuery = (enabled = true) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'thread-assignees'] as const,
+    queryFn: () => emailApi.listThreadAssignees(),
+    enabled,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
 export const useSaveEmailThreadClassificationMutation = () => {
   const queryClient = useQueryClient();
 

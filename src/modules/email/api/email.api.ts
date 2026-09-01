@@ -145,11 +145,19 @@ const emailThreadReferenceSchema = z.object({
   sortOrder: z.number().optional(),
 });
 
+const emailThreadAssigneeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  image: z.string().nullable().optional(),
+});
+
 const emailThreadClassificationSchema = z.object({
   id: z.string().nullable().optional(),
   conversationKey: z.string(),
   threadId: z.string().nullable().optional(),
-  status: z.enum(['open', 'closed']),
+  status: z.enum(['open', 'open_our_court', 'open_their_court', 'closed']),
+  assignedTo: emailThreadAssigneeSchema.nullable().optional(),
   references: z.array(emailThreadReferenceSchema),
 });
 
@@ -334,9 +342,12 @@ export type SaveEmailThreadClassificationPayload = {
   accountId: string;
   conversationKey: string;
   threadId?: string | null;
-  status: 'open' | 'closed';
+  status: EmailThreadClassification['status'];
+  assignedToId?: string | null;
   references: EmailThreadReference[];
 };
+
+export type EmailThreadAssignee = z.infer<typeof emailThreadAssigneeSchema>;
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
   const response = data as Record<string, unknown>;
@@ -419,6 +430,11 @@ export const emailApi = {
       classification
     );
     return emailThreadClassificationSchema.parse(unwrapData(res.data));
+  },
+
+  async listThreadAssignees(): Promise<EmailThreadAssignee[]> {
+    const res = await api.get(`${BASE}/thread-assignees`);
+    return z.array(emailThreadAssigneeSchema).parse(unwrapData(res.data));
   },
 
   async listMessages(params: {

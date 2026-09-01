@@ -20,6 +20,7 @@ import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-att
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
+import { getOutlookAvatarStyle, getOutlookInitials } from '@/modules/email/lib/outlook-avatar';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import { ChevronUp, FolderPlus, Forward, Mail, Reply, Star } from 'lucide-react';
 import { toast } from 'sonner';
@@ -255,15 +256,20 @@ export function EmailThreadMessageCard({
 function SenderAvatar({ name, className }: { name: string; className?: string }) {
   return (
     <Avatar className={cn('shrink-0', className)}>
-      <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
-        {getInitials(name)}
+      <AvatarFallback
+        className="border-0 text-xs font-semibold"
+        // Exact Outlook avatar colours — see outlook-avatar.ts.
+        style={getOutlookAvatarStyle(name)}
+      >
+        {getOutlookInitials(name) || getInitials(name)}
       </AvatarFallback>
     </Avatar>
   );
 }
 
 function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
-  const initials = getInitials(message.senderName);
+  const initials = getOutlookInitials(message.senderName) || getInitials(message.senderName);
+  const avatarStyle = getOutlookAvatarStyle(message.senderName);
 
   return (
     <HoverCard openDelay={100} closeDelay={120}>
@@ -274,7 +280,7 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
           aria-label={`View ${message.senderName} profile`}
         >
           <Avatar className="size-9">
-            <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
+            <AvatarFallback className="border-0 text-xs font-semibold" style={avatarStyle}>
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -283,7 +289,7 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
       <HoverCardContent align="start" className="w-72 p-0">
         <div className="flex gap-3 p-4 pb-3">
           <Avatar className="size-10">
-            <AvatarFallback className="border-0 bg-primary/10 text-sm font-semibold text-primary">
+            <AvatarFallback className="border-0 text-sm font-semibold" style={avatarStyle}>
               {initials}
             </AvatarFallback>
           </Avatar>

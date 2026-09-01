@@ -15,7 +15,23 @@ export type EmailReferenceEntityType =
   | 'subChangeOrder'
   | 'invoice';
 
-export type EmailThreadState = 'open' | 'closed';
+export type EmailThreadState = 'open' | 'open_our_court' | 'open_their_court' | 'closed';
+
+export const EMAIL_THREAD_STATE_LABELS: Record<EmailThreadState, string> = {
+  open: 'Open',
+  open_our_court: 'Our court',
+  open_their_court: 'Their court',
+  closed: 'Closed',
+};
+
+export const isOpenEmailThreadState = (state: EmailThreadState) => state !== 'closed';
+
+export type EmailThreadAssigneeInfo = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+};
 
 export type EmailReference = {
   id?: string;
@@ -31,6 +47,7 @@ export type EmailReferenceMarkerState = {
   conversationKey: string;
   threadId?: string | null;
   status: EmailThreadState;
+  assignedTo?: EmailThreadAssigneeInfo | null;
   references: EmailReference[];
 };
 

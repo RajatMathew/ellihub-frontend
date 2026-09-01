@@ -16,6 +16,7 @@ import type {
   EmailMeetingResponseAction,
 } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
+import { EmailAssigneePicker } from '@/modules/email/components/email-assignee-picker';
 import { EmailMeetingEventCard } from '@/modules/email/components/email-meeting-event-card';
 import {
   EmailReadingPaneEmptyState,
@@ -199,6 +200,7 @@ export function EmailReadingPane({
             conversationKey: email.classification.conversationKey,
             threadId: email.classification.threadId ?? email.threadId ?? null,
             status: email.classification.status,
+            assignedTo: email.classification.assignedTo ?? null,
             references: email.classification.references,
           }
         : {
@@ -206,6 +208,7 @@ export function EmailReadingPane({
             conversationKey,
             threadId: email?.threadId ?? null,
             status: 'open',
+            assignedTo: null,
             references: [],
           },
     [conversationKey, email]
@@ -218,6 +221,7 @@ export function EmailReadingPane({
         conversationKey,
         threadId: nextState.threadId ?? email?.threadId ?? null,
         status: nextState.status,
+        assignedToId: nextState.assignedTo?.id ?? null,
         references: nextState.references,
       });
     },
@@ -385,13 +389,24 @@ export function EmailReadingPane({
               <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
                 {email.subject}
               </h1>
-              <EmailThreadStatusMarker
-                state={referenceMarkerState.status}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveThreadState}
-              />
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground">to {mailboxAddress}</p>
+              <span className="ms-auto flex shrink-0 items-center gap-1.5">
+                <EmailAssigneePicker
+                  assignee={referenceMarkerState.assignedTo ?? null}
+                  disabled={saveClassificationMutation.isPending}
+                  onChange={(assignee) =>
+                    saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
+                  }
+                />
+                <EmailThreadStatusMarker
+                  state={referenceMarkerState.status}
+                  isSaving={saveClassificationMutation.isPending}
+                  onChange={saveThreadState}
+                />
+              </span>
+            </div>
             {accountId && (
               <EmailReferenceMarker
                 accountId={accountId}

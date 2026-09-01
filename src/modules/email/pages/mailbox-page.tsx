@@ -293,7 +293,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     if (mailStatusFilter !== 'all') {
       list = list.filter((email) => {
         const status = email.classification?.status ?? 'open';
-        return status === mailStatusFilter;
+        // 'open' covers every open variant (plain, our court, their court).
+        return mailStatusFilter === 'open' ? status !== 'closed' : status === 'closed';
       });
     }
 
@@ -408,14 +409,39 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     selectedTarget?.emailId,
   ]);
 
-  const toggleChecked = useCallback((email: EmailListItem, next: boolean) => {
-    setCheckedMessageIds((current) => {
-      const nextSet = new Set(current);
-      if (next) nextSet.add(email.id);
-      else nextSet.delete(email.id);
-      return nextSet;
-    });
-  }, []);
+  // Anchor for Outlook-style Shift range selection: the last row whose
+  // checkbox was ticked without Shift held.
+  const checkedAnchorIdRef = useRef<string | null>(null);
+  const toggleChecked = useCallback(
+    (email: EmailListItem, next: boolean, options?: { range?: boolean }) => {
+      const anchorId = checkedAnchorIdRef.current;
+      setCheckedMessageIds((current) => {
+        const nextSet = new Set(current);
+        if (options?.range && anchorId) {
+          const visibleIds = orderedEmails.map((item) => item.id);
+          const anchorIndex = visibleIds.indexOf(anchorId);
+          const targetIndex = visibleIds.indexOf(email.id);
+          if (anchorIndex !== -1 && targetIndex !== -1) {
+            const [start, end] = [
+              Math.min(anchorIndex, targetIndex),
+              Math.max(anchorIndex, targetIndex),
+            ];
+            for (const id of visibleIds.slice(start, end + 1)) {
+              if (next) nextSet.add(id);
+              else nextSet.delete(id);
+            }
+            return nextSet;
+          }
+        }
+        if (next) nextSet.add(email.id);
+        else nextSet.delete(email.id);
+        return nextSet;
+      });
+      // A Shift-click extends from the existing anchor; a plain click moves it.
+      if (!options?.range) checkedAnchorIdRef.current = email.id;
+    },
+    [orderedEmails]
+  );
   const clearChecked = useCallback(() => setCheckedMessageIds(() => new Set()), []);
   const isBulkOperationRunning = Boolean(bulkOperation?.isRunning);
 
@@ -1063,7 +1089,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             emptyFolderDisabled={isBulkOperationRunning || folderEmails.length === 0}
           />
 
-          <div className="flex min-h-0 flex-1 gap-3 bg-muted p-3 lg:gap-4 lg:p-4">
+          <div className="flex min-h-0 flex-1 gap-1.5 bg-muted p-1.5 lg:gap-1.5 lg:p-1.5">
             {showEmailList && (
               <div
                 className={cn(
