@@ -25,6 +25,7 @@ const DirectoryVendors = lazy(() => import('@/modules/directory/routes/vendors.r
 const HrEmployees = lazy(() => import('@/modules/hr/routes/employees.route'));
 const HrDepartments = lazy(() => import('@/modules/hr/routes/departments.route'));
 const HrPTO = lazy(() => import('@/modules/hr/routes/pto.route'));
+const TasksRoutes = lazy(() => import('@/modules/tasks/routes/tasks.route'));
 const FilesRoutes = lazy(() => import('@/modules/files/routes/files.route'));
 const ActivityLogRoutes = lazy(() => import('@/modules/activity-log/routes/activity-log.route'));
 const ProfilePage = lazy(() => import('@/modules/profile/pages/profile-page'));
@@ -165,6 +166,12 @@ export const routeTree: RouteDef[] = [
         component: HrPTO,
         title: 'Time Off',
         children: formRouteTitles('Time Off Request'),
+      },
+      {
+        path: 'tasks/*',
+        component: TasksRoutes,
+        title: 'Tasks',
+        access: { resource: 'task', action: 'read' },
       },
       { path: 'files/*', component: FilesRoutes, title: 'Files', access: 'admin' },
       {

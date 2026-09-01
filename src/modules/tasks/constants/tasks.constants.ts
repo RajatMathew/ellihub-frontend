@@ -1,4 +1,4 @@
-import type { TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
+import type { TaskCourt, TaskEntityType, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 
 export const TASK_PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'P1', label: 'P1 — Highest' },
@@ -13,3 +13,12 @@ export const TASK_COURT_OPTIONS: { value: TaskCourt; label: string }[] = [
 ];
 
 export const TASKS_DEFAULT_PAGE_SIZE = 25;
+
+export const TASK_ENTITY_LABELS: Record<TaskEntityType, string> = {
+  project: 'Project',
+  rfq: 'RFQ',
+  purchaseOrder: 'PO',
+  primeChangeOrder: 'PCO',
+  subChangeOrder: 'SCO',
+  invoice: 'Invoice',
+};
