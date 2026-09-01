@@ -61,20 +61,22 @@ function TooltipContent({
     arrowClassName?: string;
   }) {
   return (
-    <TooltipPrimitive.Content
-      data-slot="tooltip-content"
-      sideOffset={sideOffset}
-      className={cn(tooltipVariants({ variant }), className)}
-      {...props}
-    >
-      {children}
-      {showArrow && (
-        <TooltipPrimitive.Arrow
-          data-slot="tooltip-arrow"
-          className={cn('fill-zinc-950 dark:fill-zinc-300', arrowClassName)}
-        />
-      )}
-    </TooltipPrimitive.Content>
+    <TooltipPrimitive.Portal>
+      <TooltipPrimitive.Content
+        data-slot="tooltip-content"
+        sideOffset={sideOffset}
+        className={cn(tooltipVariants({ variant }), className)}
+        {...props}
+      >
+        {children}
+        {showArrow && (
+          <TooltipPrimitive.Arrow
+            data-slot="tooltip-arrow"
+            className={cn('fill-zinc-950 dark:fill-zinc-300', arrowClassName)}
+          />
+        )}
+      </TooltipPrimitive.Content>
+    </TooltipPrimitive.Portal>
   );
 }
 

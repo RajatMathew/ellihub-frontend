@@ -17,12 +17,12 @@ interface VirtualizedEmailListProps {
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
-  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   bulkSelectActive?: boolean;
 }
 
 const ESTIMATED_EMAIL_ROW_HEIGHT = 154;
-const ESTIMATED_MONTH_HEADER_HEIGHT = 48;
+const ESTIMATED_MONTH_HEADER_HEIGHT = 33;
 
 export function VirtualizedEmailList({
   emails,
@@ -126,7 +126,11 @@ function VirtualizedFlatEmailList({
               onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
               onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
               isChecked={checkedIds?.has(email.id) ?? false}
-              onCheckedChange={onToggleChecked ? (next) => onToggleChecked(email, next) : undefined}
+              onCheckedChange={
+                onToggleChecked
+                  ? (next, options) => onToggleChecked(email, next, options)
+                  : undefined
+              }
               bulkSelectActive={bulkSelectActive}
             />
           </div>
@@ -241,7 +245,7 @@ function MonthGroupSection({
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
-  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   bulkSelectActive?: boolean;
   onToggle: () => void;
 }) {
@@ -256,8 +260,8 @@ function MonthGroupSection({
           id={triggerId}
           type="button"
           className={cn(
-            'flex min-h-12 w-full cursor-pointer items-center gap-2 border-b border-border px-3 text-left',
-            'text-sm font-semibold text-foreground hover:bg-accent/60',
+            'flex min-h-8 w-full cursor-pointer items-center gap-2 border-b border-border px-3 text-left',
+            'font-sans text-[13px] font-semibold text-foreground hover:bg-accent/60',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
             'motion-safe:transition-colors motion-safe:duration-150'
           )}
@@ -294,7 +298,9 @@ function MonthGroupSection({
                   onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
                   isChecked={checkedIds?.has(email.id) ?? false}
                   onCheckedChange={
-                    onToggleChecked ? (next) => onToggleChecked(email, next) : undefined
+                    onToggleChecked
+                      ? (next, options) => onToggleChecked(email, next, options)
+                      : undefined
                   }
                   bulkSelectActive={bulkSelectActive}
                 />

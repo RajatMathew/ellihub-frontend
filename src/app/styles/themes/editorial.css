@@ -171,6 +171,11 @@
   letter-spacing: -0.01em;
 }
 
+.editorial .font-sans {
+  font-family: 'Public Sans', 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0;
+}
+
 .editorial .font-mono {
   font-family: 'DM Mono', 'IBM Plex Sans', monospace;
 }
