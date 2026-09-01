@@ -6,6 +6,7 @@ import {
   KanbanColumn,
   KanbanColumnContent,
   KanbanItem,
+  KanbanItemHandle,
   KanbanOverlay,
   type KanbanMoveEvent,
 } from '@/app/components/ui/kanban';
@@ -87,13 +88,12 @@ export function TaskBoard({
       onMove={handleMove}
     >
       <KanbanBoard className="grid-cols-1 items-start gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {/* Columns are deliberately not `disabled`: useSortable's disabled turns
+            off the droppable as well as the draggable, which would make an empty
+            column refuse drops. Column drags are harmless here — onValueChange
+            applies nothing, so reordering columns is a no-op. */}
         {TASK_COLUMNS.map((columnId) => (
-          <KanbanColumn
-            key={columnId}
-            value={columnId}
-            disabled
-            className="rounded-lg bg-muted/40 p-3"
-          >
+          <KanbanColumn key={columnId} value={columnId} className="rounded-lg bg-muted/40 p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <span
@@ -111,14 +111,23 @@ export function TaskBoard({
               ) : (
                 columns[columnId].map((task) => (
                   <KanbanItem key={task.id} value={task.id}>
-                    <TaskCard
-                      task={task}
-                      now={now}
-                      isBusy={busyTaskId === task.id}
-                      onOpen={onOpenTask}
-                      onComplete={onCompleteTask}
-                      onShiftDueDate={onShiftDueDate}
-                    />
+                    {/* KanbanItem keeps the drag listeners in context rather than
+                        spreading them, so a card only becomes draggable once it
+                        contains a handle. The whole card is the handle; the
+                        sensor's 10px activation distance leaves the buttons
+                        inside it clickable. */}
+                    <KanbanItemHandle asChild>
+                      <div>
+                        <TaskCard
+                          task={task}
+                          now={now}
+                          isBusy={busyTaskId === task.id}
+                          onOpen={onOpenTask}
+                          onComplete={onCompleteTask}
+                          onShiftDueDate={onShiftDueDate}
+                        />
+                      </div>
+                    </KanbanItemHandle>
                   </KanbanItem>
                 ))
               )}
