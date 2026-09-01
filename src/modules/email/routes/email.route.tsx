@@ -1,11 +1,11 @@
 import { NotFound } from '@/app/components/error/not-found';
 import { SharedMailboxDiscoveryFlow } from '@/app/components/shared-mailbox-discovery-flow';
-import { EmailConnectErrorDialog } from '@/modules/email/components/email-connect-error-dialog';
 import {
   EmailAccountEmptyState,
   EmailAccountsErrorState,
   EmailAccountsLoadingState,
 } from '@/modules/email/components/email-account-empty-state';
+import { EmailConnectErrorDialog } from '@/modules/email/components/email-connect-error-dialog';
 import { useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hooks';
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
@@ -20,7 +20,12 @@ export default function EmailRoutes() {
         <Route index element={<EmailIndexRoute />} />
         <Route path="add-account" element={<EmailAddAccountRoute />} />
         <Route path="accounts" element={<EmailAccountsPage />} />
-        <Route path="accounts/:accountSlug" element={<ConnectedMailboxRoute />} />
+        <Route path="accounts/:accountSlug" element={<ConnectedMailboxIndexRedirect />} />
+        <Route path="accounts/:accountSlug/:folder" element={<ConnectedMailboxRoute />} />
+        <Route
+          path="accounts/:accountSlug/:folder/id/:messageId"
+          element={<ConnectedMailboxRoute />}
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
@@ -89,10 +94,20 @@ function EmailAddAccountRoute() {
   return <EmailAccountEmptyState />;
 }
 
-function ConnectedMailboxRoute() {
+function ConnectedMailboxIndexRedirect() {
   const { accountSlug } = useParams();
+  const [searchParams] = useSearchParams();
 
   if (!accountSlug) return <NotFound />;
 
-  return <MailboxPage accountSlug={accountSlug} />;
+  const search = searchParams.toString();
+  return <Navigate to={`inbox${search ? `?${search}` : ''}`} replace />;
+}
+
+function ConnectedMailboxRoute() {
+  const { accountSlug, folder, messageId } = useParams();
+
+  if (!accountSlug) return <NotFound />;
+
+  return <MailboxPage accountSlug={accountSlug} folder={folder} conversationId={messageId} />;
 }

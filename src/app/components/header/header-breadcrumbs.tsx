@@ -190,6 +190,17 @@ export function HeaderBreadcrumbs() {
     }
   }
 
+  // Mail deep links end in `/id/:conversationId` — an addressing detail, not a
+  // navigational level. Drop that pair so the trail ends at the folder crumb.
+  if (pathSegments[0] === 'email' && pathSegments[1] === 'accounts') {
+    const idIndex = pathSegments.indexOf('id', 3);
+    if (idIndex !== -1) {
+      breadcrumbs = breadcrumbs.slice(0, idIndex);
+      const lastCrumb = breadcrumbs[breadcrumbs.length - 1];
+      if (lastCrumb) lastCrumb.isLast = true;
+    }
+  }
+
   // Crumbs a page registered for state the path cannot express — the open
   // folder in Files, for one. The last path crumb stops being the final one
   // once they exist, and it is what the trail's own menu hangs off.
