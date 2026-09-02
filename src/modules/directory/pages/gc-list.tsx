@@ -8,7 +8,7 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { GCStatsCards, useGCListColumns } from '@/modules/directory/components/gc';
@@ -133,15 +133,13 @@ export function GCListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
-        addIcon={canCreate ? <Plus className="size-4" /> : undefined}
-        addLabel={canCreate ? 'Add GC' : undefined}
-        addTo={canCreate ? 'create' : undefined}
-        hasActiveFilters={state.hasActiveFilters}
-        isLoading={list.isInitialLoading}
-        resultLabel="GCs"
+      <ListPageHeader
         title="General Contractors"
-        totalCount={list.totalCount}
+        isLoading={list.isInitialLoading}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'GCs' }}
+        actions={[
+          { label: 'Add GC', icon: Plus, to: 'create', placement: 'primary', enabled: canCreate },
+        ]}
       />
 
       <GCStatsCards

@@ -4,9 +4,14 @@ import { Checkbox } from '@/app/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { EmailMeetingEvent, EmailThreadClassification } from '@/modules/email/api';
-import { EmailThreadStatusPill } from '@/modules/email/components/email-reference-marker';
+import { EmailAssigneeAvatar } from '@/modules/email/components/email-assignee-picker';
+import {
+  EMAIL_THREAD_STATE_LABELS,
+  isOpenEmailThreadState,
+} from '@/modules/email/components/email-reference-marker-storage';
+import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { Archive, BriefcaseBusiness, Flag, Paperclip, Trash2 } from 'lucide-react';
+import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -88,6 +93,7 @@ export type EmailThreadMessage = {
 
 interface EmailRowCardProps {
   email: EmailListItem;
+  accountId?: string;
   selected?: boolean;
   onSelect?: () => void;
   onPrefetch?: () => void;
@@ -96,11 +102,12 @@ interface EmailRowCardProps {
   onToggleFlag?: () => void;
   /**
    * Bulk-selection state (separate from `selected`, which tracks the row
-   * currently open in the reading pane).
+   * currently open in the reading pane). `range` is true when the user held
+   * Shift — Outlook-style "select everything between the two ticks".
    */
   isChecked?: boolean;
   /** Undefined disables the bulk-select checkbox entirely. */
-  onCheckedChange?: (next: boolean) => void;
+  onCheckedChange?: (next: boolean, options?: { range?: boolean }) => void;
   /** When true, at least one row in the list is checked — show every row's
    *  checkbox permanently instead of only on hover, so the user has a clear
    *  visual affordance for extending the selection. */
@@ -109,6 +116,7 @@ interface EmailRowCardProps {
 
 export function EmailRowCard({
   email,
+  accountId,
   selected,
   onSelect,
   onPrefetch,
@@ -122,16 +130,20 @@ export function EmailRowCard({
   const isSelected = selected ?? Boolean(email.selected);
   const isCheckable = Boolean(onCheckedChange);
   const cardRef = useRef<HTMLElement>(null);
-  const visibleTags = (email.keywords ?? []).slice(0, 2);
-  const hiddenTagCount = Math.max((email.keywords?.length ?? 0) - visibleTags.length, 0);
+  // Whether Shift was held when the checkbox was pressed — read back when the
+  // checked state actually changes so range selection can kick in.
+  const shiftClickRef = useRef(false);
+  const isOtherClassified = (email.classification?.references ?? []).some(
+    (reference) => reference.type === 'other'
+  );
   const hasQuickActions = Boolean(onArchive || onDelete || onToggleFlag);
   const threadState = email.classification?.status ?? 'open';
-  const projectReference = email.classification?.references?.find(
+  const projectReferences = (email.classification?.references ?? []).filter(
     (reference) => reference.type === 'project'
   );
-  const projectSummary = projectReference
-    ? getProjectReferenceSummary(projectReference.label)
-    : null;
+  const primaryProject = projectReferences[0];
+  const extraProjectCount = projectReferences.length - 1;
+  const showCheckbox = isChecked || bulkSelectActive;
 
   useEffect(() => {
     if (!isSelected) return;
@@ -143,44 +155,19 @@ export function EmailRowCard({
     <article
       ref={cardRef}
       className={cn(
-        'group relative mx-3 mt-2 overflow-hidden rounded-md border bg-background',
+        'group relative mx-1 mt-1.5 overflow-hidden rounded-md border bg-background',
         'motion-safe:transition-[border-color,box-shadow,background-color] motion-safe:duration-100',
-        email.unread && 'bg-muted/25',
         isSelected
-          ? 'border-primary/80 bg-primary/10 shadow-sm ring-1 ring-primary/15'
+          ? 'border-info/60 bg-info-soft shadow-sm ring-1 ring-info/25'
           : 'border-border hover:border-foreground/25 hover:shadow-xs',
-        isChecked && 'border-primary/70 bg-primary/5 ring-1 ring-primary/20'
+        isChecked && !isSelected && 'border-info/50 bg-info-soft/50 ring-1 ring-info/20',
+        // Unread rows carry a solid accent bar on the leading edge.
+        email.unread && 'border-s-4 border-s-primary'
       )}
     >
-      {isCheckable && (
-        <span
-          className={cn(
-            'absolute left-2 top-2 z-10 flex size-6 items-center justify-center rounded-md',
-            'motion-safe:transition-opacity motion-safe:duration-100',
-            isChecked || bulkSelectActive
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
-          )}
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <Checkbox
-            checked={isChecked}
-            onCheckedChange={(next) => onCheckedChange?.(next === true)}
-            aria-label={
-              isChecked
-                ? `Deselect email from ${email.senderName}`
-                : `Select email from ${email.senderName}`
-            }
-          />
-        </span>
-      )}
       <button
         type="button"
-        className={cn(
-          'w-full cursor-pointer px-3.5 py-3.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-          isCheckable && (isChecked || bulkSelectActive) && 'pl-10'
-        )}
+        className="flex w-full cursor-pointer gap-2.5 px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         aria-current={isSelected ? 'true' : undefined}
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
         onPointerEnter={onPrefetch}
@@ -194,34 +181,98 @@ export function EmailRowCard({
           onSelect?.();
         }}
       >
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span
-            className={cn(
-              'size-2 shrink-0 rounded-full border border-border',
-              email.unread && 'border-primary bg-primary'
+        <SenderAvatar
+          name={email.senderName}
+          email={email.senderEmail}
+          accountId={accountId}
+          className={cn(
+            'motion-safe:transition-opacity motion-safe:duration-100',
+            showCheckbox && 'opacity-0'
+          )}
+        />
+
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={cn(
+                'min-w-0 truncate text-sm text-foreground',
+                email.unread ? 'font-semibold' : 'font-medium'
+              )}
+            >
+              {email.senderName}
+            </span>
+            {email.threadMessageCount && email.threadMessageCount > 1 && (
+              <span
+                className="shrink-0 text-xs text-muted-foreground"
+                title={`${email.threadMessageCount} messages in this thread`}
+              >
+                ({email.threadMessageCount})
+              </span>
             )}
-            aria-hidden="true"
-          />
+            {Boolean(email.attachmentCount) && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                title={`${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`}
+              >
+                <span aria-hidden="true">·</span>
+                <Paperclip aria-hidden="true" className="size-3" strokeWidth={1.8} />
+                {email.attachmentCount}
+              </span>
+            )}
+            <span className="ms-auto flex shrink-0 items-center gap-1.5">
+              <span
+                className={cn(
+                  'whitespace-nowrap text-[11px] leading-none',
+                  email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                )}
+                title={email.receivedAt}
+              >
+                {formatEmailDate(email.receivedAt)}
+              </span>
+            </span>
+          </span>
+
           <span
             className={cn(
-              'min-w-0 flex-1 truncate text-sm text-foreground',
+              'mt-0.5 block truncate pe-20 text-sm text-foreground',
               email.unread ? 'font-semibold' : 'font-medium'
             )}
           >
-            {email.senderName}
+            {email.subject}
           </span>
-          {email.threadMessageCount && email.threadMessageCount > 1 && (
+
+          <span
+            className={cn(
+              'mt-0.5 line-clamp-1 text-sm leading-5',
+              email.unread ? 'text-foreground/80' : 'text-muted-foreground'
+            )}
+          >
+            {email.preview}
+          </span>
+
+          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+            {isOtherClassified && (
+              <span className="rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
+                Other
+              </span>
+            )}
+            {email.classification?.assignedTo && (
+              <EmailAssigneeAvatar
+                accountId={accountId}
+                assignee={email.classification.assignedTo}
+              />
+            )}
             <span
-              className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-semibold leading-none text-muted-foreground"
-              title={`${email.threadMessageCount} messages in this thread`}
+              className={cn(
+                'inline-flex items-center gap-1 text-xs font-semibold',
+                isOpenEmailThreadState(threadState)
+                  ? 'text-destructive'
+                  : 'text-success-soft-foreground'
+              )}
             >
-              {email.threadMessageCount}
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+              {EMAIL_THREAD_STATE_LABELS[threadState]}
             </span>
-          )}
-          {/* The header row aligns children by text baseline, which an icon doesn't
-              have — pair the flag with the date inside an items-center span so the
-              group still sits on the date's baseline while the icon centers on it. */}
-          <span className="flex shrink-0 items-center gap-1.5">
             {email.flagged && (
               <Flag
                 aria-label="Flagged"
@@ -229,153 +280,124 @@ export function EmailRowCard({
                 strokeWidth={1.8}
               />
             )}
-            <span
-              className={cn(
-                'font-mono text-xs tabular-nums',
-                email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
-              )}
-              title={email.receivedAt}
-            >
-              {formatEmailDate(email.receivedAt)}
-            </span>
           </span>
-        </span>
 
-        <span
-          className={cn(
-            'mt-2 block truncate text-sm text-foreground',
-            email.unread ? 'font-semibold' : 'font-medium'
-          )}
-        >
-          {email.subject}
-        </span>
-
-        <span
-          className={cn(
-            'mt-1.5 line-clamp-2 text-sm leading-5',
-            email.unread ? 'text-foreground/80' : 'text-muted-foreground'
-          )}
-        >
-          {email.preview}
-        </span>
-
-        {(email.attachmentCount ||
-          email.category ||
-          visibleTags.length > 0 ||
-          threadState ||
-          projectReference) && (
-          <span className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5 pr-16">
-            {projectReference && projectSummary && (
+          {primaryProject && (
+            <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    className="inline-flex max-w-24 items-center gap-1 rounded-sm border border-border bg-muted/35 px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold tabular-nums text-foreground/80"
-                    aria-label={`Project ${projectSummary.id}`}
+                    className="inline-flex max-w-48 items-center rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold uppercase tabular-nums text-foreground/80"
+                    aria-label={`Project ${primaryProject.label}`}
                   >
-                    <BriefcaseBusiness aria-hidden="true" className="size-3 shrink-0" />
-                    <span className="truncate">{projectSummary.id}</span>
+                    <span className="truncate">{primaryProject.label}</span>
                   </span>
                 </TooltipTrigger>
                 <TooltipContent
+                  variant="light"
                   side="bottom"
                   align="start"
                   sideOffset={6}
                   collisionPadding={12}
-                  className="max-w-56 whitespace-normal break-words text-left"
+                  className="z-60 max-w-64 whitespace-normal break-words text-left font-medium"
                 >
-                  <span className="block font-mono text-[0.6875rem] leading-4">
-                    {projectSummary.id}
-                  </span>
-                  {projectSummary.name && (
-                    <span className="block text-xs leading-4 opacity-80">
-                      {projectSummary.name}
-                    </span>
-                  )}
+                  {primaryProject.label}
                 </TooltipContent>
               </Tooltip>
-            )}
-            {threadState && <EmailThreadStatusPill state={threadState} />}
-            {Boolean(email.attachmentCount) && (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-                {email.attachmentCount}
-              </span>
-            )}
-            {email.category && (
-              <span className="max-w-28 truncate rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                {email.category}
-              </span>
-            )}
-            {visibleTags.map((tag) => (
-              <span
-                key={tag}
-                className="max-w-28 truncate rounded-sm border border-border bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
-              >
-                {tag}
-              </span>
-            ))}
-            {hiddenTagCount > 0 && (
-              <span className="text-xs font-medium text-muted-foreground">+{hiddenTagCount}</span>
-            )}
-          </span>
-        )}
+              {extraProjectCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="shrink-0 cursor-default rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
+                      +{extraProjectCount}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    variant="light"
+                    side="bottom"
+                    align="start"
+                    sideOffset={6}
+                    collisionPadding={12}
+                    className="z-60 max-w-64 p-1.5"
+                  >
+                    <span className="flex flex-col gap-1">
+                      {projectReferences.slice(1).map((reference) => (
+                        <span
+                          key={reference.entityId ?? reference.label}
+                          className="block whitespace-normal break-words rounded-sm border border-border bg-muted/40 px-1.5 py-1 text-left font-mono text-[0.6875rem] font-semibold uppercase tabular-nums text-foreground/80"
+                        >
+                          {reference.label}
+                        </span>
+                      ))}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </span>
+          )}
+        </span>
       </button>
 
+      {isCheckable && (
+        <span
+          className={cn(
+            'absolute left-3 top-2.5 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full',
+            'motion-safe:transition-opacity motion-safe:duration-100',
+            showCheckbox
+              ? 'opacity-100'
+              : 'bg-background opacity-0 hover:opacity-100 focus-within:opacity-100'
+          )}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => {
+            shiftClickRef.current = event.shiftKey;
+            event.stopPropagation();
+          }}
+        >
+          <Checkbox
+            className="size-5 cursor-pointer rounded-md"
+            checked={isChecked}
+            onCheckedChange={(next) => {
+              onCheckedChange?.(next === true, { range: shiftClickRef.current });
+              shiftClickRef.current = false;
+            }}
+            aria-label={
+              isChecked
+                ? `Deselect email from ${email.senderName}`
+                : `Select email from ${email.senderName}`
+            }
+          />
+        </span>
+      )}
+
       {hasQuickActions && (
-        <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-md border border-border bg-background p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+        <div className="absolute right-3 top-8 z-10 flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shadow-xs opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
           {onToggleFlag && (
-            <button
-              type="button"
-              className={cn(
-                'flex size-10 cursor-pointer items-center justify-center rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100',
-                email.flagged
-                  ? 'text-destructive hover:bg-destructive/10'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-              aria-label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
-              aria-pressed={email.flagged ?? false}
+            <QuickAction
+              label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
               title={email.flagged ? 'Unflag' : 'Flag'}
-              onClick={(event) => {
-                // A mouse click leaves the button focused, and the action bar is
-                // kept visible by group-focus-within — release focus so the bar
-                // hides again once the pointer leaves the row.
-                event.currentTarget.blur();
-                onToggleFlag();
-              }}
+              pressed={email.flagged ?? false}
+              tone="destructive"
+              onActivate={onToggleFlag}
             >
               <Flag
                 aria-hidden="true"
-                className={cn('size-3.5', email.flagged && 'fill-current')}
+                className={cn('size-3.5', email.flagged && 'fill-destructive text-destructive')}
               />
-            </button>
+            </QuickAction>
           )}
           {onArchive && (
-            <button
-              type="button"
-              className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
-              aria-label={`Archive ${email.subject}`}
-              title="Archive"
-              onClick={(event) => {
-                event.currentTarget.blur();
-                onArchive();
-              }}
-            >
+            <QuickAction label={`Archive ${email.subject}`} title="Archive" onActivate={onArchive}>
               <Archive aria-hidden="true" className="size-3.5" />
-            </button>
+            </QuickAction>
           )}
           {onDelete && (
-            <button
-              type="button"
-              className="flex size-10 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px lg:size-8 motion-safe:transition-colors motion-safe:duration-100"
-              aria-label={`Delete ${email.subject}`}
+            <QuickAction
+              label={`Delete ${email.subject}`}
               title="Delete"
-              onClick={(event) => {
-                event.currentTarget.blur();
-                onDelete();
-              }}
+              tone="destructive"
+              onActivate={onDelete}
             >
               <Trash2 aria-hidden="true" className="size-3.5" />
-            </button>
+            </QuickAction>
           )}
         </div>
       )}
@@ -383,14 +405,40 @@ export function EmailRowCard({
   );
 }
 
-function getProjectReferenceSummary(label: string) {
-  const separatorIndex = label.indexOf(' - ');
-  if (separatorIndex <= 0) {
-    return { id: label, name: null };
-  }
-
-  return {
-    id: label.slice(0, separatorIndex),
-    name: label.slice(separatorIndex + 3),
-  };
+function QuickAction({
+  label,
+  title,
+  pressed,
+  tone = 'info',
+  onActivate,
+  children,
+}: {
+  label: string;
+  title: string;
+  pressed?: boolean;
+  tone?: 'destructive' | 'info';
+  onActivate: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex size-7 cursor-pointer items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px motion-safe:transition-colors motion-safe:duration-100',
+        tone === 'destructive'
+          ? 'hover:bg-destructive/10 hover:text-destructive'
+          : 'hover:bg-info-soft hover:text-info'
+      )}
+      aria-label={label}
+      aria-pressed={pressed}
+      title={title}
+      onClick={(event) => {
+        // Release focus so group-focus-within doesn't pin the hover cluster open.
+        event.currentTarget.blur();
+        onActivate();
+      }}
+    >
+      {children}
+    </button>
+  );
 }

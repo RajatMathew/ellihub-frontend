@@ -5,11 +5,11 @@ import { useVendorMultiFilterOptions } from '@/modules/directory/hooks/vendors/u
 import {
   getPurchaseOrderRfqLabel,
   PurchaseOrderCancelDialog,
-  PurchaseOrderListHeader,
   PurchaseOrderListStats,
   PurchaseOrderMobileCard,
   usePurchaseOrderListColumns,
 } from '@/modules/project/components/purchase-order';
+import { ProjectListHeader } from '@/modules/project/components/shared/project-list-header';
 import {
   PO_STATUS_OPTIONS,
   PURCHASE_ORDER_DEFAULT_PAGE_SIZE,
@@ -161,7 +161,8 @@ export default function ProjectPOs() {
   return (
     <>
       <div className="container-fluid py-7.5">
-        <PurchaseOrderListHeader
+        <ProjectListHeader
+          resource="purchaseOrder"
           hasActiveFilters={state.hasActiveFilters}
           isLoading={list.isInitialLoading}
           totalCount={list.totalCount}

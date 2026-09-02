@@ -8,12 +8,12 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import {
   EmployeeDeleteDialog,
   EmployeeListStats,
-  EmployeeListToolbar,
   EmployeeMobileCard,
   useEmployeeListColumns,
 } from '@/modules/hr/components/employees/list';
@@ -92,10 +92,19 @@ export default function EmployeeListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <EmployeeListToolbar
+      <ListPageHeader
+        title="Employees"
         isLoading={list.isInitialLoading}
-        searchQuery={state.values.search ?? ''}
-        totalCount={list.totalCount}
+        // "Active Workforce" is not a synonym for the row count — it states that
+        // the list is scoped to active employees — so it stays as written.
+        description={
+          <span className="text-sm text-muted-foreground">
+            {state.values.search
+              ? `Showing ${list.totalCount} result${list.totalCount === 1 ? '' : 's'}`
+              : `Active Workforce: ${list.totalCount}`}
+          </span>
+        }
+        actions={[{ label: 'Add Employee', icon: Plus, to: 'create', placement: 'primary' }]}
       />
       <EmployeeListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 

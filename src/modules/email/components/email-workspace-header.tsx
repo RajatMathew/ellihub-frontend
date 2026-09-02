@@ -105,9 +105,11 @@ export function EmailWorkspaceHeader({
             <h1 className="truncate text-sm font-semibold leading-tight text-foreground">
               {mailboxLabel ?? mailboxAddress}
             </h1>
-            <p className="truncate text-xs leading-tight text-muted-foreground">
-              {mailboxLabel && mailboxLabel !== mailboxAddress ? mailboxAddress : 'Mailbox'}
-            </p>
+            {mailboxLabel && mailboxLabel !== mailboxAddress && (
+              <p className="truncate text-xs leading-tight text-muted-foreground">
+                {mailboxAddress}
+              </p>
+            )}
           </div>
 
           {accountActionsMenu &&

@@ -1,9 +1,11 @@
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { formPageContainerClassName } from '@/app/components/form-page-layout';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
-import { GCFormContent, GCFormToolbar } from '@/modules/directory/components/gc/form';
+import { GCFormContent } from '@/modules/directory/components/gc/form';
 import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
 import { DirectoryFormLoading } from '@/modules/directory/components/shared';
 import { GC_FORM_SECTIONS } from '@/modules/directory/constants/gc.constants';
@@ -72,10 +74,13 @@ export function GCFormPage() {
         activeSection={state.activeSection}
         onSectionChange={state.setActiveSection}
         renderToolbar={(className) => (
-          <GCFormToolbar
-            isEdit={state.isEdit}
+          <FormPageHeader
+            title={state.isEdit ? 'Edit General Contractor' : 'Add General Contractor'}
+            submitLabel={state.isEdit ? 'Save Changes' : 'Create GC'}
             isSubmitting={isSubmitting}
-            onFillRandom={state.fillRandom}
+            leadingActions={
+              state.isEdit ? undefined : <MockDataButton onClick={state.fillRandom} />
+            }
             className={className}
           />
         )}

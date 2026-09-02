@@ -1,25 +1,7 @@
-import { StatusBadge } from '@/app/components/status-badge';
-import {
-  Toolbar,
-  ToolbarActions,
-  ToolbarHeading,
-  ToolbarPageTitle,
-  ToolbarWrapper,
-} from '@/app/components/toolbar/toolbar';
-import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
-import {
-  VENDOR_STATUS_LABELS,
-} from '@/modules/directory/constants/vendors/vendor-detail.constants';
+import { DetailPageHeader } from '@/app/components/page-header';
+import { VENDOR_STATUS_LABELS } from '@/modules/directory/constants/vendors/vendor-detail.constants';
 import type { VendorDetail } from '@/modules/directory/schemas/vendor.schema';
-import { MoreHorizontal, PanelRightOpen, Pencil, Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Pencil, Trash2 } from 'lucide-react';
 
 import { getVendorTypeLabel } from './vendor-detail-utils';
 
@@ -41,79 +23,25 @@ export function VendorDetailToolbar({
   onOpenSidebar,
 }: VendorDetailToolbarProps) {
   return (
-    <Toolbar>
-      <ToolbarWrapper>
-        <ToolbarHeading className="min-w-0 flex-1">
-          <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <Link to="../.." relative="path" className="hover:text-foreground">
-              Vendors
-            </Link>
-            {' / '}
-            <span>Profile</span>
-          </div>
-          <ToolbarPageTitle>{vendor.name}</ToolbarPageTitle>
-          <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <span>
-              Type: <span className="text-foreground">{getVendorTypeLabel(vendor)}</span>
-            </span>
-            {vendor.taxId && (
-              <span>
-                Tax ID: <span className="text-foreground">{vendor.taxId}</span>
-              </span>
-            )}
-            <StatusBadge label={VENDOR_STATUS_LABELS[vendor.status]} status={vendor.status} />
-          </div>
-        </ToolbarHeading>
-        <ToolbarActions className="w-full sm:w-auto sm:justify-end">
-          {canUpdate && (
-            <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
-              <Link to="edit">
-                <Pencil className="size-4" />
-                Edit Profile
-              </Link>
-            </Button>
-          )}
-          {(canUpdate || canDelete) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" mode="icon">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                {canUpdate && (
-                  <DropdownMenuItem asChild>
-                    <Link to="edit">
-                      <Pencil className="size-4" />
-                      Edit Profile
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <>
-                    {canUpdate && <DropdownMenuSeparator />}
-                    <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                      <Trash2 className="size-4" />
-                      Archive Vendor
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {!sidebarOpen && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={onOpenSidebar}
-            >
-              <PanelRightOpen className="size-4" />
-              View Details
-            </Button>
-          )}
-        </ToolbarActions>
-      </ToolbarWrapper>
-    </Toolbar>
+    <DetailPageHeader
+      title={vendor.name}
+      status={{ value: vendor.status, label: VENDOR_STATUS_LABELS[vendor.status] }}
+      meta={[
+        { label: 'Type', value: getVendorTypeLabel(vendor) },
+        ...(vendor.taxId ? [{ label: 'Tax ID', value: vendor.taxId }] : []),
+      ]}
+      actions={[
+        { label: 'Edit Profile', icon: Pencil, to: 'edit', enabled: canUpdate },
+        {
+          label: 'Archive Vendor',
+          icon: Trash2,
+          placement: 'overflow',
+          destructive: true,
+          onClick: onDelete,
+          enabled: canDelete,
+        },
+      ]}
+      panel={{ open: sidebarOpen, onOpen: onOpenSidebar }}
+    />
   );
 }

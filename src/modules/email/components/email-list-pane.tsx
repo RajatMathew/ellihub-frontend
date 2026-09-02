@@ -3,12 +3,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { EmailListScrollbar } from '@/modules/email/components/email-list-scrollbar';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
 import { Archive, ArchiveRestore, Inbox, RefreshCcw, Trash2, X } from 'lucide-react';
 
 interface EmailListPaneProps {
+  accountId?: string;
   mailbox: string;
   folder: string;
   folderLabel?: string;
@@ -36,7 +38,7 @@ interface EmailListPaneProps {
    * checkboxes on each row and shows the bulk-action bar at the top.
    */
   checkedIds?: Set<string>;
-  onToggleChecked?: (email: EmailListItem, next: boolean) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   onToggleCheckedAll?: () => void;
   onClearChecked?: () => void;
   onBulkArchive?: () => void;
@@ -52,6 +54,7 @@ interface EmailListPaneProps {
 }
 
 export function EmailListPane({
+  accountId,
   mailbox,
   folder,
   folderLabel: folderLabelProp,
@@ -211,59 +214,68 @@ export function EmailListPane({
         </div>
       )}
 
-      <div ref={setScrollContainer} className="kt-scrollable-y-auto min-h-0 flex-1">
-        {isLoading && <EmailListSkeleton />}
+      <div className="relative min-h-0 flex-1">
+        <EmailListScrollbar scrollElement={scrollContainer} />
+        <div ref={setScrollContainer} className="kt-scrollable-y-auto scrollbar-hover h-full">
+          {isLoading && <EmailListSkeleton />}
 
-        {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
+          {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
 
-        {!isLoading && !isError && filteredEmails.length === 0 && (
-          <EmailListEmptyState
-            hasSearch={Boolean(search.trim())}
-            folderLabel={folderLabel}
-            onClearSearch={() => setSearch('')}
-          />
-        )}
+          {!isLoading && !isError && filteredEmails.length === 0 && (
+            <EmailListEmptyState
+              hasSearch={Boolean(search.trim())}
+              folderLabel={folderLabel}
+              onClearSearch={() => setSearch('')}
+            />
+          )}
 
-        {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
-          <VirtualizedEmailList
-            key={`${mailbox}:${folder}:${search}`}
-            emails={filteredEmails}
-            scrollElement={scrollContainer}
-            selectedEmailId={selectedEmailId}
-            groupByMonth={groupByMonth}
-            onSelectEmail={onSelectEmail}
-            onPrefetchEmail={onPrefetchEmail}
-            onArchiveEmail={onArchiveEmail}
-            onDeleteEmail={onDeleteEmail}
-            onToggleFlagEmail={onToggleFlagEmail}
-            checkedIds={checkedIds}
-            onToggleChecked={onToggleChecked}
-            bulkSelectActive={isBulkActive}
-          />
-        )}
+          {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
+            <VirtualizedEmailList
+              accountId={accountId}
+              key={`${mailbox}:${folder}:${search}`}
+              emails={filteredEmails}
+              scrollElement={scrollContainer}
+              selectedEmailId={selectedEmailId}
+              groupByMonth={groupByMonth}
+              onSelectEmail={onSelectEmail}
+              onPrefetchEmail={onPrefetchEmail}
+              onArchiveEmail={onArchiveEmail}
+              onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
+              checkedIds={checkedIds}
+              onToggleChecked={onToggleChecked}
+              bulkSelectActive={isBulkActive}
+            />
+          )}
 
-        {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
-          <div
-            ref={loadMoreSentinelRef}
-            className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
-            aria-live="polite"
-          >
-            {loadMoreError ? (
-              <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-xs text-muted-foreground">Couldn’t load more emails.</p>
-                <Button type="button" variant="secondary" size="sm" onClick={() => onLoadMore?.()}>
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
-                role="status"
-                aria-label={isLoadingMore ? 'Loading more emails' : 'Preparing more emails'}
-              />
-            )}
-          </div>
-        )}
+          {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
+            <div
+              ref={loadMoreSentinelRef}
+              className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
+              aria-live="polite"
+            >
+              {loadMoreError ? (
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <p className="text-xs text-muted-foreground">Couldn’t load more emails.</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onLoadMore?.()}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
+                  role="status"
+                  aria-label={isLoadingMore ? 'Loading more emails' : 'Preparing more emails'}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

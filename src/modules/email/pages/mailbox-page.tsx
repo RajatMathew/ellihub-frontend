@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
@@ -44,6 +45,7 @@ import {
   useEmailMessagesQuery,
   useEmailReferenceProjectsQuery,
   useEmailTagsQuery,
+  useForwardConnectedEmailMutation,
   useMoveEmailMessageMutation,
   useOpenEmailDraftMutation,
   usePermanentlyDeleteEmailMessageMutation,
@@ -64,6 +66,7 @@ import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
+import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,6 +76,10 @@ import { toast } from 'sonner';
 
 interface MailboxPageProps {
   accountSlug?: string;
+  /** Folder segment from the URL: a well-known key or a folder cache id. */
+  folder?: string;
+  /** Conversation id segment from the URL (`…/:folder/id/:conversationId`). */
+  conversationId?: string;
 }
 
 const CONNECTED_EMAIL_PAGE_SIZE = 50;
@@ -104,11 +111,13 @@ const EmailComposeDialog = lazy(() =>
   }))
 );
 
-export function MailboxPage({ accountSlug }: MailboxPageProps) {
+export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedFolder, setSelectedFolder] = useState<string>('inbox');
+  // Folder and open conversation live in the URL (Outlook-style deep links).
+  const selectedFolder = folder || 'inbox';
+  const routeConversationId = conversationId ?? null;
   const [messageSearch, setMessageSearch] = useState('');
   const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), EMAIL_SEARCH_DEBOUNCE_MS);
   const attemptedInitialSyncs = useRef(new Set<string>());
@@ -116,6 +125,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeLoaded, setComposeLoaded] = useState(false);
   const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
+  const [composeRecipient, setComposeRecipient] = useState<string | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
@@ -134,11 +144,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState<{ count: number } | null>(null);
   const [emptyFolderConfirm, setEmptyFolderConfirm] = useState<{ folderId: string } | null>(null);
   const [bulkOperation, setBulkOperation] = useState<EmailBulkOperationState | null>(null);
-  const [selectedTarget, setSelectedTarget] = useState<{
-    viewKey: string;
-    folder: string;
-    emailId: string;
-  } | null>(null);
   const accountsQuery = useEmailAccountsQuery();
   const workspaceView = getWorkspaceView(searchParams.get('view'));
   const isConnectedRoute = Boolean(accountSlug);
@@ -201,6 +206,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   const sendDraftMutation = useSendEmailDraftMutation();
   const deleteDraftMutation = useDeleteEmailDraftMutation();
   const replyMutation = useReplyConnectedEmailMutation();
+  const forwardMutation = useForwardConnectedEmailMutation();
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
   const moveMessageMutation = useMoveEmailMessageMutation();
@@ -293,7 +299,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     if (mailStatusFilter !== 'all') {
       list = list.filter((email) => {
         const status = email.classification?.status ?? 'open';
-        return status === mailStatusFilter;
+        // 'open' covers every open variant (plain, our court, their court).
+        return mailStatusFilter === 'open' ? status !== 'closed' : status === 'closed';
       });
     }
 
@@ -313,14 +320,28 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     () => groupEmailsByMonth(folderEmails).flatMap((group) => group.emails),
     [folderEmails]
   );
-  const defaultEmailId = folderEmails.find((email) => email.selected)?.id ?? orderedEmails[0]?.id;
-  const viewKey = `account:${connectedAccount?.id ?? accountSlug ?? 'unknown'}`;
-  const selectedEmailId =
-    selectedTarget?.viewKey === viewKey && selectedTarget.folder === selectedFolder
-      ? selectedTarget.emailId
-      : defaultEmailId;
+  const defaultEmail = folderEmails.find((email) => email.selected) ?? orderedEmails[0] ?? null;
+  // The URL id is a conversation id, so a deep link matches its list row directly.
+  const routeSelectedEmail = routeConversationId
+    ? (folderEmails.find((email) => getEmailConversationId(email) === routeConversationId) ?? null)
+    : null;
+  // Deep link to a mail that isn't in the loaded list (older page, other folder,
+  // cold cache): resolve it via the message endpoint, which accepts cache ids,
+  // provider message ids and conversation ids alike.
+  const deepLinkLookupEnabled =
+    canLoadConnectedMailbox && Boolean(routeConversationId) && !routeSelectedEmail;
+  const deepLinkQuery = useEmailMessageQuery(
+    connectedAccount?.id,
+    routeConversationId,
+    deepLinkLookupEnabled
+  );
+  const deepLinkEmail = useMemo<EmailListItem | null>(() => {
+    if (!routeConversationId || !deepLinkQuery.data) return null;
+    return { ...deepLinkQuery.data, latestMessageId: deepLinkQuery.data.id };
+  }, [deepLinkQuery.data, routeConversationId]);
   const address = connectedAccount?.mailboxAddress ?? connectedAccount?.email ?? 'email';
-  const selectedEmail = folderEmails.find((email) => email.id === selectedEmailId) ?? null;
+  const selectedEmail = routeConversationId ? (routeSelectedEmail ?? deepLinkEmail) : defaultEmail;
+  const selectedEmailId = selectedEmail?.id;
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
     isConnected ? selectedEmail?.threadId : null,
@@ -362,17 +383,41 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     EMAIL_FOLDERS.find((folder) => folder.key === selectedFolderKey)?.label ??
     selectedConnectedFolder?.name ??
     foldersQuery.data?.find((folder) => folder.key === selectedFolder)?.name;
+  // The folder path segment can be an opaque folder id — hand the breadcrumb
+  // bar its display name (well-known keys resolve to labels the same way).
+  useBreadcrumbLabel(
+    accountSlug ? `/app/email/accounts/${accountSlug}/${selectedFolder}` : undefined,
+    selectedFolderLabel
+  );
   const isArchiveFolder = selectedConnectedFolder?.key === 'archive';
   const isDeletedFolder = selectedFolderKey === 'deleted';
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
+  const navigateToFolder = useCallback(
+    (nextFolder: string, options?: { replace?: boolean }) => {
+      if (!accountSlug) return;
+      navigate(buildMailPath(accountSlug, nextFolder), options);
+    },
+    [accountSlug, navigate]
+  );
+  // Drops the `/id/…` segment so the folder shows its default (first) mail again.
+  const clearRouteSelection = useCallback(() => {
+    if (routeConversationId) navigateToFolder(selectedFolder, { replace: true });
+  }, [navigateToFolder, routeConversationId, selectedFolder]);
+
   const requestArchive = useCallback((messageId: string) => {
     setArchiveConfirmation({ messageId });
   }, []);
   const confirmArchive = useCallback(() => {
     if (!connectedAccount || !archiveConfirmation) return;
-    if (selectedTarget?.emailId === archiveConfirmation.messageId) setSelectedTarget(null);
+    if (
+      selectedEmail &&
+      (selectedEmail.id === archiveConfirmation.messageId ||
+        selectedEmail.latestMessageId === archiveConfirmation.messageId)
+    ) {
+      clearRouteSelection();
+    }
     archiveMessageMutation.mutate({
       accountId: connectedAccount.id,
       messageId: archiveConfirmation.messageId,
@@ -384,14 +429,21 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     archiveFolderId,
     archiveMessageMutation,
     connectedAccount,
-    selectedTarget?.emailId,
+    clearRouteSelection,
+    selectedEmail,
   ]);
   const requestDelete = useCallback((messageId: string) => {
     setDeleteConfirmation({ messageId });
   }, []);
   const confirmDelete = useCallback(() => {
     if (!connectedAccount || !deleteConfirmation) return;
-    if (selectedTarget?.emailId === deleteConfirmation.messageId) setSelectedTarget(null);
+    if (
+      selectedEmail &&
+      (selectedEmail.id === deleteConfirmation.messageId ||
+        selectedEmail.latestMessageId === deleteConfirmation.messageId)
+    ) {
+      clearRouteSelection();
+    }
     deleteMessageMutation.mutate(
       {
         accountId: connectedAccount.id,
@@ -405,17 +457,43 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     deleteConfirmation,
     deleteMessageMutation,
     deletedFolderId,
-    selectedTarget?.emailId,
+    clearRouteSelection,
+    selectedEmail,
   ]);
 
-  const toggleChecked = useCallback((email: EmailListItem, next: boolean) => {
-    setCheckedMessageIds((current) => {
-      const nextSet = new Set(current);
-      if (next) nextSet.add(email.id);
-      else nextSet.delete(email.id);
-      return nextSet;
-    });
-  }, []);
+  // Anchor for Outlook-style Shift range selection: the last row whose
+  // checkbox was ticked without Shift held.
+  const checkedAnchorIdRef = useRef<string | null>(null);
+  const toggleChecked = useCallback(
+    (email: EmailListItem, next: boolean, options?: { range?: boolean }) => {
+      const anchorId = checkedAnchorIdRef.current;
+      setCheckedMessageIds((current) => {
+        const nextSet = new Set(current);
+        if (options?.range && anchorId) {
+          const visibleIds = orderedEmails.map((item) => item.id);
+          const anchorIndex = visibleIds.indexOf(anchorId);
+          const targetIndex = visibleIds.indexOf(email.id);
+          if (anchorIndex !== -1 && targetIndex !== -1) {
+            const [start, end] = [
+              Math.min(anchorIndex, targetIndex),
+              Math.max(anchorIndex, targetIndex),
+            ];
+            for (const id of visibleIds.slice(start, end + 1)) {
+              if (next) nextSet.add(id);
+              else nextSet.delete(id);
+            }
+            return nextSet;
+          }
+        }
+        if (next) nextSet.add(email.id);
+        else nextSet.delete(email.id);
+        return nextSet;
+      });
+      // A Shift-click extends from the existing anchor; a plain click moves it.
+      if (!options?.range) checkedAnchorIdRef.current = email.id;
+    },
+    [orderedEmails]
+  );
   const clearChecked = useCallback(() => setCheckedMessageIds(() => new Set()), []);
   const isBulkOperationRunning = Boolean(bulkOperation?.isRunning);
 
@@ -464,10 +542,23 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       emailApi.archiveMessage(accountId, messageId)
     ).then(() => {
       setCheckedMessageIds(() => new Set());
-      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      if (
+        selectedEmail &&
+        (ids.includes(selectedEmail.id) ||
+          (selectedEmail.latestMessageId && ids.includes(selectedEmail.latestMessageId)))
+      ) {
+        clearRouteSelection();
+      }
       invalidateAfterBulk(accountId);
     });
-  }, [checkedMessageIds, connectedAccount, invalidateAfterBulk, runBulkPerId, selectedTarget]);
+  }, [
+    checkedMessageIds,
+    clearRouteSelection,
+    connectedAccount,
+    invalidateAfterBulk,
+    runBulkPerId,
+    selectedEmail,
+  ]);
   const runBulkRestore = useCallback(() => {
     if (!connectedAccount || checkedMessageIds.size === 0 || !inboxFolderId) return;
     const accountId = connectedAccount.id;
@@ -476,7 +567,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       emailApi.moveMessage(accountId, messageId, inboxFolderId)
     ).then(() => {
       setCheckedMessageIds(() => new Set());
-      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      if (
+        selectedEmail &&
+        (ids.includes(selectedEmail.id) ||
+          (selectedEmail.latestMessageId && ids.includes(selectedEmail.latestMessageId)))
+      ) {
+        clearRouteSelection();
+      }
       invalidateAfterBulk(accountId);
     });
   }, [
@@ -485,7 +582,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     inboxFolderId,
     invalidateAfterBulk,
     runBulkPerId,
-    selectedTarget,
+    clearRouteSelection,
+    selectedEmail,
   ]);
   const runBulkDelete = useCallback(() => {
     if (!connectedAccount || checkedMessageIds.size === 0) return;
@@ -499,11 +597,24 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       emailApi.deleteMessage(accountId, messageId)
     ).then(() => {
       setCheckedMessageIds(() => new Set());
-      if (selectedTarget && ids.includes(selectedTarget.emailId)) setSelectedTarget(null);
+      if (
+        selectedEmail &&
+        (ids.includes(selectedEmail.id) ||
+          (selectedEmail.latestMessageId && ids.includes(selectedEmail.latestMessageId)))
+      ) {
+        clearRouteSelection();
+      }
       invalidateAfterBulk(accountId);
     });
     setBulkDeleteConfirm(null);
-  }, [checkedMessageIds, connectedAccount, invalidateAfterBulk, runBulkPerId, selectedTarget]);
+  }, [
+    checkedMessageIds,
+    clearRouteSelection,
+    connectedAccount,
+    invalidateAfterBulk,
+    runBulkPerId,
+    selectedEmail,
+  ]);
   const runEmptyFolder = useCallback(async () => {
     if (!connectedAccount || !emptyFolderConfirm) return;
     const folderId = emptyFolderConfirm.folderId;
@@ -526,7 +637,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         isRunning: false,
       });
       setCheckedMessageIds(() => new Set());
-      setSelectedTarget(null);
+      clearRouteSelection();
       void queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(connectedAccount.id) });
       void queryClient.invalidateQueries({ queryKey: emailKeys.folders(connectedAccount.id) });
       if (result.failed === 0) {
@@ -544,7 +655,14 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       setBulkOperation((current) => (current ? { ...current, isRunning: false } : current));
       toast.error('Could not empty the folder.');
     }
-  }, [connectedAccount, emptyFolderConfirm, folderEmails.length, providerTotalCount, queryClient]);
+  }, [
+    clearRouteSelection,
+    connectedAccount,
+    emptyFolderConfirm,
+    folderEmails.length,
+    providerTotalCount,
+    queryClient,
+  ]);
 
   useEffect(() => {
     // Reset selection whenever the folder / account / project context changes.
@@ -569,8 +687,10 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
         !hasCachedMessages &&
         !refreshMessagesMutation.isPending)
     : false;
-  const isReadingLoading = isMailboxLoading && !selectedEmail;
-  const isReadingError = isMailboxError && !selectedEmail;
+  const isReadingLoading =
+    (isMailboxLoading || (deepLinkLookupEnabled && deepLinkQuery.isPending)) && !selectedEmail;
+  const isReadingError =
+    (isMailboxError || (Boolean(routeConversationId) && deepLinkQuery.isError)) && !selectedEmail;
   const showEmailList = emailListVisible || !agentLayout.hidesEmailList;
   const lastOpenedMessageKey = useRef<string | null>(null);
 
@@ -603,8 +723,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      setSelectedFolder('inbox');
-      setSelectedTarget(null);
       setMessageSearch('');
       setMailFilter('all');
       setSelectedProjectId(null);
@@ -614,13 +732,69 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
     return () => window.clearTimeout(timeout);
   }, [connectedAccount?.id]);
 
+  // A new search drops the deep-linked mail (folder and account changes reset
+  // the URL through navigation already). The first run is skipped so a freshly
+  // opened deep link isn't immediately discarded on mount.
+  const clearRouteSelectionRef = useRef(clearRouteSelection);
   useEffect(() => {
+    clearRouteSelectionRef.current = clearRouteSelection;
+  });
+  // Compare against the previous value instead of skipping the first run — the
+  // ref survives StrictMode's double effect invocation, so a freshly opened
+  // deep link is never discarded on mount.
+  const previousSearchRef = useRef(debouncedMessageSearch);
+  useEffect(() => {
+    if (previousSearchRef.current === debouncedMessageSearch) return;
+    previousSearchRef.current = debouncedMessageSearch;
     const timeout = window.setTimeout(() => {
-      setSelectedTarget(null);
+      clearRouteSelectionRef.current();
       setMobilePane('list');
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [connectedAccount?.id, debouncedMessageSearch, selectedFolder]);
+  }, [debouncedMessageSearch]);
+
+  // The mobile pane follows the URL: an id shows the reading pane, and losing
+  // it (browser Back, selection cleared) returns to the list.
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setMobilePane(routeConversationId ? 'reading' : 'list'),
+      0
+    );
+    return () => window.clearTimeout(timeout);
+  }, [routeConversationId]);
+
+  // Canonicalise deep links: a pasted message id becomes its conversation id,
+  // and a mail that lives in another folder (moved/archived since the link was
+  // shared) redirects to the folder it is actually in.
+  useEffect(() => {
+    if (!accountSlug || !routeConversationId || routeSelectedEmail) return;
+    const resolved = deepLinkQuery.data;
+    if (!resolved) return;
+    const canonicalId = resolved.conversationKey ?? resolved.threadId ?? resolved.id;
+    const folderMatches =
+      resolved.folderId === selectedFolder ||
+      resolved.folderId === selectedConnectedFolder?.id ||
+      resolved.folder === selectedFolderKey;
+    if (!folderMatches) {
+      const targetFolder = isConnectedWellKnownFolderKey(resolved.folder)
+        ? resolved.folder
+        : (resolved.folderId ?? 'inbox');
+      navigate(buildMailPath(accountSlug, targetFolder, canonicalId), { replace: true });
+      return;
+    }
+    if (canonicalId !== routeConversationId) {
+      navigate(buildMailPath(accountSlug, selectedFolder, canonicalId), { replace: true });
+    }
+  }, [
+    accountSlug,
+    deepLinkQuery.data,
+    navigate,
+    routeConversationId,
+    routeSelectedEmail,
+    selectedConnectedFolder?.id,
+    selectedFolder,
+    selectedFolderKey,
+  ]);
 
   useEffect(() => {
     const accountId = connectedAccount?.id;
@@ -659,6 +833,13 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
 
   const openNewCompose = useCallback(() => {
     setComposeDraft(null);
+    setComposeRecipient(null);
+    setComposeLoaded(true);
+    setComposeOpen(true);
+  }, []);
+  const openComposeTo = useCallback((address: string) => {
+    setComposeDraft(null);
+    setComposeRecipient(address);
     setComposeLoaded(true);
     setComposeOpen(true);
   }, []);
@@ -674,11 +855,19 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
   );
 
   const selectEmail = useCallback(
-    (emailId: string) => {
-      setSelectedTarget({ viewKey, folder: selectedFolder, emailId });
+    (emailId: string, options?: { replace?: boolean }) => {
+      if (!accountSlug) return;
+      const email = folderEmails.find((item) => item.id === emailId);
+      const targetConversationId = email ? getEmailConversationId(email) : emailId;
+      // Re-clicking the open conversation must not push duplicate history entries.
+      if (targetConversationId !== routeConversationId) {
+        navigate(buildMailPath(accountSlug, selectedFolder, targetConversationId), {
+          replace: options?.replace,
+        });
+      }
       setMobilePane('reading');
     },
-    [selectedFolder, viewKey]
+    [accountSlug, folderEmails, navigate, routeConversationId, selectedFolder]
   );
 
   useEffect(() => {
@@ -763,11 +952,11 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
 
       if (event.key === 'ArrowUp' && previousEmail) {
         event.preventDefault();
-        selectEmail(previousEmail.id);
+        selectEmail(previousEmail.id, { replace: true });
       }
       if (event.key === 'ArrowDown' && nextEmail) {
         event.preventDefault();
-        selectEmail(nextEmail.id);
+        selectEmail(nextEmail.id, { replace: true });
       }
     };
 
@@ -790,8 +979,6 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
       {
         onSuccess: () => {
           setDisconnectConfirmOpen(false);
-          setSelectedTarget(null);
-          setSelectedFolder('inbox');
           navigate(nextPath, { replace: true });
         },
       }
@@ -1018,9 +1205,8 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             selectedCategoryTagId={selectedCategoryTagId}
             isRefreshing={showEmailSyncIndicator}
             isCreatingFolder={createFolderMutation.isPending}
-            onSelectFolder={(folder) => {
-              setSelectedFolder(folder);
-              setSelectedTarget(null);
+            onSelectFolder={(nextFolder) => {
+              navigateToFolder(nextFolder);
               setMailFilter('all');
               setMailStatusFilter('all');
               setSelectedCategoryTagId(null);
@@ -1033,7 +1219,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             onStatusFilterChange={setMailStatusFilter}
             onProjectChange={(projectId) => {
               setSelectedProjectId(projectId);
-              setSelectedTarget(null);
+              clearRouteSelection();
               setMailFilter('all');
               setSelectedCategoryTagId(null);
               setMobilePane('list');
@@ -1051,7 +1237,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 ? (name) =>
                     createFolderMutation.mutate(
                       { accountId: connectedAccount.id, name },
-                      { onSuccess: (folder) => setSelectedFolder(folder.id) }
+                      { onSuccess: (created) => navigateToFolder(created.id) }
                     )
                 : undefined
             }
@@ -1063,7 +1249,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
             emptyFolderDisabled={isBulkOperationRunning || folderEmails.length === 0}
           />
 
-          <div className="flex min-h-0 flex-1 gap-3 bg-muted p-3 lg:gap-4 lg:p-4">
+          <div className="flex min-h-0 flex-1 gap-1.5 bg-muted p-1.5 lg:gap-1.5 lg:p-1.5">
             {showEmailList && (
               <div
                 className={cn(
@@ -1072,6 +1258,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 )}
               >
                 <EmailListPane
+                  accountId={connectedAccount?.id}
                   mailbox={connectedAccount?.id ?? 'connected'}
                   folder={selectedFolder}
                   folderLabel={selectedFolderLabel}
@@ -1190,9 +1377,14 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 inlineImageBaseUrl={connectedAccount?.inlineImageBaseUrl}
                 isLoading={isReadingLoading}
                 isError={isReadingError}
-                onPrevious={previousEmail ? () => selectEmail(previousEmail.id) : undefined}
-                onNext={nextEmail ? () => selectEmail(nextEmail.id) : undefined}
-                onBack={() => setMobilePane('list')}
+                onPrevious={
+                  previousEmail ? () => selectEmail(previousEmail.id, { replace: true }) : undefined
+                }
+                onNext={nextEmail ? () => selectEmail(nextEmail.id, { replace: true }) : undefined}
+                onBack={() => {
+                  clearRouteSelection();
+                  setMobilePane('list');
+                }}
                 onOpenAgent={() => setAgentOpen(true)}
                 agentTriggerRef={agentTriggerRef}
                 onRetry={() => {
@@ -1208,8 +1400,15 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                 onMoveToFolder={
                   connectedAccount
                     ? (messageId, folderId) => {
-                        setSelectedFolder(folderId);
-                        setSelectedTarget({ viewKey, folder: folderId, emailId: messageId });
+                        if (accountSlug) {
+                          navigate(
+                            buildMailPath(
+                              accountSlug,
+                              folderId,
+                              selectedEmail ? getEmailConversationId(selectedEmail) : undefined
+                            )
+                          );
+                        }
                         moveMessageMutation.mutate({
                           accountId: connectedAccount.id,
                           messageId,
@@ -1243,7 +1442,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                   connectedAccount
                     ? (messageId) => {
                         if (isArchiveFolder) {
-                          setSelectedTarget(null);
+                          clearRouteSelection();
                           unarchiveMessageMutation.mutate({
                             accountId: connectedAccount.id,
                             messageId,
@@ -1263,7 +1462,7 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                           accountId: connectedAccount.id,
                           messageId,
                         });
-                        setSelectedTarget(null);
+                        clearRouteSelection();
                       }
                     : undefined
                 }
@@ -1282,10 +1481,27 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
                     : undefined
                 }
                 isUpdatingReadStatus={updateMessageStatusMutation.isPending}
+                onComposeTo={openComposeTo}
+                onSearchSender={setMessageSearch}
                 onReply={
                   connectedAccount
                     ? (messageId, draft) =>
                         replyMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          body: plainTextToEmailHtml(draft.body),
+                          bodyType: 'html',
+                          subject: selectedEmail?.subject,
+                          to: parseEmailAddresses(draft.to),
+                          cc: parseEmailAddresses(draft.cc),
+                          bcc: parseEmailAddresses(draft.bcc),
+                        })
+                    : undefined
+                }
+                onForward={
+                  connectedAccount
+                    ? (messageId, draft) =>
+                        forwardMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
                           body: plainTextToEmailHtml(draft.body),
@@ -1388,7 +1604,9 @@ export function MailboxPage({ accountSlug }: MailboxPageProps) {
           <EmailComposeDialog
             open={composeOpen}
             mailboxAddress={address}
+            accountId={connectedAccount?.id}
             initialDraft={composeDraft}
+            initialRecipient={composeRecipient ?? undefined}
             isSending={sendDraftMutation.isPending}
             onOpenChange={(nextOpen) => {
               setComposeOpen(nextOpen);

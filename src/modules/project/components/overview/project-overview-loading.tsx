@@ -1,11 +1,11 @@
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
+import { PageHeaderSkeleton } from '@/app/components/page-header';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function ProjectOverviewLoading() {
   return (
     <div className="container-fluid py-7.5">
       <div className="space-y-4">
-        <ToolbarSkeleton className="bg-page-header" actionCount={3} />
+        <PageHeaderSkeleton actionCount={3} className="bg-page-header" showEyebrow />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (

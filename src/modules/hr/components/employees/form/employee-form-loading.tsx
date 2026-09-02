@@ -3,7 +3,7 @@ import {
   unifiedFormHeaderClassName,
   unifiedSingleSectionFormToolbarClassName,
 } from '@/app/components/form-page-layout';
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
+import { PageHeaderSkeleton } from '@/app/components/page-header';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
@@ -11,10 +11,11 @@ export function EmployeeFormLoading() {
   return (
     <div className={formPageContainerClassName}>
       <div className={unifiedFormHeaderClassName}>
-        <ToolbarSkeleton
-          sticky={false}
-          className={unifiedSingleSectionFormToolbarClassName}
+        <PageHeaderSkeleton
           actionCount={2}
+          className={unifiedSingleSectionFormToolbarClassName}
+          showEyebrow
+          sticky={false}
         />
       </div>
 

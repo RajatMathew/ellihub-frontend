@@ -8,14 +8,11 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useAccess } from '@/app/contexts/access-context';
-import {
-  ContactListStats,
-  ContactsPageHeader,
-  useContactListColumns,
-} from '@/modules/directory/components/contacts';
+import { ContactListStats, useContactListColumns } from '@/modules/directory/components/contacts';
 import { getContactLinkedEntities } from '@/modules/directory/components/contacts/contact-list-utils';
 import {
   CONTACTS_DEFAULT_PAGE_SIZE,
@@ -29,7 +26,7 @@ import {
   useProfessionalRolesQuery,
 } from '@/modules/directory/hooks';
 import type { Contact, ListContactsParams } from '@/modules/directory/schemas/contact.schema';
-import { ListFilterPlus, Trash2, Users } from 'lucide-react';
+import { ListFilterPlus, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 const emptyVendorNames = new Map<string, string>();
@@ -134,11 +131,19 @@ export function ContactsListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ContactsPageHeader
-        canCreate={can('contact', 'create')}
-        hasActiveFilters={state.hasActiveFilters}
+      <ListPageHeader
+        title="Contacts"
         isLoading={list.isInitialLoading}
-        totalCount={list.totalCount}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'Contacts' }}
+        actions={[
+          {
+            label: 'Add Contact',
+            icon: Plus,
+            to: 'create',
+            placement: 'primary',
+            enabled: { resource: 'contact', action: 'create' },
+          },
+        ]}
       />
       <ContactListStats isLoading={showStatsInitialLoader} stats={statsQuery.data} />
 

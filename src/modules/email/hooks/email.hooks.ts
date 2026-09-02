@@ -12,6 +12,7 @@ import {
   type EmailMessagePage,
   type EmailReferenceProject,
   type EmailThreadClassification,
+  type ForwardConnectedEmailPayload,
   type ReplyConnectedEmailPayload,
   type SaveEmailThreadClassificationPayload,
   type SendConnectedEmailPayload,
@@ -38,6 +39,8 @@ const EMAIL_MESSAGES_STALE_TIME_MS = 60 * 1000;
 const EMAIL_MESSAGES_CACHE_TIME_MS = 15 * 60 * 1000;
 
 export const emailKeys = {
+  contactSuggestions: (accountId?: string, q?: string) =>
+    ['email', 'contact-suggestions', accountId, q] as const,
   all: ['connected-email'] as const,
   config: () => [...emailKeys.all, 'config'] as const,
   accounts: () => [...emailKeys.all, 'accounts'] as const,
@@ -300,6 +303,19 @@ function normalizeClassificationReferences(
 
   return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
 }
+
+export const useEmailThreadAssigneesQuery = (enabled = true) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'thread-assignees'] as const,
+    queryFn: () => emailApi.listThreadAssignees(),
+    enabled,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
 export const useSaveEmailThreadClassificationMutation = () => {
   const queryClient = useQueryClient();
@@ -652,6 +668,25 @@ export const useReplyConnectedEmailMutation = () => {
     },
     onError: (error, payload) => {
       if (!payload.silent) toastApiError(error, 'Failed to send reply.');
+    },
+  });
+};
+
+export const useForwardConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ForwardConnectedEmailPayload & { silent?: boolean }) =>
+      emailApi.forwardMessage(payload),
+    onSuccess: (_result, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      if (!payload.silent) toast.success('Message forwarded.');
+    },
+    onError: (error, payload) => {
+      if (!payload.silent) toastApiError(error, 'Failed to forward message.');
     },
   });
 };

@@ -1,6 +1,5 @@
 import { useCallback, useId, useState } from 'react';
 
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { cn } from '@/app/lib/utils';
@@ -10,28 +9,35 @@ import { EmailMessageBody } from '@/modules/email/components/email-message-body'
 import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
 import {
   EmailReplyComposer,
+  type EmailComposerMode,
   type EmailReplyDraft,
 } from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
+import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
-import { ChevronUp, FolderPlus, Forward, Mail, Reply, Star } from 'lucide-react';
+import { ChevronUp, Copy, FolderPlus, Forward, Mail, Reply, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
+  accountId?: string;
   inlineImageBaseUrl?: string | null;
   singleMessage?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
+  replyMode?: EmailComposerMode;
   isSendingReply?: boolean;
   onReply: (messageId: string) => void;
+  onForward?: (messageId: string) => void;
+  onComposeTo?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
   onSendReply: (messageId: string, draft: EmailReplyDraft) => Promise<void> | void;
   onCancelReply: () => void;
   onOpenAttachment?: (attachment: EmailAttachment) => void;
@@ -46,12 +52,17 @@ interface EmailThreadMessageCardProps {
 
 export function EmailThreadMessageCard({
   message,
+  accountId,
   inlineImageBaseUrl,
   singleMessage = false,
   latest,
   replyOpen,
+  replyMode = 'reply',
   isSendingReply = false,
   onReply,
+  onForward,
+  onComposeTo,
+  onSearchSender,
   onSendReply,
   onCancelReply,
   onOpenAttachment,
@@ -82,6 +93,10 @@ export function EmailThreadMessageCard({
   const handleReply = () => {
     if (canReply) onReply(message.id);
   };
+  const canForward = canReply && Boolean(onForward);
+  const handleForward = () => {
+    if (canForward) onForward?.(message.id);
+  };
 
   if (!isExpanded) {
     return (
@@ -94,7 +109,12 @@ export function EmailThreadMessageCard({
           aria-label={`Expand message from ${message.senderName}`}
           onClick={() => setManuallyExpanded(true)}
         >
-          <SenderAvatar name={message.senderName} className="size-9" />
+          <SenderAvatar
+            name={message.senderName}
+            email={message.senderEmail}
+            accountId={accountId}
+            className="size-9"
+          />
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-baseline justify-between gap-3">
@@ -140,7 +160,12 @@ export function EmailThreadMessageCard({
           />
         )}
 
-        <SenderProfileHoverCard message={message} />
+        <SenderProfileHoverCard
+          message={message}
+          accountId={accountId}
+          onCompose={onComposeTo}
+          onSearchSender={onSearchSender}
+        />
 
         <div className={cn('relative z-10 min-w-0 flex-1', canCollapse && 'pointer-events-none')}>
           <div className="flex min-w-0 items-start justify-between gap-3">
@@ -183,6 +208,8 @@ export function EmailThreadMessageCard({
               <MessageIconAction
                 label={`Forward message from ${message.senderName}`}
                 icon={Forward}
+                disabled={!canForward}
+                onClick={handleForward}
               />
               {canCollapse && <ChevronUp aria-hidden="true" className="mx-2 size-3.5" />}
             </div>
@@ -222,7 +249,9 @@ export function EmailThreadMessageCard({
 
         {replyOpen && (
           <EmailReplyComposer
+            key={replyMode}
             message={message}
+            mode={replyMode}
             isSending={isSendingReply}
             onSend={(draft) => onSendReply(message.id, draft)}
             onCancel={onCancelReply}
@@ -241,7 +270,13 @@ export function EmailThreadMessageCard({
               <Reply aria-hidden="true" className="size-3.5" />
               Reply
             </Button>
-            <Button type="button" variant="outline" size="sm">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canForward}
+              onClick={handleForward}
+            >
               <Forward aria-hidden="true" className="size-3.5" />
               Forward
             </Button>
@@ -252,18 +287,18 @@ export function EmailThreadMessageCard({
   );
 }
 
-function SenderAvatar({ name, className }: { name: string; className?: string }) {
-  return (
-    <Avatar className={cn('shrink-0', className)}>
-      <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
-        {getInitials(name)}
-      </AvatarFallback>
-    </Avatar>
-  );
-}
-
-function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
-  const initials = getInitials(message.senderName);
+function SenderProfileHoverCard({
+  message,
+  accountId,
+  onCompose,
+  onSearchSender,
+}: {
+  message: EmailThreadMessage;
+  accountId?: string;
+  onCompose?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
+}) {
+  const address = message.senderEmail;
 
   return (
     <HoverCard openDelay={100} closeDelay={120}>
@@ -273,39 +308,60 @@ function SenderProfileHoverCard({ message }: { message: EmailThreadMessage }) {
           className="pointer-events-auto relative z-10 mt-0.5 shrink-0 cursor-pointer rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={`View ${message.senderName} profile`}
         >
-          <Avatar className="size-9">
-            <AvatarFallback className="border-0 bg-muted text-xs font-semibold text-muted-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <SenderAvatar
+            name={message.senderName}
+            email={address}
+            accountId={accountId}
+            className="size-9"
+          />
         </button>
       </HoverCardTrigger>
-      <HoverCardContent align="start" className="w-72 p-0">
-        <div className="flex gap-3 p-4 pb-3">
-          <Avatar className="size-10">
-            <AvatarFallback className="border-0 bg-primary/10 text-sm font-semibold text-primary">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+      <HoverCardContent align="start" className="w-80 p-0">
+        <div className="flex items-center gap-3 p-4">
+          <SenderAvatar
+            name={message.senderName}
+            email={address}
+            accountId={accountId}
+            className="size-12 text-base"
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{message.senderName}</p>
-            <p className="mt-0.5 break-all text-xs text-muted-foreground">{message.senderEmail}</p>
+            <p className="mt-0.5 break-all text-xs text-muted-foreground">{address}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 border-t border-border px-2 py-2">
-          <button
-            type="button"
-            className="flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-muted/50 px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-          >
-            <Star aria-hidden="true" className="size-3.5" />
-            <span className="truncate">Add favourite</span>
-          </button>
+          {onCompose && (
+            <button
+              type="button"
+              className="flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-muted/50 px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+              onClick={() => onCompose(address)}
+            >
+              <Mail aria-hidden="true" className="size-3.5" />
+              <span className="truncate">Send mail</span>
+            </button>
+          )}
+          {onSearchSender && (
+            <button
+              type="button"
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+              aria-label={`Find emails from ${message.senderName}`}
+              onClick={() => onSearchSender(address)}
+            >
+              <Search aria-hidden="true" className="size-3.5" />
+            </button>
+          )}
           <button
             type="button"
             className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-            aria-label={`Email ${message.senderName}`}
+            aria-label={`Copy ${address}`}
+            onClick={() => {
+              void navigator.clipboard.writeText(address).then(
+                () => toast.success('Email address copied.'),
+                () => toast.error('Could not copy the address.')
+              );
+            }}
           >
-            <Mail aria-hidden="true" />
+            <Copy aria-hidden="true" className="size-3.5" />
           </button>
         </div>
       </HoverCardContent>
@@ -375,15 +431,6 @@ function getMessagePreview(body: string[]) {
     .trim();
 
   return preview || 'No message content';
-}
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
 }
 
 function EmailAttachmentChip({

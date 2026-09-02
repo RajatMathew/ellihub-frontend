@@ -8,7 +8,7 @@ import {
   useListTable,
   type ListSelectionConfig,
 } from '@/app/components/data-table';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { useAccess } from '@/app/contexts/access-context';
 import { useVendorListColumns, VendorStatsCards } from '@/modules/directory/components/vendors';
@@ -124,15 +124,19 @@ export function VendorListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
-        addIcon={canCreate ? <Plus className="size-4" /> : undefined}
-        addLabel={canCreate ? 'Add Vendor' : undefined}
-        addTo={canCreate ? 'create' : undefined}
-        hasActiveFilters={state.hasActiveFilters}
-        isLoading={list.isInitialLoading}
-        resultLabel="Vendors"
+      <ListPageHeader
         title="Vendors"
-        totalCount={list.totalCount}
+        isLoading={list.isInitialLoading}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'Vendors' }}
+        actions={[
+          {
+            label: 'Add Vendor',
+            icon: Plus,
+            to: 'create',
+            placement: 'primary',
+            enabled: canCreate,
+          },
+        ]}
       />
 
       <VendorStatsCards

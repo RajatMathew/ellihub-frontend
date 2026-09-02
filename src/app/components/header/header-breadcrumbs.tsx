@@ -19,6 +19,7 @@ import {
 import { useBreadcrumbLabels } from '@/app/hooks/use-breadcrumb-label';
 import { useBreadcrumbTrailValue } from '@/app/hooks/use-breadcrumb-trail';
 import { cn } from '@/app/lib/utils';
+import { getCrumbLabelForPath, getEntityLabelForPath, routeTree } from '@/app/routing/config';
 import { useProjectDetailQuery } from '@/modules/project/hooks';
 import { CalendarDays, CheckSquare, ChevronDown, Eye, Mail, SunMedium } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -30,39 +31,14 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
  */
 export const BREADCRUMB_PAGE_ACTIONS_ID = 'breadcrumb-page-actions';
 
-const ROUTE_LABELS: Record<string, string> = {
-  hr: 'HR',
-  rfqs: 'RFQs',
-  'sub-change-order': 'Sub Change Order',
-};
-
-const DYNAMIC_SEGMENT_PARENTS = new Set([
-  'contacts',
-  'departments',
-  'employees',
-  'general-contractors',
-  'invoices',
-  'pto',
-  'purchase-orders',
-  'rfqs',
-  'sub-change-order',
-  'vendors',
-]);
-
-const DYNAMIC_SEGMENT_PENDING_LABELS: Record<string, string> = {
-  contacts: 'Contact',
-  departments: 'Department',
-  employees: 'Employee',
-  'general-contractors': 'General Contractor',
-  invoices: 'Invoice',
-  pto: 'PTO Request',
-  'purchase-orders': 'Purchase Order',
-  rfqs: 'RFQ',
-  'sub-change-order': 'Sub Change Order',
-  vendors: 'Vendor',
-};
-
 const STATIC_DETAIL_ACTION_SEGMENTS = new Set(['create', 'edit', 'new']);
+
+/** Title Case fallback for a segment no route claims. */
+function humanizeSegment(segment: string) {
+  return decodeURIComponent(segment)
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 /**
  * How many appended crumbs stay on the bar before the rest fold into the
@@ -149,67 +125,60 @@ export function HeaderBreadcrumbs() {
 
   const { data: project } = useProjectDetailQuery(projectId ?? '');
 
-  // Build cumulative paths
-  let breadcrumbs = pathSegments.map((segment, index) => {
-    const path = '/' + ['app', ...pathSegments.slice(0, index + 1)].join('/');
-    const dynamicLabel = breadcrumbLabels[path];
-    const previousSegment = pathSegments[index - 1];
+  // Build cumulative paths. Labels come from the route that owns each segment,
+  // so naming a section is done once in the route tree rather than in a map
+  // here that has to be kept in step with it.
+  let breadcrumbs = pathSegments
+    .map((segment, index) => {
+      const path = '/' + ['app', ...pathSegments.slice(0, index + 1)].join('/');
+      const parentPath =
+        index > 0 ? '/' + ['app', ...pathSegments.slice(0, index)].join('/') : undefined;
+      const isLast = index === pathSegments.length - 1;
+      const dynamicLabel = breadcrumbLabels[path];
 
-    // Project detail URLs use the singular `/project/:projectId` route, while
-    // the Projects breadcrumb should return to the plural project index.
-    if (segment === 'project' && index === projectSegmentIndex) {
+      // A segment is a record id when the route above it declares what kind of
+      // record it lists — `create` and `edit` are that route's own actions.
+      const entityLabel = parentPath ? getEntityLabelForPath(parentPath, routeTree) : undefined;
+      const isRecordSegment =
+        entityLabel !== undefined && !STATIC_DETAIL_ACTION_SEGMENTS.has(segment);
+
+      // Project detail URLs use the singular `/project/:projectId` route, while
+      // the Projects breadcrumb should return to the plural project index.
+      if (segment === 'project' && index === projectSegmentIndex) {
+        return { label: 'Project', path: '/app/projects', isLast, hidden: false };
+      }
+
+      if (dynamicLabel) {
+        // The page has not resolved a real name yet and is echoing the route's
+        // placeholder; render nothing rather than the word "Vendor".
+        const isPlaceholder = isRecordSegment && dynamicLabel === entityLabel;
+        return { label: isPlaceholder ? '' : dynamicLabel, path, isLast, hidden: false };
+      }
+
+      // Replace project ID with project name and link to overview
+      if (projectId && segment === projectId) {
+        return {
+          label: project?.name ?? 'Loading...',
+          path: path + '/overview',
+          isLast,
+          hidden: false,
+        };
+      }
+
+      if (isRecordSegment) {
+        return { label: '', path, isLast, hidden: false };
+      }
+
+      const crumb = getCrumbLabelForPath(path, routeTree);
+
       return {
-        label: 'Project',
-        path: '/app/projects',
-        isLast: index === pathSegments.length - 1,
-      };
-    }
-
-    if (dynamicLabel) {
-      const pendingLabel =
-        previousSegment && DYNAMIC_SEGMENT_PENDING_LABELS[previousSegment] === dynamicLabel;
-
-      return {
-        label: pendingLabel ? '' : dynamicLabel,
+        label: crumb?.label ?? humanizeSegment(segment),
         path,
-        isLast: index === pathSegments.length - 1,
+        isLast,
+        hidden: crumb?.hidden === true,
       };
-    }
-
-    // Replace project ID with project name and link to overview
-    if (projectId && segment === projectId) {
-      return {
-        label: project?.name ?? 'Loading...',
-        path: path + '/overview',
-        isLast: index === pathSegments.length - 1,
-      };
-    }
-
-    const fallbackLabel =
-      previousSegment &&
-      !STATIC_DETAIL_ACTION_SEGMENTS.has(segment) &&
-      DYNAMIC_SEGMENT_PARENTS.has(previousSegment)
-        ? ''
-        : undefined;
-
-    if (fallbackLabel !== undefined) {
-      return {
-        label: fallbackLabel,
-        path,
-        isLast: index === pathSegments.length - 1,
-      };
-    }
-
-    return {
-      label:
-        ROUTE_LABELS[segment] ??
-        decodeURIComponent(segment)
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase()),
-      path,
-      isLast: index === pathSegments.length - 1,
-    };
-  });
+    })
+    .filter((crumb) => !crumb.hidden);
 
   // Filter out redundant overview if it's the last segment and follows the project name
   if (breadcrumbs.length > 1) {
@@ -218,6 +187,17 @@ export function HeaderBreadcrumbs() {
     if (last.label === 'Overview' && last.path === prev.path) {
       breadcrumbs = breadcrumbs.slice(0, -1);
       breadcrumbs[breadcrumbs.length - 1].isLast = true;
+    }
+  }
+
+  // Mail deep links end in `/id/:conversationId` — an addressing detail, not a
+  // navigational level. Drop that pair so the trail ends at the folder crumb.
+  if (pathSegments[0] === 'email' && pathSegments[1] === 'accounts') {
+    const idIndex = pathSegments.indexOf('id', 3);
+    if (idIndex !== -1) {
+      breadcrumbs = breadcrumbs.slice(0, idIndex);
+      const lastCrumb = breadcrumbs[breadcrumbs.length - 1];
+      if (lastCrumb) lastCrumb.isLast = true;
     }
   }
 

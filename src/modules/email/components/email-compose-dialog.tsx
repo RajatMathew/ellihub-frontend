@@ -20,16 +20,23 @@ import {
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
+import { cn } from '@/app/lib/utils';
+import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
 import {
   EMAIL_ADDRESS_PATTERN,
   getEmailAddressListError,
   parseEmailAddresses,
 } from '@/modules/email/lib/email-addresses';
-import { cn } from '@/app/lib/utils';
 import { AlertCircle, FileText, Paperclip, Send, Trash2, X } from 'lucide-react';
 
-const MAX_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024;
+/**
+ * Providers cap the WHOLE message, not each file — Outlook silently drops mail
+ * whose combined attachments exceed ~25 MB, so the budget must be enforced
+ * across every attached file together, mirroring the check in elli-core.
+ */
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 type ComposeForm = {
   to: string;
@@ -64,7 +71,10 @@ export type ComposeDraftSaveResult = ComposeDraftIdentity & {
 interface EmailComposeDialogProps {
   open: boolean;
   mailboxAddress: string;
+  accountId?: string;
   initialDraft?: EditableComposeDraft | null;
+  /** Prefill for a brand-new message (ignored when editing a draft). */
+  initialRecipient?: string;
   isSending?: boolean;
   onOpenChange: (open: boolean) => void;
   onSaveDraft?: (
@@ -78,7 +88,9 @@ interface EmailComposeDialogProps {
 export function EmailComposeDialog({
   open,
   mailboxAddress,
+  accountId,
   initialDraft,
+  initialRecipient,
   isSending = false,
   onOpenChange,
   onSaveDraft,
@@ -123,7 +135,13 @@ export function EmailComposeDialog({
     body: '',
   });
   const lastSavedSignatureRef = useRef('');
-  const canSend = form.to.trim().length > 0 && form.subject.trim().length > 0;
+  // Pending local files plus attachments already uploaded to the draft.
+  const totalAttachmentBytes =
+    attachments.reduce((total, file) => total + file.size, 0) +
+    existingAttachments.reduce((total, attachment) => total + (attachment.sizeBytes ?? 0), 0);
+  const attachmentsOverBudget = totalAttachmentBytes > MAX_TOTAL_ATTACHMENT_BYTES;
+  const canSend =
+    form.to.trim().length > 0 && form.subject.trim().length > 0 && !attachmentsOverBudget;
   const isBusy = isClosing || isSubmitting || isDiscarding || isSending;
   const isPreparingAttachments = saveStatus === 'saving' && attachments.length > 0;
   const hasContent = Boolean(
@@ -214,7 +232,7 @@ export function EmailComposeDialog({
 
   useEffect(() => {
     if (!open) return;
-    const initialKey = initialDraft?.draftId ?? 'new';
+    const initialKey = initialDraft?.draftId ?? `new:${initialRecipient ?? ''}`;
     if (initializedDraftRef.current === initialKey) return;
     initializedDraftRef.current = initialKey;
 
@@ -226,7 +244,7 @@ export function EmailComposeDialog({
           subject: initialDraft.subject,
           body: initialDraft.body,
         }
-      : { to: '', cc: '', bcc: '', subject: '', body: '' };
+      : { to: initialRecipient ?? '', cc: '', bcc: '', subject: '', body: '' };
     const nextAttachments = initialDraft?.attachments ?? [];
     setForm(nextForm);
     setShowCc(Boolean(initialDraft?.cc));
@@ -247,7 +265,7 @@ export function EmailComposeDialog({
       existing: nextAttachments.map((attachment) => attachment.id),
       removed: [],
     });
-  }, [initialDraft, open]);
+  }, [initialDraft, initialRecipient, open]);
 
   async function handleRequestClose() {
     if (isBusy) return;
@@ -344,7 +362,16 @@ export function EmailComposeDialog({
   }
 
   function handleAttachmentSelection(files: FileList | null) {
-    const addedFiles = getNewAttachments(files, attachmentsRef.current, setAttachmentError);
+    const uploadedBytes = existingAttachments.reduce(
+      (total, attachment) => total + (attachment.sizeBytes ?? 0),
+      0
+    );
+    const addedFiles = getNewAttachments(
+      files,
+      attachmentsRef.current,
+      uploadedBytes,
+      setAttachmentError
+    );
     if (!addedFiles.length) return;
 
     replacePendingAttachments([...attachmentsRef.current, ...addedFiles]);
@@ -445,6 +472,7 @@ export function EmailComposeDialog({
             )}
             <div className="divide-y divide-border">
               <EmailAddressField
+                accountId={accountId}
                 id={toId}
                 label="To"
                 value={form.to}
@@ -474,6 +502,7 @@ export function EmailComposeDialog({
               </EmailAddressField>
               {showCc && (
                 <EmailAddressField
+                  accountId={accountId}
                   id={ccId}
                   label="Cc"
                   value={form.cc}
@@ -488,6 +517,7 @@ export function EmailComposeDialog({
               )}
               {showBcc && (
                 <EmailAddressField
+                  accountId={accountId}
                   id={bccId}
                   label="Bcc"
                   value={form.bcc}
@@ -545,6 +575,8 @@ export function EmailComposeDialog({
               existingAttachments={existingAttachments}
               pendingStatus={saveStatus}
               error={attachmentError}
+              totalBytes={totalAttachmentBytes}
+              overBudget={attachmentsOverBudget}
               disabled={isPreparingAttachments}
               onClear={() => {
                 replacePendingAttachments([]);
@@ -618,6 +650,8 @@ function AttachmentDropzone({
   existingAttachments,
   pendingStatus,
   error,
+  totalBytes,
+  overBudget,
   disabled,
   onClear,
   onSelect,
@@ -630,6 +664,8 @@ function AttachmentDropzone({
   existingAttachments: EmailAttachment[];
   pendingStatus: 'idle' | 'saving' | 'error';
   error: string | null;
+  totalBytes: number;
+  overBudget: boolean;
   disabled: boolean;
   onClear: () => void;
   onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -657,7 +693,16 @@ function AttachmentDropzone({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Drop files here</p>
-              <p className="text-xs text-muted-foreground">Up to 25 MB per file</p>
+              <p
+                className={cn(
+                  'text-xs',
+                  overBudget ? 'font-medium text-destructive' : 'text-muted-foreground'
+                )}
+              >
+                {totalBytes > 0
+                  ? `${formatFileSize(totalBytes)} of ${formatFileSize(MAX_TOTAL_ATTACHMENT_BYTES)} used`
+                  : `Up to ${formatFileSize(MAX_TOTAL_ATTACHMENT_BYTES)} in total`}
+              </p>
             </div>
           </div>
           <Button
@@ -753,7 +798,23 @@ function AttachmentDropzone({
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <div className="min-w-0 text-xs leading-5">
             <p className="font-semibold">Attachment wasn’t added</p>
-            <p className="text-destructive/85">{error} Choose a smaller file and try again.</p>
+            <p className="text-destructive/85">{error}</p>
+          </div>
+        </div>
+      )}
+      {overBudget && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start gap-2 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0 text-xs leading-5">
+            <p className="font-semibold">Attachments exceed the email limit</p>
+            <p className="text-destructive/85">
+              This email carries {formatFileSize(totalBytes)} of attachments but only{' '}
+              {formatFileSize(MAX_TOTAL_ATTACHMENT_BYTES)} can be delivered. Remove attachments
+              until the total fits — sending is disabled until then.
+            </p>
           </div>
         </div>
       )}
@@ -764,21 +825,39 @@ function AttachmentDropzone({
 function getNewAttachments(
   files: FileList | null,
   current: File[],
+  uploadedBytes: number,
   setError: (error: string | null) => void
 ): File[] {
   if (!files?.length) return [];
-  const incoming = Array.from(files);
-  const tooLarge = incoming.find((file) => file.size > MAX_ATTACHMENT_SIZE_BYTES);
-  if (tooLarge) {
-    setError(`${tooLarge.name} is larger than 25 MB.`);
-    return [];
+  const existing = new Set(current.map(fileKey));
+  const incoming = Array.from(files).filter((file) => !existing.has(fileKey(file)));
+
+  // Accept files in the order they were picked while they fit the message
+  // budget; everything that would push the total past the limit stays out.
+  let usedBytes = uploadedBytes + current.reduce((total, file) => total + file.size, 0);
+  const accepted: File[] = [];
+  const rejected: File[] = [];
+  for (const file of incoming) {
+    if (usedBytes + file.size <= MAX_TOTAL_ATTACHMENT_BYTES) {
+      accepted.push(file);
+      usedBytes += file.size;
+    } else {
+      rejected.push(file);
+    }
   }
-  const existing = new Set(current.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
-  const next = incoming.filter(
-    (file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`)
-  );
-  setError(null);
-  return next;
+
+  if (rejected.length > 0) {
+    const remaining = Math.max(0, MAX_TOTAL_ATTACHMENT_BYTES - usedBytes);
+    const names = rejected.map((file) => `${file.name} (${formatFileSize(file.size)})`).join(', ');
+    setError(
+      `${names} ${rejected.length === 1 ? 'was' : 'were'} not attached — emails are limited to ` +
+        `${formatFileSize(MAX_TOTAL_ATTACHMENT_BYTES)} of attachments in total and ` +
+        `${formatFileSize(remaining)} remains. Remove an attachment or send it in a separate email.`
+    );
+  } else {
+    setError(null);
+  }
+  return accepted;
 }
 
 function fileKey(file: File) {
@@ -822,6 +901,7 @@ function EmailAddressField({
   placeholder,
   required,
   error,
+  accountId,
   onChange,
   onRemove,
   children,
@@ -832,6 +912,7 @@ function EmailAddressField({
   placeholder: string;
   required?: boolean;
   error?: string;
+  accountId?: string;
   onChange: (value: string) => void;
   /**
    * When provided, renders an X on the right that lets the user drop the whole
@@ -843,14 +924,41 @@ function EmailAddressField({
   const errorId = `${id}-error`;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [buffer, setBuffer] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   // Chips are derived from the parent-owned value string — nothing about the
   // outer contract changes. `buffer` is only for text the user is typing right
   // now that hasn't been committed to a chip yet.
   const chips = useMemo(() => parseEmailAddresses(value).map((r) => r.address), [value]);
 
+  // Suggestions only once the user starts typing — a bare focus stays quiet.
+  const hasTypedQuery = buffer.trim().length > 0;
+  const suggestions = useEmailAddressSuggestions(
+    accountId,
+    buffer,
+    chips,
+    focused && hasTypedQuery
+  );
+  const suggestionsOpen =
+    focused && hasTypedQuery && !suggestionsDismissed && suggestions.length > 0;
+
+  const selectSuggestion = useCallback(
+    (address: string) => {
+      setBuffer('');
+      setActiveSuggestionIndex(-1);
+      if (!chips.includes(address)) onChange([...chips, address].join(', '));
+      inputRef.current?.focus();
+    },
+    [chips, onChange]
+  );
+
   const commitBuffer = useCallback(() => {
-    const trimmed = buffer.trim().replace(/[,;]+$/, '').trim();
+    const trimmed = buffer
+      .trim()
+      .replace(/[,;]+$/, '')
+      .trim();
     setBuffer('');
     if (!trimmed) return;
     // Deduplicate — chip already present is a no-op.
@@ -868,6 +976,8 @@ function EmailAddressField({
 
   const handleBufferChange = (event: ChangeEvent<HTMLInputElement>) => {
     const raw = event.target.value;
+    setSuggestionsDismissed(false);
+    setActiveSuggestionIndex(-1);
     // Pastes / typed delimiters split into chips immediately, leaving whatever
     // trails the last delimiter as the still-editable buffer.
     if (/[,;]/.test(raw)) {
@@ -889,6 +999,30 @@ function EmailAddressField({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (suggestionsOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestionIndex((index) => (index + 1) % suggestions.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestionIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSuggestionsDismissed(true);
+        setActiveSuggestionIndex(-1);
+        return;
+      }
+      if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+        event.preventDefault();
+        const active = suggestions[activeSuggestionIndex];
+        if (active) selectSuggestion(active.address);
+        return;
+      }
+    }
     if ((event.key === 'Enter' || event.key === 'Tab') && buffer.trim()) {
       event.preventDefault();
       commitBuffer();
@@ -903,7 +1037,10 @@ function EmailAddressField({
   return (
     <div>
       <div className="flex items-start gap-3 px-5 py-2.5">
-        <label htmlFor={id} className="mt-1.5 w-16 shrink-0 text-xs font-medium text-muted-foreground">
+        <label
+          htmlFor={id}
+          className="mt-1.5 w-16 shrink-0 text-xs font-medium text-muted-foreground"
+        >
           {label}
           {required && <span className="text-destructive"> *</span>}
         </label>
@@ -914,7 +1051,7 @@ function EmailAddressField({
         */}
         <div
           className={cn(
-            'flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
+            'relative flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
             error && 'text-destructive'
           )}
           onClick={(event) => {
@@ -955,7 +1092,7 @@ function EmailAddressField({
             type="text"
             inputMode="email"
             value={buffer}
-            autoComplete="email"
+            autoComplete="chrome-off"
             spellCheck={false}
             placeholder={chips.length === 0 ? placeholder : undefined}
             aria-invalid={error ? 'true' : undefined}
@@ -963,8 +1100,24 @@ function EmailAddressField({
             className="min-w-24 flex-1 border-0 bg-transparent px-0 py-0.5 text-sm outline-none placeholder:text-muted-foreground/70"
             onChange={handleBufferChange}
             onKeyDown={handleKeyDown}
-            onBlur={commitBuffer}
+            onFocus={() => {
+              setFocused(true);
+              setSuggestionsDismissed(false);
+            }}
+            onBlur={() => {
+              setFocused(false);
+              setActiveSuggestionIndex(-1);
+              commitBuffer();
+            }}
           />
+          {suggestionsOpen && (
+            <EmailAddressSuggestionList
+              accountId={accountId}
+              suggestions={suggestions}
+              activeIndex={activeSuggestionIndex}
+              onSelect={selectSuggestion}
+            />
+          )}
         </div>
         {children && <div className="mt-1 flex shrink-0 items-center gap-1">{children}</div>}
         {onRemove && (

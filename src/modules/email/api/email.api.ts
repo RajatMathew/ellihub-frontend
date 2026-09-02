@@ -6,6 +6,17 @@ import { z } from 'zod';
 
 const BASE = '/email';
 
+const emailContactSuggestionSchema = z.object({
+  name: z.string().nullable(),
+  address: z.string(),
+});
+export type EmailContactSuggestion = z.infer<typeof emailContactSuggestionSchema>;
+
+/** URL for a sender's profile photo — used directly as an <img> src. */
+export function getSenderPhotoUrl(accountId: string, address: string): string {
+  return `${import.meta.env.VITE_API_BASE_URL}/api/v1${BASE}/accounts/${accountId}/sender-photo?address=${encodeURIComponent(address)}`;
+}
+
 const emailFreshnessSchema = z.object({
   state: z.enum(['fresh', 'stale', 'syncing', 'error']),
   lastSyncedAt: z.string().nullable(),
@@ -145,11 +156,19 @@ const emailThreadReferenceSchema = z.object({
   sortOrder: z.number().optional(),
 });
 
+const emailThreadAssigneeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  image: z.string().nullable().optional(),
+});
+
 const emailThreadClassificationSchema = z.object({
   id: z.string().nullable().optional(),
   conversationKey: z.string(),
   threadId: z.string().nullable().optional(),
-  status: z.enum(['open', 'closed']),
+  status: z.enum(['open', 'open_our_court', 'open_their_court', 'closed']),
+  assignedTo: emailThreadAssigneeSchema.nullable().optional(),
   references: z.array(emailThreadReferenceSchema),
 });
 
@@ -330,13 +349,27 @@ export type ReplyConnectedEmailPayload = {
   bcc?: Array<{ address: string; name?: string }>;
 };
 
+export type ForwardConnectedEmailPayload = {
+  accountId: string;
+  messageId: string;
+  body: string;
+  bodyType?: 'html' | 'text';
+  subject?: string;
+  to: Array<{ address: string; name?: string }>;
+  cc?: Array<{ address: string; name?: string }>;
+  bcc?: Array<{ address: string; name?: string }>;
+};
+
 export type SaveEmailThreadClassificationPayload = {
   accountId: string;
   conversationKey: string;
   threadId?: string | null;
-  status: 'open' | 'closed';
+  status: EmailThreadClassification['status'];
+  assignedToId?: string | null;
   references: EmailThreadReference[];
 };
+
+export type EmailThreadAssignee = z.infer<typeof emailThreadAssigneeSchema>;
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
   const response = data as Record<string, unknown>;
@@ -419,6 +452,11 @@ export const emailApi = {
       classification
     );
     return emailThreadClassificationSchema.parse(unwrapData(res.data));
+  },
+
+  async listThreadAssignees(): Promise<EmailThreadAssignee[]> {
+    const res = await api.get(`${BASE}/thread-assignees`);
+    return z.array(emailThreadAssigneeSchema).parse(unwrapData(res.data));
   },
 
   async listMessages(params: {
@@ -540,6 +578,25 @@ export const emailApi = {
   ): Promise<ConnectedEmailThreadMessage | null> {
     const { accountId, messageId, ...message } = payload;
     const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/reply`, {
+      bodyType: 'html',
+      cc: [],
+      bcc: [],
+      attachments: [],
+      ...message,
+    });
+    return emailReplyResponseSchema.parse(unwrapData(res.data)).message ?? null;
+  },
+
+  async listContactSuggestions(accountId: string, q: string): Promise<EmailContactSuggestion[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/contacts`, { params: { q } });
+    return z.array(emailContactSuggestionSchema).parse(unwrapData(res.data));
+  },
+
+  async forwardMessage(
+    payload: ForwardConnectedEmailPayload
+  ): Promise<ConnectedEmailThreadMessage | null> {
+    const { accountId, messageId, ...message } = payload;
+    const res = await api.post(`${BASE}/accounts/${accountId}/messages/${messageId}/forward`, {
       bodyType: 'html',
       cc: [],
       bcc: [],

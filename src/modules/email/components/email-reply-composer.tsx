@@ -14,8 +14,11 @@ export type EmailReplyDraft = {
   bcc: string;
 };
 
+export type EmailComposerMode = 'reply' | 'forward';
+
 interface EmailReplyComposerProps {
   message: EmailThreadMessage;
+  mode?: EmailComposerMode;
   isSending?: boolean;
   onSend: (draft: EmailReplyDraft) => Promise<void> | void;
   onCancel: () => void;
@@ -23,32 +26,44 @@ interface EmailReplyComposerProps {
 
 export function EmailReplyComposer({
   message,
+  mode = 'reply',
   isSending = false,
   onSend,
   onCancel,
 }: EmailReplyComposerProps) {
   const [body, setBody] = useState('');
-  const [to, setTo] = useState(message.senderEmail);
+  const isForward = mode === 'forward';
+  // A forward starts with no recipient; a reply targets the sender.
+  const [to, setTo] = useState(isForward ? '' : message.senderEmail);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
-  const [addressErrors, setAddressErrors] = useState<Partial<Record<'to' | 'cc' | 'bcc', string>>>({});
+  const [addressErrors, setAddressErrors] = useState<Partial<Record<'to' | 'cc' | 'bcc', string>>>(
+    {}
+  );
   const toId = useId();
   const ccId = useId();
   const bccId = useId();
   const textareaId = useId();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = body.trim().length > 0 && to.trim().length > 0 && !isSending;
+  const canSend = (isForward || body.trim().length > 0) && to.trim().length > 0 && !isSending;
 
   useEffect(() => {
+    // A forward needs a recipient first; a reply already has one.
+    if (isForward) {
+      document.getElementById(toId)?.focus();
+      return;
+    }
     textareaRef.current?.focus();
-  }, []);
+  }, [isForward, toId]);
 
   return (
     <form
       className="rounded-md border border-border bg-background"
-      aria-label={`Reply to ${message.senderName}`}
+      aria-label={
+        isForward ? `Forward message from ${message.senderName}` : `Reply to ${message.senderName}`
+      }
       onSubmit={async (event) => {
         event.preventDefault();
         const nextErrors = {
@@ -127,14 +142,14 @@ export function EmailReplyComposer({
 
       <div className="space-y-3 p-4">
         <label htmlFor={textareaId} className="sr-only">
-          Reply message
+          {isForward ? 'Forward message' : 'Reply message'}
         </label>
         <Textarea
           ref={textareaRef}
           id={textareaId}
           value={body}
           rows={6}
-          placeholder="Write your reply..."
+          placeholder={isForward ? 'Add a message (optional)...' : 'Write your reply...'}
           className="min-h-36 resize-y border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
           disabled={isSending}
           onChange={(event) => setBody(event.target.value)}

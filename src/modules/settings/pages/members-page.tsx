@@ -9,7 +9,7 @@ import {
   type ListSelectionConfig,
 } from '@/app/components/data-table';
 import { Forbidden } from '@/app/components/error/forbidden';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -184,15 +184,13 @@ export default function MembersPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
-        addIcon={<Plus className="size-4" />}
-        addLabel="Add Member"
-        hasActiveFilters={state.hasActiveFilters}
-        isLoading={list.isInitialLoading}
-        resultLabel="members"
+      <ListPageHeader
         title="Members & Roles"
-        totalCount={list.totalCount}
-        onAdd={openCreateDialog}
+        isLoading={list.isInitialLoading}
+        summary={{ total: list.totalCount, filtered: state.hasActiveFilters, label: 'members' }}
+        actions={[
+          { label: 'Add Member', icon: Plus, placement: 'primary', onClick: openCreateDialog },
+        ]}
       />
 
       <DataTable

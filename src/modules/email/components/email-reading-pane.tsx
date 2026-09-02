@@ -16,6 +16,7 @@ import type {
   EmailMeetingResponseAction,
 } from '@/modules/email/api';
 import { emailApi } from '@/modules/email/api';
+import { EmailAssigneePicker } from '@/modules/email/components/email-assignee-picker';
 import { EmailMeetingEventCard } from '@/modules/email/components/email-meeting-event-card';
 import {
   EmailReadingPaneEmptyState,
@@ -82,6 +83,12 @@ interface EmailReadingPaneProps {
     messageId: string,
     draft: EmailReplyDraft
   ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
+  onForward?: (
+    messageId: string,
+    draft: EmailReplyDraft
+  ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
+  onComposeTo?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
   isRespondingToMeeting?: boolean;
   isUpdatingMeeting?: boolean;
   isCancellingMeeting?: boolean;
@@ -121,6 +128,9 @@ export function EmailReadingPane({
   onDelete,
   isSendingReply = false,
   onReply,
+  onForward,
+  onComposeTo,
+  onSearchSender,
   isRespondingToMeeting = false,
   isUpdatingMeeting = false,
   isCancellingMeeting = false,
@@ -133,9 +143,11 @@ export function EmailReadingPane({
   onUpdateMeeting,
   onCancelMeeting,
 }: EmailReadingPaneProps) {
-  const [replyTarget, setReplyTarget] = useState<{ emailId: string; messageId: string } | null>(
-    null
-  );
+  const [replyTarget, setReplyTarget] = useState<{
+    emailId: string;
+    messageId: string;
+    mode: 'reply' | 'forward';
+  } | null>(null);
   const [pendingReplies, setPendingReplies] = useState<PendingEmailReply[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<{
     messageId: string;
@@ -200,6 +212,7 @@ export function EmailReadingPane({
             conversationKey: email.classification.conversationKey,
             threadId: email.classification.threadId ?? email.threadId ?? null,
             status: email.classification.status,
+            assignedTo: email.classification.assignedTo ?? null,
             references: email.classification.references,
           }
         : {
@@ -207,6 +220,7 @@ export function EmailReadingPane({
             conversationKey,
             threadId: email?.threadId ?? null,
             status: 'open',
+            assignedTo: null,
             references: [],
           },
     [conversationKey, email]
@@ -219,6 +233,7 @@ export function EmailReadingPane({
         conversationKey,
         threadId: nextState.threadId ?? email?.threadId ?? null,
         status: nextState.status,
+        assignedToId: nextState.assignedTo?.id ?? null,
         references: nextState.references,
       });
     },
@@ -331,6 +346,7 @@ export function EmailReadingPane({
                     setReplyTarget({
                       emailId: email.id,
                       messageId: latestReplyableMessage.id,
+                      mode: 'reply',
                     })
                 : undefined
             }
@@ -386,7 +402,23 @@ export function EmailReadingPane({
               <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
                 {email.subject}
               </h1>
-              <div className="flex shrink-0 items-center gap-2">
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground">to {mailboxAddress}</p>
+              <span className="ms-auto flex shrink-0 items-center gap-1.5">
+                <EmailAssigneePicker
+                  accountId={accountId}
+                  assignee={referenceMarkerState.assignedTo ?? null}
+                  disabled={saveClassificationMutation.isPending}
+                  onChange={(assignee) =>
+                    saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
+                  }
+                />
+                <EmailThreadStatusMarker
+                  state={referenceMarkerState.status}
+                  isSaving={saveClassificationMutation.isPending}
+                  onChange={saveThreadState}
+                />
                 {accountId && (email.providerId ?? email.id) ? (
                   <AddTaskPopover
                     email={{
@@ -399,14 +431,8 @@ export function EmailReadingPane({
                     }}
                   />
                 ) : null}
-                <EmailThreadStatusMarker
-                  state={referenceMarkerState.status}
-                  isSaving={saveClassificationMutation.isPending}
-                  onChange={saveThreadState}
-                />
-              </div>
+              </span>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
             {accountId && (
               <EmailReferenceMarker
                 accountId={accountId}
@@ -449,19 +475,39 @@ export function EmailReadingPane({
                 inlineImageBaseUrl={inlineImageBaseUrl}
                 singleMessage={messages.length === 1}
                 latest={index === messages.length - 1}
+                accountId={accountId}
+                onComposeTo={onComposeTo}
+                onSearchSender={onSearchSender}
                 replyOpen={replyMessageId === message.id}
+                replyMode={replyTarget?.mode}
                 isSendingReply={isSendingReply}
-                onReply={(messageId) => setReplyTarget({ emailId: email.id, messageId })}
+                onReply={(messageId) =>
+                  setReplyTarget({ emailId: email.id, messageId, mode: 'reply' })
+                }
+                onForward={
+                  onForward
+                    ? (messageId) =>
+                        setReplyTarget({ emailId: email.id, messageId, mode: 'forward' })
+                    : undefined
+                }
                 onSendReply={(messageId, draft) => {
-                  if (!onReply) return;
+                  const mode = replyTarget?.mode ?? 'reply';
+                  const send = mode === 'forward' ? onForward : onReply;
+                  if (!send) return;
                   const targetMessage = messages.find((message) => message.id === messageId);
                   const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
                   const optimisticMessage: EmailThreadMessage = {
                     id: optimisticId,
                     senderName: mailboxAddress,
                     senderEmail: mailboxAddress,
-                    recipientName: targetMessage?.senderName ?? email.senderName,
-                    recipientEmail: targetMessage?.senderEmail ?? email.senderEmail,
+                    recipientName:
+                      mode === 'forward'
+                        ? draft.to
+                        : (targetMessage?.senderName ?? email.senderName),
+                    recipientEmail:
+                      mode === 'forward'
+                        ? draft.to
+                        : (targetMessage?.senderEmail ?? email.senderEmail),
                     sentAt: 'Sending...',
                     body: [draft.body],
                     deliveryStatus: 'sending',
@@ -476,7 +522,7 @@ export function EmailReadingPane({
                     },
                   ]);
                   setReplyTarget(null);
-                  Promise.resolve(onReply(messageId, draft))
+                  Promise.resolve(send(messageId, draft))
                     .then((sentMessage) => {
                       setPendingReplies((current) =>
                         markPendingReplySent(

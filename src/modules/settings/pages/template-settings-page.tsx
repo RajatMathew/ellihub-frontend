@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { Forbidden } from '@/app/components/error/forbidden';
 import { ModuleLoader } from '@/app/components/loader/elegant';
-import { ResourcePageHeader } from '@/app/components/resource-page-header';
+import { ListPageHeader } from '@/app/components/page-header';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
@@ -694,15 +694,24 @@ export default function TemplateSettingsPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <ResourcePageHeader
+      <ListPageHeader
         title="Template Settings"
-        totalCount={filtered.length}
-        hasActiveFilters={!!search}
         isLoading={templatesQuery.isLoading}
-        description="Manage the default wording and sender details used by PDFs and emails."
-        addLabel={activeTab.addLabel}
-        addIcon={<Plus className="size-4" />}
-        onAdd={canCreate ? openCreate : undefined}
+        summary={{ total: filtered.length, filtered: Boolean(search) }}
+        description={
+          <span className="text-sm text-muted-foreground">
+            Manage the default wording and sender details used by PDFs and emails.
+          </span>
+        }
+        actions={[
+          {
+            label: activeTab.addLabel,
+            icon: Plus,
+            placement: 'primary',
+            onClick: openCreate,
+            enabled: canCreate,
+          },
+        ]}
       />
 
       <Card>

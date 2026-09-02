@@ -2,11 +2,8 @@ import { useMemo, useState } from 'react';
 
 import { DataTable, f, useListState, useListTable } from '@/app/components/data-table';
 import { useVendorMultiFilterOptions } from '@/modules/directory/hooks/vendors/use-vendor-multi-filter-options';
-import {
-  InvoiceListHeader,
-  InvoiceListStats,
-  useInvoiceListColumns,
-} from '@/modules/project/components/invoice';
+import { InvoiceListStats, useInvoiceListColumns } from '@/modules/project/components/invoice';
+import { ProjectListHeader } from '@/modules/project/components/shared/project-list-header';
 import {
   INVOICE_DEFAULT_PAGE_SIZE,
   INVOICE_SORT_BY_OPTIONS,
@@ -151,7 +148,8 @@ export function InvoiceListPage() {
 
   return (
     <div className="container-fluid py-7.5">
-      <InvoiceListHeader
+      <ProjectListHeader
+        resource="invoice"
         hasActiveFilters={state.hasActiveFilters}
         isLoading={list.isInitialLoading}
         totalCount={list.totalCount}

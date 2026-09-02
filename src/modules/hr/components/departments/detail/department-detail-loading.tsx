@@ -1,11 +1,11 @@
-import { ToolbarSkeleton } from '@/app/components/toolbar/toolbar-skeleton';
+import { PageHeaderSkeleton } from '@/app/components/page-header';
 import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 export function DepartmentDetailLoading() {
   return (
     <div className="container-fluid max-w-full overflow-x-clip pb-5">
-      <ToolbarSkeleton />
+      <PageHeaderSkeleton actionCount={2} showEyebrow />
 
       <div className="flex min-w-0 flex-col gap-6 pt-5 lg:flex-row">
         <Card className="min-w-0 flex-1">

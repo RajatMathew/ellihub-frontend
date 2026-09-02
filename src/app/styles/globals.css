@@ -291,6 +291,20 @@
   }
 }
 
+/* Hide the scrollbar without disabling scrolling, so narrow panes (the email
+   list) give the full width to their content. Chromium always reserves layout
+   space for a styled scrollbar, so the only way to a full-bleed list is no
+   scrollbar at all — wheel/trackpad/keyboard scrolling is unaffected. */
+.scrollbar-hover {
+  scrollbar-width: none;
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /** Custom Scrollbar **/
 @layer base {
   ::-webkit-scrollbar {

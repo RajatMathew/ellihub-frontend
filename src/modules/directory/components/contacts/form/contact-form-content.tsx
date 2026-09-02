@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
 import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
 import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { fakeContactEmail, fakeContactName, fakePhone } from '@/lib/fake-data';
 import type { DirectorySelectOption } from '@/modules/directory/components/contacts/form/contact-form.types';
@@ -18,7 +20,6 @@ import { toast } from 'sonner';
 
 import { ContactAssociationSection } from './contact-association-section';
 import { ContactFormDialogs } from './contact-form-dialogs';
-import { ContactFormToolbar } from './contact-form-toolbar';
 import { ContactInfoFormSection } from './contact-info-form-section';
 
 interface ContactFormContentProps {
@@ -108,10 +109,11 @@ export function ContactFormContent({
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         renderToolbar={(className) => (
-          <ContactFormToolbar
-            isEdit={isEdit}
+          <FormPageHeader
+            title={isEdit ? 'Edit Contact' : 'Add New Contact'}
+            submitLabel={isEdit ? 'Save Changes' : 'Create Contact'}
             isSubmitting={isSubmitting}
-            onFillRandom={handleFillRandom}
+            leadingActions={isEdit ? undefined : <MockDataButton onClick={handleFillRandom} />}
             className={className}
           />
         )}
