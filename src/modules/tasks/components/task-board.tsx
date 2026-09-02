@@ -12,6 +12,7 @@ import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
 import {
   canMoveTask,
+  columnForTask,
   dueDateForColumn,
   groupTasksByColumn,
   TASK_COLUMN_LABELS,
@@ -70,13 +71,17 @@ export function TaskBoard({
    * primitive stops reordering on its own and commits nothing. So a rejected
    * move is simply one we decline to apply, and the card springs back.
    */
-  const handleMove = ({ activeContainer, overContainer, event }: KanbanMoveEvent) => {
-    const from = activeContainer as TaskColumnId;
-    const to = overContainer as TaskColumnId;
-    if (from === to) return;
-
+  const handleMove = ({ overContainer, event }: KanbanMoveEvent) => {
     const task = byId.get(String(event.active.id));
     if (!task) return;
+
+    // Where the card came from has to be read from the server data, not from
+    // the board's current arrangement: the hover reflow has already moved it
+    // into the target, so asking the board would report that it started there
+    // and nothing would ever be saved.
+    const from = columnForTask(task, now);
+    const to = overContainer as TaskColumnId;
+    if (from === to) return;
 
     const { allowed, reason } = canMoveTask(from, to);
     if (!allowed) {

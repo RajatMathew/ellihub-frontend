@@ -103,6 +103,8 @@ const TASKS = [
 ];
 
 async function setupMockApi(page: Page) {
+  const updates: { id: string; dueAt?: string | null }[] = [];
+
   await page.route('**/api/v1/**', async (route, request) => {
     const path = new URL(request.url()).pathname;
     const method = request.method();
@@ -150,8 +152,18 @@ async function setupMockApi(page: Page) {
       return;
     }
 
+    if (method === 'PUT' && path === '/api/v1/task') {
+      const body = request.postDataJSON() as { id: string; dueAt?: string | null };
+      updates.push(body);
+      const original = TASKS.find((item) => item.id === body.id) ?? TASKS[0];
+      await route.fulfill({ json: { success: true, data: { ...original, ...body } } });
+      return;
+    }
+
     await route.fulfill({ json: { data: [] } });
   });
+
+  return { updates };
 }
 
 test('the board renders its columns, coloured assignees and filter pills', async ({ page }) => {
@@ -283,4 +295,32 @@ test('a legal hover opens a gap where the card will land', async ({ page }) => {
 
   await page.screenshot({ path: 'output/visual/task-board-reflow.png', animations: 'disabled' });
   await page.mouse.up();
+});
+
+test('dropping a card on another column saves its new due date', async ({ page }) => {
+  const api = await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  const card = page.getByText('Confirm Boyland hardware receipt on 7/11');
+  await expect(card).toBeVisible({ timeout: 30_000 });
+
+  const from = await card.boundingBox();
+  const tomorrow = await page.getByText('Tomorrow', { exact: true }).boundingBox();
+  if (!from || !tomorrow) throw new Error('could not locate the card or the column');
+
+  await page.mouse.move(from.x + from.width / 2, from.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 40, from.y + 20, { steps: 5 });
+  await page.mouse.move(tomorrow.x + tomorrow.width / 2, tomorrow.y + 120, { steps: 12 });
+  await page.mouse.up();
+
+  // The reflow moves the card locally; the drop must still persist the date.
+  await expect.poll(() => api.updates.length).toBe(1);
+  expect(api.updates[0].id).toBe('t3');
+
+  const saved = new Date(api.updates[0].dueAt ?? '');
+  const expected = new Date();
+  expected.setDate(expected.getDate() + 1);
+  expect(saved.toDateString()).toBe(expected.toDateString());
 });
