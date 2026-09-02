@@ -1604,6 +1604,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
           <EmailComposeDialog
             open={composeOpen}
             mailboxAddress={address}
+            accountId={connectedAccount?.id}
             initialDraft={composeDraft}
             initialRecipient={composeRecipient ?? undefined}
             isSending={sendDraftMutation.isPending}

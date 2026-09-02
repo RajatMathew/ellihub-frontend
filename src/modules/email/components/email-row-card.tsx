@@ -257,7 +257,10 @@ export function EmailRowCard({
               </span>
             )}
             {email.classification?.assignedTo && (
-              <EmailAssigneeAvatar assignee={email.classification.assignedTo} />
+              <EmailAssigneeAvatar
+                accountId={accountId}
+                assignee={email.classification.assignedTo}
+              />
             )}
             <span
               className={cn(

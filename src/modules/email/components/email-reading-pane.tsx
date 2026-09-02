@@ -406,6 +406,7 @@ export function EmailReadingPane({
               <p className="text-sm text-muted-foreground">to {mailboxAddress}</p>
               <span className="ms-auto flex shrink-0 items-center gap-1.5">
                 <EmailAssigneePicker
+                  accountId={accountId}
                   assignee={referenceMarkerState.assignedTo ?? null}
                   disabled={saveClassificationMutation.isPending}
                   onChange={(assignee) =>
