@@ -51,6 +51,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
+import { AddTaskPopover } from '@/modules/tasks/components/add-task-popover';
 import { ArrowLeft, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -385,11 +386,25 @@ export function EmailReadingPane({
               <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
                 {email.subject}
               </h1>
-              <EmailThreadStatusMarker
-                state={referenceMarkerState.status}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveThreadState}
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                {accountId && (email.providerId ?? email.id) ? (
+                  <AddTaskPopover
+                    email={{
+                      accountId,
+                      providerId: email.providerId ?? email.id,
+                      conversationKey: email.conversationKey,
+                      threadId: email.threadId,
+                      subject: email.subject,
+                      fromEmail: email.senderEmail,
+                    }}
+                  />
+                ) : null}
+                <EmailThreadStatusMarker
+                  state={referenceMarkerState.status}
+                  isSaving={saveClassificationMutation.isPending}
+                  onChange={saveThreadState}
+                />
+              </div>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">to {mailboxAddress}</p>
             {accountId && (
