@@ -237,3 +237,32 @@ test('a forbidden column says no while the card is still in the air', async ({ p
   await page.screenshot({ path: 'output/visual/task-board-forbidden.png', animations: 'disabled' });
   await page.mouse.up();
 });
+
+test('a legal hover opens a gap where the card will land', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  const card = page.getByText('Confirm Boyland hardware receipt on 7/11');
+  await expect(card).toBeVisible({ timeout: 30_000 });
+
+  const thisWeekCount = () => page.locator('[data-slot="kanban-item"]').count();
+  const before = await thisWeekCount();
+
+  const from = await card.boundingBox();
+  const tomorrow = await page.getByText('Tomorrow', { exact: true }).boundingBox();
+  if (!from || !tomorrow) throw new Error('could not locate the card or the column');
+
+  await page.mouse.move(from.x + from.width / 2, from.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 40, from.y + 20, { steps: 5 });
+  await page.mouse.move(tomorrow.x + tomorrow.width / 2, tomorrow.y + 120, { steps: 12 });
+
+  // Tomorrow was empty; the card has reflowed into it, so its "column clear"
+  // placeholder is gone and the card now sits there before the drop.
+  await expect(page.getByText('column clear')).toHaveCount(0);
+  expect(await thisWeekCount()).toBe(before);
+
+  await page.screenshot({ path: 'output/visual/task-board-reflow.png', animations: 'disabled' });
+  await page.mouse.up();
+});

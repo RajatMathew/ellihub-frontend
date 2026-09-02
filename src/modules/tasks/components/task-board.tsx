@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Kanban,
@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 export function TaskBoard({
   tasks,
-  now = new Date(),
+  now: nowProp,
   busyTaskId,
   onOpenTask,
   onCompleteTask,
@@ -40,8 +40,23 @@ export function TaskBoard({
   onReschedule: (task: Task, dueAt: Date) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
 }) {
-  const columns = useMemo(() => groupTasksByColumn(tasks, now), [tasks, now]);
+  // `new Date()` as a default parameter is a fresh object on every render, which
+  // would make every memo below recompute and the state adjustment loop forever.
+  const now = useMemo(() => nowProp ?? new Date(), [nowProp]);
+
+  const grouped = useMemo(() => groupTasksByColumn(tasks, now), [tasks, now]);
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+
+  // The board is held locally so cards can slide apart under a dragged card.
+  // Server data still wins: when the query returns, the local arrangement is
+  // replaced. Adjusting during render rather than in an effect is React's own
+  // pattern for state that follows a prop, and avoids a second paint.
+  const [columns, setColumns] = useState(grouped);
+  const [serverColumns, setServerColumns] = useState(grouped);
+  if (serverColumns !== grouped) {
+    setServerColumns(grouped);
+    setColumns(grouped);
+  }
 
   /**
    * Supplying onMove puts this component in charge of every drop: the Kanban
@@ -78,11 +93,11 @@ export function TaskBoard({
   return (
     <Kanban
       value={columns}
-      onValueChange={() => {
-        // Server state owns the board. Every accepted drop goes out as a
-        // mutation and comes back through the query, so there is no local
-        // ordering to keep in step.
-      }}
+      // The reflow while hovering. What lands here is provisional: the mutation
+      // fired on drop comes back through the query and replaces it.
+      onValueChange={setColumns}
+      // Asked before each reflow, so a refused target never opens a gap.
+      canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
       getItemValue={(task: Task) => task.id}
       onMove={handleMove}
       accessibility={{

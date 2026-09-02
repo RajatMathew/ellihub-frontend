@@ -104,6 +104,12 @@ export interface KanbanRootProps<T> {
   className?: string;
   onMove?: (event: KanbanMoveEvent) => void;
   /**
+   * Asked before the board reflows under a hovered card. Return false and the
+   * columns stay put, so an illegal target never opens a gap — the absence of
+   * the gap is itself the feedback. Omit it and every hover reflows.
+   */
+  canMove?: (from: string, to: string) => boolean;
+  /**
    * Screen-reader announcements for the drag lifecycle. Without these a drag is
    * silent to assistive tech, which the keyboard sensor otherwise supports.
    */
@@ -117,6 +123,7 @@ function Kanban<T>({
   children,
   className,
   onMove,
+  canMove,
   accessibility,
 }: KanbanRootProps<T>) {
   const columns = value;
@@ -155,10 +162,6 @@ function Kanban<T>({
 
   const handleDragOver = React.useCallback(
     (event: DragOverEvent) => {
-      if (onMove) {
-        return;
-      }
-
       const { active, over } = event;
       if (!over) return;
 
@@ -166,6 +169,12 @@ function Kanban<T>({
 
       const activeContainer = findContainer(active.id);
       const overContainer = findContainer(over.id);
+
+      // Cards slide apart to show where this one lands — but only if it may
+      // land there.
+      if (activeContainer && overContainer && canMove && !canMove(activeContainer, overContainer)) {
+        return;
+      }
 
       // Only handle moving items between different columns
       if (!activeContainer || !overContainer || activeContainer === overContainer) {
@@ -193,7 +202,7 @@ function Kanban<T>({
         [overContainer]: newOverItems,
       });
     },
-    [findContainer, getItemValue, isColumn, setColumns, columns, onMove]
+    [findContainer, getItemValue, isColumn, setColumns, columns, canMove]
   );
 
   const handleDragEnd = React.useCallback(
