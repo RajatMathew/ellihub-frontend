@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { QueryErrorState } from '@/app/components/query-error-state';
 import { Button } from '@/app/components/ui/button';
@@ -63,13 +63,18 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     setDialogOpen(false);
   };
 
-  const allTasks = tasksQuery.data?.data ?? [];
+  // Both of these have to be memoised: `?? []` and `.filter()` each return a
+  // fresh array every render, and the board keys its local arrangement off this
+  // reference.
+  const allTasks = useMemo(() => tasksQuery.data?.data ?? [], [tasksQuery.data]);
   // The pills filter the board in place. Filtering here rather than refetching
   // keeps the pill list stable — it is derived from every task, not the visible
   // ones, so choosing a person cannot make the other pills disappear.
-  const tasks = assigneeFilter
-    ? allTasks.filter((task) => task.assigneeId === assigneeFilter)
-    : allTasks;
+  const tasks = useMemo(
+    () =>
+      assigneeFilter ? allTasks.filter((task) => task.assigneeId === assigneeFilter) : allTasks,
+    [allTasks, assigneeFilter]
+  );
 
   return (
     <div

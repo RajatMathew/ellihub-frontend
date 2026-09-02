@@ -51,10 +51,17 @@ export function TaskBoard({
   // Server data still wins: when the query returns, the local arrangement is
   // replaced. Adjusting during render rather than in an effect is React's own
   // pattern for state that follows a prop, and avoids a second paint.
+  // Keyed on the *content* of the server data, not its identity. A caller that
+  // hands over a freshly built array each render is easy to write by accident,
+  // and comparing references would then re-seed on every render and loop.
+  const signature = useMemo(
+    () => tasks.map((task) => `${task.id}:${task.status}:${task.dueAt ?? ''}`).join('|'),
+    [tasks]
+  );
   const [columns, setColumns] = useState(grouped);
-  const [serverColumns, setServerColumns] = useState(grouped);
-  if (serverColumns !== grouped) {
-    setServerColumns(grouped);
+  const [appliedSignature, setAppliedSignature] = useState(signature);
+  if (appliedSignature !== signature) {
+    setAppliedSignature(signature);
     setColumns(grouped);
   }
 

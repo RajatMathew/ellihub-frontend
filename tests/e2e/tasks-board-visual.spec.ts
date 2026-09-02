@@ -155,6 +155,14 @@ async function setupMockApi(page: Page) {
 }
 
 test('the board renders its columns, coloured assignees and filter pills', async ({ page }) => {
+  // The board seeds local state during render, which loops forever if the tasks
+  // prop is rebuilt each render. That failure only shows up as a console error,
+  // so watch for it rather than trusting the DOM to look wrong.
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+
   await setupMockApi(page);
   await page.setViewportSize({ width: 1600, height: 950 });
   await page.goto('/app/tasks');
@@ -173,6 +181,16 @@ test('the board renders its columns, coloured assignees and filter pills', async
   await expect(filters.getByRole('button', { name: 'Everyone' })).toBeVisible();
 
   await page.screenshot({ path: 'output/visual/task-board.png', animations: 'disabled' });
+
+  // Exercise the filtered path too — `.filter()` returns a fresh array each
+  // render and was one of the two sources of the render loop.
+  await page
+    .getByRole('group', { name: 'Filter by assignee' })
+    .getByRole('button', { name: 'Cari' })
+    .click();
+  await expect(page.getByText('Draft the close-out checklist')).toBeVisible();
+
+  expect(consoleErrors.filter((line) => line.includes('Maximum update depth'))).toEqual([]);
 });
 
 test('a filter pill narrows the board to one person', async ({ page }) => {
