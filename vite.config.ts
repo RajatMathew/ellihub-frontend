@@ -118,6 +118,8 @@ export default defineConfig({
         // target: 'http://localhost:9000',
         // target: 'https://elli-api-test.zubble.co',
         changeOrigin: true,
+        // Forward WebSocket upgrades (email realtime).
+        ws: true,
       },
     },
   },
