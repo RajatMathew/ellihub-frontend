@@ -21,7 +21,9 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
+import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
 import {
   EMAIL_ADDRESS_PATTERN,
   getEmailAddressListError,
@@ -69,6 +71,7 @@ export type ComposeDraftSaveResult = ComposeDraftIdentity & {
 interface EmailComposeDialogProps {
   open: boolean;
   mailboxAddress: string;
+  accountId?: string;
   initialDraft?: EditableComposeDraft | null;
   /** Prefill for a brand-new message (ignored when editing a draft). */
   initialRecipient?: string;
@@ -85,6 +88,7 @@ interface EmailComposeDialogProps {
 export function EmailComposeDialog({
   open,
   mailboxAddress,
+  accountId,
   initialDraft,
   initialRecipient,
   isSending = false,
@@ -468,6 +472,7 @@ export function EmailComposeDialog({
             )}
             <div className="divide-y divide-border">
               <EmailAddressField
+                accountId={accountId}
                 id={toId}
                 label="To"
                 value={form.to}
@@ -497,6 +502,7 @@ export function EmailComposeDialog({
               </EmailAddressField>
               {showCc && (
                 <EmailAddressField
+                  accountId={accountId}
                   id={ccId}
                   label="Cc"
                   value={form.cc}
@@ -511,6 +517,7 @@ export function EmailComposeDialog({
               )}
               {showBcc && (
                 <EmailAddressField
+                  accountId={accountId}
                   id={bccId}
                   label="Bcc"
                   value={form.bcc}
@@ -894,6 +901,7 @@ function EmailAddressField({
   placeholder,
   required,
   error,
+  accountId,
   onChange,
   onRemove,
   children,
@@ -904,6 +912,7 @@ function EmailAddressField({
   placeholder: string;
   required?: boolean;
   error?: string;
+  accountId?: string;
   onChange: (value: string) => void;
   /**
    * When provided, renders an X on the right that lets the user drop the whole
@@ -915,11 +924,35 @@ function EmailAddressField({
   const errorId = `${id}-error`;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [buffer, setBuffer] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   // Chips are derived from the parent-owned value string — nothing about the
   // outer contract changes. `buffer` is only for text the user is typing right
   // now that hasn't been committed to a chip yet.
   const chips = useMemo(() => parseEmailAddresses(value).map((r) => r.address), [value]);
+
+  // Suggestions only once the user starts typing — a bare focus stays quiet.
+  const hasTypedQuery = buffer.trim().length > 0;
+  const suggestions = useEmailAddressSuggestions(
+    accountId,
+    buffer,
+    chips,
+    focused && hasTypedQuery
+  );
+  const suggestionsOpen =
+    focused && hasTypedQuery && !suggestionsDismissed && suggestions.length > 0;
+
+  const selectSuggestion = useCallback(
+    (address: string) => {
+      setBuffer('');
+      setActiveSuggestionIndex(-1);
+      if (!chips.includes(address)) onChange([...chips, address].join(', '));
+      inputRef.current?.focus();
+    },
+    [chips, onChange]
+  );
 
   const commitBuffer = useCallback(() => {
     const trimmed = buffer
@@ -943,6 +976,8 @@ function EmailAddressField({
 
   const handleBufferChange = (event: ChangeEvent<HTMLInputElement>) => {
     const raw = event.target.value;
+    setSuggestionsDismissed(false);
+    setActiveSuggestionIndex(-1);
     // Pastes / typed delimiters split into chips immediately, leaving whatever
     // trails the last delimiter as the still-editable buffer.
     if (/[,;]/.test(raw)) {
@@ -964,6 +999,30 @@ function EmailAddressField({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (suggestionsOpen) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestionIndex((index) => (index + 1) % suggestions.length);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestionIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSuggestionsDismissed(true);
+        setActiveSuggestionIndex(-1);
+        return;
+      }
+      if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+        event.preventDefault();
+        const active = suggestions[activeSuggestionIndex];
+        if (active) selectSuggestion(active.address);
+        return;
+      }
+    }
     if ((event.key === 'Enter' || event.key === 'Tab') && buffer.trim()) {
       event.preventDefault();
       commitBuffer();
@@ -992,7 +1051,7 @@ function EmailAddressField({
         */}
         <div
           className={cn(
-            'flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
+            'relative flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
             error && 'text-destructive'
           )}
           onClick={(event) => {
@@ -1033,7 +1092,7 @@ function EmailAddressField({
             type="text"
             inputMode="email"
             value={buffer}
-            autoComplete="email"
+            autoComplete="chrome-off"
             spellCheck={false}
             placeholder={chips.length === 0 ? placeholder : undefined}
             aria-invalid={error ? 'true' : undefined}
@@ -1041,8 +1100,24 @@ function EmailAddressField({
             className="min-w-24 flex-1 border-0 bg-transparent px-0 py-0.5 text-sm outline-none placeholder:text-muted-foreground/70"
             onChange={handleBufferChange}
             onKeyDown={handleKeyDown}
-            onBlur={commitBuffer}
+            onFocus={() => {
+              setFocused(true);
+              setSuggestionsDismissed(false);
+            }}
+            onBlur={() => {
+              setFocused(false);
+              setActiveSuggestionIndex(-1);
+              commitBuffer();
+            }}
           />
+          {suggestionsOpen && (
+            <EmailAddressSuggestionList
+              accountId={accountId}
+              suggestions={suggestions}
+              activeIndex={activeSuggestionIndex}
+              onSelect={selectSuggestion}
+            />
+          )}
         </div>
         {children && <div className="mt-1 flex shrink-0 items-center gap-1">{children}</div>}
         {onRemove && (

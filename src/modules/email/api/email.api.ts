@@ -6,6 +6,12 @@ import { z } from 'zod';
 
 const BASE = '/email';
 
+const emailContactSuggestionSchema = z.object({
+  name: z.string().nullable(),
+  address: z.string(),
+});
+export type EmailContactSuggestion = z.infer<typeof emailContactSuggestionSchema>;
+
 /** URL for a sender's profile photo — used directly as an <img> src. */
 export function getSenderPhotoUrl(accountId: string, address: string): string {
   return `${import.meta.env.VITE_API_BASE_URL}/api/v1${BASE}/accounts/${accountId}/sender-photo?address=${encodeURIComponent(address)}`;
@@ -579,6 +585,11 @@ export const emailApi = {
       ...message,
     });
     return emailReplyResponseSchema.parse(unwrapData(res.data)).message ?? null;
+  },
+
+  async listContactSuggestions(accountId: string, q: string): Promise<EmailContactSuggestion[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/contacts`, { params: { q } });
+    return z.array(emailContactSuggestionSchema).parse(unwrapData(res.data));
   },
 
   async forwardMessage(

@@ -11,15 +11,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/pop
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import type { EmailThreadAssigneeInfo } from '@/modules/email/components/email-reference-marker-storage';
+import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailThreadAssigneesQuery } from '@/modules/email/hooks';
 import { getOutlookAvatarStyle, getOutlookInitials } from '@/modules/email/lib/outlook-avatar';
 import { Check, Loader2, UserPlus, UserX } from 'lucide-react';
 
 export function EmailAssigneeAvatar({
   assignee,
+  accountId,
   className,
 }: {
   assignee: EmailThreadAssigneeInfo;
+  accountId?: string;
   className?: string;
 }) {
   const initials = getOutlookInitials(assignee.name);
@@ -32,6 +35,20 @@ export function EmailAssigneeAvatar({
         title={assignee.name}
         className={cn('size-5 shrink-0 rounded-full border border-border object-cover', className)}
       />
+    );
+  }
+  // No stored picture — try the provider photo for their address (org
+  // accounts return real photos; everyone else falls back to initials).
+  if (accountId && assignee.email) {
+    return (
+      <span title={assignee.name} className="contents">
+        <SenderAvatar
+          name={assignee.name}
+          email={assignee.email}
+          accountId={accountId}
+          className={cn('size-5 text-[9px]', className)}
+        />
+      </span>
     );
   }
   return (
@@ -51,10 +68,12 @@ export function EmailAssigneeAvatar({
 
 export function EmailAssigneePicker({
   assignee,
+  accountId,
   disabled = false,
   onChange,
 }: {
   assignee: EmailThreadAssigneeInfo | null;
+  accountId?: string;
   disabled?: boolean;
   onChange: (assignee: EmailThreadAssigneeInfo | null) => void;
 }) {
@@ -77,7 +96,11 @@ export function EmailAssigneePicker({
             >
               {assignee ? (
                 <>
-                  <EmailAssigneeAvatar assignee={assignee} className="size-4 text-[8px]" />
+                  <EmailAssigneeAvatar
+                    accountId={accountId}
+                    assignee={assignee}
+                    className="size-4 text-[8px]"
+                  />
                   <span className="max-w-28 truncate">{assignee.name}</span>
                 </>
               ) : (
@@ -135,7 +158,7 @@ export function EmailAssigneePicker({
                   setOpen(false);
                 }}
               >
-                <EmailAssigneeAvatar assignee={user} />
+                <EmailAssigneeAvatar accountId={accountId} assignee={user} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-medium">{user.name}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">

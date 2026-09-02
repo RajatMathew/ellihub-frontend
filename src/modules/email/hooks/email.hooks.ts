@@ -39,6 +39,8 @@ const EMAIL_MESSAGES_STALE_TIME_MS = 60 * 1000;
 const EMAIL_MESSAGES_CACHE_TIME_MS = 15 * 60 * 1000;
 
 export const emailKeys = {
+  contactSuggestions: (accountId?: string, q?: string) =>
+    ['email', 'contact-suggestions', accountId, q] as const,
   all: ['connected-email'] as const,
   config: () => [...emailKeys.all, 'config'] as const,
   accounts: () => [...emailKeys.all, 'accounts'] as const,
