@@ -6,7 +6,7 @@ export const TASK_COLUMNS = [
   'OVERDUE',
   'DUE_TODAY',
   'TOMORROW',
-  'THIS_WEEK',
+  'PENDING',
   'COMPLETED',
 ] as const;
 
@@ -17,7 +17,7 @@ export const TASK_COLUMN_LABELS: Record<TaskColumnId, string> = {
   OVERDUE: 'Overdue',
   DUE_TODAY: 'Due Today',
   TOMORROW: 'Tomorrow',
-  THIS_WEEK: 'This Week',
+  PENDING: 'Pending',
   COMPLETED: 'Completed',
 };
 
@@ -27,7 +27,7 @@ export const TASK_COLUMN_TONES: Record<TaskColumnId, string> = {
   OVERDUE: 'bg-destructive',
   DUE_TODAY: 'bg-warning',
   TOMORROW: 'bg-primary',
-  THIS_WEEK: 'bg-primary',
+  PENDING: 'bg-primary',
   COMPLETED: 'bg-success',
 };
 
@@ -48,11 +48,11 @@ export function columnForTask(task: Task, now: Date = new Date()): TaskColumnId 
   if (isBefore(startOfDay(due), today)) return 'OVERDUE';
   if (isSameDay(due, today)) return 'DUE_TODAY';
   if (isSameDay(due, tomorrow)) return 'TOMORROW';
-  if (isBefore(due, endOfWeek(now, { weekStartsOn: 1 }))) return 'THIS_WEEK';
-
-  // Further out than this week: it still has a deadline, so it belongs with the
-  // dated work rather than in the undated column.
-  return 'THIS_WEEK';
+  // Everything else is dated but not imminent. The column does not narrow to a
+  // week: a task due in a month still has a deadline, so it belongs with the
+  // dated work rather than in the undated column. The card carries the exact
+  // date, which is what tells the two apart.
+  return 'PENDING';
 }
 
 export function groupTasksByColumn(
@@ -77,6 +77,21 @@ export function groupTasksByColumn(
   }
 
   return groups;
+}
+
+/**
+ * What the board's arrangement depends on, as a string.
+ *
+ * The board mirrors the grouping into local state so cards can slide apart under
+ * a dragged one, and re-seeds when this changes. It covers exactly what decides
+ * which column a card is in and where it sits: membership, status, due date and
+ * priority. Card *content* is deliberately absent — the board reads that from
+ * the server data at render, so a retitled card needs no re-seed.
+ */
+export function boardArrangementSignature(tasks: Task[]): string {
+  return tasks
+    .map((task) => `${task.id}:${task.status}:${task.dueAt ?? ''}:${task.priority}`)
+    .join('|');
 }
 
 /**
@@ -131,8 +146,14 @@ export function dueDateForColumn(column: TaskColumnId, now: Date = new Date()): 
       return startOfDay(now);
     case 'TOMORROW':
       return startOfDay(new Date(now.getTime() + day));
-    case 'THIS_WEEK':
-      return startOfDay(endOfWeek(now, { weekStartsOn: 1 }));
+    // End of the current week, but never nearer than the day after tomorrow: on
+    // a Saturday end-of-week IS tomorrow and on a Sunday it is today, and a card
+    // given either of those dates would bounce straight back out of Pending.
+    case 'PENDING': {
+      const endOfThisWeek = startOfDay(endOfWeek(now, { weekStartsOn: 1 }));
+      const dayAfterTomorrow = startOfDay(new Date(now.getTime() + 2 * day));
+      return endOfThisWeek > dayAfterTomorrow ? endOfThisWeek : dayAfterTomorrow;
+    }
     default:
       return null;
   }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  boardArrangementSignature,
   canMoveTask,
   columnForTask,
   dueDateForColumn,
@@ -63,7 +64,7 @@ describe('the drag rules', () => {
   });
 
   test('nothing can be dragged into Overdue', () => {
-    for (const from of ['DUE_TODAY', 'TOMORROW', 'THIS_WEEK', 'COMPLETED', 'NO_DATE'] as const) {
+    for (const from of ['DUE_TODAY', 'TOMORROW', 'PENDING', 'COMPLETED', 'NO_DATE'] as const) {
       expect(canMoveTask(from, 'OVERDUE').allowed).toBe(false);
     }
   });
@@ -74,7 +75,7 @@ describe('the drag rules', () => {
 
   test('the ordinary reschedules between dated columns are allowed', () => {
     expect(canMoveTask('DUE_TODAY', 'TOMORROW').allowed).toBe(true);
-    expect(canMoveTask('THIS_WEEK', 'DUE_TODAY').allowed).toBe(true);
+    expect(canMoveTask('PENDING', 'DUE_TODAY').allowed).toBe(true);
     expect(canMoveTask('NO_DATE', 'TOMORROW').allowed).toBe(true);
   });
 
@@ -109,5 +110,59 @@ describe('the due date a column implies', () => {
     expect(dueDateForColumn('COMPLETED', NOW)).toBeNull();
     expect(dueDateForColumn('NO_DATE', NOW)).toBeNull();
     expect(dueDateForColumn('OVERDUE', NOW)).toBeNull();
+  });
+
+  // A drop has to stick. End of week is later than tomorrow midweek, but on a
+  // Saturday it IS tomorrow and on a Sunday it is today, so a card dropped on
+  // Pending at the weekend used to bounce straight back out of the column.
+  test('a card dropped on Pending lands in Pending, whatever day it is', () => {
+    // Fri 4th through Mon 7th of September 2026.
+    for (const day of ['2026-09-04', '2026-09-05', '2026-09-06', '2026-09-07']) {
+      const now = new Date(`${day}T09:00:00.000Z`);
+      const dueAt = dueDateForColumn('PENDING', now);
+
+      expect(dueAt).not.toBeNull();
+      expect(columnForTask(task({ dueAt: dueAt!.toISOString() }), now)).toBe('PENDING');
+    }
+  });
+});
+
+describe('the signature that re-seeds the board', () => {
+  const base = [
+    task({ id: 'a', priority: 'P1', dueAt: '2026-09-02T10:00:00.000Z' }),
+    task({ id: 'b', priority: 'P3', dueAt: '2026-09-04T10:00:00.000Z' }),
+  ];
+
+  // The board mirrors server data into local state so cards can slide apart
+  // under a dragged one, and re-seeds only when this string changes. Anything it
+  // fails to notice is an edit that never reaches the screen.
+  test('notices a priority change, which reorders a column', () => {
+    const edited = [task({ ...base[0], priority: 'P2' }), base[1]];
+
+    expect(boardArrangementSignature(edited)).not.toBe(boardArrangementSignature(base));
+  });
+
+  test('notices a due date change, which moves a card between columns', () => {
+    const edited = [task({ ...base[0], dueAt: '2026-09-20T10:00:00.000Z' }), base[1]];
+
+    expect(boardArrangementSignature(edited)).not.toBe(boardArrangementSignature(base));
+  });
+
+  test('notices completion, which moves a card to Completed', () => {
+    const edited = [task({ ...base[0], status: 'COMPLETED' }), base[1]];
+
+    expect(boardArrangementSignature(edited)).not.toBe(boardArrangementSignature(base));
+  });
+
+  test('notices a task arriving or leaving', () => {
+    expect(boardArrangementSignature([base[0]])).not.toBe(boardArrangementSignature(base));
+  });
+
+  // Card content is read from server data at render, not from the mirrored
+  // arrangement, so a title edit does not need to re-seed anything.
+  test('ignores an edit that cannot change the arrangement', () => {
+    const edited = [task({ ...base[0], title: 'A completely different title' }), base[1]];
+
+    expect(boardArrangementSignature(edited)).toBe(boardArrangementSignature(base));
   });
 });

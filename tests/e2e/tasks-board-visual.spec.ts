@@ -184,7 +184,7 @@ test('the board renders its columns, coloured assignees and filter pills', async
   });
 
   // Every column the design calls for, plus the undated one the design omits.
-  for (const column of ['Overdue', 'Due Today', 'Tomorrow', 'This Week', 'Completed']) {
+  for (const column of ['Overdue', 'Due Today', 'Tomorrow', 'Pending', 'Completed']) {
     await expect(page.getByText(column, { exact: true })).toBeVisible();
   }
 
