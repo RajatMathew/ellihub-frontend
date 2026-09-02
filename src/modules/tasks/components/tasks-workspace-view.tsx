@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { TaskBoard } from '@/modules/tasks/components/task-board';
+import { TaskFilterBar, type TaskAssigneeFilter } from '@/modules/tasks/components/task-filter-bar';
 import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
 import { TASKS_DEFAULT_PAGE_SIZE } from '@/modules/tasks/constants/tasks.constants';
 import {
@@ -28,6 +29,7 @@ import { Plus } from 'lucide-react';
 export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: boolean }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>(null);
 
   const tasksQuery = useTasksQuery({ page: 1, size: TASKS_DEFAULT_PAGE_SIZE });
   const createTask = useCreateTaskMutation();
@@ -61,7 +63,13 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     setDialogOpen(false);
   };
 
-  const tasks = tasksQuery.data?.data ?? [];
+  const allTasks = tasksQuery.data?.data ?? [];
+  // The pills filter the board in place. Filtering here rather than refetching
+  // keeps the pill list stable — it is derived from every task, not the visible
+  // ones, so choosing a person cannot make the other pills disappear.
+  const tasks = assigneeFilter
+    ? allTasks.filter((task) => task.assigneeId === assigneeFilter)
+    : allTasks;
 
   return (
     <div
@@ -89,6 +97,10 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           </Button>
         </div>
       </header>
+
+      {!tasksQuery.isLoading && !tasksQuery.isError ? (
+        <TaskFilterBar tasks={allTasks} value={assigneeFilter} onChange={setAssigneeFilter} />
+      ) : null}
 
       {tasksQuery.isLoading ? (
         <div
@@ -125,6 +137,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           onReschedule={(task, dueAt) =>
             updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
           }
+          onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
         />
       )}
 

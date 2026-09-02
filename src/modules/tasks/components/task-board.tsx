@@ -3,21 +3,18 @@ import { useMemo } from 'react';
 import {
   Kanban,
   KanbanBoard,
-  KanbanColumn,
-  KanbanColumnContent,
   KanbanItem,
   KanbanItemHandle,
   KanbanOverlay,
   type KanbanMoveEvent,
 } from '@/app/components/ui/kanban';
-import { cn } from '@/app/lib/utils';
+import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
 import {
   canMoveTask,
   dueDateForColumn,
   groupTasksByColumn,
   TASK_COLUMN_LABELS,
-  TASK_COLUMN_TONES,
   TASK_COLUMNS,
   type TaskColumnId,
 } from '@/modules/tasks/lib/task-board';
@@ -32,6 +29,7 @@ export function TaskBoard({
   onCompleteTask,
   onShiftDueDate,
   onReschedule,
+  onReassign,
 }: {
   tasks: Task[];
   now?: Date;
@@ -40,6 +38,7 @@ export function TaskBoard({
   onCompleteTask: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
   onReschedule: (task: Task, dueAt: Date) => void;
+  onReassign: (task: Task, assigneeId: string | null) => void;
 }) {
   const columns = useMemo(() => groupTasksByColumn(tasks, now), [tasks, now]);
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
@@ -86,6 +85,20 @@ export function TaskBoard({
       }}
       getItemValue={(task: Task) => task.id}
       onMove={handleMove}
+      accessibility={{
+        announcements: {
+          onDragStart: ({ active }) => `Picked up ${byId.get(String(active.id))?.title ?? 'task'}.`,
+          onDragOver: ({ over }) =>
+            over
+              ? `Over ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
+              : 'Not over a column.',
+          onDragEnd: ({ over }) =>
+            over
+              ? `Dropped on ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
+              : 'Drop cancelled.',
+          onDragCancel: () => 'Drag cancelled.',
+        },
+      }}
     >
       <KanbanBoard className="grid-cols-1 items-start gap-4 md:grid-cols-3 xl:grid-cols-6">
         {/* Columns are deliberately not `disabled`: useSortable's disabled turns
@@ -93,50 +106,58 @@ export function TaskBoard({
             column refuse drops. Column drags are harmless here — onValueChange
             applies nothing, so reordering columns is a no-op. */}
         {TASK_COLUMNS.map((columnId) => (
-          <KanbanColumn key={columnId} value={columnId} className="rounded-lg bg-muted/40 p-3">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <span
-                  className={cn('size-2 rounded-full', TASK_COLUMN_TONES[columnId])}
-                  aria-hidden
-                />
-                {TASK_COLUMN_LABELS[columnId]}
-              </span>
-              <span className="text-xs text-muted-foreground">{columns[columnId].length}</span>
-            </div>
-
-            <KanbanColumnContent value={columnId} className="flex flex-col gap-2">
-              {columns[columnId].length === 0 ? (
-                <p className="py-6 text-center text-xs text-muted-foreground">column clear</p>
-              ) : (
-                columns[columnId].map((task) => (
-                  <KanbanItem key={task.id} value={task.id}>
-                    {/* KanbanItem keeps the drag listeners in context rather than
-                        spreading them, so a card only becomes draggable once it
-                        contains a handle. The whole card is the handle; the
-                        sensor's 10px activation distance leaves the buttons
-                        inside it clickable. */}
-                    <KanbanItemHandle asChild>
-                      <div>
-                        <TaskCard
-                          task={task}
-                          now={now}
-                          isBusy={busyTaskId === task.id}
-                          onOpen={onOpenTask}
-                          onComplete={onCompleteTask}
-                          onShiftDueDate={onShiftDueDate}
-                        />
-                      </div>
-                    </KanbanItemHandle>
-                  </KanbanItem>
-                ))
-              )}
-            </KanbanColumnContent>
-          </KanbanColumn>
+          <TaskBoardColumn
+            key={columnId}
+            columnId={columnId}
+            tasks={columns[columnId]}
+            byId={byId}
+            now={now}
+          >
+            {columns[columnId].map((task) => (
+              <KanbanItem key={task.id} value={task.id}>
+                {/* KanbanItem keeps the drag listeners in context rather than
+                    spreading them, so a card only becomes draggable once it
+                    contains a handle. The whole card is the handle; the sensor's
+                    10px activation distance leaves the buttons inside clickable. */}
+                <KanbanItemHandle asChild>
+                  <div>
+                    <TaskCard
+                      task={task}
+                      now={now}
+                      isBusy={busyTaskId === task.id}
+                      onOpen={onOpenTask}
+                      onComplete={onCompleteTask}
+                      onShiftDueDate={onShiftDueDate}
+                      onReassign={(assigneeId) => onReassign(task, assigneeId)}
+                    />
+                  </div>
+                </KanbanItemHandle>
+              </KanbanItem>
+            ))}
+          </TaskBoardColumn>
         ))}
       </KanbanBoard>
 
-      <KanbanOverlay />
+      {/* Without children the overlay renders an empty box, so a dragged card
+          vanished into a faded outline. Render the real card instead, so it
+          follows the cursor and stays legible the whole way across. */}
+      <KanbanOverlay className="rounded-lg shadow-lg shadow-black/10">
+        {({ value, variant }) => {
+          if (variant === 'column') return null;
+          const task = byId.get(String(value));
+          if (!task) return null;
+          return (
+            <TaskCard
+              task={task}
+              now={now}
+              onOpen={() => undefined}
+              onComplete={() => undefined}
+              onShiftDueDate={() => undefined}
+              onReassign={() => undefined}
+            />
+          );
+        }}
+      </KanbanOverlay>
     </Kanban>
   );
 }

@@ -1,7 +1,7 @@
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
+import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
 import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { format, isBefore, startOfDay } from 'date-fns';
@@ -12,15 +12,6 @@ const PRIORITY_VARIANT = {
   P2: 'warning',
   P3: 'secondary',
 } as const;
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
 
 /** "was due Thu, Jul 2 · 5d late" / "due today · 11:42 AM" / "Wed, Jul 15" */
 function dueLabel(task: Task, now: Date) {
@@ -47,6 +38,7 @@ export function TaskCard({
   onOpen,
   onComplete,
   onShiftDueDate,
+  onReassign,
 }: {
   task: Task;
   now?: Date;
@@ -54,6 +46,7 @@ export function TaskCard({
   onOpen: (task: Task) => void;
   onComplete: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
+  onReassign: (assigneeId: string | null) => void;
 }) {
   const due = dueLabel(task, now);
   const isDone = task.status === 'COMPLETED';
@@ -70,11 +63,7 @@ export function TaskCard({
         <Badge variant={PRIORITY_VARIANT[task.priority]} size="sm">
           {task.priority}
         </Badge>
-        {task.assignee ? (
-          <Avatar className="size-6" title={task.assignee.name}>
-            <AvatarFallback className="text-xs">{initials(task.assignee.name)}</AvatarFallback>
-          </Avatar>
-        ) : null}
+        <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
       </div>
 
       <button

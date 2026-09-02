@@ -103,6 +103,11 @@ export interface KanbanRootProps<T> {
   children: React.ReactNode;
   className?: string;
   onMove?: (event: KanbanMoveEvent) => void;
+  /**
+   * Screen-reader announcements for the drag lifecycle. Without these a drag is
+   * silent to assistive tech, which the keyboard sensor otherwise supports.
+   */
+  accessibility?: React.ComponentProps<typeof DndContext>['accessibility'];
 }
 
 function Kanban<T>({
@@ -112,6 +117,7 @@ function Kanban<T>({
   children,
   className,
   onMove,
+  accessibility,
 }: KanbanRootProps<T>) {
   const columns = value;
   const setColumns = onValueChange;
@@ -279,6 +285,7 @@ function Kanban<T>({
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        accessibility={accessibility}
       >
         <div data-slot="kanban" data-dragging={activeId !== null} className={cn(className)}>
           {children}
