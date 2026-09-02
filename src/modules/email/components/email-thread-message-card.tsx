@@ -89,6 +89,10 @@ export function EmailThreadMessageCard({
     visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   const tags = message.keywords ?? [];
   const canReply = isReplyableEmailMessage(message);
+  // An in-flight/failed message shows its DeliveryStatus badge in the slot
+  // where the timestamp normally sits; its sentAt is only the 'Sending...'
+  // placeholder, so rendering both reads "Sending Sending...".
+  const showTimestamp = !message.deliveryStatus || message.deliveryStatus === 'sent';
   const contentId = useId();
   const handleReply = () => {
     if (canReply) onReply(message.id);
@@ -125,12 +129,14 @@ export function EmailThreadMessageCard({
                 {message.deliveryStatus && (
                   <DeliveryStatus status={message.deliveryStatus} compact />
                 )}
-                <time
-                  className="whitespace-nowrap text-xs text-muted-foreground"
-                  dateTime={message.sentAt}
-                >
-                  {formatEmailDate(message.sentAt)}
-                </time>
+                {showTimestamp && (
+                  <time
+                    className="whitespace-nowrap text-xs text-muted-foreground"
+                    dateTime={message.sentAt}
+                  >
+                    {formatEmailDate(message.sentAt)}
+                  </time>
+                )}
               </div>
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -196,9 +202,11 @@ export function EmailThreadMessageCard({
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
-              <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
-                {formatEmailDate(message.sentAt)}
-              </time>
+              {showTimestamp && (
+                <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
+                  {formatEmailDate(message.sentAt)}
+                </time>
+              )}
               <MessageIconAction
                 label={`Reply to ${message.senderName}`}
                 icon={Reply}
