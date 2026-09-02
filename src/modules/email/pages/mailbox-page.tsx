@@ -63,6 +63,7 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
@@ -207,6 +208,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const deleteDraftMutation = useDeleteEmailDraftMutation();
   const replyMutation = useReplyConnectedEmailMutation();
   const forwardMutation = useForwardConnectedEmailMutation();
+  // Live push: refetch this account's mail when the backend reports new sync.
+  useEmailRealtime(Boolean(connectedAccount?.id));
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
   const moveMessageMutation = useMoveEmailMessageMutation();
