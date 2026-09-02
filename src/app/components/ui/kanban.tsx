@@ -9,7 +9,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -130,11 +131,17 @@ function Kanban<T>({
   const setColumns = onValueChange;
   const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null);
 
+  // Mouse and touch are separated rather than handled by one PointerSensor,
+  // because the two gestures mean different things. A 10px mouse drag is a drag.
+  // A 10px finger drag is a scroll — with a pointer sensor the board could not be
+  // scrolled or swiped on a phone at all without picking up a card. Touch instead
+  // waits for a short press, which is how every board app behaves on a phone.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,

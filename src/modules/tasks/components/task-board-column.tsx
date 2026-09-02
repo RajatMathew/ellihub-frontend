@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { KanbanColumn, KanbanColumnContent } from '@/app/components/ui/kanban';
 import { cn } from '@/app/lib/utils';
+import { useScrollEdges } from '@/modules/tasks/hooks/use-scroll-edges';
 import {
   canMoveTask,
   columnForTask,
@@ -35,6 +36,7 @@ export function TaskBoardColumn({
   children: ReactNode;
 }) {
   const { active, over } = useDndContext();
+  const { ref: scrollRef, scrollEdgeProps } = useScrollEdges<HTMLDivElement>();
 
   const draggedTask = active ? byId.get(String(active.id)) : undefined;
   const hoveredColumn = over ? resolveColumn(over.id, byId, now) : null;
@@ -52,12 +54,16 @@ export function TaskBoardColumn({
     <KanbanColumn
       value={columnId}
       className={cn(
-        'rounded-lg bg-muted/40 p-3 transition-colors',
+        // The column owns its background and border; the card list inside it is
+        // what scrolls, so the fade dissolves the cards rather than the column.
+        'flex h-full min-h-0 flex-col rounded-lg bg-muted/40 p-3 transition-colors',
+        // A card wide enough to read, with the next column showing at the edge.
+        'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:shrink',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
         isForbidden && 'bg-destructive/10 ring-2 ring-destructive/50'
       )}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <span className={cn('size-2 rounded-full', TASK_COLUMN_TONES[columnId])} aria-hidden />
           {TASK_COLUMN_LABELS[columnId]}
@@ -69,20 +75,30 @@ export function TaskBoardColumn({
       {isForbidden && verdict.reason ? (
         <p
           role="status"
-          className="mb-2 flex items-start gap-1.5 rounded-md bg-destructive/15 p-2 text-xs font-medium text-destructive"
+          className="mb-2 flex shrink-0 items-start gap-1.5 rounded-md bg-destructive/15 p-2 text-xs font-medium text-destructive"
         >
           <Ban aria-hidden className="mt-0.5 size-3 shrink-0" />
           {verdict.reason}
         </p>
       ) : null}
 
-      <KanbanColumnContent value={columnId} className="flex flex-col gap-2">
-        {tasks.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">column clear</p>
-        ) : (
-          children
-        )}
-      </KanbanColumnContent>
+      {/* The scroller is this wrapper rather than the sortable list inside it, so
+          the mask and the scrollbar belong to us and the list stays a plain
+          flex column. min-h-0 is what lets it shrink inside the flex column
+          instead of pushing it taller; without it nothing ever scrolls. */}
+      <div
+        ref={scrollRef}
+        {...scrollEdgeProps}
+        className="scroll-fade scrollbar-on-hover min-h-0 flex-1 overflow-y-auto"
+      >
+        <KanbanColumnContent value={columnId} className="gap-2">
+          {tasks.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">column clear</p>
+          ) : (
+            children
+          )}
+        </KanbanColumnContent>
+      </div>
     </KanbanColumn>
   );
 }

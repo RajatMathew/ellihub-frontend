@@ -15,6 +15,7 @@ import {
   useTasksQuery,
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
+import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
 import type { CreateTaskInput, Task } from '@/modules/tasks/schemas/task.schema';
 import { Plus } from 'lucide-react';
 
@@ -36,6 +37,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const updateTask = useUpdateTaskMutation();
   const setCompleted = useSetTaskCompletedMutation();
   const shiftDueDate = useShiftTaskDueDateMutation();
+  const { justLandedId, markLanded } = useJustLandedTask();
 
   const busyTaskId =
     setCompleted.isPending || shiftDueDate.isPending || updateTask.isPending
@@ -80,7 +82,12 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     <div
       className={cn(
         'flex flex-col gap-6',
-        inWorkspace ? 'min-h-0 flex-1 overflow-y-auto bg-muted p-4 lg:p-6' : 'p-4 lg:p-6'
+        // The columns scroll, not the page, so the board needs a height to fill.
+        // Inside the mailbox the parent already supplies one; the standalone
+        // route has to take it from the viewport.
+        inWorkspace
+          ? 'min-h-0 flex-1 overflow-hidden bg-muted p-4 lg:p-6'
+          : 'h-[calc(100dvh_-_5rem)] p-4 lg:p-6'
       )}
     >
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -134,11 +141,15 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         <TaskBoard
           tasks={tasks}
           busyTaskId={busyTaskId}
+          justLandedTaskId={justLandedId}
           onOpenTask={openEdit}
           onCompleteTask={(task) =>
             setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' })
           }
-          onShiftDueDate={(task, days) => shiftDueDate.mutate({ id: task.id, days })}
+          onShiftDueDate={(task, days) => {
+            markLanded(task.id);
+            shiftDueDate.mutate({ id: task.id, days });
+          }}
           onReschedule={(task, dueAt) =>
             updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
           }

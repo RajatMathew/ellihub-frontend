@@ -146,6 +146,22 @@
       transform: translateY(calc(-100% - var(--gap)));
     }
   }
+
+  /* A task card that has just changed column, so the eye can follow where it
+     went. Rings rather than fills, so the card's own colours are untouched.
+     Someone who has asked for less motion gets the ring without the fade — see
+     useJustLandedTask, which decides which of the two applies. */
+  --animate-task-landed: task-landed 1.2s ease-out;
+
+  @keyframes task-landed {
+    from {
+      box-shadow: 0 0 0 2px var(--color-primary);
+    }
+
+    to {
+      box-shadow: 0 0 0 2px transparent;
+    }
+  }
 }
 
 /**
@@ -334,6 +350,131 @@ body,
 
 @utility container-fluid {
   @apply w-full min-w-0 max-w-full mx-auto px-4 lg:px-5;
+}
+
+/* Registered so the two sizes can be transitioned; an unregistered custom
+   property is not interpolatable and the fade would snap. */
+@property --scroll-fade-start-size {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-end-size {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/**
+ * scroll-fade — dissolve the edges of a scroll container so it is obvious there
+ * is more above or below.
+ *
+ * A mask rather than an overlay, so it works on any background without being
+ * told what colour to fade to.
+ *
+ * Which edges fade is driven by two data attributes rather than a scroll-driven
+ * CSS animation. The pure-CSS version was tried first and its timeline never
+ * advanced here — the mask stayed pinned at its at-rest values however far the
+ * container was scrolled — so the state is set explicitly instead. useScrollEdges
+ * writes the attributes; it is a handful of lines and it demonstrably works.
+ */
+@utility scroll-fade {
+  --scroll-fade-size: min(12%, 40px);
+  --scroll-fade-start-size: var(--scroll-fade-size);
+  --scroll-fade-end-size: var(--scroll-fade-size);
+  mask-image: var(
+    --scroll-fade-mask,
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      black var(--scroll-fade-start-size),
+      black calc(100% - var(--scroll-fade-end-size)),
+      transparent 100%
+    )
+  );
+  transition:
+    --scroll-fade-start-size 150ms ease,
+    --scroll-fade-end-size 150ms ease;
+
+  /* Nothing above, so nothing to hint at — and the same at the far end. */
+  &[data-scroll-at-start='true'] {
+    --scroll-fade-start-size: 0px;
+  }
+
+  &[data-scroll-at-end='true'] {
+    --scroll-fade-end-size: 0px;
+  }
+}
+
+@utility scroll-fade-x {
+  --scroll-fade-size: min(12%, 40px);
+  --scroll-fade-start-size: var(--scroll-fade-size);
+  --scroll-fade-end-size: var(--scroll-fade-size);
+  mask-image: var(
+    --scroll-fade-mask,
+    linear-gradient(
+      to right,
+      transparent 0,
+      black var(--scroll-fade-start-size),
+      black calc(100% - var(--scroll-fade-end-size)),
+      transparent 100%
+    )
+  );
+  transition:
+    --scroll-fade-start-size 150ms ease,
+    --scroll-fade-end-size 150ms ease;
+
+  &[data-scroll-at-start='true'] {
+    --scroll-fade-start-size: 0px;
+  }
+
+  &[data-scroll-at-end='true'] {
+    --scroll-fade-end-size: 0px;
+  }
+}
+
+@utility scroll-fade-none {
+  --scroll-fade-mask: none;
+}
+
+@utility scroll-fade-* {
+  --scroll-fade-size: --value([length], [percentage], --spacing(--value(integer)));
+}
+
+/**
+ * A scrollbar that only appears while the pointer is in the container.
+ *
+ * The track keeps its width the whole time and only the thumb's colour changes,
+ * so revealing it cannot reflow the content beside it.
+ */
+@utility scrollbar-on-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+
+  &:hover,
+  &:focus-within {
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb,
+  &:focus-within::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+  }
 }
 
 /* Metronic Configs */

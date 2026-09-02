@@ -11,6 +11,7 @@ import {
 import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
 import {
+  boardArrangementSignature,
   canMoveTask,
   columnForTask,
   dueDateForColumn,
@@ -26,6 +27,7 @@ export function TaskBoard({
   tasks,
   now: nowProp,
   busyTaskId,
+  justLandedTaskId,
   onOpenTask,
   onCompleteTask,
   onShiftDueDate,
@@ -35,6 +37,7 @@ export function TaskBoard({
   tasks: Task[];
   now?: Date;
   busyTaskId?: string | null;
+  justLandedTaskId?: string | null;
   onOpenTask: (task: Task) => void;
   onCompleteTask: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
@@ -45,26 +48,36 @@ export function TaskBoard({
   // would make every memo below recompute and the state adjustment loop forever.
   const now = useMemo(() => nowProp ?? new Date(), [nowProp]);
 
-  const grouped = useMemo(() => groupTasksByColumn(tasks, now), [tasks, now]);
   const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
 
-  // The board is held locally so cards can slide apart under a dragged card.
-  // Server data still wins: when the query returns, the local arrangement is
-  // replaced. Adjusting during render rather than in an effect is React's own
-  // pattern for state that follows a prop, and avoids a second paint.
-  // Keyed on the *content* of the server data, not its identity. A caller that
-  // hands over a freshly built array each render is easy to write by accident,
-  // and comparing references would then re-seed on every render and loop.
-  const signature = useMemo(
-    () => tasks.map((task) => `${task.id}:${task.status}:${task.dueAt ?? ''}`).join('|'),
-    [tasks]
-  );
-  const [columns, setColumns] = useState(grouped);
+  // The arrangement is held locally so cards can slide apart under a dragged
+  // card. It stores *ids*, not tasks: a card's content is looked up from the
+  // server data at render, so an edit to a title or an assignee shows up without
+  // the mirror having to notice it. Only the arrangement is ever stale, and the
+  // signature below covers everything the arrangement depends on.
+  const groupedIds = useMemo(() => {
+    const grouped = groupTasksByColumn(tasks, now);
+    return Object.fromEntries(
+      TASK_COLUMNS.map((id) => [id, grouped[id].map((task) => task.id)])
+    ) as Record<TaskColumnId, string[]>;
+  }, [tasks, now]);
+
+  // Adjusting during render rather than in an effect is React's own pattern for
+  // state that follows a prop, and avoids a second paint. Keyed on the content
+  // of the server data, not its identity: a caller that hands over a freshly
+  // built array each render is easy to write by accident, and comparing
+  // references would then re-seed on every render and loop.
+  const signature = useMemo(() => boardArrangementSignature(tasks), [tasks]);
+  const [columns, setColumns] = useState(groupedIds);
   const [appliedSignature, setAppliedSignature] = useState(signature);
   if (appliedSignature !== signature) {
     setAppliedSignature(signature);
-    setColumns(grouped);
+    setColumns(groupedIds);
   }
+
+  // Ids back to the cards they name, dropping any the server has since removed.
+  const cardsIn = (columnId: TaskColumnId) =>
+    columns[columnId].map((id) => byId.get(id)).filter((task): task is Task => Boolean(task));
 
   /**
    * Supplying onMove puts this component in charge of every drop: the Kanban
@@ -104,13 +117,16 @@ export function TaskBoard({
 
   return (
     <Kanban
+      // Kanban renders a plain div around the board; without a height it grows to
+      // the tallest column and nothing below it can ever scroll.
+      className="flex min-h-0 flex-1 flex-col"
       value={columns}
       // The reflow while hovering. What lands here is provisional: the mutation
       // fired on drop comes back through the query and replaces it.
       onValueChange={setColumns}
       // Asked before each reflow, so a refused target never opens a gap.
       canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
-      getItemValue={(task: Task) => task.id}
+      getItemValue={(id: string) => id}
       onMove={handleMove}
       accessibility={{
         announcements: {
@@ -127,7 +143,10 @@ export function TaskBoard({
         },
       }}
     >
-      <KanbanBoard className="grid-cols-1 items-start gap-4 md:grid-cols-3 xl:grid-cols-6">
+      {/* Six columns do not fit a phone, and stacking them loses the board. Below
+          md it becomes a snap-scrolling row instead — one column at a time, the
+          next peeking so it is obvious you can swipe. */}
+      <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto md:grid md:snap-none md:grid-cols-3 md:overflow-x-visible xl:grid-cols-6">
         {/* Columns are deliberately not `disabled`: useSortable's disabled turns
             off the droppable as well as the draggable, which would make an empty
             column refuse drops. Column drags are harmless here — onValueChange
@@ -136,11 +155,11 @@ export function TaskBoard({
           <TaskBoardColumn
             key={columnId}
             columnId={columnId}
-            tasks={columns[columnId]}
+            tasks={cardsIn(columnId)}
             byId={byId}
             now={now}
           >
-            {columns[columnId].map((task) => (
+            {cardsIn(columnId).map((task) => (
               <KanbanItem key={task.id} value={task.id}>
                 {/* KanbanItem keeps the drag listeners in context rather than
                     spreading them, so a card only becomes draggable once it
@@ -152,6 +171,7 @@ export function TaskBoard({
                       task={task}
                       now={now}
                       isBusy={busyTaskId === task.id}
+                      justLanded={justLandedTaskId === task.id}
                       onOpen={onOpenTask}
                       onComplete={onCompleteTask}
                       onShiftDueDate={onShiftDueDate}

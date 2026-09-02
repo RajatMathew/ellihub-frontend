@@ -7,6 +7,12 @@ import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { format, isBefore, startOfDay } from 'date-fns';
 import { CalendarPlus, Check, CircleCheck, Clock } from 'lucide-react';
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
 const PRIORITY_VARIANT = {
   P1: 'destructive',
   P2: 'warning',
@@ -35,6 +41,7 @@ export function TaskCard({
   task,
   now = new Date(),
   isBusy = false,
+  justLanded = false,
   onOpen,
   onComplete,
   onShiftDueDate,
@@ -43,6 +50,8 @@ export function TaskCard({
   task: Task;
   now?: Date;
   isBusy?: boolean;
+  /** Just changed column, so ring it briefly to show where it went. */
+  justLanded?: boolean;
   onOpen: (task: Task) => void;
   onComplete: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
@@ -56,7 +65,12 @@ export function TaskCard({
     <div
       className={cn(
         'flex flex-col gap-3 rounded-lg border border-border bg-card p-3',
-        isDone && 'opacity-60'
+        isDone && 'opacity-60',
+        // Reduced motion gets the same ring, held plainly for as long as the
+        // flag is set, rather than a fade. Deciding here rather than in CSS
+        // because Tailwind emits the theme's keyframes after any media block
+        // that would try to override them.
+        justLanded && (prefersReducedMotion() ? 'ring-2 ring-primary' : 'animate-task-landed')
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -110,7 +124,8 @@ export function TaskCard({
               size="sm"
               disabled={isBusy}
               onClick={() => onShiftDueDate(task, 1)}
-              className="h-6 px-2 text-xs"
+              // Roomier on a phone, where this is a fingertip rather than a cursor.
+              className="h-8 px-2.5 text-xs sm:h-6 sm:px-2"
             >
               <CalendarPlus className="size-3" aria-hidden />
               +1 day
@@ -131,7 +146,7 @@ export function TaskCard({
         size="sm"
         disabled={isBusy}
         onClick={() => onComplete(task)}
-        className="h-7 w-fit px-2 text-xs"
+        className="h-9 w-fit px-3 text-xs sm:h-7 sm:px-2"
       >
         {isDone ? (
           <>
