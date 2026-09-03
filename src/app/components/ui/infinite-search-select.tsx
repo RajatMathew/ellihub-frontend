@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { ChevronDown, Loader2, X } from 'lucide-react';
 
@@ -50,6 +50,8 @@ type InfiniteSearchSelectProps = {
   triggerClassName?: string;
   contentClassName?: string;
   placeholderClassName?: string;
+  /** Rendered inside the trigger, before the label — an avatar, a status dot. */
+  leadingSlot?: ReactNode;
   testId?: string;
 };
 
@@ -116,6 +118,7 @@ export function InfiniteSearchSelect({
   triggerClassName,
   contentClassName,
   placeholderClassName,
+  leadingSlot,
   testId,
 }: InfiniteSearchSelectProps) {
   const [open, setOpen] = useState(false);
@@ -224,14 +227,31 @@ export function InfiniteSearchSelect({
             triggerClassName
           )}
         >
-          <span
-            className={cn(
-              'truncate',
-              resolvedSelectedOption ? undefined : (placeholderClassName ?? 'text-muted-foreground')
-            )}
-          >
-            {resolvedSelectedOption ? resolvedSelectedOption.label : placeholder}
-          </span>
+          {(() => {
+            const label = (
+              <span
+                className={cn(
+                  'truncate',
+                  resolvedSelectedOption
+                    ? undefined
+                    : (placeholderClassName ?? 'text-muted-foreground')
+                )}
+              >
+                {resolvedSelectedOption ? resolvedSelectedOption.label : placeholder}
+              </span>
+            );
+
+            // Only wrapped when there is something to sit beside the label, so
+            // every existing caller keeps the layout it already had.
+            return leadingSlot ? (
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                {leadingSlot}
+                {label}
+              </span>
+            ) : (
+              label
+            );
+          })()}
           {resolvedSelectedOption?.badge && (
             <Badge variant="secondary" size="sm" className="shrink-0">
               {resolvedSelectedOption.badge}

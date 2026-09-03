@@ -2,6 +2,11 @@ import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/app/components/ui/collapsible';
+import {
   Dialog,
   DialogBody,
   DialogContent,
@@ -10,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import { FieldDescription, FieldLegend, FieldSet } from '@/app/components/ui/field';
 import {
   Form,
   FormControl,
@@ -21,18 +27,19 @@ import {
 } from '@/app/components/ui/form';
 import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { Separator } from '@/app/components/ui/separator';
 import { Textarea } from '@/app/components/ui/textarea';
 import {
   useEmployeePickerOptions,
   type EmployeePickerOption,
 } from '@/modules/hr/hooks/use-employee-picker-options';
+import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
+import {
+  disclosureTriggerClassName,
+  dueFieldClassName,
+  taskTitleFieldClassName,
+} from '@/modules/tasks/components/task-form/task-form-layout';
+import { TaskToggleField } from '@/modules/tasks/components/task-form/task-toggle-field';
 import {
   TASK_COURT_OPTIONS,
   TASK_PRIORITY_OPTIONS,
@@ -44,6 +51,7 @@ import {
   type TaskFormData,
 } from '@/modules/tasks/schemas/task.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -153,6 +161,8 @@ function TaskFormDialogContent({
   onSubmit: (payload: CreateTaskInput) => Promise<void> | void;
 }) {
   const isEdit = Boolean(task);
+  // Open on a task that already has one, so editing never hides existing text.
+  const [descriptionOpen, setDescriptionOpen] = useState(Boolean(task?.description));
   const [assigneeSearch, setAssigneeSearch] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<EmployeePickerOption | null>(() =>
     task?.assignee ? { value: task.assignee.id, label: task.assignee.name } : null
@@ -180,8 +190,8 @@ function TaskFormDialogContent({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
+      <DialogHeader className="mb-0 space-y-1.5">
+        <DialogTitle className="text-2xl">{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
         <DialogDescription>
           {isEdit
             ? 'Update this task and who is carrying it.'
@@ -189,59 +199,76 @@ function TaskFormDialogContent({
         </DialogDescription>
       </DialogHeader>
 
+      <Separator className="mt-5" />
+
       <Form {...form}>
         <form onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}>
-          <DialogBody className="space-y-5">
+          <DialogBody className="space-y-6 pt-6">
+            {/* The title leads: it is the one thing a task cannot be without, so
+                it gets the size and no label of its own. */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem className="space-y-1.5">
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel className="sr-only">Title</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="What needs doing?" />
+                    <Input
+                      {...field}
+                      placeholder="Add a title"
+                      className={taskTitleFieldClassName}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem className="space-y-1.5">
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} rows={3} placeholder="Any detail worth keeping." />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Most tasks are a line of follow-up, so the detail box stays out of
+                the way until it is wanted. */}
+            <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+              <CollapsibleTrigger className={disclosureTriggerClassName}>
+                <ChevronRight
+                  className="size-4 text-muted-foreground transition-transform data-[state=open]:rotate-90"
+                  data-state={descriptionOpen ? 'open' : 'closed'}
+                  aria-hidden="true"
+                />
+                Add description
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="sr-only">Description</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={3} placeholder="Any detail worth keeping." />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
                     <FormLabel>Priority</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TASK_PRIORITY_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>P1 sorts to the top of the board.</FormDescription>
+                    <TaskToggleField
+                      label="Priority"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={TASK_PRIORITY_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.short,
+                        tone: option.tone,
+                      }))}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -253,54 +280,53 @@ function TaskFormDialogContent({
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
                     <FormLabel>Ball in court</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TASK_COURT_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>Whether we owe the next move, or they do.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem className="space-y-1.5">
-                    <FormLabel>Due date</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="date" required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="dueTime"
-                render={({ field }) => (
-                  <FormItem className="space-y-1.5">
-                    <FormLabel>Due time</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="time" required />
-                    </FormControl>
+                    <TaskToggleField
+                      label="Ball in court"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={TASK_COURT_OPTIONS}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
+
+            {/* Date and time are one decision, so they read as one field. */}
+            <FieldSet className="gap-0">
+              <FieldLegend variant="label">Due</FieldLegend>
+              <div className="flex flex-wrap items-start gap-2">
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="sr-only">Due date</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="date" required className={dueFieldClassName} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="dueTime"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="sr-only">Due time</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="time" required className={dueFieldClassName} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FieldDescription className="mt-1.5">
+                Both are required — the board sorts on them.
+              </FieldDescription>
+            </FieldSet>
 
             <FormField
               control={form.control}
@@ -311,6 +337,12 @@ function TaskFormDialogContent({
                   <FormControl>
                     <InfiniteSearchSelect
                       options={assigneeOptions}
+                      leadingSlot={
+                        <TaskAssigneeAvatar
+                          id={selectedAssignee?.value}
+                          name={selectedAssignee?.label}
+                        />
+                      }
                       value={field.value || null}
                       selectedOption={selectedAssignee}
                       search={assigneeSearch}
@@ -334,8 +366,10 @@ function TaskFormDialogContent({
             />
           </DialogBody>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onCancel}>
+          <Separator className="mt-6" />
+
+          <DialogFooter className="items-center">
+            <Button type="button" variant="ghost" onClick={onCancel}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>

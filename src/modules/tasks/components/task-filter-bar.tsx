@@ -1,7 +1,5 @@
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { Button } from '@/app/components/ui/button';
-import { cn } from '@/app/lib/utils';
-import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
+import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 
 export type TaskAssigneeFilter = string | null;
@@ -56,11 +54,7 @@ export function TaskFilterBar({
             className="h-7 rounded-full px-2 pe-3 text-xs"
             onClick={() => onChange(active ? null : id)}
           >
-            <Avatar className="size-5">
-              <AvatarFallback className={cn('text-[0.625rem] font-semibold', assigneeTone(id))}>
-                {initialsOf(name)}
-              </AvatarFallback>
-            </Avatar>
+            <TaskAssigneeAvatar id={id} name={name} size="sm" />
             <span className="truncate">{name.split(' ')[0]}</span>
           </Button>
         );
