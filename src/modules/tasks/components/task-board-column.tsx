@@ -56,14 +56,25 @@ export function TaskBoardColumn({
       className={cn(
         // The column owns its background and border; the card list inside it is
         // what scrolls, so the fade dissolves the cards rather than the column.
-        'flex h-full min-h-0 flex-col rounded-lg bg-muted/40 p-3 transition-colors',
+        // A panel that lifts off the page rather than a cell in a grid. Three
+        // things do that together and none of them works alone: a fill with
+        // enough contrast to read as its own surface, a border softened to half
+        // strength so the edges stop drawing themselves, and a shadow to give
+        // the whole thing a lift. At full-strength borders and a fainter fill it
+        // read as ruled graph paper.
+        'flex h-full min-h-0 flex-col rounded-lg border border-border/50 bg-muted/50 p-3 shadow-sm transition-colors',
         // A card wide enough to read, with the next column showing at the edge.
         'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:shrink',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
         isForbidden && 'bg-destructive/10 ring-2 ring-destructive/50'
       )}
     >
-      <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+      {/* The heading is ruled off from the cards, and carries the same faint
+          shadow as the panel so it sits above them rather than beside them. The
+          rule reaches the panel's inner edges to meet the border either side, so
+          it bleeds back out through the p-3 and pays the padding again itself,
+          and is softened to match. */}
+      <div className="-mx-3 mb-3 flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 pb-3 shadow-sm">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <span className={cn('size-2 rounded-full', TASK_COLUMN_TONES[columnId])} aria-hidden />
           {TASK_COLUMN_LABELS[columnId]}

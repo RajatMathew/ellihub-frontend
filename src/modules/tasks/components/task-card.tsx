@@ -5,19 +5,13 @@ import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu'
 import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { format, isBefore, startOfDay } from 'date-fns';
-import { CalendarPlus, Check, CircleCheck, Clock } from 'lucide-react';
+import { CircleCheck, Clock } from 'lucide-react';
 
 function prefersReducedMotion() {
   return (
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
 }
-
-const PRIORITY_VARIANT = {
-  P1: 'destructive',
-  P2: 'warning',
-  P3: 'secondary',
-} as const;
 
 /** "was due Thu, Jul 2 · 5d late" / "due today · 11:42 AM" / "Wed, Jul 15" */
 function dueLabel(task: Task, now: Date) {
@@ -74,9 +68,13 @@ export function TaskCard({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <Badge variant={PRIORITY_VARIANT[task.priority]} size="sm">
+        {/* The design writes the priority as a quiet label rather than a
+            coloured pill — the card's colour is spent on lateness and on whose
+            court the ball is in, and a third filled chip up here competed with
+            both. */}
+        <span className="text-xs font-medium tracking-wide text-muted-foreground">
           {task.priority}
-        </Badge>
+        </span>
         <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
       </div>
 
@@ -95,16 +93,53 @@ export function TaskCard({
       {task.entityLinks.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {task.entityLinks.map((link) => (
-            <Badge key={`${link.entityType}-${link.entityId}`} variant="outline" size="sm">
+            <Badge
+              key={`${link.entityType}-${link.entityId}`}
+              variant="secondary"
+              appearance="light"
+              size="sm"
+              // Filled and squared off rather than outlined and pill-shaped, as
+              // the design draws its reference chips.
+              className="rounded-sm uppercase tracking-wide"
+            >
               {TASK_ENTITY_LABELS[link.entityType]} · {link.entityId}
             </Badge>
           ))}
         </div>
       ) : null}
 
-      <Badge variant={task.court === 'OURS' ? 'warning' : 'secondary'} size="sm" appearance="light">
-        Ball · {task.court === 'OURS' ? 'Ours' : 'Theirs'}
-      </Badge>
+      {/* Both courts, with the one in play filled in — the design shows the pair
+          so the card says what the alternative is, not just where things stand.
+          It reports state and does not change it (the court is edited in the
+          task dialog), so the idle half is decorative and hidden from screen
+          readers, leaving the filled half to carry the meaning on its own
+          rather than the colour doing it.
+
+          These two drop the badge's mono/uppercase/wide-tracking label styling,
+          which is the one place in the card it cannot be kept: two tracked-out
+          uppercase chips do not fit side by side in a column this narrow, and
+          the second was being clipped by the card's edge. The design draws them
+          in sentence case for the same reason. */}
+      <div className="flex w-fit items-center gap-1">
+        <Badge
+          variant={task.court === 'OURS' ? 'primary' : 'secondary'}
+          appearance={task.court === 'OURS' ? 'default' : 'light'}
+          size="sm"
+          className="rounded-sm font-sans normal-case tracking-normal"
+          aria-hidden={task.court !== 'OURS'}
+        >
+          Ball · Ours
+        </Badge>
+        <Badge
+          variant={task.court === 'THEIRS' ? 'primary' : 'secondary'}
+          appearance={task.court === 'THEIRS' ? 'default' : 'light'}
+          size="sm"
+          className="rounded-sm font-sans normal-case tracking-normal"
+          aria-hidden={task.court !== 'THEIRS'}
+        >
+          Ball · Theirs
+        </Badge>
+      </div>
 
       {due ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -127,7 +162,9 @@ export function TaskCard({
               // Roomier on a phone, where this is a fingertip rather than a cursor.
               className="h-8 px-2.5 text-xs sm:h-6 sm:px-2"
             >
-              <CalendarPlus className="size-3" aria-hidden />
+              {/* Text alone, as the design has it. The calendar icon it used to
+                  carry cost the ~16px that kept this on the same line as the due
+                  date, and pushed it onto a line of its own. */}
               +1 day
             </Button>
           ) : null}
@@ -135,31 +172,45 @@ export function TaskCard({
       ) : null}
 
       {source ? (
-        <p className="text-xs italic text-muted-foreground">
+        // The design tints the provenance line rather than greying it, which is
+        // what stops it reading as another line of description.
+        <p className="text-xs italic text-destructive/75">
           from email · {source.subject || source.fromEmail || 'linked message'}
         </p>
       ) : null}
 
-      <Button
-        type="button"
-        variant={isDone ? 'outline' : 'ghost'}
-        size="sm"
-        disabled={isBusy}
-        onClick={() => onComplete(task)}
-        className="h-9 w-fit px-3 text-xs sm:h-7 sm:px-2"
-      >
-        {isDone ? (
-          <>
-            <CircleCheck className="size-3" aria-hidden />
-            Reopen
-          </>
-        ) : (
-          <>
-            <Check className="size-3" aria-hidden />
-            Done
-          </>
-        )}
-      </Button>
+      {/* The actions are ruled off from the card's content by a deliberately
+          faint line: half the theme's own hairline, inset by the card's padding
+          so it starts where the button under it does rather than running edge to
+          edge. It is meant to be barely there — a separation, not a division,
+          and it is deliberately fainter than `border-border` would draw it. */}
+      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
+        <Button
+          type="button"
+          variant={isDone ? 'outline' : 'ghost'}
+          size="sm"
+          disabled={isBusy}
+          onClick={() => onComplete(task)}
+          className={cn(
+            'h-9 px-3 text-xs sm:h-7 sm:px-2',
+            // Done reads as a soft filled affordance in the design, not a bare
+            // ghost button.
+            !isDone && 'bg-success-soft text-success-soft-foreground hover:bg-success-soft/80'
+          )}
+        >
+          {isDone ? (
+            <>
+              <CircleCheck className="size-3" aria-hidden />
+              Reopen
+            </>
+          ) : (
+            <>
+              <CircleCheck className="size-3" aria-hidden />
+              Done
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
