@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { cn } from '@/app/lib/utils';
 import { useEmployeePickerOptions } from '@/modules/hr/hooks/use-employee-picker-options';
-import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
+import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { ChevronDown } from 'lucide-react';
 
@@ -34,7 +32,6 @@ export function TaskAssigneeMenu({
   const picker = useEmployeePickerOptions({ search: '', enabled: open });
 
   const name = task.assignee?.name ?? null;
-  const tone = task.assigneeId ? assigneeTone(task.assigneeId) : 'bg-muted text-muted-foreground';
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -49,11 +46,7 @@ export function TaskAssigneeMenu({
           className="flex items-center gap-0.5 rounded-md p-0.5 hover:bg-surface-hover focus-visible:bg-surface-hover"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
-          <Avatar className="size-6">
-            <AvatarFallback className={cn('text-xs font-semibold', tone)}>
-              {name ? initialsOf(name) : '—'}
-            </AvatarFallback>
-          </Avatar>
+          <TaskAssigneeAvatar id={task.assigneeId} name={name} />
           <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
@@ -78,13 +71,7 @@ export function TaskAssigneeMenu({
               disabled={option.badge === 'Unlinked'}
               onSelect={() => onReassign(option.value)}
             >
-              <Avatar className="size-5">
-                <AvatarFallback
-                  className={cn('text-[0.625rem] font-semibold', assigneeTone(option.value))}
-                >
-                  {initialsOf(option.label)}
-                </AvatarFallback>
-              </Avatar>
+              <TaskAssigneeAvatar id={option.value} name={option.label} size="sm" />
               <span className="truncate">{option.label}</span>
             </DropdownMenuItem>
           ))

@@ -42,6 +42,8 @@
   --success-alpha: rgba(74, 222, 128, 0.28);
   --success-accent: #86efac;
   --success-soft-foreground: var(--success-accent);
+  /* The middle step of the red -> orange -> gold priority ramp. */
+  --caution: #fb923c;
   --warning: #fbbf24;
   --warning-foreground: #0a0f1a;
   --warning-soft: rgba(251, 191, 36, 0.14);

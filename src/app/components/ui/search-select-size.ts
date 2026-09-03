@@ -10,6 +10,8 @@
  */
 export const searchSelectTriggerSizes = {
   md: 'h-8.5 px-3 gap-1 text-[0.8125rem] leading-(--text-sm--line-height)',
+  // Matches `lg` in selectTriggerVariants, for a picker sitting among taller controls.
+  lg: 'h-10 px-4 gap-1.5 text-sm',
   toolbar: 'h-9 px-3 gap-2 text-2sm',
 } as const;
 
