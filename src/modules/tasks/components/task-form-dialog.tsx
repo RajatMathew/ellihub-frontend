@@ -131,7 +131,7 @@ export function TaskFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-3xl">
         {/* Mounted only while open, and keyed by the task, so every open starts
             from fresh state. That is what keeps this form free of the usual
             reset-in-an-effect dance. */}
@@ -190,20 +190,20 @@ function TaskFormDialogContent({
 
   return (
     <>
-      <DialogHeader className="mb-0 space-y-1.5">
-        <DialogTitle className="text-2xl">{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
-        <DialogDescription>
+      <DialogHeader className="mb-0 space-y-2">
+        <DialogTitle className="text-3xl">{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
+        <DialogDescription className="text-base">
           {isEdit
             ? 'Update this task and who is carrying it.'
             : 'Capture the follow-up, then say who owns it and when it is due.'}
         </DialogDescription>
       </DialogHeader>
 
-      <Separator className="mt-5" />
+      <Separator className="mt-6" />
 
       <Form {...form}>
         <form onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}>
-          <DialogBody className="space-y-6 pt-6">
+          <DialogBody className="space-y-7 pt-7">
             {/* The title leads: it is the one thing a task cannot be without, so
                 it gets the size and no label of its own. */}
             <FormField
@@ -258,7 +258,7 @@ function TaskFormDialogContent({
                 name="priority"
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel>Priority</FormLabel>
+                    <FormLabel className="text-base">Priority</FormLabel>
                     <TaskToggleField
                       label="Priority"
                       value={field.value}
@@ -279,7 +279,7 @@ function TaskFormDialogContent({
                 name="court"
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
-                    <FormLabel>Ball in court</FormLabel>
+                    <FormLabel className="text-base">Ball in court</FormLabel>
                     <TaskToggleField
                       label="Ball in court"
                       value={field.value}
@@ -294,7 +294,9 @@ function TaskFormDialogContent({
 
             {/* Date and time are one decision, so they read as one field. */}
             <FieldSet className="gap-0">
-              <FieldLegend variant="label">Due</FieldLegend>
+              <FieldLegend variant="label" className="text-base">
+                Due
+              </FieldLegend>
               <div className="flex flex-wrap items-start gap-2">
                 <FormField
                   control={form.control}
@@ -303,7 +305,13 @@ function TaskFormDialogContent({
                     <FormItem className="space-y-1.5">
                       <FormLabel className="sr-only">Due date</FormLabel>
                       <FormControl>
-                        <Input {...field} type="date" required className={dueFieldClassName} />
+                        <Input
+                          {...field}
+                          type="date"
+                          required
+                          variant="lg"
+                          className={dueFieldClassName}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -316,7 +324,13 @@ function TaskFormDialogContent({
                     <FormItem className="space-y-1.5">
                       <FormLabel className="sr-only">Due time</FormLabel>
                       <FormControl>
-                        <Input {...field} type="time" required className={dueFieldClassName} />
+                        <Input
+                          {...field}
+                          type="time"
+                          required
+                          variant="lg"
+                          className={dueFieldClassName}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -333,10 +347,11 @@ function TaskFormDialogContent({
               name="assigneeId"
               render={({ field }) => (
                 <FormItem className="space-y-1.5">
-                  <FormLabel>Assignee</FormLabel>
+                  <FormLabel className="text-base">Assignee</FormLabel>
                   <FormControl>
                     <InfiniteSearchSelect
                       options={assigneeOptions}
+                      size="lg"
                       leadingSlot={
                         <TaskAssigneeAvatar
                           id={selectedAssignee?.value}
@@ -366,13 +381,19 @@ function TaskFormDialogContent({
             />
           </DialogBody>
 
-          <Separator className="mt-6" />
+          <Separator className="mt-7" />
 
           <DialogFooter className="items-center">
-            <Button type="button" variant="ghost" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              className="text-foreground"
+              onClick={onCancel}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isSaving}>
+            <Button type="submit" variant="primary" size="lg" disabled={isSaving}>
               {isEdit ? 'Save task' : 'Create task'}
             </Button>
           </DialogFooter>

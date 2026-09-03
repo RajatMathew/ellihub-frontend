@@ -17,24 +17,24 @@
  * without adding anything.
  */
 export const taskTitleFieldClassName =
-  'h-auto rounded-none border-0 border-b border-input bg-transparent px-0 pb-3 text-3xl font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-b-ring focus-visible:ring-0';
+  'h-auto rounded-none border-0 border-b border-input bg-transparent px-0 pt-2 pb-4 text-4xl font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-b-ring focus-visible:ring-0';
 
 /** The track a segmented control sits in: the unchosen options read as one field. */
-export const segmentedTrackClassName = 'w-fit gap-0 rounded-lg border border-input bg-muted p-1';
+export const segmentedTrackClassName = 'w-fit gap-0 rounded-lg border border-input bg-muted p-1.5';
 
 /**
  * One segment. Chosen segments lift out of the track rather than filling with
  * accent, which is what tells three near-identical words apart at a glance.
  */
 export const segmentedItemClassName =
-  'gap-2 rounded-md px-3 text-sm text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm';
+  'gap-2 rounded-md px-4 text-base text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm';
 
 /** The dot that carries a segment's meaning — priority colour, or whose court. */
-export const segmentedDotClassName = 'size-2 shrink-0 rounded-full';
+export const segmentedDotClassName = 'size-2.5 shrink-0 rounded-full';
 
 /** The description disclosure row: a quiet control, not a heading. */
 export const disclosureTriggerClassName =
-  'flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-ring/30 rounded-sm';
+  'flex cursor-pointer items-center gap-2 text-base font-medium text-foreground transition-colors hover:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-ring/30 rounded-sm';
 
 /** Date and time sit at their natural width rather than filling the dialog. */
 export const dueFieldClassName = 'w-auto';

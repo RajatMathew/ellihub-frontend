@@ -39,6 +39,7 @@ export function TaskToggleField<T extends string>({
   return (
     <ToggleGroup
       type="single"
+      size="lg"
       value={value}
       aria-label={label}
       // Radix clears the value when you press the segment that is already on.

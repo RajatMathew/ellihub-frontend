@@ -81,6 +81,7 @@
   --color-success-alpha: var(--success-alpha);
   --color-success-accent: var(--success-accent);
   --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-caution: var(--caution);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);

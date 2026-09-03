@@ -42,6 +42,8 @@
   --success-alpha: var(--color-emerald-200);
   --success-accent: var(--color-emerald-700);
   --success-soft-foreground: var(--success-accent);
+  /* The middle step of the red -> orange -> gold priority ramp. */
+  --caution: var(--color-orange-500);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-950);
   --warning-soft: var(--color-amber-50);
