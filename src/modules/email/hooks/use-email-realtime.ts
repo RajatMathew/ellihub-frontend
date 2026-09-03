@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 
+import type { EmailAccount } from '@/modules/email/api/email.api';
+import { showNewMailToast } from '@/modules/email/components/email-new-mail-toast';
 import { emailKeys } from '@/modules/email/hooks/email.hooks';
+import { buildMailPath } from '@/modules/email/lib/email-paths';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
@@ -15,6 +19,7 @@ const RECONNECT_MAX_MS = 30_000;
  */
 export function useEmailRealtime(enabled: boolean) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!enabled) return;
@@ -41,15 +46,44 @@ export function useEmailRealtime(enabled: boolean) {
         } catch {
           return;
         }
-        const parsed = data as { type?: string; accountId?: string };
+        const parsed = data as {
+          type?: string;
+          accountId?: string;
+          newMail?: {
+            count: number;
+            senderName: string | null;
+            senderEmail: string | null;
+            subject: string | null;
+            preview: string | null;
+            conversationId: string;
+          };
+        };
         if (parsed?.type !== 'email.synced' || !parsed.accountId) return;
+        const eventAccountId = parsed.accountId;
         void queryClient.invalidateQueries({
-          queryKey: emailKeys.messagesRoot(parsed.accountId),
+          queryKey: emailKeys.messagesRoot(eventAccountId),
         });
         void queryClient.invalidateQueries({
-          queryKey: emailKeys.conversationRoot(parsed.accountId),
+          queryKey: emailKeys.conversationRoot(eventAccountId),
         });
-        void queryClient.invalidateQueries({ queryKey: emailKeys.folders(parsed.accountId) });
+        void queryClient.invalidateQueries({ queryKey: emailKeys.folders(eventAccountId) });
+
+        const newMail = parsed.newMail;
+        if (newMail?.conversationId) {
+          const accounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
+          const account = accounts?.find((item) => item.id === eventAccountId);
+          const slug = account?.slug ?? eventAccountId;
+          showNewMailToast({
+            accountId: eventAccountId,
+            senderName: newMail.senderName,
+            senderEmail: newMail.senderEmail,
+            subject: newMail.subject,
+            preview: newMail.preview,
+            conversationId: newMail.conversationId,
+            count: newMail.count,
+            onOpen: () => navigate(buildMailPath(slug, 'inbox', newMail.conversationId)),
+          });
+        }
       };
       socket.onclose = () => {
         if (disposed) return;
@@ -69,5 +103,5 @@ export function useEmailRealtime(enabled: boolean) {
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
       socket?.close();
     };
-  }, [enabled, queryClient]);
+  }, [enabled, navigate, queryClient]);
 }
