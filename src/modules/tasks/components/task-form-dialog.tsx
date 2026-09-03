@@ -46,31 +46,45 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-const emptyValues: TaskFormData = {
+const pad = (value: number) => String(value).padStart(2, '0');
+
+const dateInputValue = (date: Date) =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+// End of business. Any default is a guess; this one is at least the same guess
+// every time, which beats "whatever o'clock it happened to be".
+const DEFAULT_DUE_TIME = '17:00';
+
+// A function rather than a constant: the due date defaults to today, and a tab
+// left open overnight would otherwise keep offering yesterday.
+const emptyValues = (): TaskFormData => ({
   title: '',
   description: '',
   priority: 'P3',
   court: 'OURS',
-  dueDate: '',
-  dueTime: '',
+  // TEMPORARILY defaulted — the date and time are both required while the
+  // "No due date" column is disabled, so a new task opens on today at the close
+  // of business rather than empty. Restore '' for both when it comes back.
+  dueDate: dateInputValue(new Date()),
+  dueTime: DEFAULT_DUE_TIME,
   assigneeId: '',
-};
+});
 
 // The API stores one instant; the form holds the day and the time separately
 // because that is what the two native inputs produce.
 function toFormValues(task?: Task | null): TaskFormData {
-  if (!task) return emptyValues;
+  if (!task) return emptyValues();
 
   const due = task.dueAt ? new Date(task.dueAt) : null;
-  const pad = (value: number) => String(value).padStart(2, '0');
 
   return {
     title: task.title,
     description: task.description ?? '',
     priority: task.priority,
     court: task.court,
-    dueDate: due ? `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}` : '',
-    dueTime: due && task.dueHasTime ? `${pad(due.getHours())}:${pad(due.getMinutes())}` : '',
+    dueDate: due ? dateInputValue(due) : '',
+    dueTime:
+      due && task.dueHasTime ? `${pad(due.getHours())}:${pad(due.getMinutes())}` : DEFAULT_DUE_TIME,
     assigneeId: task.assigneeId ?? '',
   };
 }
@@ -266,7 +280,7 @@ function TaskFormDialogContent({
                   <FormItem className="space-y-1.5">
                     <FormLabel>Due date</FormLabel>
                     <FormControl>
-                      <Input {...field} type="date" />
+                      <Input {...field} type="date" required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -280,9 +294,8 @@ function TaskFormDialogContent({
                   <FormItem className="space-y-1.5">
                     <FormLabel>Due time</FormLabel>
                     <FormControl>
-                      <Input {...field} type="time" />
+                      <Input {...field} type="time" required />
                     </FormControl>
-                    <FormDescription>Optional — leave blank for any time that day.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

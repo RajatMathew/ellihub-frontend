@@ -45,8 +45,15 @@ describe('which column a task lands in', () => {
     expect(columnForTask(task({ dueAt: '2026-09-03T08:00:00.000Z' }), NOW)).toBe('TOMORROW');
   });
 
-  test('a task with no due date gets its own column rather than vanishing', () => {
-    expect(columnForTask(task({ dueAt: null }), NOW)).toBe('NO_DATE');
+  // TEMPORARILY DISABLED with the "No due date" column in lib/task-board.ts.
+  // test('a task with no due date gets its own column rather than vanishing', () => {
+  //   expect(columnForTask(task({ dueAt: null }), NOW)).toBe('NO_DATE');
+  // });
+
+  test('while the No due date column is off, a dateless task falls back to Overdue', () => {
+    // The due date is required now, so this should not arise — but a task that
+    // slips past the API must still land somewhere rather than crash the board.
+    expect(columnForTask(task({ dueAt: null }), NOW)).toBe('OVERDUE');
   });
 });
 
@@ -64,19 +71,20 @@ describe('the drag rules', () => {
   });
 
   test('nothing can be dragged into Overdue', () => {
-    for (const from of ['DUE_TODAY', 'TOMORROW', 'PENDING', 'COMPLETED', 'NO_DATE'] as const) {
+    for (const from of ['DUE_TODAY', 'TOMORROW', 'PENDING', 'COMPLETED'] as const) {
       expect(canMoveTask(from, 'OVERDUE').allowed).toBe(false);
     }
   });
 
-  test('nothing can be dragged into No due date, because that would drop a deadline', () => {
-    expect(canMoveTask('DUE_TODAY', 'NO_DATE').allowed).toBe(false);
-  });
+  // TEMPORARILY DISABLED with the "No due date" column in lib/task-board.ts.
+  // test('nothing can be dragged into No due date, because that would drop a deadline', () => {
+  //   expect(canMoveTask('DUE_TODAY', 'NO_DATE').allowed).toBe(false);
+  // });
 
   test('the ordinary reschedules between dated columns are allowed', () => {
     expect(canMoveTask('DUE_TODAY', 'TOMORROW').allowed).toBe(true);
     expect(canMoveTask('PENDING', 'DUE_TODAY').allowed).toBe(true);
-    expect(canMoveTask('NO_DATE', 'TOMORROW').allowed).toBe(true);
+    // expect(canMoveTask('NO_DATE', 'TOMORROW').allowed).toBe(true);
   });
 
   test('a completed task can be reopened into a dated column', () => {
@@ -108,7 +116,7 @@ describe('the due date a column implies', () => {
     expect(dueDateForColumn('DUE_TODAY', NOW)).not.toBeNull();
     expect(dueDateForColumn('TOMORROW', NOW)).not.toBeNull();
     expect(dueDateForColumn('COMPLETED', NOW)).toBeNull();
-    expect(dueDateForColumn('NO_DATE', NOW)).toBeNull();
+    // expect(dueDateForColumn('NO_DATE', NOW)).toBeNull();
     expect(dueDateForColumn('OVERDUE', NOW)).toBeNull();
   });
 

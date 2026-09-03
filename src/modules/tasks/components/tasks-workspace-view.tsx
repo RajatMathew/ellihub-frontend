@@ -116,11 +116,11 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
 
       {tasksQuery.isLoading ? (
         <div
-          className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6"
+          className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5"
           role="status"
           aria-label="Loading tasks"
         >
-          {Array.from({ length: 6 }).map((_, index) => (
+          {Array.from({ length: 5 }).map((_, index) => (
             <Skeleton key={index} className="h-48 rounded-lg" />
           ))}
         </div>

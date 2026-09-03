@@ -2,7 +2,11 @@ import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { endOfWeek, isBefore, isSameDay, startOfDay } from 'date-fns';
 
 export const TASK_COLUMNS = [
-  'NO_DATE',
+  // TEMPORARILY DISABLED — the due date is required now, so nothing should be
+  // undated. To bring the column back, uncomment this entry together with its
+  // label, its tone, the columnForTask branch and the canMoveTask rule below,
+  // and restore the required rule on `dueDate` in schemas/task.schema.ts.
+  // 'NO_DATE',
   'OVERDUE',
   'DUE_TODAY',
   'TOMORROW',
@@ -13,7 +17,7 @@ export const TASK_COLUMNS = [
 export type TaskColumnId = (typeof TASK_COLUMNS)[number];
 
 export const TASK_COLUMN_LABELS: Record<TaskColumnId, string> = {
-  NO_DATE: 'No due date',
+  // NO_DATE: 'No due date',
   OVERDUE: 'Overdue',
   DUE_TODAY: 'Due Today',
   TOMORROW: 'Tomorrow',
@@ -23,7 +27,7 @@ export const TASK_COLUMN_LABELS: Record<TaskColumnId, string> = {
 
 // Dot colour per column, from the design's own palette rather than raw hexes.
 export const TASK_COLUMN_TONES: Record<TaskColumnId, string> = {
-  NO_DATE: 'bg-muted-foreground',
+  // NO_DATE: 'bg-muted-foreground',
   OVERDUE: 'bg-destructive',
   DUE_TODAY: 'bg-warning',
   TOMORROW: 'bg-primary',
@@ -39,7 +43,12 @@ export const TASK_COLUMN_TONES: Record<TaskColumnId, string> = {
  */
 export function columnForTask(task: Task, now: Date = new Date()): TaskColumnId {
   if (task.status === 'COMPLETED') return 'COMPLETED';
-  if (!task.dueAt) return 'NO_DATE';
+  // if (!task.dueAt) return 'NO_DATE';
+  // With the column disabled a dateless task has nowhere of its own to go. The
+  // create form requires a date and the existing ones were backfilled, so this
+  // should not fire — but the board must not fall over on one that slips past
+  // the API. Overdue is where it surfaces until someone gives it a date.
+  if (!task.dueAt) return 'OVERDUE';
 
   const due = new Date(task.dueAt);
   const today = startOfDay(now);
@@ -105,7 +114,8 @@ export function boardArrangementSignature(tasks: Task[]): string {
  *   quietly rewriting its deadline so it no longer looks late — the ticket calls
  *   this out explicitly.
  * - Nothing may be dropped into No due date, because that would silently discard
- *   a deadline. Clearing one is an edit, so it belongs in the dialog.
+ *   a deadline. Clearing one is an edit, so it belongs in the dialog. (That
+ *   column is currently disabled, so the rule below is commented out with it.)
  */
 export function canMoveTask(
   from: TaskColumnId,
@@ -120,9 +130,9 @@ export function canMoveTask(
     };
   }
 
-  if (to === 'NO_DATE') {
-    return { allowed: false, reason: 'Clear the due date from the task itself to remove it' };
-  }
+  // if (to === 'NO_DATE') {
+  //   return { allowed: false, reason: 'Clear the due date from the task itself to remove it' };
+  // }
 
   if (from === 'OVERDUE' && to !== 'COMPLETED') {
     return {

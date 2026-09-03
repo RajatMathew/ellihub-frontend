@@ -68,23 +68,29 @@ export const taskPaginatedResponseSchema = z.object({
 // the form holds the date and time as the two native inputs produce them
 // ("2026-09-15" and "14:30"), and the mapper turns them into the single ISO
 // instant the API stores.
-export const taskFormSchema = z
-  .object({
-    title: z.string().trim().min(1, 'Title is required').max(200, 'Title is too long'),
-    description: z.string().trim().max(5000, 'Description is too long'),
-    priority: taskPrioritySchema,
-    court: taskCourtSchema,
-    // Empty means the task has no due date at all.
-    dueDate: z.string(),
-    // Empty means it is due that day, with no particular time.
-    dueTime: z.string(),
-    assigneeId: z.string(),
-  })
-  // A time on its own has nothing to anchor it to, so ask for the day first.
-  .refine((values) => !values.dueTime || Boolean(values.dueDate), {
-    path: ['dueDate'],
-    message: 'Pick a due date before setting a time',
-  });
+export const taskFormSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(200, 'Title is too long'),
+  description: z.string().trim().max(5000, 'Description is too long'),
+  priority: taskPrioritySchema,
+  court: taskCourtSchema,
+  // TEMPORARILY REQUIRED — the "No due date" column is commented out in
+  // lib/task-board.ts, so a task saved without one would have nowhere to show on
+  // the board. Restore `dueDate: z.string()` ("empty means the task has no due
+  // date at all") and the refine below when that column comes back.
+  dueDate: z.string().min(1, 'Due date is required'),
+  // TEMPORARILY REQUIRED alongside the date, so every task carries a full
+  // timestamp and the board can order without ties it cannot resolve.
+  // Restore `dueTime: z.string()` ("empty means it is due that day, with no
+  // particular time") when the "No due date" column comes back.
+  dueTime: z.string().min(1, 'Due time is required'),
+  assigneeId: z.string(),
+});
+// A time on its own has nothing to anchor it to, so ask for the day first.
+// Unreachable while dueDate is required — it can no longer be empty.
+// .refine((values) => !values.dueTime || Boolean(values.dueDate), {
+//   path: ['dueDate'],
+//   message: 'Pick a due date before setting a time',
+// });
 
 export type TaskPriority = z.infer<typeof taskPrioritySchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;

@@ -51,17 +51,31 @@ export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
   );
 }
 
+// TEMPORARILY REQUIRED — the "No due date" column is commented out in
+// lib/task-board.ts, so a task raised from an email without a date would have
+// nowhere to show. Both fields open filled in and neither can be left empty.
+const todayInputValue = () => {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+// End of business, matching the create dialog's default.
+const DEFAULT_DUE_TIME = '17:00';
+
 function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: () => void }) {
   // The subject is the obvious first draft of what needs doing, so it seeds the
   // title rather than leaving the field blank.
   const [title, setTitle] = useState(email.subject?.trim() ?? '');
   const [priority, setPriority] = useState<TaskPriority>('P3');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(todayInputValue);
+  const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIME);
   const [touched, setTouched] = useState(false);
 
   const createTask = useCreateTaskMutation();
   const trimmed = title.trim();
   const isInvalid = touched && trimmed.length === 0;
+  const isDueInvalid = touched && (dueDate.length === 0 || dueTime.length === 0);
 
   const reference: TaskEmailReference = {
     accountId: email.accountId,
@@ -74,15 +88,14 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
 
   const submit = async () => {
     setTouched(true);
-    if (!trimmed) return;
+    if (!trimmed || !dueDate || !dueTime) return;
 
     await createTask.mutateAsync({
       title: trimmed,
       priority,
       court: 'OURS',
-      // A bare date means the whole day, so dueHasTime stays false.
-      dueAt: dueDate ? new Date(`${dueDate}T00:00`).toISOString() : null,
-      dueHasTime: false,
+      dueAt: new Date(`${dueDate}T${dueTime}`).toISOString(),
+      dueHasTime: true,
       emailReferences: [reference],
     });
 
@@ -115,7 +128,7 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1.5">
           <Label htmlFor="add-task-priority">Priority</Label>
           <Select value={priority} onValueChange={(value) => setPriority(value as TaskPriority)}>
@@ -136,11 +149,28 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
           <Input
             id="add-task-due"
             type="date"
+            required
             value={dueDate}
+            aria-invalid={isDueInvalid}
             onChange={(event) => setDueDate(event.target.value)}
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="add-task-due-time">Time</Label>
+          <Input
+            id="add-task-due-time"
+            type="time"
+            required
+            value={dueTime}
+            aria-invalid={isDueInvalid}
+            onChange={(event) => setDueTime(event.target.value)}
+          />
+        </div>
       </div>
+
+      {isDueInvalid ? (
+        <p className="text-xs text-destructive">A task needs a due date and a time</p>
+      ) : null}
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onDone}>
