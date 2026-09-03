@@ -1223,8 +1223,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             onProjectChange={(projectId) => {
               setSelectedProjectId(projectId);
               clearRouteSelection();
-              setMailFilter('all');
-              setSelectedCategoryTagId(null);
+              // 'Other' shows unclassified mail, which cannot intersect a project filter.
+              if (projectId && mailFilter === 'other') {
+                setMailFilter('all');
+                setSelectedCategoryTagId(null);
+              }
               setMobilePane('list');
             }}
             onCategoryTagChange={setSelectedCategoryTagId}
