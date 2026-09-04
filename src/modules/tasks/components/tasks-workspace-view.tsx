@@ -63,7 +63,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   // the one thing that makes the delete reversible.
   const handleDelete = (task: Task) => {
     setDialogOpen(false);
-    deleteTask.mutate(task.id);
+    deleteTask.mutate({ id: task.id, title: task.title });
   };
 
   const handleSubmit = async (payload: CreateTaskInput) => {

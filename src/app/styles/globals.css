@@ -163,6 +163,23 @@
       box-shadow: 0 0 0 2px transparent;
     }
   }
+
+  /* The undo toast's countdown, drawn as a draining bar. Linear because it is
+     reporting a clock and any easing would misreport how much time is left, and
+     `forwards` so it holds at empty rather than snapping back full for the frame
+     before the toast leaves. The duration is set on the element, since the toast
+     owns how long it grants. */
+  --animate-undo-countdown: undo-countdown 1s linear forwards;
+
+  @keyframes undo-countdown {
+    from {
+      transform: scaleX(1);
+    }
+
+    to {
+      transform: scaleX(0);
+    }
+  }
 }
 
 /**

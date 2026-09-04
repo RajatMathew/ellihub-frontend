@@ -1,5 +1,6 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { tasksApi } from '@/modules/tasks/api/tasks.api';
+import { toastUndoable } from '@/modules/tasks/components/toast-undoable';
 import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
 import { removeTaskFromList, shiftTaskDueDateInList } from '@/modules/tasks/lib/task-cache';
 import type {
@@ -106,8 +107,10 @@ export const useRestoreTaskMutation = () => {
     mutationFn: (id: string) => tasksApi.restore(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task restored');
     },
+    // No toast on the way in — the undo toast is still on screen and reports the
+    // outcome itself. A failure still needs one, since that is the one case the
+    // toast's own success line would be lying about.
     onError: (error) => toastApiError(error, 'Failed to restore the task'),
   });
 };
@@ -130,8 +133,8 @@ export const useDeleteTaskMutation = () => {
   const restoreTask = useRestoreTaskMutation();
 
   return useMutation({
-    mutationFn: (id: string) => tasksApi.delete(id),
-    onMutate: async (id) => {
+    mutationFn: ({ id }: { id: string; title: string }) => tasksApi.delete(id),
+    onMutate: async ({ id }) => {
       // In-flight reads would otherwise land after this and put the card back.
       await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
 
@@ -149,9 +152,12 @@ export const useDeleteTaskMutation = () => {
       for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
       toastApiError(error, 'Failed to delete task');
     },
-    onSuccess: (_data, id) => {
-      toast.success('Task deleted', {
-        action: { label: 'Undo', onClick: () => restoreTask.mutate(id) },
+    onSuccess: (_data, { id, title }) => {
+      toastUndoable({
+        icon: 'trash',
+        title: 'Task deleted',
+        description: title,
+        onUndo: () => restoreTask.mutate(id),
       });
     },
     // Only once the delete has settled: invalidating in onMutate would refetch
