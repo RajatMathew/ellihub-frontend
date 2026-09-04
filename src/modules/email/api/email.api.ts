@@ -492,9 +492,14 @@ export const emailApi = {
     };
   },
 
-  async syncAccount(accountId: string, daysWithin = 1): Promise<EmailSyncResult> {
+  // daysWithin only matters for an account's very first sync (it seeds
+  // Aurinko's delta tracker; every later call ignores it entirely and just
+  // walks that tracker forward — see DEFAULT_SYNC_DAYS in elli-core's
+  // service.ts). Leave it unset by default so the backend's own default
+  // window applies instead of silently overriding it with a stale value here.
+  async syncAccount(accountId: string, daysWithin?: number): Promise<EmailSyncResult> {
     const res = await api.post(`${BASE}/accounts/${accountId}/sync`, undefined, {
-      params: { daysWithin },
+      params: daysWithin ? { daysWithin } : undefined,
     });
     return emailSyncResultSchema.parse(unwrapData(res.data));
   },
