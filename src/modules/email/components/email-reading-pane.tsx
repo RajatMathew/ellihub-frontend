@@ -380,9 +380,6 @@ export function EmailReadingPane({
         <div className="mx-auto max-w-4xl">
           <header className="mb-5 border-b border-border pb-5">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{email.senderName}</span>
-              <span className="truncate">&lt;{email.senderEmail}&gt;</span>
-              <span aria-hidden="true">·</span>
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
               </span>
@@ -399,13 +396,10 @@ export function EmailReadingPane({
               )}
             </div>
             <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <h1 className="min-w-0 text-2xl font-semibold leading-tight tracking-tight text-foreground">
+              <h1 className="min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
                 {email.subject}
               </h1>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className="text-sm text-muted-foreground">to {mailboxAddress}</p>
-              <span className="ms-auto flex shrink-0 items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5">
                 <EmailAssigneePicker
                   accountId={accountId}
                   assignee={referenceMarkerState.assignedTo ?? null}
