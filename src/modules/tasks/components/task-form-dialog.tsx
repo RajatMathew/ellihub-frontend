@@ -389,7 +389,13 @@ function TaskFormDialogContent({
 
           <Separator className="mt-7" />
 
-          <DialogFooter className="items-center">
+          {/* `DialogFooter` stacks `flex-col-reverse` below `sm`, and its only gap is
+              `sm:space-x-2.5` — horizontal, so stacked buttons would touch. It also
+              centres on the cross axis, which in a column means three
+              content-width buttons at three different widths. Both overrides are
+              therefore mobile-only: a real gap, and `items-center` deferred to `sm`
+              so the column falls back to `stretch` and the buttons share one width. */}
+          <DialogFooter className="gap-2 sm:items-center sm:gap-0">
             {/* The only way to delete a task, by product decision — the board's
                 cards deliberately carry no delete, so removing one is always a
                 deliberate trip through the task you are removing.
@@ -409,7 +415,7 @@ function TaskFormDialogContent({
                 variant="ghost"
                 size="lg"
                 onClick={() => onDelete(task)}
-                className="mr-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:w-auto"
               >
                 <Trash2 className="size-4" aria-hidden />
                 Delete
