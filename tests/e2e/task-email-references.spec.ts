@@ -341,6 +341,14 @@ test('a card shows three sources and hides the rest behind a count', async ({ pa
   // `exact` matters: the dnd-kit wrapper around the card is itself role=button,
   // and its accessible name is the whole card's text, so a substring match finds
   // it too.
+  // Each source is a way back into the mail, not a note about it.
+  const firstSource = page.getByRole('link', { name: 'Reference thread 1' });
+  await expect(firstSource).toBeVisible();
+  await expect(firstSource).toHaveAttribute(
+    'href',
+    `/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-1`
+  );
+
   const more = page.getByRole('button', { name: '+2', exact: true });
   await expect(more).toBeVisible();
   await page.screenshot({
@@ -356,4 +364,15 @@ test('a card shows three sources and hides the rest behind a count', async ({ pa
     path: 'output/visual/task-card-email-sources-expanded.png',
     animations: 'disabled',
   });
+});
+
+test('clicking a source opens that email', async ({ page }) => {
+  await setupMockApi(page);
+  await page.goto('/app/tasks');
+
+  const source = page.getByRole('link', { name: 'Reference thread 2' });
+  await expect(source).toBeVisible({ timeout: 30_000 });
+  await source.click();
+
+  await expect(page).toHaveURL(new RegExp(`/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-2$`));
 });

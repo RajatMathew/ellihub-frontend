@@ -225,7 +225,7 @@ export function TaskEmailReferences({
             </Command>
 
             <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
-              Searches every folder except Junk.
+              Searches every folder except Junk and Deleted.
             </p>
           </PopoverContent>
         </Popover>
