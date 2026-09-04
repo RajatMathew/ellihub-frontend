@@ -168,9 +168,20 @@ export default function ProjectContractOverview() {
   );
 
   /* ---- Event Handlers ---- */
-  const handleDeleteProject = async () => {
-    await deleteMutation.mutateAsync(projectId);
-    navigate('/app/projects');
+  const handleDeleteProject = () => {
+    // Deleting a project can now be refused: the API returns an error naming
+    // the RFQs, purchase orders, sub change orders, invoices or prime change
+    // orders still held by it, rather than soft-deleting the project and
+    // leaving those records behind.
+    //
+    // So this cannot use `mutateAsync` and await. `ConfirmDialog` types
+    // `onConfirm` as `() => void` and calls it bare, so a rejected promise had
+    // nowhere to go and surfaced as an unhandled rejection (and a Sentry
+    // event). `mutate` keeps the failure inside the mutation, where `onError`
+    // already toasts the server's message, and only navigates on success.
+    deleteMutation.mutate(projectId, {
+      onSuccess: () => navigate('/app/projects'),
+    });
   };
   const handlePinContractDocuments = (fileIds: string[]) => {
     pinPrimeContractsMutation.mutate(
