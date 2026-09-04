@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
 
-import type { EmailAccount } from '@/modules/email/api/email.api';
+import {
+  emailListItemSchema,
+  type ConnectedEmailListItem,
+  type EmailAccount,
+  type EmailMessagePage,
+} from '@/modules/email/api/email.api';
 import { showNewMailToast } from '@/modules/email/components/email-new-mail-toast';
 import { emailKeys } from '@/modules/email/hooks/email.hooks';
 import { buildMailPath } from '@/modules/email/lib/email-paths';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
 const RECONNECT_BASE_MS = 1000;
@@ -57,9 +62,21 @@ export function useEmailRealtime(enabled: boolean) {
             preview: string | null;
             conversationId: string;
           };
+          newMailItem?: unknown;
         };
         if (parsed?.type !== 'email.synced' || !parsed.accountId) return;
         const eventAccountId = parsed.accountId;
+
+        // Insert the new message into any already-loaded inbox view right away,
+        // instead of only invalidating and waiting on a full refetch round trip
+        // before it appears. The background invalidation below still runs to
+        // reconcile anything this optimistic insert can't cover (other folders,
+        // filtered/search views, unread counts, etc).
+        const parsedItem = emailListItemSchema.safeParse(parsed.newMailItem);
+        if (parsedItem.success) {
+          insertRealtimeMessage(queryClient, eventAccountId, parsedItem.data);
+        }
+
         void queryClient.invalidateQueries({
           queryKey: emailKeys.messagesRoot(eventAccountId),
         });
@@ -104,4 +121,48 @@ export function useEmailRealtime(enabled: boolean) {
       socket?.close();
     };
   }, [enabled, navigate, queryClient]);
+}
+
+/**
+ * Splices a freshly-synced message straight into the plain, unfiltered Inbox
+ * view's cache — the common case a user is actually looking at when new mail
+ * lands. Search/project/classification-scoped views and other folders are
+ * left to the invalidate-triggered refetch, since we can't cheaply tell
+ * whether this message belongs in them.
+ */
+function insertRealtimeMessage(
+  queryClient: QueryClient,
+  accountId: string,
+  item: ConnectedEmailListItem
+) {
+  const matches = queryClient.getQueriesData<InfiniteData<EmailMessagePage>>({
+    queryKey: emailKeys.messagesRoot(accountId),
+  });
+
+  for (const [queryKey, data] of matches) {
+    if (!data || data.pages.length === 0) continue;
+
+    const key = queryKey as readonly unknown[];
+    const [folder, , search, projectId, classification] = key.slice(3);
+    if (folder !== 'inbox' || search || projectId || classification) continue;
+
+    const alreadyPresent = data.pages.some((page) =>
+      page.records.some(
+        (record) => record.id === item.id || record.conversationKey === item.conversationKey
+      )
+    );
+    if (alreadyPresent) continue;
+
+    const [firstPage, ...rest] = data.pages;
+    const updatedFirstPage: EmailMessagePage = {
+      ...firstPage,
+      records: [item, ...firstPage.records],
+      totalCount:
+        typeof firstPage.totalCount === 'number' ? firstPage.totalCount + 1 : firstPage.totalCount,
+    };
+    queryClient.setQueryData<InfiniteData<EmailMessagePage>>(queryKey, {
+      ...data,
+      pages: [updatedFirstPage, ...rest],
+    });
+  }
 }
