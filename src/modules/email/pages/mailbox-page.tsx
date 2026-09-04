@@ -1299,6 +1299,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoadingMore={messagesQuery.isFetchingNextPage}
                   loadMoreError={messagesQuery.isFetchNextPageError}
                   onLoadMore={messagesQuery.fetchNextPage}
+                  // "Show messages" filters (unread/flagged/attachments/etc.) are applied
+                  // client-side against already-fetched pages, so a filter can legitimately
+                  // match nothing in the loaded window while later pages still have matches.
+                  // Keep auto-paging until a match appears or pages are exhausted.
+                  autoFetchWhileEmpty={mailFilter !== 'all' || mailStatusFilter !== 'all'}
                   groupByMonth={
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
                   }

@@ -24,6 +24,17 @@ interface EmailListPaneProps {
   loadMoreError?: boolean;
   groupByMonth?: boolean;
   search?: string;
+  /**
+   * When true, automatically fetch further pages while the current page(s)
+   * produced zero visible emails but more are available server-side. This
+   * covers client-side "Show messages" filters (e.g. "with attachments"):
+   * a filter can legitimately have zero matches in the pages loaded so far
+   * even though later pages contain matches, which otherwise reads as an
+   * empty folder and silently stalls pagination (the load-more sentinel
+   * below only renders once there's something to scroll past). Applies to
+   * personal and shared mailboxes alike — both drive this same list pane.
+   */
+  autoFetchWhileEmpty?: boolean;
   onSelectEmail?: (emailId: string) => void;
   onLoadMore?: () => void;
   onRetry?: () => void;
@@ -68,6 +79,7 @@ export function EmailListPane({
   loadMoreError = false,
   groupByMonth = false,
   search: controlledSearch,
+  autoFetchWhileEmpty = false,
   onSelectEmail,
   onLoadMore,
   onRetry,
@@ -135,6 +147,28 @@ export function EmailListPane({
 
     return () => observer.disconnect();
   }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore, scrollContainer]);
+
+  // A filter can have zero matches among the pages loaded so far while more
+  // pages remain server-side. The load-more sentinel above only mounts once
+  // the list has at least one row, so it can never fire from a filtered-empty
+  // state — keep paging automatically instead of stalling.
+  useEffect(() => {
+    if (!autoFetchWhileEmpty) return;
+    if (isLoading || isError) return;
+    if (mailboxEmails.length > 0) return;
+    if (!hasNextPage || isLoadingMore || loadMoreError || !onLoadMore) return;
+
+    onLoadMore();
+  }, [
+    autoFetchWhileEmpty,
+    hasNextPage,
+    isError,
+    isLoading,
+    isLoadingMore,
+    loadMoreError,
+    mailboxEmails.length,
+    onLoadMore,
+  ]);
 
   const checkedCount = checkedIds?.size ?? 0;
   const isBulkActive = checkedCount > 0;
@@ -221,13 +255,27 @@ export function EmailListPane({
 
           {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
 
-          {!isLoading && !isError && filteredEmails.length === 0 && (
-            <EmailListEmptyState
-              hasSearch={Boolean(search.trim())}
-              folderLabel={folderLabel}
-              onClearSearch={() => setSearch('')}
-            />
-          )}
+          {!isLoading &&
+            !isError &&
+            filteredEmails.length === 0 &&
+            (autoFetchWhileEmpty && hasNextPage ? (
+              <div
+                className="flex min-h-16 items-center justify-center px-4 py-3"
+                role="status"
+                aria-live="polite"
+              >
+                <div
+                  className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-none"
+                  aria-label="Searching more emails"
+                />
+              </div>
+            ) : (
+              <EmailListEmptyState
+                hasSearch={Boolean(search.trim())}
+                folderLabel={folderLabel}
+                onClearSearch={() => setSearch('')}
+              />
+            ))}
 
           {!isLoading && !isError && filteredEmails.length > 0 && scrollContainer && (
             <VirtualizedEmailList
