@@ -42,6 +42,16 @@
   --success-accent: var(--color-emerald-400);
   --success-soft-foreground: var(--success-accent);
   /* The middle step of the red -> orange -> gold priority ramp. */
+  /* The task card's own scale - a priority meter reading as three steps of one
+     ramp, and the two courts. Taken from the #799 design, which is drawn on a
+     warm paper ground; deliberately muted rather than the alarm-red and amber
+     of `destructive` and `warning`, because a dozen sit on screen at once and a
+     card is a resting state, not a warning. */
+  --priority-high: #e08b80;
+  --priority-medium: #d9a441;
+  --priority-low: #a8a86a;
+  --court-ours: #8ba6d9;
+  --court-theirs: #e08b80;
   --caution: var(--color-orange-400);
   --warning: var(--color-amber-400);
   --warning-foreground: var(--color-amber-950);

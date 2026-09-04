@@ -82,6 +82,11 @@
   --color-success-accent: var(--success-accent);
   --color-success-soft-foreground: var(--success-soft-foreground);
   --color-caution: var(--caution);
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+  --color-court-ours: var(--court-ours);
+  --color-court-theirs: var(--court-theirs);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);

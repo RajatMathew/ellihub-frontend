@@ -154,6 +154,11 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
           }
           onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
+          // Priority and court are ordinary fields, so changing them from the
+          // card is the same PUT the dialog sends - no new endpoint, and the
+          // board regroups on its own because neither decides a column.
+          onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
+          onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
         />
       )}
 

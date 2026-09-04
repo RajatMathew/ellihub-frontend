@@ -6,7 +6,7 @@ import { useScrollEdges } from '@/modules/tasks/hooks/use-scroll-edges';
 import {
   canMoveTask,
   columnForTask,
-  TASK_COLUMN_LABELS,
+  columnHeading,
   TASK_COLUMN_TONES,
   type TaskColumnId,
 } from '@/modules/tasks/lib/task-board';
@@ -77,7 +77,7 @@ export function TaskBoardColumn({
       <div className="-mx-3 mb-3 flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 pb-3 shadow-sm">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <span className={cn('size-2 rounded-full', TASK_COLUMN_TONES[columnId])} aria-hidden />
-          {TASK_COLUMN_LABELS[columnId]}
+          {columnHeading(columnId, now)}
         </span>
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>

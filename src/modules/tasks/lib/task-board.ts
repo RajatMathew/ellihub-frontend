@@ -1,5 +1,5 @@
 import type { Task } from '@/modules/tasks/schemas/task.schema';
-import { endOfWeek, isBefore, isSameDay, startOfDay } from 'date-fns';
+import { endOfWeek, format, isBefore, isSameDay, startOfDay } from 'date-fns';
 
 export const TASK_COLUMNS = [
   // TEMPORARILY DISABLED — the due date is required now, so nothing should be
@@ -41,6 +41,26 @@ export const TASK_COLUMN_TONES: Record<TaskColumnId, string> = {
  * Only COMPLETED is a stored status. Every other column is *derived* from the
  * due date, which is what makes some drags impossible — see canMoveTask.
  */
+/**
+ * The heading a column shows.
+ *
+ * "Due Today" and "Tomorrow" name a day without saying which, so the design puts
+ * the date beside them - it is the one place the board states what "today" is,
+ * and a board left open overnight would otherwise lie silently. The dated
+ * columns further out do not get one: Pending spans a range, and Overdue and
+ * Completed are about the past.
+ */
+export function columnHeading(column: TaskColumnId, now: Date = new Date()): string {
+  const label = TASK_COLUMN_LABELS[column];
+
+  if (column === 'DUE_TODAY') return `${label}, ${format(now, 'MMM d')}`;
+  if (column === 'TOMORROW') {
+    return `${label}, ${format(new Date(now.getTime() + 86_400_000), 'MMM d')}`;
+  }
+
+  return label;
+}
+
 export function columnForTask(task: Task, now: Date = new Date()): TaskColumnId {
   if (task.status === 'COMPLETED') return 'COMPLETED';
   // if (!task.dueAt) return 'NO_DATE';
