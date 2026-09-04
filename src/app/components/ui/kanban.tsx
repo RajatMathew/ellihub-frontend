@@ -9,7 +9,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -103,6 +104,17 @@ export interface KanbanRootProps<T> {
   children: React.ReactNode;
   className?: string;
   onMove?: (event: KanbanMoveEvent) => void;
+  /**
+   * Asked before the board reflows under a hovered card. Return false and the
+   * columns stay put, so an illegal target never opens a gap — the absence of
+   * the gap is itself the feedback. Omit it and every hover reflows.
+   */
+  canMove?: (from: string, to: string) => boolean;
+  /**
+   * Screen-reader announcements for the drag lifecycle. Without these a drag is
+   * silent to assistive tech, which the keyboard sensor otherwise supports.
+   */
+  accessibility?: React.ComponentProps<typeof DndContext>['accessibility'];
 }
 
 function Kanban<T>({
@@ -112,16 +124,24 @@ function Kanban<T>({
   children,
   className,
   onMove,
+  canMove,
+  accessibility,
 }: KanbanRootProps<T>) {
   const columns = value;
   const setColumns = onValueChange;
   const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null);
 
+  // Mouse and touch are separated rather than handled by one PointerSensor,
+  // because the two gestures mean different things. A 10px mouse drag is a drag.
+  // A 10px finger drag is a scroll — with a pointer sensor the board could not be
+  // scrolled or swiped on a phone at all without picking up a card. Touch instead
+  // waits for a short press, which is how every board app behaves on a phone.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -149,10 +169,6 @@ function Kanban<T>({
 
   const handleDragOver = React.useCallback(
     (event: DragOverEvent) => {
-      if (onMove) {
-        return;
-      }
-
       const { active, over } = event;
       if (!over) return;
 
@@ -160,6 +176,12 @@ function Kanban<T>({
 
       const activeContainer = findContainer(active.id);
       const overContainer = findContainer(over.id);
+
+      // Cards slide apart to show where this one lands — but only if it may
+      // land there.
+      if (activeContainer && overContainer && canMove && !canMove(activeContainer, overContainer)) {
+        return;
+      }
 
       // Only handle moving items between different columns
       if (!activeContainer || !overContainer || activeContainer === overContainer) {
@@ -187,7 +209,7 @@ function Kanban<T>({
         [overContainer]: newOverItems,
       });
     },
-    [findContainer, getItemValue, isColumn, setColumns, columns, onMove]
+    [findContainer, getItemValue, isColumn, setColumns, columns, canMove]
   );
 
   const handleDragEnd = React.useCallback(
@@ -279,6 +301,7 @@ function Kanban<T>({
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        accessibility={accessibility}
       >
         <div data-slot="kanban" data-dragging={activeId !== null} className={cn(className)}>
           {children}

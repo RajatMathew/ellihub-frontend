@@ -27,7 +27,6 @@ import {
   EmailWorkspaceHeader,
   type EmailWorkspaceView,
 } from '@/modules/email/components/email-workspace-header';
-import { EmailWorkspacePlaceholder } from '@/modules/email/components/email-workspace-placeholder';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   emailKeys,
@@ -70,6 +69,7 @@ import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors'
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
+import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
 import { useQueryClient } from '@tanstack/react-query';
 import { PanelLeftOpen } from 'lucide-react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -1158,7 +1158,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
               provider={connectedAccount?.provider ?? null}
             />
           ) : (
-            <EmailWorkspacePlaceholder view={workspaceView} />
+            <TasksWorkspaceView inWorkspace />
           )}
         </div>
         {nicknameDialog}
@@ -1563,7 +1563,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
           provider={connectedAccount?.provider ?? null}
         />
       ) : (
-        <EmailWorkspacePlaceholder view={workspaceView} />
+        <TasksWorkspaceView inWorkspace />
       )}
 
       {workspaceView === 'mail' && !showEmailList && (

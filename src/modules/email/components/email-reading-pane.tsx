@@ -52,6 +52,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
+import { AddTaskPopover } from '@/modules/tasks/components/add-task-popover';
 import { ArrowLeft, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -418,6 +419,18 @@ export function EmailReadingPane({
                   isSaving={saveClassificationMutation.isPending}
                   onChange={saveThreadState}
                 />
+                {accountId && (email.providerId ?? email.id) ? (
+                  <AddTaskPopover
+                    email={{
+                      accountId,
+                      providerId: email.providerId ?? email.id,
+                      conversationKey: email.conversationKey,
+                      threadId: email.threadId,
+                      subject: email.subject,
+                      fromEmail: email.senderEmail,
+                    }}
+                  />
+                ) : null}
               </span>
             </div>
             {accountId && (
