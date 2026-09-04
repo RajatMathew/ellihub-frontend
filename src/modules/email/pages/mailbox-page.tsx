@@ -323,7 +323,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     () => groupEmailsByMonth(folderEmails).flatMap((group) => group.emails),
     [folderEmails]
   );
-  const defaultEmail = folderEmails.find((email) => email.selected) ?? orderedEmails[0] ?? null;
+  // Opening a folder with no conversation id in the URL should land on the
+  // list, not silently auto-open whatever happens to sort first — only an
+  // explicit selection (route deep link, or a row the caller marked
+  // `selected`) should populate the reading pane.
+  const defaultEmail = folderEmails.find((email) => email.selected) ?? null;
   // The URL id is a conversation id, so a deep link matches its list row directly.
   const routeSelectedEmail = routeConversationId
     ? (folderEmails.find((email) => getEmailConversationId(email) === routeConversationId) ?? null)
