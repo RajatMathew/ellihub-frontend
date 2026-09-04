@@ -1,3 +1,4 @@
+import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
 import { TASK_COURT_TONES } from '@/modules/tasks/constants/tasks.constants';
 import type { TaskCourt } from '@/modules/tasks/schemas/task.schema';
@@ -39,16 +40,18 @@ export function TaskCourtToggle({
   const next: TaskCourt = court === 'OURS' ? 'THEIRS' : 'OURS';
 
   return (
-    <button
+    <Button
       type="button"
+      variant="inverse"
+      size="sm"
       disabled={disabled}
       onClick={() => onChange(next)}
       // See TaskPriorityMeter: the whole card is a drag handle.
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={`${tone.label}. Hand over to ${TASK_COURT_TONES[next].label.toLowerCase()}`}
-      className="-m-1 flex w-fit items-center gap-2 rounded-md p-1 transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-60"
+      className="-mx-1 h-auto w-fit gap-2 px-1 py-1 hover:bg-surface-hover"
     >
       {body}
-    </button>
+    </Button>
   );
 }

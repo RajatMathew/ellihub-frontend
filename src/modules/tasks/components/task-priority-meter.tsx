@@ -1,3 +1,4 @@
+import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
 import { TASK_PRIORITY_TONES } from '@/modules/tasks/constants/tasks.constants';
 import type { TaskPriority } from '@/modules/tasks/schemas/task.schema';
@@ -57,17 +58,19 @@ export function TaskPriorityMeter({
   const next: TaskPriority = priority === 'P1' ? 'P2' : priority === 'P2' ? 'P3' : 'P1';
 
   return (
-    <button
+    <Button
       type="button"
+      variant="inverse"
+      size="sm"
       disabled={disabled}
       onClick={() => onChange(next)}
       // The card is a drag handle, so dnd-kit's sensor claims pointerdown before
       // the click ever lands. Keeping the event stops the drag starting here.
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={`Priority ${priority}. Change to ${next}`}
-      className="-m-1 flex w-fit items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-60"
+      className="-mx-1 h-auto w-fit gap-1.5 px-1 py-1 hover:bg-surface-hover"
     >
       {meter}
-    </button>
+    </Button>
   );
 }

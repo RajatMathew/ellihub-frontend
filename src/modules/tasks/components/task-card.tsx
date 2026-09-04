@@ -1,4 +1,6 @@
 import { Badge } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/lib/utils';
 import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
 import { TaskCourtToggle } from '@/modules/tasks/components/task-court-toggle';
@@ -6,7 +8,7 @@ import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-mete
 import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
 import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 import { differenceInCalendarDays, format } from 'date-fns';
-import { Check, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 function prefersReducedMotion() {
   return (
@@ -80,22 +82,24 @@ export function TaskCard({
       {/* Completion and ownership face each other across the top: the circle is
           the one control that moves the card out of the board entirely. */}
       <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
+        {/* A real checkbox rather than a button carrying a label: completion is
+            a two-state fact about the task, so Radix's role and aria-checked say
+            so and space toggles it. Only the shape is ours - the design draws a
+            dashed ring where the primitive draws a square. */}
+        <Checkbox
+          checked={isDone}
           disabled={isBusy}
-          onClick={() => onComplete(task)}
+          onCheckedChange={() => onComplete(task)}
           // See TaskPriorityMeter: the whole card is a drag handle.
           onPointerDown={(event) => event.stopPropagation()}
           aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
           className={cn(
-            'flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors focus-visible:outline-hidden focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60',
+            'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
             isDone
-              ? 'border-success bg-success text-success-foreground'
-              : 'border-dashed border-muted-foreground/40 text-transparent hover:border-success hover:text-success/50'
+              ? 'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground'
+              : 'border-dashed border-muted-foreground/40 hover:border-success'
           )}
-        >
-          <Check className="size-3.5" aria-hidden />
-        </button>
+        />
 
         <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
       </div>
@@ -106,6 +110,9 @@ export function TaskCard({
         onChange={onPriorityChange ? (next) => onPriorityChange(next) : undefined}
       />
 
+      {/* Raw rather than `Button`: the title wraps to three lines at this column
+          width, and Button is a fixed-height, nowrap, centred control - undoing
+          all of that leaves nothing of the primitive behind. */}
       <button
         type="button"
         onClick={() => onOpen(task)}
@@ -153,18 +160,20 @@ export function TaskCard({
           </span>
 
           {!isDone ? (
-            <button
+            <Button
               type="button"
+              variant="inverse"
+              size="sm"
               disabled={isBusy}
               onClick={() => onShiftDueDate(task, 1)}
               onPointerDown={(event) => event.stopPropagation()}
               // Hidden until the card is hovered or something inside it is
-              // focused, as the design has it — but never hidden from a
+              // focused, as the design has it - but never hidden from a
               // keyboard, and always shown on touch, where there is no hover.
-              className="rounded-md px-1 text-sm font-semibold text-info opacity-0 transition-opacity hover:underline focus-visible:opacity-100 focus-visible:outline-hidden group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60 max-sm:opacity-100"
+              className="h-auto px-1 py-0 text-sm font-semibold text-info opacity-0 transition-opacity hover:underline focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
             >
               +1 day
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
