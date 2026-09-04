@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/lib/utils';
 import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
+import { TaskCardEmailSources } from '@/modules/tasks/components/task-card-email-sources';
 import { TaskCourtToggle } from '@/modules/tasks/components/task-court-toggle';
 import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
 import {
@@ -234,6 +235,8 @@ export function TaskCard({
           ) : null}
         </div>
       ) : null}
+
+      <TaskCardEmailSources references={task.emailReferences} />
     </div>
   );
 }
