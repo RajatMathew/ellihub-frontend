@@ -67,8 +67,13 @@ export function EmailCalendarMonthView({
         ))}
       </div>
 
-      {/* Grid */}
-      <div className="grid min-h-0 flex-1 grid-rows-[repeat(6,minmax(0,1fr))]">
+      {/* Grid. Each row needs room for the day number plus MAX_EVENTS_PER_CELL
+          chips plus the "+N more" line — minmax(0, ...) let a row shrink below
+          that on short viewports, so a chip near the cap got squeezed and
+          clipped mid-line instead of cleanly folding into "+N more". Floor
+          each row at that real content height and let the whole grid scroll
+          if six of them don't fit, rather than crushing every cell. */}
+      <div className="grid min-h-0 flex-1 grid-rows-[repeat(6,minmax(8rem,1fr))] overflow-y-auto">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-7">
             {row.map((day) => {
@@ -104,7 +109,7 @@ export function EmailCalendarMonthView({
                     }
                   }}
                   className={cn(
-                    'group relative flex min-h-24 min-w-0 cursor-pointer flex-col gap-1 border-b border-r border-border bg-background p-1.5 text-left transition-colors',
+                    'group relative flex min-h-32 min-w-0 cursor-pointer flex-col gap-1 border-b border-r border-border bg-background p-1.5 text-left transition-colors',
                     'hover:bg-accent/40 focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                     !inMonth && 'bg-muted/40 text-muted-foreground',
                     isWeekend(day) && inMonth && 'bg-muted/20'
@@ -135,7 +140,7 @@ export function EmailCalendarMonthView({
 
                   <ul className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
                     {visible.map((event) => (
-                      <li key={event.id}>
+                      <li key={event.id} className="shrink-0">
                         <MonthEventChip
                           event={event}
                           onEdit={onEditEvent}
@@ -144,7 +149,7 @@ export function EmailCalendarMonthView({
                       </li>
                     ))}
                     {overflow > 0 && (
-                      <li className="mt-auto text-[10px] font-medium text-muted-foreground">
+                      <li className="mt-auto shrink-0 text-[10px] font-medium text-muted-foreground">
                         + {overflow} more
                       </li>
                     )}

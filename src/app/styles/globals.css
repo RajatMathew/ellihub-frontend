@@ -454,7 +454,7 @@ body,
 }
 
 @utility scroll-fade-* {
-  --scroll-fade-size: --value([length], [percentage], --spacing(--value(integer)));
+  --scroll-fade-size: --value([length], [percentage], --spacing-*);
 }
 
 /**
