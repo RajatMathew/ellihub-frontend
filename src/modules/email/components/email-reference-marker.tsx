@@ -927,7 +927,7 @@ function AllReferencePicker({
               type,
               projectId,
               search: debouncedSearch || undefined,
-              size: 8,
+              size: 20,
             });
             return options.map((option) => ({
               ...option,
@@ -942,7 +942,17 @@ function AllReferencePicker({
     staleTime: 60 * 1000,
     enabled: Boolean(accountId) && projectIds.length > 0,
   });
-  const options = optionsQuery.data ?? [];
+  const options = useMemo(
+    () =>
+      withSelectedOptionsPinned(
+        optionsQuery.data ?? [],
+        selectedReferences,
+        SEARCHABLE_REFERENCE_TYPES,
+        debouncedSearch,
+        getReferenceTypeLabel
+      ),
+    [optionsQuery.data, selectedReferences, debouncedSearch]
+  );
 
   return (
     <Command shouldFilter={false} className="min-h-0 flex-1">
@@ -953,14 +963,14 @@ function AllReferencePicker({
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
             Loading
           </div>
-        ) : (
+        ) : options.length === 0 ? (
           <CommandEmpty>No matches found.</CommandEmpty>
-        )}
+        ) : null}
         {options.map((option) => {
           const selected = isOptionSelected(option, selectedReferences);
           return (
             <CommandItem
-              key={`${option.entityType}:${option.entityId}`}
+              key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.groupLabel} ${option.label} ${option.meta ?? ''}`}
               className={cn(
                 'min-h-10 cursor-pointer',
@@ -1038,7 +1048,17 @@ function SearchReferencePicker({
     staleTime: 60 * 1000,
     enabled: Boolean(accountId) && (type === 'project' || projectIds.length > 0),
   });
-  const options = optionsQuery.data ?? [];
+  const options = useMemo(
+    () =>
+      withSelectedOptionsPinned(
+        optionsQuery.data ?? [],
+        selectedReferences,
+        [type],
+        debouncedSearch,
+        getReferenceTypeLabel
+      ),
+    [optionsQuery.data, selectedReferences, type, debouncedSearch]
+  );
   const createLabel = search.replace(/\s+/g, ' ').trim();
   const hasExactMatch = options.some(
     (option) => option.label.toLowerCase() === createLabel.toLowerCase()
@@ -1054,14 +1074,14 @@ function SearchReferencePicker({
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
             Loading
           </div>
-        ) : (
+        ) : options.length === 0 ? (
           <CommandEmpty>No matches found.</CommandEmpty>
-        )}
+        ) : null}
         {options.map((option) => {
           const selected = isOptionSelected(option, selectedReferences);
           return (
             <CommandItem
-              key={`${option.entityType}:${option.entityId}`}
+              key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.label} ${option.meta ?? ''}`}
               className={cn(
                 'min-h-10 cursor-pointer',
@@ -1246,15 +1266,63 @@ function dedupeReferenceOptions<T extends EmailReferenceOption>(options: T[]): T
   });
 }
 
-function isOptionSelected(option: EmailReferenceOption, selectedReferences: EmailReference[]) {
-  return selectedReferences.some((reference) => {
-    if (reference.type !== option.type) return false;
-    if (reference.entityId || option.entityId) {
-      return reference.entityId === option.entityId && reference.entityType === option.entityType;
-    }
+function referenceToOption(
+  reference: EmailReference,
+  groupLabel: string
+): EmailReferenceOption & { groupLabel: string } {
+  return {
+    type: reference.type,
+    entityType: reference.entityType ?? null,
+    entityId: reference.entityId ?? null,
+    label: reference.label,
+    meta: null,
+    groupLabel,
+  };
+}
 
-    return reference.label.toLowerCase() === option.label.toLowerCase();
+/**
+ * A page-sized fetch can omit an already-selected item (it may sort outside the
+ * first page). Selected references are always shown regardless, pinned first,
+ * so a checked item never silently disappears from its own picker.
+ */
+function withSelectedOptionsPinned<T extends EmailReferenceOption>(
+  fetchedOptions: T[],
+  selectedReferences: EmailReference[],
+  eligibleTypes: readonly EmailReferenceType[],
+  search: string,
+  getGroupLabel: (type: EmailReferenceType) => string
+): T[] {
+  const normalizedSearch = search.trim().toLowerCase();
+  const missingSelected = selectedReferences
+    .filter((reference) => eligibleTypes.includes(reference.type))
+    .filter((reference) => !fetchedOptions.some((option) => referencesMatch(reference, option)))
+    .filter(
+      (reference) => !normalizedSearch || reference.label.toLowerCase().includes(normalizedSearch)
+    )
+    .map((reference) => referenceToOption(reference, getGroupLabel(reference.type)));
+
+  const merged = dedupeReferenceOptions([...missingSelected, ...fetchedOptions] as T[]);
+  return merged.sort((a, b) => {
+    const aSelected = isOptionSelected(a, selectedReferences);
+    const bSelected = isOptionSelected(b, selectedReferences);
+    if (aSelected === bSelected) return 0;
+    return aSelected ? -1 : 1;
   });
+}
+
+type ReferenceLike = Pick<EmailReference, 'type' | 'entityType' | 'entityId' | 'label'>;
+
+function referencesMatch(a: ReferenceLike, b: ReferenceLike) {
+  if (a.type !== b.type) return false;
+  if (a.entityId || b.entityId) {
+    return a.entityId === b.entityId && (a.entityType ?? null) === (b.entityType ?? null);
+  }
+
+  return a.label.toLowerCase() === b.label.toLowerCase();
+}
+
+function isOptionSelected(option: EmailReferenceOption, selectedReferences: EmailReference[]) {
+  return selectedReferences.some((reference) => referencesMatch(reference, option));
 }
 
 function getReferenceIdentity(
