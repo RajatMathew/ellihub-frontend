@@ -67,7 +67,14 @@ export const tasksApi = {
     return taskSchema.parse(res.data?.data ?? res.data);
   },
 
+  // Soft on the server: the row keeps its links and its email provenance, and
+  // `restore` below is what brings it back.
   async delete(id: string): Promise<void> {
     await api.delete(`${BASE}/${id}`);
+  },
+
+  async restore(id: string): Promise<Task> {
+    const res = await api.patch(`${BASE}/restore`, { id });
+    return taskSchema.parse(res.data?.data ?? res.data);
   },
 };

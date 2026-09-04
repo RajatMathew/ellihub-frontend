@@ -1,7 +1,7 @@
 import { toastApiError } from '@/app/lib/toast-api-error';
 import { tasksApi } from '@/modules/tasks/api/tasks.api';
 import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
-import { shiftTaskDueDateInList } from '@/modules/tasks/lib/task-cache';
+import { removeTaskFromList, shiftTaskDueDateInList } from '@/modules/tasks/lib/task-cache';
 import type {
   CreateTaskInput,
   ListTasksParams,
@@ -98,14 +98,66 @@ export const useShiftTaskDueDateMutation = () => {
   });
 };
 
-export const useDeleteTaskMutation = () => {
+// Undo, for the toast the delete raises. The server keeps the row, so this only
+// has to clear the flag — there is nothing to rebuild.
+export const useRestoreTaskMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => tasksApi.delete(id),
+    mutationFn: (id: string) => tasksApi.restore(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: taskKeys.all });
-      toast.success('Task deleted');
+      toast.success('Task restored');
     },
-    onError: (error) => toastApiError(error, 'Failed to delete task'),
+    onError: (error) => toastApiError(error, 'Failed to restore the task'),
+  });
+};
+
+/**
+ * Delete a task, with a way back.
+ *
+ * The delete is soft server-side: `deletedAt` is stamped and the row keeps its
+ * links and the email it came from. So the card leaving the board is the only
+ * thing that actually happens on the click, and it happens optimistically —
+ * an Undo offered next to a card still sitting there reads as a question rather
+ * than a reversal.
+ *
+ * There is no trash view by design (elli-ui#800): this toast is the only way
+ * back, which is why it carries the id rather than relying on anything to list
+ * deleted tasks later.
+ */
+export const useDeleteTaskMutation = () => {
+  const queryClient = useQueryClient();
+  const restoreTask = useRestoreTaskMutation();
+
+  return useMutation({
+    mutationFn: (id: string) => tasksApi.delete(id),
+    onMutate: async (id) => {
+      // In-flight reads would otherwise land after this and put the card back.
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
+
+      const previous = queryClient.getQueriesData<TaskPaginatedResponse>({
+        queryKey: taskKeys.lists(),
+      });
+
+      queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) =>
+        page ? removeTaskFromList(page, id) : page
+      );
+
+      return { previous };
+    },
+    onError: (error, _id, context) => {
+      for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
+      toastApiError(error, 'Failed to delete task');
+    },
+    onSuccess: (_data, id) => {
+      toast.success('Task deleted', {
+        action: { label: 'Undo', onClick: () => restoreTask.mutate(id) },
+      });
+    },
+    // Only once the delete has settled: invalidating in onMutate would refetch
+    // the task straight back onto the board.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
   });
 };
