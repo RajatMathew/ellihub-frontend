@@ -34,7 +34,7 @@ import {
   type EmailReferenceType,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   AtSign,
   CheckCircle2,
@@ -940,6 +940,10 @@ function AllReferencePicker({
       return dedupeReferenceOptions(optionGroups.flat());
     },
     staleTime: 60 * 1000,
+    // Keep showing the last successful result while a new project selection
+    // re-scopes the query, instead of dropping to a bare loading state and
+    // wiping the list on every click in the popover.
+    placeholderData: keepPreviousData,
     enabled: Boolean(accountId) && projectIds.length > 0,
   });
   const options = useMemo(
@@ -953,12 +957,15 @@ function AllReferencePicker({
       ),
     [optionsQuery.data, selectedReferences, debouncedSearch]
   );
+  // isPending (no data at all yet) rather than isLoading/isFetching — the
+  // latter would also flip true on background refetches after a selection.
+  const showLoading = optionsQuery.isPending;
 
   return (
     <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
       <CommandList className="max-h-none min-h-0 flex-1">
-        {optionsQuery.isLoading ? (
+        {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
             Loading
@@ -1031,7 +1038,10 @@ function SearchReferencePicker({
       'reference-options',
       accountId,
       type,
-      projectIds,
+      // Project options aren't scoped by the selected project(s) — keep
+      // projectIds out of this key's identity so selecting a project doesn't
+      // spuriously invalidate the already-loaded Project tab.
+      type === 'project' ? [] : projectIds,
       debouncedSearch,
     ],
     queryFn: () =>
@@ -1046,6 +1056,10 @@ function SearchReferencePicker({
         )
       ).then((optionGroups) => dedupeReferenceOptions(optionGroups.flat())),
     staleTime: 60 * 1000,
+    // Keep showing the last successful result while the query re-scopes
+    // (e.g. RFQ/PO/CO/Invoice tabs after a project selection changes),
+    // instead of dropping to a bare loading state on every click.
+    placeholderData: keepPreviousData,
     enabled: Boolean(accountId) && (type === 'project' || projectIds.length > 0),
   });
   const options = useMemo(
@@ -1059,17 +1073,20 @@ function SearchReferencePicker({
       ),
     [optionsQuery.data, selectedReferences, type, debouncedSearch]
   );
+  // isPending (no data at all yet) rather than isLoading/isFetching — the
+  // latter would also flip true on background refetches after a selection.
+  const showLoading = optionsQuery.isPending;
   const createLabel = search.replace(/\s+/g, ' ').trim();
   const hasExactMatch = options.some(
     (option) => option.label.toLowerCase() === createLabel.toLowerCase()
   );
-  const canCreateReference = createLabel.length > 0 && !hasExactMatch && !optionsQuery.isLoading;
+  const canCreateReference = createLabel.length > 0 && !hasExactMatch && !showLoading;
 
   return (
     <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
       <CommandList className="max-h-none min-h-0 flex-1">
-        {optionsQuery.isLoading ? (
+        {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
             Loading
