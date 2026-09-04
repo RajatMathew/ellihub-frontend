@@ -188,7 +188,7 @@ const emailReferenceProjectSchema = z.object({
   mailCount: z.number().int().nonnegative(),
 });
 
-const emailListItemSchema = z.object({
+export const emailListItemSchema = z.object({
   id: z.string(),
   providerId: z.string().optional(),
   threadId: z.string().nullable().optional(),
