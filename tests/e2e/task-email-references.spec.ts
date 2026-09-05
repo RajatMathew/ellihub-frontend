@@ -376,3 +376,59 @@ test('clicking a source opens that email', async ({ page }) => {
 
   await expect(page).toHaveURL(new RegExp(`/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-2$`));
 });
+
+test('Clear all stops at the one email the view requires', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  await page.goto(`/app/email/accounts/${ACCOUNT_SLUG}`);
+  await expect(page.getByText(SUBJECT).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByText(SUBJECT).first().click();
+  await page.getByRole('button', { name: 'Add task for this email' }).click();
+
+  const popover = page.getByRole('dialog');
+  await popover.getByRole('button', { name: 'Attach another email' }).click();
+
+  // Nothing to clear while the only email is the required one.
+  const clearAll = page.getByRole('button', { name: 'Clear all' });
+  await expect(clearAll).toBeDisabled();
+
+  await page.getByPlaceholder('Search subject or sender').fill('a');
+  await expect(page.getByText('Alpha submittal overdue')).toBeVisible({ timeout: 15_000 });
+  await page.getByText('Alpha submittal overdue').click();
+  await expect(popover.getByRole('button', { name: /^Remove / })).toHaveCount(2);
+
+  // Now it has something to do — and stops at one rather than emptying.
+  await expect(clearAll).toBeEnabled();
+  await clearAll.click();
+  await expect(popover.getByRole('button', { name: /^Remove / })).toHaveCount(1);
+  await expect(clearAll).toBeDisabled();
+});
+
+test('the picker stays put as results arrive', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  await page.goto(`/app/email/accounts/${ACCOUNT_SLUG}`);
+  await expect(page.getByText(SUBJECT).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByText(SUBJECT).first().click();
+  await page.getByRole('button', { name: 'Add task for this email' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Attach another email' }).click();
+
+  // Sized to its content, the panel grew when results landed and Radix moved it
+  // up the screen mid-keystroke. Same box empty or full is the fix.
+  const panel = page.getByText('Add inbox threads').locator('../..');
+  const before = await panel.boundingBox();
+
+  await page.getByPlaceholder('Search subject or sender').fill('a');
+  await expect(page.getByText('Alpha submittal overdue')).toBeVisible({ timeout: 15_000 });
+  const after = await panel.boundingBox();
+
+  // The top edge is the whole point: it used to fly up the screen mid-keystroke
+  // as Radix re-anchored a panel that had grown. A few pixels of sub-pixel
+  // rounding is not that — the regression this guards against moved it by more
+  // than a hundred.
+  expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(4);
+  // The height is allowed to breathe a few pixels — the input and the empty
+  // state are not pixel-identical to a row of results — but it must not grow by
+  // the height of a list, which is what caused the re-anchor.
+  expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(16);
+});

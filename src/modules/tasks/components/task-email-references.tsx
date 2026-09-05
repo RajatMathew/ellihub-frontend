@@ -60,6 +60,11 @@ export function TaskEmailReferences({
 
   const isLocked = requireAtLeastOne && value.length <= 1;
 
+  // Clearing stops at the floor rather than ignoring it: where one is required
+  // it keeps the first, so the control is never a way around the rule the chip's
+  // own remove button enforces. Nothing left to clear disables it.
+  const canClear = value.length > (requireAtLeastOne ? 1 : 0);
+
   const toggle = (providerId: string, build: () => TaskEmailReference) => {
     if (selectedIds.has(providerId)) {
       // Unticking the last one would leave the task with no provenance, which
@@ -142,15 +147,27 @@ export function TaskEmailReferences({
           <PopoverContent align="start" className="w-80 p-0">
             <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
               <p className="text-xs font-medium">Add inbox threads</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setOpen(false)}
-              >
-                Done
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  disabled={!canClear}
+                  onClick={() => onChange(requireAtLeastOne ? value.slice(0, 1) : [])}
+                >
+                  Clear all
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
             </div>
 
             {/* The server already decided what matches — re-filtering here would
@@ -161,7 +178,11 @@ export function TaskEmailReferences({
                 onValueChange={setTerm}
                 placeholder="Search subject or sender"
               />
-              <CommandList className="max-h-64">
+              {/* A fixed height, not a max: the panel used to grow as results
+                  arrived, and Radix repositioned it mid-typing so the whole
+                  thing jumped up the screen under the cursor. Same size empty or
+                  full means it stays where it opened. */}
+              <CommandList className="h-64">
                 {term.trim().length === 0 ? (
                   <p className="px-3 py-6 text-center text-xs text-muted-foreground">
                     Search your mail to attach another thread.
@@ -223,10 +244,6 @@ export function TaskEmailReferences({
                 )}
               </CommandList>
             </Command>
-
-            <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
-              Searches every folder except Junk and Deleted.
-            </p>
           </PopoverContent>
         </Popover>
       </div>

@@ -41,7 +41,10 @@ export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" aria-label="Add task for this email">
           <ListTodo aria-hidden="true" className="size-3.5" />
-          <span className="hidden sm:inline">Add task</span>
+          {/* Labelled at every width. Icon-only on a phone put it next to three
+              other icon buttons with nothing to tell them apart, and it read as
+              missing rather than terse. */}
+          <span>Add task</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96">
