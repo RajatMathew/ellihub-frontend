@@ -104,7 +104,7 @@ export function EmailThreadMessageCard({
 
   if (!isExpanded) {
     return (
-      <article className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+      <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
         <button
           type="button"
           className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
@@ -153,7 +153,7 @@ export function EmailThreadMessageCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <div className="relative flex items-start gap-3 border-b border-border px-4 py-3">
         {canCollapse && (
           <button
