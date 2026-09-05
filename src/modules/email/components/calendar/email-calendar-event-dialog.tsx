@@ -9,6 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
@@ -35,6 +41,7 @@ import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay }
 import {
   AlignLeft,
   CalendarDays,
+  ChevronDown,
   Clock,
   Globe,
   MapPin,
@@ -98,7 +105,12 @@ interface CalendarEventDialogProps {
   /** Which calendar to pre-select in create mode. */
   defaultCalendarId?: string;
   onSubmit: (input: CalendarEventDialogSubmit, editingId: string | null) => void;
-  onDelete?: (event: CalendarEvent) => void;
+  /**
+   * `target` is 'series' only when the user explicitly chose "Delete the
+   * series" on a recurring event — callers should delete `event.id` for
+   * 'occurrence' and `event.seriesMasterId` for 'series'.
+   */
+  onDelete?: (event: CalendarEvent, target: 'occurrence' | 'series') => void;
   submitting?: boolean;
   deleting?: boolean;
 }
@@ -528,19 +540,48 @@ export function EmailCalendarEventDialog({
             )}
           </DialogBody>
           <DialogFooter className="flex items-center gap-2 border-t border-border px-6 py-3">
-            {isEdit && onDelete && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={deleting || submitting}
-                className="mr-auto gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => onDelete(event)}
-              >
-                <Trash2 aria-hidden="true" className="size-3.5" />
-                {deleting ? 'Deleting…' : 'Delete'}
-              </Button>
-            )}
+            {isEdit &&
+              onDelete &&
+              (event.isRecurring && event.seriesMasterId ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={deleting || submitting}
+                      className="mr-auto gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 aria-hidden="true" className="size-3.5" />
+                      {deleting ? 'Deleting…' : 'Delete'}
+                      <ChevronDown aria-hidden="true" className="size-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => onDelete(event, 'occurrence')}>
+                      Delete this event
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => onDelete(event, 'series')}
+                    >
+                      Delete the series
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={deleting || submitting}
+                  className="mr-auto gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => onDelete(event, 'occurrence')}
+                >
+                  <Trash2 aria-hidden="true" className="size-3.5" />
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </Button>
+              ))}
             <Button
               type="button"
               variant="outline"

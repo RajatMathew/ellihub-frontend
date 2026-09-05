@@ -21,6 +21,12 @@ export interface CalendarEvent {
   onlineMeetingUrl?: string;
   /** Part of a recurring series (occurrence or master). */
   isRecurring?: boolean;
+  /**
+   * Present on occurrences of a series — deleting this id (instead of `id`)
+   * deletes the whole series. `null`/undefined on a non-recurring event or
+   * the series master itself (which already deletes the series via `id`).
+   */
+  seriesMasterId?: string | null;
   color: CalendarEventColor;
   /** Full-day banner (spans the top row on week/day, whole cell on month). */
   allDay?: boolean;
@@ -167,6 +173,7 @@ export function toCalendarEvent(
     location: record.location ?? undefined,
     onlineMeetingUrl: record.onlineMeetingUrl ?? undefined,
     isRecurring: record.isRecurring ?? false,
+    seriesMasterId: record.seriesMasterId ?? null,
     organizer: record.organizer?.name ?? record.organizer?.email ?? undefined,
     attendees: record.attendees ?? [],
     color: row
