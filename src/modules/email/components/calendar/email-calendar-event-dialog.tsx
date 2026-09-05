@@ -460,11 +460,17 @@ export function EmailCalendarEventDialog({
                 placeholder="Add notes, an agenda, or dial-in details"
                 rows={4}
                 onChange={(e) => setDescription(e.target.value)}
-                // field-sizing-content grows the box with the text (capped,
-                // then scrolls) so long agendas never cram into one line.
+                // A ghost field (no border until focused) worked at the old
+                // single-line height, but at this size an empty one just reads
+                // as a broken gap in the layout rather than a bigger input —
+                // give it a visible boundary always, like the other chip
+                // fields, instead of GHOST_FIELD. field-sizing-content grows
+                // the box with the text (capped, then scrolls) so long
+                // agendas never cram into one line.
                 className={cn(
-                  GHOST_FIELD,
-                  'h-auto min-h-28 max-h-72 resize-none py-1.5 leading-5 field-sizing-content'
+                  'rounded-md border border-border/60 bg-muted/20 px-2.5 text-sm shadow-none transition-colors',
+                  'hover:bg-muted/35 focus-visible:border-border focus-visible:bg-background focus-visible:ring-1',
+                  'h-auto min-h-20 max-h-72 resize-none py-2 leading-5 field-sizing-content'
                 )}
               />
             </FieldRow>
