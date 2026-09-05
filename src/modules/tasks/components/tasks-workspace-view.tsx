@@ -143,9 +143,12 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           busyTaskId={busyTaskId}
           justLandedTaskId={justLandedId}
           onOpenTask={openEdit}
-          onCompleteTask={(task) =>
-            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' })
-          }
+          onCompleteTask={(task) => {
+            // The same landing ring +1 day gets: the card has moved columns, so
+            // say where it went rather than leaving it to be found.
+            markLanded(task.id);
+            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' });
+          }}
           onShiftDueDate={(task, days) => {
             markLanded(task.id);
             shiftDueDate.mutate({ id: task.id, days });
