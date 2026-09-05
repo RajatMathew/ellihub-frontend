@@ -100,10 +100,19 @@ export function SharedMailboxDiscoveryFlow() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personalScopeShouldAutoSkip]);
 
-  const modalOpen = useMemo(
-    () => Boolean(activePendingId && scope) && !personalScopeShouldAutoSkip,
-    [activePendingId, scope, personalScopeShouldAutoSkip]
-  );
+  // Personal-scope discovery auto-skips the instant it resolves to no
+  // candidates (the common case) or an error, which is near-instant on a
+  // fast connection — opening the modal first and closing it right after
+  // just reads as a meaningless flash. Wait until there's something to
+  // actually confirm before showing it for this scope. Vendor scope has no
+  // auto-skip and legitimately wants its own loading state, so it still
+  // opens immediately.
+  const personalScopeHasCandidates =
+    scope === 'personal' && discovery?.status === 'ready' && discovery.candidates.length > 0;
+  const modalOpen = useMemo(() => {
+    if (!activePendingId || !scope || personalScopeShouldAutoSkip) return false;
+    return scope === 'personal' ? personalScopeHasCandidates : true;
+  }, [activePendingId, scope, personalScopeShouldAutoSkip, personalScopeHasCandidates]);
 
   return (
     <>
