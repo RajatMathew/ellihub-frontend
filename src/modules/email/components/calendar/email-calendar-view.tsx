@@ -407,6 +407,7 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
       </div>
 
       <EmailCalendarEventDialog
+        accountId={accountId ?? undefined}
         open={dialogState.open}
         onOpenChange={(open) =>
           setDialogState((current) => ({
