@@ -294,7 +294,7 @@ export function EmailCalendarEventDialog({
           )}
         </DialogHeader>
         <form onSubmit={submit} className="flex min-h-0 flex-col">
-          <DialogBody className="flex flex-col gap-2 px-6 pb-5 pt-2.5">
+          <DialogBody className="flex flex-col gap-2 px-6 pb-5 pt-1">
             {/* The title is the one thing every event needs — give it the stage.
                 No extra margin here — the parent's flex gap already spaces it
                 from the row below. */}
