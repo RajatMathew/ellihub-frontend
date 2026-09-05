@@ -190,7 +190,19 @@ async function setupMockApi(page: Page) {
     // The task API is the real contract this feature writes against.
     if (method === 'GET' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/messages/search`) {
       const term = (new URL(request.url()).searchParams.get('q') || '').toLowerCase();
+      const extras = [3, 4, 5, 6, 7, 8].map((n) => ({
+        providerId: `p-extra-${n}`,
+        threadId: `t-extra-${n}`,
+        conversationKey: `c-extra-${n}`,
+        subject: `Alpha follow-up ${n}`,
+        senderName: 'Apex Hardware',
+        senderEmail: 'apex@example.com',
+        preview: 'more',
+        receivedAt: new Date().toISOString(),
+        folder: 'inbox',
+      }));
       const all = [
+        ...extras,
         {
           providerId: 'p-alpha',
           threadId: 't-alpha',
@@ -404,7 +416,7 @@ test('Clear all stops at the one email the view requires', async ({ page }) => {
   await expect(clearAll).toBeDisabled();
 });
 
-test('the picker stays put as results arrive', async ({ page }) => {
+test('the picker does not resize as results arrive', async ({ page }) => {
   await setupMockApi(page);
   await page.setViewportSize({ width: 1500, height: 950 });
   await page.goto(`/app/email/accounts/${ACCOUNT_SLUG}`);
@@ -413,22 +425,22 @@ test('the picker stays put as results arrive', async ({ page }) => {
   await page.getByRole('button', { name: 'Add task for this email' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Attach another email' }).click();
 
-  // Sized to its content, the panel grew when results landed and Radix moved it
-  // up the screen mid-keystroke. Same box empty or full is the fix.
-  const panel = page.getByText('Add inbox threads').locator('../..');
-  const before = await panel.boundingBox();
+  // Sized to its content, the results list grew as matches arrived and Radix
+  // re-anchored the panel around it — it jumped up the screen mid-keystroke.
+  // A fixed height is the fix, so the list is what this measures: same box
+  // empty or full. Asserting the panel's position instead looks like the
+  // symptom but barely moves under test, where there is room below it to grow
+  // into; the list height is the mechanism and is exact.
+  const list = page.locator('[cmdk-list]');
+  const empty = await list.boundingBox();
 
   await page.getByPlaceholder('Search subject or sender').fill('a');
   await expect(page.getByText('Alpha submittal overdue')).toBeVisible({ timeout: 15_000 });
-  const after = await panel.boundingBox();
+  const full = await list.boundingBox();
 
-  // The top edge is the whole point: it used to fly up the screen mid-keystroke
-  // as Radix re-anchored a panel that had grown. A few pixels of sub-pixel
-  // rounding is not that — the regression this guards against moved it by more
-  // than a hundred.
-  expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(4);
-  // The height is allowed to breathe a few pixels — the input and the empty
-  // state are not pixel-identical to a row of results — but it must not grow by
-  // the height of a list, which is what caused the re-anchor.
-  expect(Math.abs((after?.height ?? 0) - (before?.height ?? 0))).toBeLessThan(16);
+  // Not pixel-exact: cmdk drives its own list height through a CSS variable, so
+  // the two states land ~13px apart even when pinned. Unpinned they are ~193px
+  // apart — an empty list of 63px against a full one of 256 — which is the jump
+  // this guards against. Anything under 40 is pinned; anything over is not.
+  expect(Math.abs((full?.height ?? 0) - (empty?.height ?? 0))).toBeLessThan(40);
 });
