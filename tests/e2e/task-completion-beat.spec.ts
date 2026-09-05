@@ -104,7 +104,7 @@ test('pointing at the circle previews the mark it would leave', async ({ page })
   await page.screenshot({ path: 'output/visual/task-circle-hover.png' });
 });
 
-test('the landing ring is drawn in the card blue, not near-black', async ({ page }) => {
+test('the landing ring is drawn in the completion colour, not near-black', async ({ page }) => {
   await setupMockApi(page);
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto('/app/tasks');
@@ -114,12 +114,19 @@ test('the landing ring is drawn in the card blue, not near-black', async ({ page
 
   // +1 day rings the card where it lands. The ring is a 1.2s box-shadow, so it
   // is caught by freezing the animation part-way rather than raced.
+  // Paused before the click, not after: the ring fades from full strength to
+  // nothing over 1.2s, so pausing afterwards catches whatever is left. Pausing
+  // first holds it at the first frame, which is the colour under test.
+  await page.addStyleTag({
+    content: '* { animation-play-state: paused !important; }',
+  });
+
   await card.hover();
   await page.getByRole('button', { name: '+1 day', exact: true }).click();
 
-  await page.addStyleTag({
-    content: '[data-slot="kanban-item"] * { animation-play-state: paused !important; }',
-  });
+  // The ring is the colour the completion circle fills with, so the beat and
+  // the landing read as one gesture. Held at its first frame by the pause
+  // above, this leaves it on screen to be looked at.
   await page.screenshot({ path: 'output/visual/task-landed-ring.png' });
 });
 
