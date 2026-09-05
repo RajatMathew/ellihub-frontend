@@ -294,11 +294,12 @@ export function EmailCalendarEventDialog({
           )}
         </DialogHeader>
         <form onSubmit={submit} className="flex min-h-0 flex-col">
-          <DialogBody className="flex flex-col gap-2 px-6 pb-5 pt-1">
+          <DialogBody className="flex flex-col gap-2 px-6 pb-5 pt-0">
             {/* The title is the one thing every event needs — give it the stage.
-                No extra margin here — the parent's flex gap already spaces it
-                from the row below. */}
-            <div>
+                mb-1.5 is just breathing room below its own underline before the
+                date row — the header-to-title gap above it comes from
+                DialogBody's own padding, not from here. */}
+            <div className="mb-1.5">
               <Label htmlFor="calendar-event-title" className="sr-only">
                 Title
               </Label>
@@ -312,7 +313,7 @@ export function EmailCalendarEventDialog({
                 placeholder="Add a title"
                 onChange={(e) => setSubject(e.target.value)}
                 className={cn(
-                  'h-10 rounded-none border-0 border-b bg-transparent px-0 text-lg font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-0',
+                  'h-9 rounded-none border-0 border-b bg-transparent px-0 text-lg font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-0',
                   isEdit
                     ? 'cursor-text border-transparent transition-colors hover:border-border'
                     : 'border-border'
