@@ -23,10 +23,8 @@ import {
   EmailReadingPaneErrorState,
   EmailReadingPaneSkeleton,
 } from '@/modules/email/components/email-reading-pane-states';
-import {
-  EmailReferenceMarker,
-  EmailThreadStatusMarker,
-} from '@/modules/email/components/email-reference-marker';
+import { useEmailReferenceMarker } from '@/modules/email/components/email-reference-marker';
+import { EmailThreadStatusMarker } from '@/modules/email/components/email-reference-marker-parts';
 import {
   type EmailReferenceMarkerState,
   type EmailThreadState,
@@ -245,6 +243,28 @@ export function EmailReadingPane({
     },
     [referenceMarkerState, saveReferenceMarkerState]
   );
+  // Called above any early return (Rules of Hooks), so every id/keyword here
+  // is computed against `email` directly rather than the post-return
+  // `actionMessageId`/`latestMessage` derived further down — same values in
+  // practice, since those are themselves just `email`'s own latest message.
+  const referenceActionMessageId = email?.latestMessageId ?? email?.id;
+  const referenceMarker = useEmailReferenceMarker({
+    accountId: accountId ?? '',
+    state: referenceMarkerState,
+    messageId: referenceActionMessageId,
+    tags,
+    keywords: email?.keywords,
+    isUpdatingTags,
+    isCreatingTag,
+    isSaving: saveClassificationMutation.isPending,
+    onToggleTag: onToggleTag
+      ? (tag, enabled) => referenceActionMessageId && onToggleTag(referenceActionMessageId, tag, enabled)
+      : undefined,
+    onCreateTag: onCreateTag
+      ? (name) => onCreateTag(name, referenceActionMessageId)
+      : undefined,
+    onChange: saveReferenceMarkerState,
+  });
 
   useEffect(() => {
     attachmentBlobCacheRef.current.clear();
@@ -378,7 +398,7 @@ export function EmailReadingPane({
 
       <div className="kt-scrollable-y-auto min-h-0 flex-1 px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <header className="mb-5 border-b border-border pb-5">
+          <header className="mb-5 border-b border-border pb-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -398,7 +418,7 @@ export function EmailReadingPane({
             <h1 className="mt-3 min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
               {email.subject}
             </h1>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5">
               <EmailAssigneePicker
                 accountId={accountId}
                 assignee={referenceMarkerState.assignedTo ?? null}
@@ -412,6 +432,7 @@ export function EmailReadingPane({
                 isSaving={saveClassificationMutation.isPending}
                 onChange={saveThreadState}
               />
+              {accountId && referenceMarker.trigger}
               {accountId && (email.providerId ?? email.id) ? (
                 <AddTaskPopover
                   email={{
@@ -426,23 +447,10 @@ export function EmailReadingPane({
               ) : null}
             </div>
             {accountId && (
-              <EmailReferenceMarker
-                accountId={accountId}
-                state={referenceMarkerState}
-                messageId={actionMessageId}
-                tags={tags}
-                keywords={latestMessage?.keywords ?? email.keywords}
-                isUpdatingTags={isUpdatingTags}
-                isCreatingTag={isCreatingTag}
-                onToggleTag={
-                  onToggleTag
-                    ? (tag, enabled) => onToggleTag(actionMessageId, tag, enabled)
-                    : undefined
-                }
-                onCreateTag={onCreateTag ? (name) => onCreateTag(name, actionMessageId) : undefined}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveReferenceMarkerState}
-              />
+              <section className="mt-3 min-w-0" aria-label="References">
+                {referenceMarker.chips}
+                {referenceMarker.otherTagPanel}
+              </section>
             )}
           </header>
 
