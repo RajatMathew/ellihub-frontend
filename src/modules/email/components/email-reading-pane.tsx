@@ -398,7 +398,7 @@ export function EmailReadingPane({
 
       <div className="kt-scrollable-y-auto min-h-0 flex-1 px-4 py-5 sm:px-6">
         <div className="mx-auto max-w-4xl">
-          <header className="mb-5 border-b border-border pb-5">
+          <header className="mb-5 border-b border-border pb-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -418,7 +418,7 @@ export function EmailReadingPane({
             <h1 className="mt-3 min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
               {email.subject}
             </h1>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5">
               <EmailAssigneePicker
                 accountId={accountId}
                 assignee={referenceMarkerState.assignedTo ?? null}

@@ -184,7 +184,7 @@ export function useEntityReferenceMarker({
         scopeId={scopeId}
         api={api}
         categories={categories}
-        align="start"
+        align="end"
         selectedType={effectiveSelectedType}
         selectedProjectIds={selectedProjectIds}
         selectedReferences={references}
@@ -207,7 +207,7 @@ export function useEntityReferenceMarker({
         {!isProjectMode && otherModeExtra}
       </div>
       {isProjectMode && references.length > 0 && (
-        <div className="mt-2 flex min-w-0 flex-col gap-1.5">
+        <div className="mt-2 min-w-0">
           <ReferenceGroups references={references} isSaving={isSaving} onRemove={removeReference} />
         </div>
       )}

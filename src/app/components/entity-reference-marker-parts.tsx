@@ -5,7 +5,7 @@
  * fast-refresh boundary (`react-refresh/only-export-components`) requires a
  * file to export either only components or only non-components, not both.
  */
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -38,8 +38,9 @@ import { Info, Loader2, Plus, X } from 'lucide-react';
 
 export type EntityReferenceFilterType = 'all' | EntityReferenceType;
 
-/** Chips beyond this many per type collapse into a "+N more" link. */
-const MAX_VISIBLE_CHIPS_PER_GROUP = 3;
+/** Reserve for the "+N more" toggle so it never has to squeeze in after the fact. */
+const OVERFLOW_TOGGLE_RESERVED_WIDTH = 72;
+const CHIP_GAP = 6;
 
 export function CategorySegmentedControl({
   value,
@@ -85,7 +86,7 @@ export function ReferenceGroups({
   const groups = useMemo(() => groupReferencesByType(references), [references]);
 
   return (
-    <>
+    <div className="divide-y divide-border/50">
       {groups.map((group) => (
         <ReferenceGroupRow
           key={group.type}
@@ -95,7 +96,7 @@ export function ReferenceGroups({
           onRemove={onRemove}
         />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -111,17 +112,64 @@ function ReferenceGroupRow({
   onRemove: (reference: EntityReference) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(references.length);
   const typeLabel = getReferenceGroupLabel(type);
-  const overflowCount = references.length - MAX_VISIBLE_CHIPS_PER_GROUP;
-  const visible =
-    expanded || overflowCount <= 0 ? references : references.slice(0, MAX_VISIBLE_CHIPS_PER_GROUP);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  // Fitting chips by a fixed count clips whichever one lands on the edge —
+  // a long label just gets cut off mid-word. Measure each chip's actual
+  // rendered width instead, so only chips that fully fit ever show; anything
+  // else collapses into "+N more" up front.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (expanded || !container || !measure) return;
+
+    const recompute = () => {
+      const available = container.clientWidth;
+      const chipEls = Array.from(measure.children) as HTMLElement[];
+      let used = 0;
+      let count = 0;
+
+      for (const chipEl of chipEls) {
+        const width = chipEl.offsetWidth;
+        const isLast = count === chipEls.length - 1;
+        const reserve = isLast ? 0 : OVERFLOW_TOGGLE_RESERVED_WIDTH;
+        const nextUsed = used + width + (count > 0 ? CHIP_GAP : 0);
+        if (count > 0 && nextUsed + reserve > available) break;
+        used = nextUsed;
+        count += 1;
+      }
+
+      setVisibleCount(Math.max(count, 1));
+    };
+
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [expanded, references]);
+
+  const visible = expanded ? references : references.slice(0, visibleCount);
+  // Collapsed fit count is left untouched while expanded (the effect above
+  // skips recomputing it), so this stays true even once every chip is shown —
+  // otherwise the toggle disappears the moment you expand it, with no way
+  // to collapse back.
+  const hasOverflow = references.length > visibleCount;
 
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-md border border-border bg-background px-3 py-2">
-      <span className="mt-0.5 shrink-0 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="flex min-w-0 items-center gap-3 px-3 py-1.5">
+      <span className="w-16 shrink-0 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
         {typeLabel}
       </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+      <div
+        ref={containerRef}
+        className={cn(
+          'relative flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden',
+          expanded && 'flex-wrap'
+        )}
+      >
         {visible.map((reference) => (
           <ReferenceChip
             key={getReferenceIdentity(reference)}
@@ -131,16 +179,32 @@ function ReferenceGroupRow({
             onRemove={onRemove}
           />
         ))}
-        {overflowCount > 0 && (
-          <button
-            type="button"
-            className="cursor-pointer text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-            onClick={() => setExpanded((value) => !value)}
+        {!expanded && (
+          <div
+            ref={measureRef}
+            aria-hidden="true"
+            className="invisible absolute left-0 top-0 flex items-center gap-1.5"
           >
-            {expanded ? 'Show less' : `+${overflowCount} more`}
-          </button>
+            {references.map((reference) => (
+              <ReferenceChip
+                key={`measure-${getReferenceIdentity(reference)}`}
+                reference={reference}
+                isProject={type === 'project'}
+                onRemove={() => undefined}
+              />
+            ))}
+          </div>
         )}
       </div>
+      {hasOverflow && (
+        <button
+          type="button"
+          className="ml-auto shrink-0 cursor-pointer text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? 'Hide' : `+${references.length - visibleCount} more`}
+        </button>
+      )}
     </div>
   );
 }
@@ -157,14 +221,14 @@ function ReferenceChip({
   onRemove: (reference: EntityReference) => void;
 }) {
   return (
-    <span className="group/reference inline-flex h-7 max-w-full items-center gap-1 rounded-md border border-border bg-muted/40 pl-2 pr-1 text-xs font-medium text-foreground">
+    <span className="group/reference inline-flex h-7 max-w-full shrink-0 items-center gap-1 rounded-md border border-border bg-muted/40 pl-2 pr-1 text-xs font-medium text-foreground">
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={cn('max-w-48 truncate', isProject && 'font-semibold text-brand-clay')}>
+          <span className={cn('max-w-64 truncate', isProject && 'font-semibold text-brand-clay')}>
             {reference.label}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" showArrow className="max-w-80 whitespace-nowrap">
+        <TooltipContent side="top" showArrow className="max-w-80 whitespace-normal break-words">
           {reference.label}
         </TooltipContent>
       </Tooltip>
@@ -174,7 +238,7 @@ function ReferenceChip({
         disabled={isSaving}
         onPointerDown={(event) => event.stopPropagation()}
         onClick={() => onRemove(reference)}
-        className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground opacity-100 transition-opacity hover:bg-background hover:text-foreground disabled:pointer-events-none disabled:opacity-25 sm:opacity-0 sm:group-hover/reference:opacity-100 sm:group-focus-within/reference:opacity-100"
+        className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
       >
         <X aria-hidden="true" className="size-3" />
       </button>
