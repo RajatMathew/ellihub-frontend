@@ -395,37 +395,35 @@ export function EmailReadingPane({
                 </span>
               )}
             </div>
-            <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <h1 className="min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
-                {email.subject}
-              </h1>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <EmailAssigneePicker
-                  accountId={accountId}
-                  assignee={referenceMarkerState.assignedTo ?? null}
-                  disabled={saveClassificationMutation.isPending}
-                  onChange={(assignee) =>
-                    saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
-                  }
+            <h1 className="mt-3 min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
+              {email.subject}
+            </h1>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <EmailAssigneePicker
+                accountId={accountId}
+                assignee={referenceMarkerState.assignedTo ?? null}
+                disabled={saveClassificationMutation.isPending}
+                onChange={(assignee) =>
+                  saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
+                }
+              />
+              <EmailThreadStatusMarker
+                state={referenceMarkerState.status}
+                isSaving={saveClassificationMutation.isPending}
+                onChange={saveThreadState}
+              />
+              {accountId && (email.providerId ?? email.id) ? (
+                <AddTaskPopover
+                  email={{
+                    accountId,
+                    providerId: email.providerId ?? email.id,
+                    conversationKey: email.conversationKey,
+                    threadId: email.threadId,
+                    subject: email.subject,
+                    fromEmail: email.senderEmail,
+                  }}
                 />
-                <EmailThreadStatusMarker
-                  state={referenceMarkerState.status}
-                  isSaving={saveClassificationMutation.isPending}
-                  onChange={saveThreadState}
-                />
-                {accountId && (email.providerId ?? email.id) ? (
-                  <AddTaskPopover
-                    email={{
-                      accountId,
-                      providerId: email.providerId ?? email.id,
-                      conversationKey: email.conversationKey,
-                      threadId: email.threadId,
-                      subject: email.subject,
-                      fromEmail: email.senderEmail,
-                    }}
-                  />
-                ) : null}
-              </span>
+              ) : null}
             </div>
             {accountId && (
               <EmailReferenceMarker
