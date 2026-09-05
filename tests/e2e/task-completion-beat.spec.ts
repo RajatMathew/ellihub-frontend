@@ -104,6 +104,25 @@ test('pointing at the circle previews the mark it would leave', async ({ page })
   await page.screenshot({ path: 'output/visual/task-circle-hover.png' });
 });
 
+test('the landing ring is drawn in the card blue, not near-black', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('/app/tasks');
+
+  const card = page.getByText('Chase the certificate');
+  await expect(card).toBeVisible({ timeout: 30_000 });
+
+  // +1 day rings the card where it lands. The ring is a 1.2s box-shadow, so it
+  // is caught by freezing the animation part-way rather than raced.
+  await card.hover();
+  await page.getByRole('button', { name: '+1 day', exact: true }).click();
+
+  await page.addStyleTag({
+    content: '[data-slot="kanban-item"] * { animation-play-state: paused !important; }',
+  });
+  await page.screenshot({ path: 'output/visual/task-landed-ring.png' });
+});
+
 test('the circle fills and holds before the card leaves', async ({ page }) => {
   await setupMockApi(page, 3_000);
   await page.setViewportSize({ width: 1400, height: 900 });

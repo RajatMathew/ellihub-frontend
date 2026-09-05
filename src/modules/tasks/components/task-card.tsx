@@ -107,7 +107,7 @@ export function TaskCard({
         // flag is set, rather than a fade. Deciding here rather than in CSS
         // because Tailwind emits the theme's keyframes after any media block
         // that would try to override them.
-        justLanded && (prefersReducedMotion() ? 'ring-2 ring-primary' : 'animate-task-landed')
+        justLanded && (prefersReducedMotion() ? 'ring-2 ring-court-ours' : 'animate-task-landed')
       )}
     >
       {/* Completion and ownership face each other across the top: the circle is
