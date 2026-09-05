@@ -23,10 +23,8 @@ import {
   EmailReadingPaneErrorState,
   EmailReadingPaneSkeleton,
 } from '@/modules/email/components/email-reading-pane-states';
-import {
-  EmailReferenceMarker,
-  EmailThreadStatusMarker,
-} from '@/modules/email/components/email-reference-marker';
+import { useEmailReferenceMarker } from '@/modules/email/components/email-reference-marker';
+import { EmailThreadStatusMarker } from '@/modules/email/components/email-reference-marker-parts';
 import {
   type EmailReferenceMarkerState,
   type EmailThreadState,
@@ -245,6 +243,28 @@ export function EmailReadingPane({
     },
     [referenceMarkerState, saveReferenceMarkerState]
   );
+  // Called above any early return (Rules of Hooks), so every id/keyword here
+  // is computed against `email` directly rather than the post-return
+  // `actionMessageId`/`latestMessage` derived further down — same values in
+  // practice, since those are themselves just `email`'s own latest message.
+  const referenceActionMessageId = email?.latestMessageId ?? email?.id;
+  const referenceMarker = useEmailReferenceMarker({
+    accountId: accountId ?? '',
+    state: referenceMarkerState,
+    messageId: referenceActionMessageId,
+    tags,
+    keywords: email?.keywords,
+    isUpdatingTags,
+    isCreatingTag,
+    isSaving: saveClassificationMutation.isPending,
+    onToggleTag: onToggleTag
+      ? (tag, enabled) => referenceActionMessageId && onToggleTag(referenceActionMessageId, tag, enabled)
+      : undefined,
+    onCreateTag: onCreateTag
+      ? (name) => onCreateTag(name, referenceActionMessageId)
+      : undefined,
+    onChange: saveReferenceMarkerState,
+  });
 
   useEffect(() => {
     attachmentBlobCacheRef.current.clear();
@@ -412,6 +432,7 @@ export function EmailReadingPane({
                 isSaving={saveClassificationMutation.isPending}
                 onChange={saveThreadState}
               />
+              {accountId && referenceMarker.trigger}
               {accountId && (email.providerId ?? email.id) ? (
                 <AddTaskPopover
                   email={{
@@ -426,23 +447,10 @@ export function EmailReadingPane({
               ) : null}
             </div>
             {accountId && (
-              <EmailReferenceMarker
-                accountId={accountId}
-                state={referenceMarkerState}
-                messageId={actionMessageId}
-                tags={tags}
-                keywords={latestMessage?.keywords ?? email.keywords}
-                isUpdatingTags={isUpdatingTags}
-                isCreatingTag={isCreatingTag}
-                onToggleTag={
-                  onToggleTag
-                    ? (tag, enabled) => onToggleTag(actionMessageId, tag, enabled)
-                    : undefined
-                }
-                onCreateTag={onCreateTag ? (name) => onCreateTag(name, actionMessageId) : undefined}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveReferenceMarkerState}
-              />
+              <section className="mt-3 min-w-0" aria-label="References">
+                {referenceMarker.chips}
+                {referenceMarker.otherTagPanel}
+              </section>
             )}
           </header>
 

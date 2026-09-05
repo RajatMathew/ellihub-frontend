@@ -1,19 +1,20 @@
-export type EmailReferenceType =
-  | 'project'
-  | 'rfq'
-  | 'rfi'
-  | 'purchaseOrder'
-  | 'changeOrder'
-  | 'invoice'
-  | 'other';
+/**
+ * The generic project/RFQ/RFI/PO/CO/invoice/"Other" tagging types moved to
+ * `@/app/components/entity-reference-marker-storage` so Tasks can share them
+ * instead of duplicating this file — these are kept as aliases so every
+ * existing `Email...` import in this module keeps working unchanged. Thread
+ * open/closed status (below) is a genuinely email-specific concept and stays
+ * here.
+ */
+export type {
+  EntityReferenceType as EmailReferenceType,
+  EntityReferenceEntityType as EmailReferenceEntityType,
+  EntityReference as EmailReference,
+  EntityReferenceOption as EmailReferenceOption,
+} from '@/app/components/entity-reference-marker-storage';
+export { ENTITY_REFERENCE_CATEGORIES as EMAIL_REFERENCE_TYPES } from '@/app/components/entity-reference-marker-storage';
 
-export type EmailReferenceEntityType =
-  | 'project'
-  | 'rfq'
-  | 'purchaseOrder'
-  | 'primeChangeOrder'
-  | 'subChangeOrder'
-  | 'invoice';
+import type { EntityReference } from '@/app/components/entity-reference-marker-storage';
 
 export type EmailThreadState = 'open' | 'open_our_court' | 'open_their_court' | 'closed';
 
@@ -33,30 +34,13 @@ export type EmailThreadAssigneeInfo = {
   image?: string | null;
 };
 
-export type EmailReference = {
-  id?: string;
-  type: EmailReferenceType;
-  entityType?: EmailReferenceEntityType | null;
-  entityId?: string | null;
-  label: string;
-  sortOrder?: number;
-};
-
 export type EmailReferenceMarkerState = {
   id?: string | null;
   conversationKey: string;
   threadId?: string | null;
   status: EmailThreadState;
   assignedTo?: EmailThreadAssigneeInfo | null;
-  references: EmailReference[];
-};
-
-export type EmailReferenceOption = {
-  type: EmailReferenceType;
-  entityType: EmailReferenceEntityType | null;
-  entityId: string | null;
-  label: string;
-  meta: string | null;
+  references: EntityReference[];
 };
 
 export const EMPTY_EMAIL_REFERENCE_MARKER_STATE: EmailReferenceMarkerState = {
@@ -66,17 +50,3 @@ export const EMPTY_EMAIL_REFERENCE_MARKER_STATE: EmailReferenceMarkerState = {
   status: 'open',
   references: [],
 };
-
-export const EMAIL_REFERENCE_TYPES: Array<{
-  type: EmailReferenceType;
-  label: string;
-  placeholder: string;
-}> = [
-  { type: 'project', label: 'Project', placeholder: 'Search projects' },
-  { type: 'rfq', label: 'RFQ', placeholder: 'Search RFQs' },
-  { type: 'rfi', label: 'RFI', placeholder: 'RFI-112' },
-  { type: 'purchaseOrder', label: 'PO', placeholder: 'Search purchase orders' },
-  { type: 'changeOrder', label: 'CO', placeholder: 'Search change orders' },
-  { type: 'invoice', label: 'Invoice', placeholder: 'Search invoices' },
-  { type: 'other', label: 'Other', placeholder: 'Other' },
-];
