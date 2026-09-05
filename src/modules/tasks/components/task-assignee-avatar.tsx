@@ -12,6 +12,11 @@ import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
  *
  * `id` is what picks the tint, so an unassigned chip — no id — is deliberately
  * grey rather than a colour that would read as somebody.
+ *
+ * The tints are translucent, so left alone the chip takes on whatever it sits
+ * on: a selected filter pill turned it navy-on-navy and the initials vanished
+ * (#821). The opaque base below fixes what the tint mixes with, so a person's
+ * colour is the same whether their pill is selected, hovered or plain.
  */
 export function TaskAssigneeAvatar({
   id,
@@ -26,7 +31,9 @@ export function TaskAssigneeAvatar({
   className?: string;
 }) {
   return (
-    <Avatar className={cn(size === 'sm' ? 'size-5' : 'size-6', className)}>
+    <Avatar
+      className={cn('rounded-full bg-background', size === 'sm' ? 'size-5' : 'size-6', className)}
+    >
       <AvatarFallback
         className={cn(
           'font-semibold',
