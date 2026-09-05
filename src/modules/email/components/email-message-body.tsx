@@ -33,7 +33,7 @@ export function EmailMessageBody({
   }
 
   return (
-    <div className="max-w-prose space-y-3 text-sm leading-6 text-foreground">
+    <div className="max-w-prose space-y-3 px-4 text-sm leading-6 text-foreground">
       {content.map((paragraph, index) => (
         <p key={`${index}-${paragraph}`}>{linkifyPlainText(paragraph)}</p>
       ))}
