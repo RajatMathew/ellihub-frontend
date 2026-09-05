@@ -227,7 +227,10 @@ export function EmailThreadMessageCard({
 
       {message.meetingResponse && <EmailMeetingResponseStrip response={message.meetingResponse} />}
 
-      <div id={contentId} className={cn('space-y-4 px-4 py-4', isSingleAttachmentOnly && 'py-3')}>
+      {/* No horizontal padding here — the HTML body needs the card's full
+          width (padding on top of a fixed-width email design was clipping
+          content at the right edge). Non-body children add their own px-4. */}
+      <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
         {hasBodyContent && (
           <EmailMessageBody
             body={message.body}
@@ -238,7 +241,7 @@ export function EmailThreadMessageCard({
 
         {visibleAttachments.length > 0 && (
           <div
-            className={cn('flex flex-wrap gap-2', hasBodyContent && 'pt-1')}
+            className={cn('flex flex-wrap gap-2 px-4', hasBodyContent && 'pt-1')}
             aria-label="Message attachments"
           >
             {visibleAttachments.map((attachment) => (
@@ -256,18 +259,20 @@ export function EmailThreadMessageCard({
         )}
 
         {replyOpen && (
-          <EmailReplyComposer
-            key={replyMode}
-            message={message}
-            mode={replyMode}
-            isSending={isSendingReply}
-            onSend={(draft) => onSendReply(message.id, draft)}
-            onCancel={onCancelReply}
-          />
+          <div className="px-4">
+            <EmailReplyComposer
+              key={replyMode}
+              message={message}
+              mode={replyMode}
+              isSending={isSendingReply}
+              onSend={(draft) => onSendReply(message.id, draft)}
+              onCancel={onCancelReply}
+            />
+          </div>
         )}
 
         {latest && !replyOpen && (
-          <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-border px-4 pt-4">
             <Button
               type="button"
               variant="outline"
