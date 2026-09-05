@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Calendar } from '@/app/components/ui/calendar';
 import {
   Dialog,
   DialogBody,
@@ -17,6 +18,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
@@ -275,7 +277,7 @@ export function EmailCalendarEventDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg gap-0 p-0"
+        className="max-w-xl gap-0 p-0"
         // Radix focuses the first tabbable element on open, which puts a live
         // caret in the title of an event the user only wants to READ. Keep
         // that for create mode; suppress it for edit.
@@ -292,9 +294,12 @@ export function EmailCalendarEventDialog({
           )}
         </DialogHeader>
         <form onSubmit={submit} className="flex min-h-0 flex-col">
-          <DialogBody className="flex flex-col gap-1.5 px-6 pb-4 pt-3">
-            {/* The title is the one thing every event needs — give it the stage. */}
-            <div className="mb-2">
+          <DialogBody className="flex flex-col gap-2 px-6 pb-5 pt-0">
+            {/* The title is the one thing every event needs — give it the stage.
+                mb-1.5 is just breathing room below its own underline before the
+                date row — the header-to-title gap above it comes from
+                DialogBody's own padding, not from here. */}
+            <div className="mb-1.5">
               <Label htmlFor="calendar-event-title" className="sr-only">
                 Title
               </Label>
@@ -308,7 +313,7 @@ export function EmailCalendarEventDialog({
                 placeholder="Add a title"
                 onChange={(e) => setSubject(e.target.value)}
                 className={cn(
-                  'h-10 rounded-none border-0 border-b bg-transparent px-0 text-lg font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-0',
+                  'h-9 rounded-none border-0 border-b bg-transparent px-0 text-lg font-semibold shadow-none placeholder:text-muted-foreground/50 focus-visible:border-primary focus-visible:ring-0',
                   isEdit
                     ? 'cursor-text border-transparent transition-colors hover:border-border'
                     : 'border-border'
@@ -317,42 +322,34 @@ export function EmailCalendarEventDialog({
             </div>
 
             <FieldRow icon={Clock}>
-              <div className="flex flex-nowrap items-center gap-1">
-                <Label htmlFor="calendar-event-date" className="sr-only">
-                  Date
-                </Label>
-                <Input
-                  id="calendar-event-date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className={cn(CHIP_FIELD, 'w-fit shrink-0')}
-                />
+              <div className="flex flex-wrap items-center gap-1">
+                <DatePickerButton value={date} onChange={setDate} />
                 {!allDay && (
                   <>
-                    <Label htmlFor="calendar-event-start" className="sr-only">
-                      Start time
-                    </Label>
-                    <Input
-                      id="calendar-event-start"
-                      type="time"
+                    <TimePickerButton
+                      label="Start time"
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className={cn(CHIP_FIELD, 'w-fit shrink-0')}
+                      onChange={setStartTime}
                     />
                     <span aria-hidden="true" className="shrink-0 text-sm text-muted-foreground">
                       –
                     </span>
-                    <Label htmlFor="calendar-event-end" className="sr-only">
-                      End time
-                    </Label>
-                    <Input
-                      id="calendar-event-end"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className={cn(CHIP_FIELD, 'w-fit shrink-0')}
-                    />
+                    <TimePickerButton label="End time" value={endTime} onChange={setEndTime} />
+                    {!isEdit && (
+                      <button
+                        type="button"
+                        aria-label="Choose time zone"
+                        aria-pressed={showTimeZone}
+                        onClick={() => setShowTimeZone((value) => !value)}
+                        className={cn(
+                          'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                          (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
+                            'bg-muted text-foreground'
+                        )}
+                      >
+                        <Globe aria-hidden="true" className="size-4" />
+                      </button>
+                    )}
                   </>
                 )}
                 <label
@@ -363,6 +360,18 @@ export function EmailCalendarEventDialog({
                   <Switch id="calendar-event-allday" checked={allDay} onCheckedChange={setAllDay} />
                 </label>
               </div>
+              {!isEdit && !allDay && showTimeZone && (
+                <div className="mt-1.5">
+                  <SearchableSelect
+                    options={TIME_ZONE_OPTIONS}
+                    value={timeZone}
+                    onValueChange={(value) => value && setTimeZone(value)}
+                    placeholder="Time zone"
+                    searchPlaceholder="Search time zones…"
+                    className="h-8 w-72 text-xs"
+                  />
+                </div>
+              )}
               {!isEdit && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <Label htmlFor="calendar-event-recurrence" className="sr-only">
@@ -387,31 +396,6 @@ export function EmailCalendarEventDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  {!allDay && (
-                    <button
-                      type="button"
-                      aria-label="Choose time zone"
-                      aria-pressed={showTimeZone}
-                      onClick={() => setShowTimeZone((value) => !value)}
-                      className={cn(
-                        'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                        (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
-                          'bg-muted text-foreground'
-                      )}
-                    >
-                      <Globe aria-hidden="true" className="size-4" />
-                    </button>
-                  )}
-                  {!allDay && showTimeZone && (
-                    <SearchableSelect
-                      options={TIME_ZONE_OPTIONS}
-                      value={timeZone}
-                      onValueChange={(value) => value && setTimeZone(value)}
-                      placeholder="Time zone"
-                      searchPlaceholder="Search time zones…"
-                      className="h-8 w-72 text-xs"
-                    />
-                  )}
                 </div>
               )}
               {isEdit && event?.isRecurring && (
@@ -475,13 +459,19 @@ export function EmailCalendarEventDialog({
                 id="calendar-event-description"
                 value={description}
                 placeholder="Add notes, an agenda, or dial-in details"
-                rows={2}
+                rows={4}
                 onChange={(e) => setDescription(e.target.value)}
-                // field-sizing-content grows the box with the text (capped,
-                // then scrolls) so long agendas never cram into one line.
+                // A ghost field (no border until focused) worked at the old
+                // single-line height, but at this size an empty one just reads
+                // as a broken gap in the layout rather than a bigger input —
+                // give it a visible boundary always, like the other chip
+                // fields, instead of GHOST_FIELD. field-sizing-content grows
+                // the box with the text (capped, then scrolls) so long
+                // agendas never cram into one line.
                 className={cn(
-                  GHOST_FIELD,
-                  'h-auto min-h-14 max-h-48 resize-none py-1.5 leading-5 field-sizing-content'
+                  'rounded-md border border-border/60 bg-muted/20 px-2.5 text-sm shadow-none transition-colors',
+                  'hover:bg-muted/35 focus-visible:border-border focus-visible:bg-background focus-visible:ring-1',
+                  'h-auto min-h-20 max-h-72 resize-none py-2 leading-5 field-sizing-content'
                 )}
               />
             </FieldRow>
@@ -539,7 +529,7 @@ export function EmailCalendarEventDialog({
               </p>
             )}
           </DialogBody>
-          <DialogFooter className="flex items-center gap-2 border-t border-border px-6 py-3">
+          <DialogFooter className="flex items-center gap-2 border-t border-border px-6 py-3.5">
             {isEdit &&
               onDelete &&
               (event.isRecurring && event.seriesMasterId ? (
@@ -607,6 +597,128 @@ export function EmailCalendarEventDialog({
 }
 
 // --- helpers --------------------------------------------------------------
+
+/** Date picker: a Popover + the shared shadcn Calendar (same one the files
+ * module uses for its date filters), replacing the native `<input type="date">`
+ * so the picker matches the rest of the app instead of the OS/browser widget. */
+function DatePickerButton({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const parsed = parseDate(value);
+  const label = Number.isNaN(parsed.getTime()) ? 'Pick a date' : format(parsed, 'MMM d, yyyy');
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(CHIP_FIELD, 'w-fit shrink-0 gap-1.5 border-transparent font-medium')}
+        >
+          <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground" />
+          {label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={Number.isNaN(parsed.getTime()) ? undefined : parsed}
+          onSelect={(next) => {
+            if (!next) return;
+            onChange(format(next, 'yyyy-MM-dd'));
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Every quarter-hour of the day as {value: "HH:mm", label: "9:30 am"}. */
+const TIME_OF_DAY_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
+  const hours = Math.floor(index / 4);
+  const minutes = (index % 4) * 15;
+  const value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  const label = format(parse(value, 'HH:mm', new Date()), 'h:mm a').toLowerCase();
+  return { value, label };
+});
+
+/** Time picker: a Popover with a scrollable quarter-hour list, replacing the
+ * native `<input type="time">` OS widget. Free typing isn't needed here — the
+ * event dialog's own submit validates start < end regardless of granularity. */
+function TimePickerButton({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const parsed = parse(value, 'HH:mm', new Date());
+  const display = Number.isNaN(parsed.getTime()) ? value : format(parsed, 'h:mm a').toLowerCase();
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          // Scroll the current value into view instead of always opening at
+          // midnight — most edits are to a time later in the day.
+          requestAnimationFrame(() => {
+            listRef.current
+              ?.querySelector('[data-selected="true"]')
+              ?.scrollIntoView({ block: 'center' });
+          });
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-label={label}
+          className={cn(CHIP_FIELD, 'w-fit shrink-0 border-transparent font-medium')}
+        >
+          {display}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-32 p-1">
+        <div ref={listRef} className="max-h-64 overflow-y-auto">
+          {TIME_OF_DAY_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              data-selected={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={cn(
+                'flex h-8 w-full cursor-pointer items-center rounded-sm px-2 text-sm',
+                option.value === value
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-foreground hover:bg-muted'
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /** Icon-led form row: a muted glyph on a shared left rail, the field beside it. */
 function FieldRow({
