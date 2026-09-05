@@ -772,14 +772,16 @@ export function EmailThreadStatusMarker({
               value={isOpen ? state : ''}
               onValueChange={(value) => onChange(value as EmailThreadState)}
             >
+              {/* Same labels the pill/trigger use (EMAIL_THREAD_STATE_LABELS) —
+                  a single source of truth so the two never drift apart. */}
               <DropdownMenuRadioItem value="open" className="min-h-8 text-xs">
-                Open
+                {EMAIL_THREAD_STATE_LABELS.open}
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="open_our_court" className="min-h-8 text-xs">
-                Open · our court
+                {EMAIL_THREAD_STATE_LABELS.open_our_court}
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="open_their_court" className="min-h-8 text-xs">
-                Open · their court
+                {EMAIL_THREAD_STATE_LABELS.open_their_court}
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
