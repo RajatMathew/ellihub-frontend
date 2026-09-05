@@ -23,11 +23,14 @@ import { Switch } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
 import type { CalendarRecurrenceOption, CalendarSelectionRow } from '@/modules/email/api';
+import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import {
   CALENDAR_EVENT_STYLES,
   colorForCalendar,
   type CalendarEvent,
 } from '@/modules/email/components/calendar/email-calendar-types';
+import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
+import { EMAIL_ADDRESS_PATTERN, parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay } from 'date-fns';
 import {
   AlignLeft,
@@ -37,7 +40,9 @@ import {
   MapPin,
   Repeat,
   Trash2,
+  Users,
   Video,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,6 +71,7 @@ export type CalendarEventDialogSubmit =
       timeZone?: string;
       isOnlineMeeting?: boolean;
       recurrence?: CalendarRecurrenceOption;
+      attendees?: Array<{ email: string; name?: string }>;
     }
   | {
       mode: 'edit';
@@ -75,11 +81,14 @@ export type CalendarEventDialogSubmit =
       end: Date;
       isAllDay: boolean;
       location?: string;
+      attendees?: Array<{ email: string; name?: string }>;
     };
 
 interface CalendarEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Powers attendee contact suggestions — omit to disable them. */
+  accountId?: string;
   /** null = create mode. Otherwise it's an edit. */
   event: CalendarEvent | null;
   /** Selection rows (already filtered to writable calendars by the caller). */
@@ -97,6 +106,7 @@ interface CalendarEventDialogProps {
 export function EmailCalendarEventDialog({
   open,
   onOpenChange,
+  accountId,
   event,
   writableCalendars,
   initialStart,
@@ -124,6 +134,7 @@ export function EmailCalendarEventDialog({
   const [showTimeZone, setShowTimeZone] = useState(false);
   const [teamsMeeting, setTeamsMeeting] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceValue>('none');
+  const [attendees, setAttendees] = useState(seed.attendees);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -140,6 +151,7 @@ export function EmailCalendarEventDialog({
     setShowTimeZone(false);
     setTeamsMeeting(false);
     setRecurrence('none');
+    setAttendees(seed.attendees);
     setError(null);
   }, [open, seed]);
 
@@ -177,11 +189,26 @@ export function EmailCalendarEventDialog({
     const trimmedDescription = description.trim() || undefined;
     const trimmedLocation = location.trim() || undefined;
 
+    const invalidAttendee = parseEmailAddresses(attendees).find(
+      (recipient) => !EMAIL_ADDRESS_PATTERN.test(recipient.address)
+    );
+    if (invalidAttendee) {
+      setError(`Finish or remove “${invalidAttendee.address}” before continuing.`);
+      return;
+    }
+    const attendeesList = parseEmailAddresses(attendees).map((recipient) => ({
+      email: recipient.address,
+      name: recipient.name,
+    }));
+
     if (isEdit) {
-      // Only send the description when the user actually changed it. The
-      // pre-filled value can be a truncated preview of the stored body —
-      // echoing it back on an unrelated edit would overwrite the real text.
+      // Only send description/attendees when the user actually changed them.
+      // The pre-filled description can be a truncated preview of the stored
+      // body — echoing it back on an unrelated edit would overwrite the real
+      // text. Sending attendees unconditionally on every edit would replay
+      // invitation emails to the same people on unrelated changes.
       const descriptionChanged = description.trim() !== seed.description.trim();
+      const attendeesChanged = attendees.trim() !== seed.attendees.trim();
       onSubmit(
         {
           mode: 'edit',
@@ -191,6 +218,7 @@ export function EmailCalendarEventDialog({
           end,
           isAllDay: allDay,
           location: trimmedLocation,
+          attendees: attendeesChanged ? attendeesList : undefined,
         },
         event.id
       );
@@ -208,6 +236,7 @@ export function EmailCalendarEventDialog({
           timeZone: allDay ? undefined : timeZone,
           isOnlineMeeting: teamsMeeting || undefined,
           recurrence: recurrence === 'none' ? undefined : recurrence,
+          attendees: attendeesList.length ? attendeesList : undefined,
         },
         null
       );
@@ -228,7 +257,8 @@ export function EmailCalendarEventDialog({
     endTime !== seed.endTime ||
     allDay !== seed.allDay ||
     location !== seed.location ||
-    calendarId !== seed.calendarId;
+    calendarId !== seed.calendarId ||
+    attendees.trim() !== seed.attendees.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -408,6 +438,10 @@ export function EmailCalendarEventDialog({
               </FieldRow>
             )}
 
+            <FieldRow icon={Users} align="start">
+              <AttendeesField accountId={accountId} value={attendees} onChange={setAttendees} />
+            </FieldRow>
+
             <FieldRow icon={MapPin}>
               <Label htmlFor="calendar-event-location" className="sr-only">
                 Location
@@ -560,6 +594,168 @@ function FieldRow({
   );
 }
 
+/**
+ * Chip input for invitee emails, with suggestions from contacts the mailbox
+ * has corresponded with (same source the compose "To" field uses). Each
+ * address added here — and each one removed on an existing event — gets an
+ * invitation or cancellation email sent automatically by the provider once
+ * the event is saved; this field itself never sends anything on its own.
+ */
+function AttendeesField({
+  accountId,
+  value,
+  onChange,
+}: {
+  accountId?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [buffer, setBuffer] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const chips = useMemo(() => parseEmailAddresses(value), [value]);
+  const addresses = useMemo(() => chips.map((chip) => chip.address), [chips]);
+
+  const hasTypedQuery = buffer.trim().length > 0;
+  const suggestions = useEmailAddressSuggestions(
+    accountId,
+    buffer,
+    addresses,
+    focused && hasTypedQuery
+  );
+  const suggestionsOpen =
+    focused && hasTypedQuery && !suggestionsDismissed && suggestions.length > 0;
+
+  const addAddress = (text: string) => {
+    setBuffer('');
+    setActiveSuggestionIndex(-1);
+    // Compare on the parsed address, not the raw string — a suggestion pick
+    // arrives as "Name <email>" and would otherwise duplicate a chip the
+    // user already typed as the bare address.
+    const address = parseEmailAddresses(text)[0]?.address ?? text;
+    if (addresses.includes(address)) return;
+    onChange([value, text].filter(Boolean).join(', '));
+  };
+
+  const selectSuggestion = (suggestion: { name?: string | null; address: string }) => {
+    addAddress(suggestion.name ? `${suggestion.name} <${suggestion.address}>` : suggestion.address);
+  };
+
+  const commitBuffer = () => {
+    const trimmed = buffer.trim().replace(/[,;]+$/, '').trim();
+    if (!trimmed) {
+      setBuffer('');
+      return;
+    }
+    addAddress(trimmed);
+  };
+
+  const removeChip = (index: number) => {
+    onChange(chips.filter((_, i) => i !== index).map((chip) => chip.address).join(', '));
+  };
+
+  return (
+    <div className="relative min-h-8 py-0.5">
+      <Label htmlFor="calendar-event-attendees" className="sr-only">
+        Invite attendees
+      </Label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {chips.map((chip, index) => (
+          <span
+            key={`${chip.address}-${index}`}
+            className="flex h-7 items-center gap-1 rounded-md bg-muted/60 pl-2 pr-1 text-xs font-medium text-foreground"
+          >
+            {chip.name || chip.address}
+            <button
+              type="button"
+              aria-label={`Remove ${chip.address}`}
+              onClick={() => removeChip(index)}
+              className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </span>
+        ))}
+        <Input
+          id="calendar-event-attendees"
+          type="text"
+          role="combobox"
+          aria-expanded={suggestionsOpen}
+          aria-controls="calendar-event-attendee-suggestions"
+          autoComplete="off"
+          value={buffer}
+          placeholder={chips.length ? 'Add another attendee' : 'Invite attendees'}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setSuggestionsDismissed(false);
+            setActiveSuggestionIndex(-1);
+            if (/[,;]/.test(raw)) {
+              const parts = raw.split(/[,;]/).map((part) => part.trim());
+              const nextBuffer = parts.pop() ?? '';
+              const seen = new Set(addresses);
+              const additions = parts.filter((part) => part && !seen.has(part));
+              if (additions.length) {
+                onChange([...addresses, ...additions].join(', '));
+              }
+              setBuffer(nextBuffer);
+              return;
+            }
+            setBuffer(raw);
+          }}
+          onKeyDown={(e) => {
+            if (suggestionsOpen && e.key === 'ArrowDown') {
+              e.preventDefault();
+              setActiveSuggestionIndex((index) => Math.min(index + 1, suggestions.length - 1));
+              return;
+            }
+            if (suggestionsOpen && e.key === 'ArrowUp') {
+              e.preventDefault();
+              setActiveSuggestionIndex((index) => Math.max(index - 1, 0));
+              return;
+            }
+            if (suggestionsOpen && e.key === 'Escape') {
+              e.preventDefault();
+              setSuggestionsDismissed(true);
+              return;
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (suggestionsOpen && activeSuggestionIndex >= 0) {
+                selectSuggestion(suggestions[activeSuggestionIndex]);
+                return;
+              }
+              commitBuffer();
+            } else if (e.key === 'Backspace' && !buffer && chips.length > 0) {
+              removeChip(chips.length - 1);
+            }
+          }}
+          onBlur={() => {
+            setFocused(false);
+            commitBuffer();
+          }}
+          className={cn(GHOST_FIELD, 'h-7 w-40 flex-1 px-1.5')}
+        />
+      </div>
+      {suggestionsOpen && (
+        <div id="calendar-event-attendee-suggestions">
+          <EmailAddressSuggestionList
+            accountId={accountId}
+            suggestions={suggestions}
+            activeIndex={activeSuggestionIndex}
+            onSelect={(address) => {
+              const suggestion = suggestions.find((item) => item.address === address);
+              if (suggestion) selectSuggestion(suggestion);
+              else addAddress(address);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function calendarDotClass(row: CalendarSelectionRow): string {
   return CALENDAR_EVENT_STYLES[
     colorForCalendar({ aurinkoCalendarId: row.aurinkoCalendarId, isPrimary: row.isPrimary })
@@ -602,6 +798,12 @@ interface DialogSeed {
   allDay: boolean;
   location: string;
   calendarId: string;
+  attendees: string;
+}
+
+/** "Ada Lovelace <ada@example.com>" when there's a name, bare address otherwise. */
+function attendeeToChipText(attendee: { email: string; name?: string }): string {
+  return attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email;
 }
 
 function buildSeed(
@@ -620,6 +822,7 @@ function buildSeed(
       allDay: !!event.allDay,
       location: event.location ?? '',
       calendarId: event.calendarId,
+      attendees: event.attendees.map(attendeeToChipText).join(', '),
     };
   }
   const base = initialStart ?? new Date();
@@ -640,6 +843,7 @@ function buildSeed(
     allDay: false,
     location: '',
     calendarId: fallbackCalendar,
+    attendees: '',
   };
 }
 

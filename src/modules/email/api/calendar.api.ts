@@ -27,6 +27,11 @@ const calendarSelectionRowSchema = z.object({
   hidden: z.boolean(),
 });
 
+const attendeeSchema = z.object({
+  email: z.string(),
+  name: z.string().optional(),
+});
+
 const calendarEventSchema = z.object({
   id: z.string(),
   calendarId: z.string(),
@@ -42,6 +47,10 @@ const calendarEventSchema = z.object({
       email: z.string().optional(),
     })
     .nullable(),
+  // Setting this on create/update is what makes the provider (Graph) send
+  // each attendee an invitation/update email — there's no separate "send
+  // invite" call.
+  attendees: z.array(attendeeSchema).default([]),
   webLink: z.string().nullable(),
   isOnlineMeeting: z.boolean().optional(),
   onlineMeetingUrl: z.string().nullable().optional(),
@@ -58,6 +67,7 @@ const calendarAnnotationSchema = z.object({
   doneAt: z.string().nullable(),
 });
 
+export type CalendarAttendee = z.infer<typeof attendeeSchema>;
 export type CalendarSummary = z.infer<typeof calendarSchema>;
 export type CalendarSelectionRow = z.infer<typeof calendarSelectionRowSchema>;
 export type CalendarEventRecord = z.infer<typeof calendarEventSchema>;
@@ -97,6 +107,8 @@ export type CreateCalendarEventInput = {
   /** Attach a Teams meeting. */
   isOnlineMeeting?: boolean;
   recurrence?: CalendarRecurrenceOption;
+  /** Each one gets an invitation email from the provider automatically. */
+  attendees?: Array<{ email: string; name?: string }>;
 };
 
 export type UpdateCalendarEventInput = {
@@ -111,6 +123,12 @@ export type UpdateCalendarEventInput = {
   // event's {dateOnly} window as a timed {dateTime} one.
   isAllDay?: boolean;
   location?: string;
+  /**
+   * Full replacement list, not a diff — omit to leave attendees unchanged.
+   * Newly-added addresses get an invitation email, removed ones get a
+   * cancellation notice, both sent by the provider automatically.
+   */
+  attendees?: Array<{ email: string; name?: string }>;
 };
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
