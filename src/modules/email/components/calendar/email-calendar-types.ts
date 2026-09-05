@@ -1,4 +1,4 @@
-import type { CalendarEventRecord, CalendarSelectionRow } from '@/modules/email/api';
+import type { CalendarAttendee, CalendarEventRecord, CalendarSelectionRow } from '@/modules/email/api';
 
 /**
  * A calendar event as we render it. The week/day/month views + the timed block
@@ -15,6 +15,8 @@ export interface CalendarEvent {
   description?: string;
   location?: string;
   organizer?: string;
+  /** Invited attendees. Adding one here sends them an invitation email. */
+  attendees: CalendarAttendee[];
   /** Teams (or other provider) join link, when the event is an online meeting. */
   onlineMeetingUrl?: string;
   /** Part of a recurring series (occurrence or master). */
@@ -166,6 +168,7 @@ export function toCalendarEvent(
     onlineMeetingUrl: record.onlineMeetingUrl ?? undefined,
     isRecurring: record.isRecurring ?? false,
     organizer: record.organizer?.name ?? record.organizer?.email ?? undefined,
+    attendees: record.attendees ?? [],
     color: row
       ? colorForCalendar({ aurinkoCalendarId: row.aurinkoCalendarId, isPrimary: row.isPrimary })
       : 'primary',

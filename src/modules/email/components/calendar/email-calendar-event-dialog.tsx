@@ -28,6 +28,7 @@ import {
   colorForCalendar,
   type CalendarEvent,
 } from '@/modules/email/components/calendar/email-calendar-types';
+import { EMAIL_ADDRESS_PATTERN, parseEmailAddresses } from '@/modules/email/lib/email-addresses';
 import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay } from 'date-fns';
 import {
   AlignLeft,
@@ -37,7 +38,9 @@ import {
   MapPin,
   Repeat,
   Trash2,
+  Users,
   Video,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,6 +69,7 @@ export type CalendarEventDialogSubmit =
       timeZone?: string;
       isOnlineMeeting?: boolean;
       recurrence?: CalendarRecurrenceOption;
+      attendees?: Array<{ email: string; name?: string }>;
     }
   | {
       mode: 'edit';
@@ -75,6 +79,7 @@ export type CalendarEventDialogSubmit =
       end: Date;
       isAllDay: boolean;
       location?: string;
+      attendees?: Array<{ email: string; name?: string }>;
     };
 
 interface CalendarEventDialogProps {
@@ -124,6 +129,7 @@ export function EmailCalendarEventDialog({
   const [showTimeZone, setShowTimeZone] = useState(false);
   const [teamsMeeting, setTeamsMeeting] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceValue>('none');
+  const [attendees, setAttendees] = useState(seed.attendees);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -140,6 +146,7 @@ export function EmailCalendarEventDialog({
     setShowTimeZone(false);
     setTeamsMeeting(false);
     setRecurrence('none');
+    setAttendees(seed.attendees);
     setError(null);
   }, [open, seed]);
 
@@ -177,11 +184,26 @@ export function EmailCalendarEventDialog({
     const trimmedDescription = description.trim() || undefined;
     const trimmedLocation = location.trim() || undefined;
 
+    const invalidAttendee = parseEmailAddresses(attendees).find(
+      (recipient) => !EMAIL_ADDRESS_PATTERN.test(recipient.address)
+    );
+    if (invalidAttendee) {
+      setError(`Finish or remove “${invalidAttendee.address}” before continuing.`);
+      return;
+    }
+    const attendeesList = parseEmailAddresses(attendees).map((recipient) => ({
+      email: recipient.address,
+      name: recipient.name,
+    }));
+
     if (isEdit) {
-      // Only send the description when the user actually changed it. The
-      // pre-filled value can be a truncated preview of the stored body —
-      // echoing it back on an unrelated edit would overwrite the real text.
+      // Only send description/attendees when the user actually changed them.
+      // The pre-filled description can be a truncated preview of the stored
+      // body — echoing it back on an unrelated edit would overwrite the real
+      // text. Sending attendees unconditionally on every edit would replay
+      // invitation emails to the same people on unrelated changes.
       const descriptionChanged = description.trim() !== seed.description.trim();
+      const attendeesChanged = attendees.trim() !== seed.attendees.trim();
       onSubmit(
         {
           mode: 'edit',
@@ -191,6 +213,7 @@ export function EmailCalendarEventDialog({
           end,
           isAllDay: allDay,
           location: trimmedLocation,
+          attendees: attendeesChanged ? attendeesList : undefined,
         },
         event.id
       );
@@ -208,6 +231,7 @@ export function EmailCalendarEventDialog({
           timeZone: allDay ? undefined : timeZone,
           isOnlineMeeting: teamsMeeting || undefined,
           recurrence: recurrence === 'none' ? undefined : recurrence,
+          attendees: attendeesList.length ? attendeesList : undefined,
         },
         null
       );
@@ -228,7 +252,8 @@ export function EmailCalendarEventDialog({
     endTime !== seed.endTime ||
     allDay !== seed.allDay ||
     location !== seed.location ||
-    calendarId !== seed.calendarId;
+    calendarId !== seed.calendarId ||
+    attendees.trim() !== seed.attendees.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -408,6 +433,10 @@ export function EmailCalendarEventDialog({
               </FieldRow>
             )}
 
+            <FieldRow icon={Users} align="start">
+              <AttendeesField value={attendees} onChange={setAttendees} />
+            </FieldRow>
+
             <FieldRow icon={MapPin}>
               <Label htmlFor="calendar-event-location" className="sr-only">
                 Location
@@ -560,6 +589,92 @@ function FieldRow({
   );
 }
 
+/**
+ * Chip input for invitee emails. Each address added here — and each one
+ * removed on an existing event — gets an invitation or cancellation email
+ * sent automatically by the provider once the event is saved; this field
+ * itself never sends anything on its own.
+ */
+function AttendeesField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [buffer, setBuffer] = useState('');
+  const chips = useMemo(() => parseEmailAddresses(value), [value]);
+
+  const commitBuffer = () => {
+    const trimmed = buffer.trim().replace(/[,;]+$/, '').trim();
+    setBuffer('');
+    if (!trimmed) return;
+    if (chips.some((chip) => chip.address === trimmed)) return;
+    onChange([...chips.map((chip) => chip.address), trimmed].join(', '));
+  };
+
+  const removeChip = (index: number) => {
+    onChange(chips.filter((_, i) => i !== index).map((chip) => chip.address).join(', '));
+  };
+
+  return (
+    <div className="min-h-8 py-0.5">
+      <Label htmlFor="calendar-event-attendees" className="sr-only">
+        Invite attendees
+      </Label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {chips.map((chip, index) => (
+          <span
+            key={`${chip.address}-${index}`}
+            className="flex h-7 items-center gap-1 rounded-md bg-muted/60 pl-2 pr-1 text-xs font-medium text-foreground"
+          >
+            {chip.name || chip.address}
+            <button
+              type="button"
+              aria-label={`Remove ${chip.address}`}
+              onClick={() => removeChip(index)}
+              className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </span>
+        ))}
+        <Input
+          id="calendar-event-attendees"
+          type="text"
+          value={buffer}
+          placeholder={chips.length ? 'Add another attendee' : 'Invite attendees'}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (/[,;]/.test(raw)) {
+              const parts = raw.split(/[,;]/).map((part) => part.trim());
+              const nextBuffer = parts.pop() ?? '';
+              const seen = new Set(chips.map((chip) => chip.address));
+              const additions = parts.filter((part) => part && !seen.has(part));
+              if (additions.length) {
+                onChange([...chips.map((chip) => chip.address), ...additions].join(', '));
+              }
+              setBuffer(nextBuffer);
+              return;
+            }
+            setBuffer(raw);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitBuffer();
+            } else if (e.key === 'Backspace' && !buffer && chips.length > 0) {
+              removeChip(chips.length - 1);
+            }
+          }}
+          onBlur={commitBuffer}
+          className={cn(GHOST_FIELD, 'h-7 w-40 flex-1 px-1.5')}
+        />
+      </div>
+    </div>
+  );
+}
+
 function calendarDotClass(row: CalendarSelectionRow): string {
   return CALENDAR_EVENT_STYLES[
     colorForCalendar({ aurinkoCalendarId: row.aurinkoCalendarId, isPrimary: row.isPrimary })
@@ -602,6 +717,12 @@ interface DialogSeed {
   allDay: boolean;
   location: string;
   calendarId: string;
+  attendees: string;
+}
+
+/** "Ada Lovelace <ada@example.com>" when there's a name, bare address otherwise. */
+function attendeeToChipText(attendee: { email: string; name?: string }): string {
+  return attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email;
 }
 
 function buildSeed(
@@ -620,6 +741,7 @@ function buildSeed(
       allDay: !!event.allDay,
       location: event.location ?? '',
       calendarId: event.calendarId,
+      attendees: event.attendees.map(attendeeToChipText).join(', '),
     };
   }
   const base = initialStart ?? new Date();
@@ -640,6 +762,7 @@ function buildSeed(
     allDay: false,
     location: '',
     calendarId: fallbackCalendar,
+    attendees: '',
   };
 }
 

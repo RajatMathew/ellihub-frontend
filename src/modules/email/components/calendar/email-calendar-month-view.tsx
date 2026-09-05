@@ -238,7 +238,11 @@ function MonthEventChip({
               <p className="mt-0.5 text-xs text-muted-foreground">{hoverCardWhen(event)}</p>
             </div>
           </div>
-          {(event.location || event.organizer || event.description || event.onlineMeetingUrl) && (
+          {(event.location ||
+            event.organizer ||
+            event.attendees.length > 0 ||
+            event.description ||
+            event.onlineMeetingUrl) && (
             <div className="mt-2.5 grid gap-1.5 border-t border-border/60 pt-2.5">
               {event.onlineMeetingUrl && (
                 <a
@@ -259,6 +263,11 @@ function MonthEventChip({
               )}
               {event.organizer && (
                 <p className="text-xs text-muted-foreground">Organized by {event.organizer}</p>
+              )}
+              {event.attendees.length > 0 && (
+                <p className="line-clamp-2 text-xs text-muted-foreground">
+                  Invited: {event.attendees.map((attendee) => attendee.name ?? attendee.email).join(', ')}
+                </p>
               )}
               {event.description && (
                 <p className="line-clamp-3 text-xs text-muted-foreground/90">{event.description}</p>
