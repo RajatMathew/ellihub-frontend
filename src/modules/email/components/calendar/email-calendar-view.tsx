@@ -247,10 +247,14 @@ export function EmailCalendarView({ accountId = null, provider = null }: EmailCa
   );
 
   const handleDialogDelete = useCallback(
-    (event: CalendarEvent) => {
+    (event: CalendarEvent, target: 'occurrence' | 'series') => {
       if (!accountId) return;
+      // Deleting the series master's event id (rather than this occurrence's)
+      // is what makes the provider remove every occurrence — there's no
+      // separate series-delete endpoint or flag.
+      const eventId = target === 'series' && event.seriesMasterId ? event.seriesMasterId : event.id;
       deleteMutation.mutate(
-        { accountId, calendarId: event.calendarId, eventId: event.id },
+        { accountId, calendarId: event.calendarId, eventId },
         { onSuccess: () => setDialogState({ open: false, editing: null }) }
       );
     },
