@@ -130,6 +130,29 @@ test('the landing ring is drawn in the completion colour, not near-black', async
   await page.screenshot({ path: 'output/visual/task-landed-ring.png' });
 });
 
+test('pointing at the court underlines it', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('/app/tasks');
+
+  // Exact: every card is wrapped in a dnd-kit sortable that is itself a button
+  // carrying the card's whole text, so a substring match finds both.
+  const court = page.getByRole('button', {
+    name: 'Our court. Hand over to their court',
+    exact: true,
+  });
+  await expect(court).toBeVisible({ timeout: 30_000 });
+
+  // The line lands on the words, not the dot, so the label is what is read.
+  const label = court.getByText('Our court');
+  await expect(label).toHaveCSS('text-decoration-line', 'none');
+
+  await court.hover();
+  await expect(label).toHaveCSS('text-decoration-line', 'underline');
+
+  await page.screenshot({ path: 'output/visual/task-court-hover.png' });
+});
+
 test('the circle fills and holds before the card leaves', async ({ page }) => {
   await setupMockApi(page, 3_000);
   await page.setViewportSize({ width: 1400, height: 900 });

@@ -29,7 +29,19 @@ export function TaskCourtToggle({
   const body = (
     <>
       <span className={cn('size-2 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
-      <span className={cn('text-sm font-semibold', tone.text)}>{tone.label}</span>
+      <span
+        className={cn(
+          'text-sm font-semibold underline-offset-4',
+          // Underlined on hover rather than tinted behind, as the design draws
+          // it - the label is the control, so the line belongs on the words and
+          // in their own colour. Driven from the button so pointing anywhere on
+          // it underlines, including the dot's half.
+          'group-hover/court:underline group-focus-visible/court:underline',
+          tone.text
+        )}
+      >
+        {tone.label}
+      </span>
     </>
   );
 
@@ -49,7 +61,7 @@ export function TaskCourtToggle({
       // See TaskPriorityMeter: the whole card is a drag handle.
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={`${tone.label}. Hand over to ${TASK_COURT_TONES[next].label.toLowerCase()}`}
-      className="-mx-1 h-auto w-fit gap-2 px-1 py-1 hover:bg-surface-hover"
+      className="group/court -mx-1 h-auto w-fit gap-2 px-1 py-1 hover:bg-transparent"
     >
       {body}
     </Button>
