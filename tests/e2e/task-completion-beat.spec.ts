@@ -85,6 +85,25 @@ async function setupMockApi(page: Page, holdCompleteMs = 0) {
   });
 }
 
+test('pointing at the circle previews the mark it would leave', async ({ page }) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('/app/tasks');
+
+  const circle = page.getByRole('checkbox', { name: 'Complete Chase the certificate' });
+  await expect(circle).toBeVisible({ timeout: 30_000 });
+
+  // The ghost tick is a sibling of the checkbox, hidden until the checkbox is
+  // hovered. Opacity is the only thing that changes, so that is what is read.
+  const ghost = circle.locator('xpath=following-sibling::*[1]');
+  await expect(ghost).toHaveCSS('opacity', '0');
+
+  await circle.hover();
+  await expect(ghost).not.toHaveCSS('opacity', '0');
+
+  await page.screenshot({ path: 'output/visual/task-circle-hover.png' });
+});
+
 test('the circle fills and holds before the card leaves', async ({ page }) => {
   await setupMockApi(page, 3_000);
   await page.setViewportSize({ width: 1400, height: 900 });

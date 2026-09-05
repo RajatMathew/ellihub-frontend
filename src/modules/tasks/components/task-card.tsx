@@ -13,7 +13,7 @@ import {
 } from '@/modules/tasks/constants/tasks.constants';
 import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 import { differenceInCalendarDays, format } from 'date-fns';
-import { Clock } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 
 function prefersReducedMotion() {
   return (
@@ -117,29 +117,46 @@ export function TaskCard({
             a two-state fact about the task, so Radix's role and aria-checked say
             so and space toggles it. Only the shape is ours - the design draws a
             dashed ring where the primitive draws a square. */}
-        <Checkbox
-          checked={isDone || isCompleting}
-          disabled={isBusy}
-          onCheckedChange={handleComplete}
-          // See TaskPriorityMeter: the whole card is a drag handle.
-          onPointerDown={(event) => event.stopPropagation()}
-          aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
-          data-completing={isCompleting || undefined}
-          className={cn(
-            'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
-            isDone &&
-              'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground',
-            // The beat, as the ticket draws it: the ring stays dashed and goes
-            // green over a pale fill, so it reads as "being ticked" rather than
-            // as the settled done state, which is a solid fill and a tick.
-            isCompleting &&
-              'border-dashed border-success text-transparent data-[state=checked]:border-success data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
-                (prefersReducedMotion() ? '' : ' animate-task-completing'),
-            !isDone &&
-              !isCompleting &&
-              'border-dashed border-muted-foreground/40 hover:border-success'
-          )}
-        />
+        <span className="relative inline-flex shrink-0">
+          <Checkbox
+            checked={isDone || isCompleting}
+            disabled={isBusy}
+            onCheckedChange={handleComplete}
+            // See TaskPriorityMeter: the whole card is a drag handle.
+            onPointerDown={(event) => event.stopPropagation()}
+            aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
+            data-completing={isCompleting || undefined}
+            className={cn(
+              'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
+              isDone &&
+                'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground',
+              // The beat, as the ticket draws it: the ring stays dashed and goes
+              // green over a pale fill, so it reads as "being ticked" rather than
+              // as the settled done state, which is a solid fill and a tick.
+              isCompleting &&
+                'border-dashed border-success text-transparent data-[state=checked]:border-success data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
+                  (prefersReducedMotion() ? '' : ' animate-task-completing'),
+              !isDone &&
+                !isCompleting &&
+                'border-dashed border-muted-foreground/40 hover:border-success'
+            )}
+          />
+
+          {/* A ghost of the tick, shown while the circle is pointed at or
+              tabbed to. An empty dashed ring does not say what it does; the mark
+              it would leave does. Radix mounts the real indicator only once
+              checked, so this is a sibling rather than a state of it - the
+              variant already sets `peer`, which is what it listens to.
+
+              Hidden from the accessibility tree: the checkbox itself already
+              announces what pressing it does. */}
+          {!isDone && !isCompleting ? (
+            <Check
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 m-auto size-3.5 text-success opacity-0 transition-opacity peer-hover:opacity-50 peer-focus-visible:opacity-50"
+            />
+          ) : null}
+        </span>
 
         <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
       </div>
