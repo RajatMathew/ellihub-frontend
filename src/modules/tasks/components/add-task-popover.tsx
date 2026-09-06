@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import { TaskEmailReferences } from '@/modules/tasks/components/task-email-references';
 import { TASK_PRIORITY_OPTIONS } from '@/modules/tasks/constants/tasks.constants';
 import { useCreateTaskMutation } from '@/modules/tasks/hooks/tasks.hooks';
 import type { TaskEmailReference, TaskPriority } from '@/modules/tasks/schemas/task.schema';
@@ -40,10 +41,13 @@ export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm" aria-label="Add task for this email">
           <ListTodo aria-hidden="true" className="size-3.5" />
-          <span className="hidden sm:inline">Add task</span>
+          {/* Labelled at every width. Icon-only on a phone put it next to three
+              other icon buttons with nothing to tell them apart, and it read as
+              missing rather than terse. */}
+          <span>Add task</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
+      <PopoverContent align="end" className="w-96">
         {/* Keyed by open so each visit starts clean without a reset effect. */}
         {open ? <AddTaskForm key="open" email={email} onDone={() => setOpen(false)} /> : null}
       </PopoverContent>
@@ -77,14 +81,19 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
   const isInvalid = touched && trimmed.length === 0;
   const isDueInvalid = touched && (dueDate.length === 0 || dueTime.length === 0);
 
-  const reference: TaskEmailReference = {
-    accountId: email.accountId,
-    providerId: email.providerId,
-    conversationKey: email.conversationKey ?? null,
-    threadId: email.threadId ?? null,
-    subject: email.subject ?? null,
-    fromEmail: email.fromEmail ?? null,
-  };
+  // The open message is attached from the outset — that is the reason you are
+  // in this popover — and is only the starting point: more can be added, and
+  // this one swapped out, so long as one remains.
+  const [references, setReferences] = useState<TaskEmailReference[]>(() => [
+    {
+      accountId: email.accountId,
+      providerId: email.providerId,
+      conversationKey: email.conversationKey ?? null,
+      threadId: email.threadId ?? null,
+      subject: email.subject ?? null,
+      fromEmail: email.fromEmail ?? null,
+    },
+  ]);
 
   const submit = async () => {
     setTouched(true);
@@ -96,7 +105,7 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
       court: 'OURS',
       dueAt: new Date(`${dueDate}T${dueTime}`).toISOString(),
       dueHasTime: true,
-      emailReferences: [reference],
+      emailReferences: references,
     });
 
     onDone();
@@ -121,11 +130,17 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => setTouched(true)}
         />
-        {isInvalid ? (
-          <p className="text-xs text-destructive">A task needs a title</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">Linked to this email.</p>
-        )}
+        {isInvalid ? <p className="text-xs text-destructive">A task needs a title</p> : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Linked emails</Label>
+        <TaskEmailReferences
+          accountId={email.accountId}
+          value={references}
+          onChange={setReferences}
+          requireAtLeastOne
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-2">

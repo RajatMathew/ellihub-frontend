@@ -304,6 +304,33 @@ function normalizeClassificationReferences(
   return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
 }
 
+/**
+ * Search the mailbox for a message to reference.
+ *
+ * Debounced by the caller, not here — the delay belongs with the input that
+ * produces the term. Disabled on an empty term so opening the picker does not
+ * fire a search for everything.
+ */
+export const useEmailMessageSearchQuery = (
+  accountId: string | undefined,
+  term: string,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'message-search', accountId, term] as const,
+    queryFn: ({ signal }) =>
+      emailApi.searchMessages({ accountId: accountId as string, q: term, signal }),
+    enabled: enabled && Boolean(accountId) && term.trim().length > 0,
+    // The provider is behind this, so results are worth holding while the
+    // picker is open and the user edits their term back and forth.
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previous) => previous,
+  });
+
 export const useEmailThreadAssigneesQuery = (enabled = true) =>
   useQuery({
     queryKey: [...emailKeys.all, 'thread-assignees'] as const,

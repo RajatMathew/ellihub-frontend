@@ -369,6 +369,22 @@ export type SaveEmailThreadClassificationPayload = {
   references: EmailThreadReference[];
 };
 
+// A message found by searching the whole mailbox, for referencing rather than
+// reading — so no body, no flags, just enough to recognise the thread.
+export const emailMessageSearchResultSchema = z.object({
+  providerId: z.string(),
+  threadId: z.string().nullable().optional(),
+  conversationKey: z.string(),
+  subject: z.string(),
+  senderName: z.string(),
+  senderEmail: z.string(),
+  preview: z.string(),
+  receivedAt: z.string(),
+  folder: z.string(),
+});
+
+export type EmailMessageSearchResult = z.infer<typeof emailMessageSearchResultSchema>;
+
 export type EmailThreadAssignee = z.infer<typeof emailThreadAssigneeSchema>;
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
@@ -452,6 +468,26 @@ export const emailApi = {
       classification
     );
     return emailThreadClassificationSchema.parse(unwrapData(res.data));
+  },
+
+  /**
+   * Find a message anywhere in the mailbox, Junk aside.
+   *
+   * Deliberately not `listMessages` with a search term: that one is scoped to a
+   * folder, and the whole point here is that you do not know which folder the
+   * message is in.
+   */
+  async searchMessages(params: {
+    accountId: string;
+    q: string;
+    size?: number;
+    signal?: AbortSignal;
+  }): Promise<EmailMessageSearchResult[]> {
+    const res = await api.get(`${BASE}/accounts/${params.accountId}/messages/search`, {
+      params: { q: params.q, size: params.size ?? 20 },
+      signal: params.signal,
+    });
+    return z.array(emailMessageSearchResultSchema).parse(unwrapData(res.data));
   },
 
   async listThreadAssignees(): Promise<EmailThreadAssignee[]> {
