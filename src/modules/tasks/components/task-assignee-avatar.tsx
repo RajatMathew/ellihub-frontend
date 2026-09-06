@@ -15,6 +15,10 @@ import { cn } from '@/app/lib/utils';
  * share: the mail side colours senders, who are often not users here and have
  * no id at all. The cost is that a rename changes somebody's colour, which is
  * already true of every avatar in the mailbox.
+ *
+ * The opaque base under the fallback is #821. Fluent's colours are opaque, so a
+ * person's chip no longer mixes with anything - but the unassigned one is still
+ * a theme tint, and a selected filter pill would otherwise show through it.
  */
 export function TaskAssigneeAvatar({
   name,
@@ -29,7 +33,9 @@ export function TaskAssigneeAvatar({
   const initials = name ? getOutlookInitials(name) : '';
 
   return (
-    <Avatar className={cn(size === 'sm' ? 'size-5' : 'size-6', className)}>
+    <Avatar
+      className={cn('rounded-full bg-background', size === 'sm' ? 'size-5' : 'size-6', className)}
+    >
       <AvatarFallback
         className={cn(
           'font-semibold uppercase',
