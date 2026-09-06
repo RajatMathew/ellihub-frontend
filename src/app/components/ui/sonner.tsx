@@ -20,10 +20,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
           toast:
             'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground! group-[.toaster]:border-border group-[.toaster]:shadow-lg has-[[role=alert]]:border-0! has-[[role=alert]]:shadow-none! has-[[role=alert]]:bg-transparent!',
           description: 'group-[.toast]:text-muted-foreground',
+          // The background needs the `!` as much as the text colour does. Sonner
+          // ships its own `[data-button]` background, and without the flag it
+          // wins — which left the action button transparent while the
+          // foreground override still applied, i.e. near-white text on a white
+          // toast. Nothing used a toast action until the tasks board's Undo, so
+          // it went unnoticed.
           actionButton:
-            'group-[.toast]:rounded-md! group-[.toast]:bg-primary group-[.toast]:text-primary-foreground!',
+            'group-[.toast]:rounded-md! group-[.toast]:bg-primary! group-[.toast]:text-primary-foreground!',
           cancelButton:
-            'group-[.toast]:rounded-md! group-[.toast]:bg-secondary group-[.toast]:text-secondary-foreground!',
+            'group-[.toast]:rounded-md! group-[.toast]:bg-secondary! group-[.toast]:text-secondary-foreground!',
         },
       }}
       {...props}

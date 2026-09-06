@@ -51,7 +51,7 @@ import {
   type TaskFormData,
 } from '@/modules/tasks/schemas/task.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 const pad = (value: number) => String(value).padStart(2, '0');
@@ -122,12 +122,15 @@ export function TaskFormDialog({
   isSaving = false,
   onOpenChange,
   onSubmit,
+  onDelete,
 }: {
   open: boolean;
   task?: Task | null;
   isSaving?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: CreateTaskInput) => Promise<void> | void;
+  /** Edit only — there is nothing to delete while creating. */
+  onDelete: (task: Task) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -142,6 +145,7 @@ export function TaskFormDialog({
             isSaving={isSaving}
             onCancel={() => onOpenChange(false)}
             onSubmit={onSubmit}
+            onDelete={onDelete}
           />
         )}
       </DialogContent>
@@ -154,11 +158,13 @@ function TaskFormDialogContent({
   isSaving,
   onCancel,
   onSubmit,
+  onDelete,
 }: {
   task?: Task | null;
   isSaving: boolean;
   onCancel: () => void;
   onSubmit: (payload: CreateTaskInput) => Promise<void> | void;
+  onDelete: (task: Task) => void;
 }) {
   const isEdit = Boolean(task);
   // Open on a task that already has one, so editing never hides existing text.
@@ -383,7 +389,38 @@ function TaskFormDialogContent({
 
           <Separator className="mt-7" />
 
-          <DialogFooter className="items-center">
+          {/* `DialogFooter` stacks `flex-col-reverse` below `sm`, and its only gap is
+              `sm:space-x-2.5` — horizontal, so stacked buttons would touch. It also
+              centres on the cross axis, which in a column means three
+              content-width buttons at three different widths. Both overrides are
+              therefore mobile-only: a real gap, and `items-center` deferred to `sm`
+              so the column falls back to `stretch` and the buttons share one width. */}
+          <DialogFooter className="gap-2 sm:items-center sm:gap-0">
+            {/* The only way to delete a task, by product decision — the board's
+                cards deliberately carry no delete, so removing one is always a
+                deliberate trip through the task you are removing.
+
+                Left of the divide, away from Cancel and Save, because it is not
+                one of the things you might do on your way out of a form. Edit
+                only: there is nothing to delete before the task exists.
+
+                No confirm dialog. The delete is soft and the toast it raises
+                offers Undo, which is the cheaper of the two ways to ask; a
+                dialog on top of that would be a second question about the same
+                click. Closing this one is the caller's job, in the same handler
+                that deletes — left open, it would cover that toast. */}
+            {task ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                onClick={() => onDelete(task)}
+                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:w-auto"
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Delete
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="ghost"

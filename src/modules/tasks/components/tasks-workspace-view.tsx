@@ -10,6 +10,7 @@ import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
 import { TASKS_DEFAULT_PAGE_SIZE } from '@/modules/tasks/constants/tasks.constants';
 import {
   useCreateTaskMutation,
+  useDeleteTaskMutation,
   useSetTaskCompletedMutation,
   useShiftTaskDueDateMutation,
   useTasksQuery,
@@ -37,6 +38,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const updateTask = useUpdateTaskMutation();
   const setCompleted = useSetTaskCompletedMutation();
   const shiftDueDate = useShiftTaskDueDateMutation();
+  const deleteTask = useDeleteTaskMutation();
   const { justLandedId, markLanded } = useJustLandedTask();
 
   const busyTaskId =
@@ -54,6 +56,14 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const openEdit = (task: Task) => {
     setEditing(task);
     setDialogOpen(true);
+  };
+
+  // Deleting closes the dialog it was raised from. The card leaves the board on
+  // the click, and a dialog still sitting over it would cover the Undo toast —
+  // the one thing that makes the delete reversible.
+  const handleDelete = (task: Task) => {
+    setDialogOpen(false);
+    deleteTask.mutate({ id: task.id, title: task.title });
   };
 
   const handleSubmit = async (payload: CreateTaskInput) => {
@@ -171,6 +181,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         isSaving={createTask.isPending || updateTask.isPending}
         onOpenChange={setDialogOpen}
         onSubmit={handleSubmit}
+        onDelete={handleDelete}
       />
     </div>
   );
