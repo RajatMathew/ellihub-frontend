@@ -358,12 +358,7 @@ function TaskFormDialogContent({
                     <InfiniteSearchSelect
                       options={assigneeOptions}
                       size="lg"
-                      leadingSlot={
-                        <TaskAssigneeAvatar
-                          id={selectedAssignee?.value}
-                          name={selectedAssignee?.label}
-                        />
-                      }
+                      leadingSlot={<TaskAssigneeAvatar name={selectedAssignee?.label} />}
                       value={field.value || null}
                       selectedOption={selectedAssignee}
                       search={assigneeSearch}

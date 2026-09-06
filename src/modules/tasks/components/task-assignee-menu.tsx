@@ -46,7 +46,7 @@ export function TaskAssigneeMenu({
           className="flex items-center gap-0.5 rounded-md p-0.5 hover:bg-surface-hover focus-visible:bg-surface-hover"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
-          <TaskAssigneeAvatar id={task.assigneeId} name={name} />
+          <TaskAssigneeAvatar name={name} />
           <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
@@ -71,7 +71,7 @@ export function TaskAssigneeMenu({
               disabled={option.badge === 'Unlinked'}
               onSelect={() => onReassign(option.value)}
             >
-              <TaskAssigneeAvatar id={option.value} name={option.label} size="sm" />
+              <TaskAssigneeAvatar name={option.label} size="sm" />
               <span className="truncate">{option.label}</span>
             </DropdownMenuItem>
           ))

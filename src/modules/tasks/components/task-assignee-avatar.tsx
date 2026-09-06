@@ -1,47 +1,51 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
+import { getOutlookAvatarStyle, getOutlookInitials } from '@/app/lib/outlook-avatar';
 import { cn } from '@/app/lib/utils';
-import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
 
 /**
- * A person's initials, tinted the colour they carry everywhere else.
+ * A person, drawn the way the mail side draws them.
  *
- * The same three lines of `Avatar` + `AvatarFallback` + `assigneeTone` had been
- * written out in the filter pills, the card's reassign menu and that menu's
- * option list. Four copies of a chip is three too many for one that has to keep
- * agreeing with itself, so they all come through here now.
+ * Colour and initials both come from `outlook-avatar` rather than from a tint
+ * of the theme, so somebody assigned a task looks the same as they do in the
+ * email assignee list — and, since that module is a port of Fluent's own
+ * avatars, the same as they do in Outlook. Two schemes for one person was the
+ * whole of elli-ui#798.
  *
- * `id` is what picks the tint, so an unassigned chip — no id — is deliberately
- * grey rather than a colour that would read as somebody.
- *
- * The tints are translucent, so left alone the chip takes on whatever it sits
- * on: a selected filter pill turned it navy-on-navy and the initials vanished
- * (#821). The opaque base below fixes what the tint mixes with, so a person's
- * colour is the same whether their pill is selected, hovered or plain.
+ * Keyed on the **name**, not the id, because that is the only input both sides
+ * share: the mail side colours senders, who are often not users here and have
+ * no id at all. The cost is that a rename changes somebody's colour, which is
+ * already true of every avatar in the mailbox.
  */
 export function TaskAssigneeAvatar({
-  id,
   name,
   size = 'md',
   className,
 }: {
-  id?: string | null;
   name?: string | null;
   /** `sm` for a chip inside a button or a list row, `md` on its own. */
   size?: 'sm' | 'md';
   className?: string;
 }) {
+  const initials = name ? getOutlookInitials(name) : '';
+
   return (
-    <Avatar
-      className={cn('rounded-full bg-background', size === 'sm' ? 'size-5' : 'size-6', className)}
-    >
+    <Avatar className={cn(size === 'sm' ? 'size-5' : 'size-6', className)}>
       <AvatarFallback
         className={cn(
-          'font-semibold',
+          'font-semibold uppercase',
           size === 'sm' ? 'text-[0.625rem]' : 'text-xs',
-          id ? assigneeTone(id) : 'bg-muted text-muted-foreground'
+          // Unassigned has no name to colour from, and should not look like a
+          // person either, so it keeps the theme's own grey.
+          !name && 'bg-muted text-muted-foreground'
         )}
+        // Exact Outlook avatar colours — see outlook-avatar.ts. Inline because
+        // they are Microsoft's values, deliberately not design-system tokens.
+        style={name ? getOutlookAvatarStyle(name) : undefined}
       >
-        {name ? initialsOf(name) : '—'}
+        {/* Fluent returns nothing for a name it cannot abbreviate - a phone
+            number, or a script that does not use initials - and shows a question
+            mark rather than inventing letters. */}
+        {name ? initials || '?' : '—'}
       </AvatarFallback>
     </Avatar>
   );

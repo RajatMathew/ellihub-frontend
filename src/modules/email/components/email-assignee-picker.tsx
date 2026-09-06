@@ -9,11 +9,11 @@ import {
 } from '@/app/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
+import { getOutlookAvatarStyle, getOutlookInitials } from '@/app/lib/outlook-avatar';
 import { cn } from '@/app/lib/utils';
 import type { EmailThreadAssigneeInfo } from '@/modules/email/components/email-reference-marker-storage';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailThreadAssigneesQuery } from '@/modules/email/hooks';
-import { getOutlookAvatarStyle, getOutlookInitials } from '@/modules/email/lib/outlook-avatar';
 import { Check, Loader2, UserPlus, UserX } from 'lucide-react';
 
 export function EmailAssigneeAvatar({

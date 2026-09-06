@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
+import { getOutlookAvatarStyle, getOutlookInitials } from '@/app/lib/outlook-avatar';
 import { cn } from '@/app/lib/utils';
 import { getSenderPhotoUrl } from '@/modules/email/api/email.api';
-import { getOutlookAvatarStyle, getOutlookInitials } from '@/modules/email/lib/outlook-avatar';
 
 // Photo URLs that already 404'd this session — skip re-requesting them on
 // every re-render, since browsers do not cache 404 responses.
