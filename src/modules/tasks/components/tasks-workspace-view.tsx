@@ -143,9 +143,12 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           busyTaskId={busyTaskId}
           justLandedTaskId={justLandedId}
           onOpenTask={openEdit}
-          onCompleteTask={(task) =>
-            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' })
-          }
+          onCompleteTask={(task) => {
+            // The same landing ring +1 day gets: the card has moved columns, so
+            // say where it went rather than leaving it to be found.
+            markLanded(task.id);
+            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' });
+          }}
           onShiftDueDate={(task, days) => {
             markLanded(task.id);
             shiftDueDate.mutate({ id: task.id, days });
@@ -154,6 +157,11 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
           }
           onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
+          // Priority and court are ordinary fields, so changing them from the
+          // card is the same PUT the dialog sends - no new endpoint, and the
+          // board regroups on its own because neither decides a column.
+          onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
+          onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
         />
       )}
 

@@ -9,6 +9,16 @@ import { expect, test, type Page } from '@playwright/test';
  * leaves behind is the actual rendered board, not a mockup.
  */
 
+/**
+ * A column heading, matched by its start.
+ *
+ * "Due Today" and "Tomorrow" carry the date after a comma, so an exact match
+ * stopped finding them - and every drag test locates its target column this way.
+ */
+function columnHeading(page: Page, label: string) {
+  return page.getByText(new RegExp(`^${label}(,|$)`));
+}
+
 function isoDaysFromNow(days: number, hour = 11) {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -183,9 +193,10 @@ test('the board renders its columns, coloured assignees and filter pills', async
     timeout: 30_000,
   });
 
-  // Every column the design calls for, plus the undated one the design omits.
+  // Every column the design calls for. Due Today and Tomorrow carry the date
+  // beside them now, so the heading is matched by its start rather than whole.
   for (const column of ['Overdue', 'Due Today', 'Tomorrow', 'Pending', 'Completed']) {
-    await expect(page.getByText(column, { exact: true })).toBeVisible();
+    await expect(columnHeading(page, column)).toBeVisible();
   }
 
   const filters = page.getByRole('group', { name: 'Filter by assignee' });
@@ -251,7 +262,7 @@ test('a forbidden column says no while the card is still in the air', async ({ p
 
   // Pick the overdue card up and hold it over Due Today, which the rules refuse.
   const from = await overdueCard.boundingBox();
-  const dueToday = await page.getByText('Due Today', { exact: true }).boundingBox();
+  const dueToday = await columnHeading(page, 'Due Today').boundingBox();
   if (!from || !dueToday) throw new Error('could not locate the card or the column');
 
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -280,7 +291,7 @@ test('a legal hover opens a gap where the card will land', async ({ page }) => {
   const before = await thisWeekCount();
 
   const from = await card.boundingBox();
-  const tomorrow = await page.getByText('Tomorrow', { exact: true }).boundingBox();
+  const tomorrow = await columnHeading(page, 'Tomorrow').boundingBox();
   if (!from || !tomorrow) throw new Error('could not locate the card or the column');
 
   await page.mouse.move(from.x + from.width / 2, from.y + 20);
@@ -306,7 +317,7 @@ test('dropping a card on another column saves its new due date', async ({ page }
   await expect(card).toBeVisible({ timeout: 30_000 });
 
   const from = await card.boundingBox();
-  const tomorrow = await page.getByText('Tomorrow', { exact: true }).boundingBox();
+  const tomorrow = await columnHeading(page, 'Tomorrow').boundingBox();
   if (!from || !tomorrow) throw new Error('could not locate the card or the column');
 
   await page.mouse.move(from.x + from.width / 2, from.y + 20);

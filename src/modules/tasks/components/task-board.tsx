@@ -20,7 +20,7 @@ import {
   TASK_COLUMNS,
   type TaskColumnId,
 } from '@/modules/tasks/lib/task-board';
-import type { Task } from '@/modules/tasks/schemas/task.schema';
+import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 import { toast } from 'sonner';
 
 export function TaskBoard({
@@ -33,6 +33,8 @@ export function TaskBoard({
   onShiftDueDate,
   onReschedule,
   onReassign,
+  onPriorityChange,
+  onCourtChange,
 }: {
   tasks: Task[];
   now?: Date;
@@ -43,6 +45,8 @@ export function TaskBoard({
   onShiftDueDate: (task: Task, days: number) => void;
   onReschedule: (task: Task, dueAt: Date) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
+  onPriorityChange: (task: Task, priority: TaskPriority) => void;
+  onCourtChange: (task: Task, court: TaskCourt) => void;
 }) {
   // `new Date()` as a default parameter is a fresh object on every render, which
   // would make every memo below recompute and the state adjustment loop forever.
@@ -181,6 +185,8 @@ export function TaskBoard({
                       onComplete={onCompleteTask}
                       onShiftDueDate={onShiftDueDate}
                       onReassign={(assigneeId) => onReassign(task, assigneeId)}
+                      onPriorityChange={(priority) => onPriorityChange(task, priority)}
+                      onCourtChange={(court) => onCourtChange(task, court)}
                     />
                   </div>
                 </KanbanItemHandle>

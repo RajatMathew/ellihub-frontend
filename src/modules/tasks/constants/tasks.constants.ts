@@ -21,6 +21,31 @@ export const TASK_COURT_OPTIONS: { value: TaskCourt; label: string; tone: string
   { value: 'THEIRS', label: 'Theirs', tone: 'bg-muted-foreground' },
 ];
 
+// How the card draws a priority: the meter's filled bars and its label share one
+// colour, so the level reads at a glance without the label being parsed. Their
+// own ramp rather than `destructive`/`warning` — see the note beside
+// `--priority-high` in the theme files.
+export const TASK_PRIORITY_TONES: Record<TaskPriority, { bar: string; text: string }> = {
+  P1: { bar: 'bg-priority-high', text: 'text-priority-high' },
+  P2: { bar: 'bg-priority-medium', text: 'text-priority-medium' },
+  P3: { bar: 'bg-priority-low', text: 'text-priority-low' },
+};
+
+// The card names the court in full — "Our court" reads on its own, where a
+// filled-vs-empty pair needed both halves present to be understood.
+export const TASK_COURT_TONES: Record<TaskCourt, { dot: string; text: string; label: string }> = {
+  OURS: { dot: 'bg-court-ours', text: 'text-court-ours', label: 'Our court' },
+  THEIRS: { dot: 'bg-court-theirs', text: 'text-court-theirs', label: 'Their court' },
+};
+
+/**
+ * How long the completion circle holds its fill before the card leaves.
+ *
+ * Long enough to register, short enough not to feel like lag - about the length
+ * of a blink. See elli-ui#829.
+ */
+export const TASK_COMPLETION_BEAT_MS = 200;
+
 export const TASKS_DEFAULT_PAGE_SIZE = 25;
 
 export const TASK_ENTITY_LABELS: Record<TaskEntityType, string> = {

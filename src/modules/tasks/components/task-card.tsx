@@ -1,11 +1,19 @@
+import { useState } from 'react';
+
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
+import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/lib/utils';
 import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
-import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
-import type { Task } from '@/modules/tasks/schemas/task.schema';
-import { format, isBefore, startOfDay } from 'date-fns';
-import { CircleCheck, Clock } from 'lucide-react';
+import { TaskCourtToggle } from '@/modules/tasks/components/task-court-toggle';
+import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
+import {
+  TASK_COMPLETION_BEAT_MS,
+  TASK_ENTITY_LABELS,
+} from '@/modules/tasks/constants/tasks.constants';
+import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
+import { differenceInCalendarDays, format } from 'date-fns';
+import { Check, Clock } from 'lucide-react';
 
 function prefersReducedMotion() {
   return (
@@ -13,22 +21,25 @@ function prefersReducedMotion() {
   );
 }
 
-/** "was due Thu, Jul 2 · 5d late" / "due today · 11:42 AM" / "Wed, Jul 15" */
-function dueLabel(task: Task, now: Date) {
+/**
+ * What the card says about the deadline.
+ *
+ * Near dates are named rather than dated — "due today" beats "Wed, Sep 3" on a
+ * card sitting in a column headed "Due Today, Sep 3", where the date is already
+ * on screen. Only dates far enough out to be genuinely ambiguous get written.
+ */
+function dueLabel(task: Task, now: Date): { text: string; tone: string } | null {
   if (!task.dueAt) return null;
 
-  const due = new Date(task.dueAt);
-  const time = task.dueHasTime ? format(due, 'h:mm a') : null;
-  const isToday = startOfDay(due).getTime() === startOfDay(now).getTime();
-  const isLate = isBefore(startOfDay(due), startOfDay(now));
+  const days = differenceInCalendarDays(new Date(task.dueAt), now);
 
-  if (isLate) {
-    const days = Math.round((startOfDay(now).getTime() - startOfDay(due).getTime()) / 86_400_000);
-    return { text: `was due ${format(due, 'EEE, MMM d')} · ${days}d late`, late: true };
+  if (days < 0) {
+    return { text: `overdue ${Math.abs(days)}d`, tone: 'text-priority-high' };
   }
+  if (days === 0) return { text: 'due today', tone: 'text-priority-medium' };
+  if (days === 1) return { text: 'due tomorrow', tone: 'text-court-ours' };
 
-  const day = isToday ? 'due today' : format(due, 'EEE, MMM d');
-  return { text: time ? `${day} · ${time}` : day, late: false };
+  return { text: format(new Date(task.dueAt), 'MMM d'), tone: 'text-muted-foreground' };
 }
 
 export function TaskCard({
@@ -40,6 +51,8 @@ export function TaskCard({
   onComplete,
   onShiftDueDate,
   onReassign,
+  onPriorityChange,
+  onCourtChange,
 }: {
   task: Task;
   now?: Date;
@@ -50,44 +63,126 @@ export function TaskCard({
   onComplete: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
   onReassign: (assigneeId: string | null) => void;
+  onPriorityChange?: (priority: TaskPriority) => void;
+  onCourtChange?: (court: TaskCourt) => void;
 }) {
   const due = dueLabel(task, now);
   const isDone = task.status === 'COMPLETED';
-  const source = task.emailReferences[0];
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  /**
+   * Fill the circle, hold it, and only then save.
+   *
+   * The card leaves for Completed as soon as the save lands, so without the
+   * pause the click and the disappearance are the same event and nothing ever
+   * says "done". Holding first spends a fifth of a second saying it.
+   *
+   * Reopening gets no beat - the card is already where it is going.
+   */
+  const handleComplete = () => {
+    if (isDone) {
+      onComplete(task);
+      return;
+    }
+
+    setIsCompleting(true);
+    window.setTimeout(() => {
+      // Released as the save starts rather than held until it returns: if it
+      // fails the card stays put, and a circle still claiming success would be
+      // the one thing worse than no beat at all.
+      setIsCompleting(false);
+      onComplete(task);
+    }, TASK_COMPLETION_BEAT_MS);
+  };
 
   return (
+    // `group` is what lets +1 day appear on hover: it is in the tree the whole
+    // time, so the layout never shifts, and it is revealed on focus too — a
+    // control only a mouse can reach is a control a keyboard cannot.
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-border bg-card p-3',
+        'group flex flex-col gap-3 rounded-lg border border-border bg-card p-4',
         isDone && 'opacity-60',
         // Reduced motion gets the same ring, held plainly for as long as the
         // flag is set, rather than a fade. Deciding here rather than in CSS
         // because Tailwind emits the theme's keyframes after any media block
         // that would try to override them.
-        justLanded && (prefersReducedMotion() ? 'ring-2 ring-primary' : 'animate-task-landed')
+        justLanded && (prefersReducedMotion() ? 'ring-2 ring-success' : 'animate-task-landed')
       )}
     >
+      {/* Completion and ownership face each other across the top: the circle is
+          the one control that moves the card out of the board entirely. */}
       <div className="flex items-start justify-between gap-2">
-        {/* The design writes the priority as a quiet label rather than a
-            coloured pill — the card's colour is spent on lateness and on whose
-            court the ball is in, and a third filled chip up here competed with
-            both. */}
-        <span className="text-xs font-medium tracking-wide text-muted-foreground">
-          {task.priority}
+        {/* A real checkbox rather than a button carrying a label: completion is
+            a two-state fact about the task, so Radix's role and aria-checked say
+            so and space toggles it. Only the shape is ours - the design draws a
+            dashed ring where the primitive draws a square. */}
+        <span className="relative inline-flex shrink-0">
+          <Checkbox
+            checked={isDone || isCompleting}
+            disabled={isBusy}
+            onCheckedChange={handleComplete}
+            // See TaskPriorityMeter: the whole card is a drag handle.
+            onPointerDown={(event) => event.stopPropagation()}
+            aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
+            data-completing={isCompleting || undefined}
+            className={cn(
+              'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
+              isDone &&
+                'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground',
+              // The beat, as the ticket draws it: the ring stays dashed and goes
+              // green over a pale fill, so it reads as "being ticked" rather than
+              // as the settled done state, which is a solid fill and a tick.
+              isCompleting &&
+                'border-dashed border-success text-transparent data-[state=checked]:border-success data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
+                  (prefersReducedMotion() ? '' : ' animate-task-completing'),
+              !isDone &&
+                !isCompleting &&
+                'border-dashed border-muted-foreground/40 hover:border-success'
+            )}
+          />
+
+          {/* A ghost of the tick, shown while the circle is pointed at or
+              tabbed to. An empty dashed ring does not say what it does; the mark
+              it would leave does. Radix mounts the real indicator only once
+              checked, so this is a sibling rather than a state of it - the
+              variant already sets `peer`, which is what it listens to.
+
+              Hidden from the accessibility tree: the checkbox itself already
+              announces what pressing it does. */}
+          {!isDone && !isCompleting ? (
+            <Check
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 m-auto size-3.5 text-success opacity-0 transition-opacity peer-hover:opacity-50 peer-focus-visible:opacity-50"
+            />
+          ) : null}
         </span>
+
         <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
       </div>
 
+      <TaskPriorityMeter
+        priority={task.priority}
+        disabled={isBusy}
+        onChange={onPriorityChange ? (next) => onPriorityChange(next) : undefined}
+      />
+
+      {/* Raw rather than `Button`: the title wraps to three lines at this column
+          width, and Button is a fixed-height, nowrap, centred control - undoing
+          all of that leaves nothing of the primitive behind. */}
       <button
         type="button"
         onClick={() => onOpen(task)}
-        className="text-start text-sm font-semibold text-foreground hover:underline"
+        onPointerDown={(event) => event.stopPropagation()}
+        className="text-start font-serif text-base font-bold leading-snug text-foreground hover:underline"
       >
         <span className={cn(isDone && 'line-through')}>{task.title}</span>
       </button>
 
       {task.description ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
+        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+          {task.description}
+        </p>
       ) : null}
 
       {task.entityLinks.length > 0 ? (
@@ -98,8 +193,6 @@ export function TaskCard({
               variant="secondary"
               appearance="light"
               size="sm"
-              // Filled and squared off rather than outlined and pill-shaped, as
-              // the design draws its reference chips.
               className="rounded-sm uppercase tracking-wide"
             >
               {TASK_ENTITY_LABELS[link.entityType]} · {link.entityId}
@@ -108,109 +201,39 @@ export function TaskCard({
         </div>
       ) : null}
 
-      {/* Both courts, with the one in play filled in — the design shows the pair
-          so the card says what the alternative is, not just where things stand.
-          It reports state and does not change it (the court is edited in the
-          task dialog), so the idle half is decorative and hidden from screen
-          readers, leaving the filled half to carry the meaning on its own
-          rather than the colour doing it.
-
-          These two drop the badge's mono/uppercase/wide-tracking label styling,
-          which is the one place in the card it cannot be kept: two tracked-out
-          uppercase chips do not fit side by side in a column this narrow, and
-          the second was being clipped by the card's edge. The design draws them
-          in sentence case for the same reason. */}
-      <div className="flex w-fit items-center gap-1">
-        <Badge
-          variant={task.court === 'OURS' ? 'primary' : 'secondary'}
-          appearance={task.court === 'OURS' ? 'default' : 'light'}
-          size="sm"
-          className="rounded-sm font-sans normal-case tracking-normal"
-          aria-hidden={task.court !== 'OURS'}
-        >
-          Ball · Ours
-        </Badge>
-        <Badge
-          variant={task.court === 'THEIRS' ? 'primary' : 'secondary'}
-          appearance={task.court === 'THEIRS' ? 'default' : 'light'}
-          size="sm"
-          className="rounded-sm font-sans normal-case tracking-normal"
-          aria-hidden={task.court !== 'THEIRS'}
-        >
-          Ball · Theirs
-        </Badge>
-      </div>
+      <TaskCourtToggle
+        court={task.court}
+        disabled={isBusy}
+        onChange={onCourtChange ? (next) => onCourtChange(next) : undefined}
+      />
 
       {due ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 text-xs',
-              due.late ? 'font-medium text-destructive' : 'text-muted-foreground'
-            )}
-          >
-            <Clock className="size-3" aria-hidden />
+        // The deadline is ruled off from the card's content by a faint line —
+        // half the theme's hairline, so it separates rather than divides.
+        <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+          <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', due.tone)}>
+            <Clock className="size-3.5" aria-hidden />
             {due.text}
           </span>
+
           {!isDone ? (
             <Button
               type="button"
-              variant="outline"
+              variant="inverse"
               size="sm"
               disabled={isBusy}
               onClick={() => onShiftDueDate(task, 1)}
-              // Roomier on a phone, where this is a fingertip rather than a cursor.
-              className="h-8 px-2.5 text-xs sm:h-6 sm:px-2"
+              onPointerDown={(event) => event.stopPropagation()}
+              // Hidden until the card is hovered or something inside it is
+              // focused, as the design has it - but never hidden from a
+              // keyboard, and always shown on touch, where there is no hover.
+              className="h-auto px-1 py-0 text-sm font-semibold text-info opacity-0 transition-opacity hover:underline focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
             >
-              {/* Text alone, as the design has it. The calendar icon it used to
-                  carry cost the ~16px that kept this on the same line as the due
-                  date, and pushed it onto a line of its own. */}
               +1 day
             </Button>
           ) : null}
         </div>
       ) : null}
-
-      {source ? (
-        // The design tints the provenance line rather than greying it, which is
-        // what stops it reading as another line of description.
-        <p className="text-xs italic text-destructive/75">
-          from email · {source.subject || source.fromEmail || 'linked message'}
-        </p>
-      ) : null}
-
-      {/* The actions are ruled off from the card's content by a deliberately
-          faint line: half the theme's own hairline, inset by the card's padding
-          so it starts where the button under it does rather than running edge to
-          edge. It is meant to be barely there — a separation, not a division,
-          and it is deliberately fainter than `border-border` would draw it. */}
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-        <Button
-          type="button"
-          variant={isDone ? 'outline' : 'ghost'}
-          size="sm"
-          disabled={isBusy}
-          onClick={() => onComplete(task)}
-          className={cn(
-            'h-9 px-3 text-xs sm:h-7 sm:px-2',
-            // Done reads as a soft filled affordance in the design, not a bare
-            // ghost button.
-            !isDone && 'bg-success-soft text-success-soft-foreground hover:bg-success-soft/80'
-          )}
-        >
-          {isDone ? (
-            <>
-              <CircleCheck className="size-3" aria-hidden />
-              Reopen
-            </>
-          ) : (
-            <>
-              <CircleCheck className="size-3" aria-hidden />
-              Done
-            </>
-          )}
-        </Button>
-      </div>
     </div>
   );
 }
