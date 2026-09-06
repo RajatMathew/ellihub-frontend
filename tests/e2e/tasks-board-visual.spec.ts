@@ -335,3 +335,52 @@ test('dropping a card on another column saves its new due date', async ({ page }
   expected.setDate(expected.getDate() + 1);
   expect(saved.toDateString()).toBe(expected.toDateString());
 });
+
+test('a selected filter pill leaves its assignee avatar the colour it already was', async ({
+  page,
+}) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByText('Chase BK Tile — renewed workers’ comp')).toBeVisible({
+    timeout: 30_000,
+  });
+
+  const filters = page.getByRole('group', { name: 'Filter by assignee' });
+  const pill = filters.getByRole('button', { name: 'Cari' });
+  const avatar = pill.locator('[data-slot="avatar"]');
+
+  // Read as pixels rather than as classes on purpose: the tint is the same
+  // translucent rgba() in either state, and what changes is the pill beneath
+  // it — which is how the initials came to sit navy on navy. The clip is taken
+  // from the middle of the circle, so the pill showing through the corners of a
+  // square bounding box is not part of the comparison, and it is re-measured in
+  // each state because the outline pill's 1px border shifts its contents over
+  // when the border goes away. The mouse is parked off the bar so the pill's
+  // hover colour is not measured either.
+  const faceOfTheAvatar = async () => {
+    const box = await avatar.boundingBox();
+    if (!box) throw new Error('could not locate the avatar');
+    const inset = box.width / 4;
+    return page.screenshot({
+      animations: 'disabled',
+      clip: {
+        x: box.x + inset,
+        y: box.y + inset,
+        width: box.width - inset * 2,
+        height: box.height - inset * 2,
+      },
+    });
+  };
+
+  await page.mouse.move(0, 0);
+  const unselected = await faceOfTheAvatar();
+
+  await pill.click();
+  await page.mouse.move(0, 0);
+  await expect(pill).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Chase BK Tile — renewed workers’ comp')).toHaveCount(0);
+
+  expect((await faceOfTheAvatar()).equals(unselected)).toBe(true);
+});
