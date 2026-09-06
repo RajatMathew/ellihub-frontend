@@ -43,7 +43,13 @@ export function TaskAssigneeMenu({
           // card. Keeping the event to ourselves lets the menu open, at the cost
           // of not being able to start a drag from the chip itself.
           onPointerDown={(event) => event.stopPropagation()}
-          className="flex items-center gap-0.5 rounded-md p-0.5 hover:bg-surface-hover focus-visible:bg-surface-hover"
+          // The chip is 42x28 drawn, which is a comfortable click and a mean
+          // target for a thumb. The pseudo-element grows the touch area to 58x44
+          // without moving a pixel of the layout — raising the padding instead
+          // would have pushed the whole card header taller on a phone. Nothing
+          // sits within 8px of it: the completion circle is at the far end of
+          // the row.
+          className="relative flex items-center gap-0.5 rounded-md p-0.5 before:absolute before:-inset-2 before:content-[''] hover:bg-surface-hover focus-visible:bg-surface-hover"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
           <TaskAssigneeAvatar id={task.assigneeId} name={name} />
