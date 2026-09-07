@@ -317,7 +317,7 @@ export function EmailReadingPane({
   );
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background" aria-label="Email">
-      <div className="flex min-h-12 shrink-0 items-center gap-1.5 border-b border-border bg-background px-3">
+      <div className="group flex min-h-12 shrink-0 items-center gap-1.5 bg-background px-3">
         {onBack && (
           <Button
             type="button"
@@ -651,7 +651,7 @@ function EmailReadingPaneShortcuts({
 
   return (
     <span
-      className="hidden items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground lg:flex"
+      className="hidden items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:opacity-100 group-focus-within:opacity-100 lg:flex"
       aria-label="Keyboard shortcuts"
     >
       <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">

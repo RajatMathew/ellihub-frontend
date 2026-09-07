@@ -53,7 +53,10 @@ export const emailKeys = {
     size?: number,
     search?: string,
     projectId?: string,
-    classification?: 'other'
+    classification?: 'other',
+    unread?: boolean,
+    flagged?: boolean,
+    hasAttachments?: boolean
   ) =>
     [
       ...emailKeys.messagesRoot(accountId),
@@ -62,6 +65,9 @@ export const emailKeys = {
       search,
       projectId ?? null,
       classification ?? null,
+      unread ?? null,
+      flagged ?? null,
+      hasAttachments ?? null,
     ] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
@@ -123,7 +129,15 @@ export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { size?: number; search?: string; projectId?: string; classification?: 'other' },
+  pagination?: {
+    size?: number;
+    search?: string;
+    projectId?: string;
+    classification?: 'other';
+    unread?: boolean;
+    flagged?: boolean;
+    hasAttachments?: boolean;
+  },
   enabled = true
 ) => {
   const currentKey = emailKeys.messages(
@@ -132,7 +146,10 @@ export const useEmailMessagesQuery = (
     pagination?.size,
     pagination?.search,
     pagination?.projectId,
-    pagination?.classification
+    pagination?.classification,
+    pagination?.unread,
+    pagination?.flagged,
+    pagination?.hasAttachments
   );
 
   return useInfiniteQuery({
@@ -147,6 +164,9 @@ export const useEmailMessagesQuery = (
         search: pagination?.search,
         projectId: pagination?.projectId,
         classification: pagination?.classification,
+        unread: pagination?.unread,
+        flagged: pagination?.flagged,
+        hasAttachments: pagination?.hasAttachments,
         signal,
       }),
     initialPageParam: null as string | null,
