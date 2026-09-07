@@ -11,6 +11,7 @@ import { TASKS_DEFAULT_PAGE_SIZE } from '@/modules/tasks/constants/tasks.constan
 import {
   useCreateTaskMutation,
   useDeleteTaskMutation,
+  useReorderTaskMutation,
   useSetTaskCompletedMutation,
   useShiftTaskDueDateMutation,
   useTasksQuery,
@@ -38,6 +39,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const updateTask = useUpdateTaskMutation();
   const setCompleted = useSetTaskCompletedMutation();
   const shiftDueDate = useShiftTaskDueDateMutation();
+  const reorderTask = useReorderTaskMutation();
   const deleteTask = useDeleteTaskMutation();
   const { justLandedId, markLanded } = useJustLandedTask();
 
@@ -166,10 +168,15 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           onReschedule={(task, dueAt) =>
             updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
           }
+          // Dragging a card within its column. The placement is already clamped
+          // to the card's priority block by the board, and the server refuses it
+          // again - see PATCH /task/reorder.
+          onReorder={(task, placement) => reorderTask.mutate({ id: task.id, ...placement })}
           onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
           // Priority and court are ordinary fields, so changing them from the
-          // card is the same PUT the dialog sends - no new endpoint, and the
-          // board regroups on its own because neither decides a column.
+          // card is the same PUT the dialog sends - no new endpoint. Neither
+          // decides a column, though a priority change does drop the card's
+          // hand-placed position, so it re-enters its new block by age.
           onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
           onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
         />

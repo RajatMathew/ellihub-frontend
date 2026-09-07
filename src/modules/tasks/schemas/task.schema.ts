@@ -47,6 +47,9 @@ export const taskSchema = z.object({
   assignee: taskAssigneeSchema.nullish(),
   entityLinks: z.array(taskEntityLinkSchema).default([]),
   emailReferences: z.array(taskEmailReferenceSchema).default([]),
+  // Where someone dragged this card to within its priority block. Null means
+  // nobody has, and the board falls back to creation time — see taskOrderKey.
+  boardOrder: z.number().nullish(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

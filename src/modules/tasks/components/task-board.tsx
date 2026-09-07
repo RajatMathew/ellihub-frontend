@@ -14,8 +14,12 @@ import {
   boardArrangementSignature,
   canMoveTask,
   columnForTask,
+  dropBoardOrder,
+  dropMovesTask,
+  dropNeighbours,
   dueDateForColumn,
   groupTasksByColumn,
+  resolveDropIndex,
   TASK_COLUMN_LABELS,
   TASK_COLUMNS,
   type TaskColumnId,
@@ -32,6 +36,7 @@ export function TaskBoard({
   onCompleteTask,
   onShiftDueDate,
   onReschedule,
+  onReorder,
   onReassign,
   onPriorityChange,
   onCourtChange,
@@ -44,6 +49,10 @@ export function TaskBoard({
   onCompleteTask: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
   onReschedule: (task: Task, dueAt: Date) => void;
+  onReorder: (
+    task: Task,
+    placement: { previousId: string | null; nextId: string | null; boardOrder: number | null }
+  ) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
   onPriorityChange: (task: Task, priority: TaskPriority) => void;
   onCourtChange: (task: Task, court: TaskCourt) => void;
@@ -88,7 +97,7 @@ export function TaskBoard({
    * primitive stops reordering on its own and commits nothing. So a rejected
    * move is simply one we decline to apply, and the card springs back.
    */
-  const handleMove = ({ overContainer, event }: KanbanMoveEvent) => {
+  const handleMove = ({ overContainer, overIndex, event }: KanbanMoveEvent) => {
     const task = byId.get(String(event.active.id));
     if (!task) return;
 
@@ -98,7 +107,27 @@ export function TaskBoard({
     // and nothing would ever be saved.
     const from = columnForTask(task, now);
     const to = overContainer as TaskColumnId;
-    if (from === to) return;
+
+    // Staying put means a reorder rather than a reschedule. There is no hover
+    // reflow within a column — a drop indicator says where the card will land
+    // instead — so `overIndex` still describes the column as rendered, and the
+    // card sitting in it is what makes an index and an insertion point the same
+    // number. The aim is then clamped to the card's own priority block, so a
+    // drop that would outrank a P1 lands at the top of the P3s instead.
+    if (from === to) {
+      const column = cardsIn(to);
+      const index = resolveDropIndex(column, task.id, overIndex);
+      if (!dropMovesTask(column, task.id, index)) return;
+
+      const { previousId, nextId } = dropNeighbours(column, task.id, index);
+
+      // Nothing either side means the card is alone in its priority block, and
+      // there is no position to save.
+      if (!previousId && !nextId) return;
+
+      onReorder(task, { previousId, nextId, boardOrder: dropBoardOrder(column, task.id, index) });
+      return;
+    }
 
     const { allowed, reason } = canMoveTask(from, to);
     if (!allowed) {

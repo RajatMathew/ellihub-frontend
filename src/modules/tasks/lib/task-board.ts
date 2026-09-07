@@ -95,17 +95,151 @@ export function groupTasksByColumn(
 
   for (const task of tasks) groups[columnForTask(task, now)].push(task);
 
-  // "Worst first": P1 above P3, and within a priority the nearer deadline wins.
-  for (const id of TASK_COLUMNS) {
-    groups[id].sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority.localeCompare(b.priority);
-      if (!a.dueAt) return 1;
-      if (!b.dueAt) return -1;
-      return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
-    });
-  }
+  for (const id of TASK_COLUMNS) groups[id].sort(compareForBoard);
 
   return groups;
+}
+
+/**
+ * What decides a card's place inside its priority block.
+ *
+ * `boardOrder` is where someone dragged the card to; null means nobody has, and
+ * the card sorts by when it was made. Seeding the fallback from creation time
+ * rather than treating null as a separate case is what keeps this one number:
+ * an untouched card and a hand-placed one are compared the same way, and a card
+ * created now lands at the bottom of its block because "now" is the largest
+ * value in play.
+ *
+ * It also makes the reset trivial. A card whose column or priority changed has
+ * no meaningful position in the block it arrives in, so the server clears
+ * `boardOrder` and the card falls back to its age — which is exactly what
+ * elli-ui#791 asks for when a card is moved by the +N day button.
+ */
+export function taskOrderKey(task: Task): number {
+  return task.boardOrder ?? new Date(task.createdAt).getTime();
+}
+
+/**
+ * "Worst first": P1 above P3, and within one priority the oldest card on top.
+ *
+ * Deliberately not tie-broken on the due date. Inside a column every card
+ * shares a due *day*, so comparing due dates decided nothing and left the order
+ * to however the rows arrived — the swapped cards elli-ui#791 reports. Pending
+ * is the one column whose dates genuinely differ, and it follows the same rule
+ * anyway: one ordering for the whole board is what makes it predictable.
+ */
+function compareForBoard(a: Task, b: Task): number {
+  if (a.priority !== b.priority) return a.priority.localeCompare(b.priority);
+  return taskOrderKey(a) - taskOrderKey(b);
+}
+
+/**
+ * The slot a dragged card may actually land in, given where it is aimed.
+ *
+ * Priority outranks hand-placement, so a card can only be moved within the run
+ * of cards that share its priority. Rather than refusing an out-of-block drop,
+ * the aim is pinned to the nearest end of the block: the drop indicator then
+ * only ever appears somewhere legal, so there is no rejection to explain.
+ *
+ * `column` is the column as rendered, including the dragged card. The returned
+ * index is an insertion point into the column *without* it, which is what
+ * dropNeighbours expects.
+ */
+export function resolveDropIndex(column: Task[], activeId: string, proposedIndex: number): number {
+  const active = column.find((task) => task.id === activeId);
+  const others = column.filter((task) => task.id !== activeId);
+  if (!active) return Math.max(0, Math.min(proposedIndex, others.length));
+
+  const first = others.findIndex((task) => task.priority === active.priority);
+
+  // No card of this priority left to sit among: the block is empty and sits
+  // immediately after every higher-priority card, which is its only legal slot.
+  if (first === -1) {
+    const start = others.filter((task) => task.priority < active.priority).length;
+    return start;
+  }
+
+  let last = first;
+  while (last + 1 < others.length && others[last + 1].priority === active.priority) last += 1;
+
+  return Math.max(first, Math.min(proposedIndex, last + 1));
+}
+
+/**
+ * The two cards a drop lands between, named for the server.
+ *
+ * Sending neighbours rather than an index means the server does not have to
+ * agree with the browser about what the column contained — it only has to place
+ * the card between two rows it can look up itself.
+ */
+export function dropNeighbours(
+  column: Task[],
+  activeId: string,
+  index: number
+): { previousId: string | null; nextId: string | null } {
+  const { previous, next } = neighboursAt(column, activeId, index);
+
+  return {
+    previousId: previous?.id ?? null,
+    nextId: next?.id ?? null,
+  };
+}
+
+/**
+ * The cards either side of a slot, counting only the dragged card's own
+ * priority block.
+ *
+ * Clamping the index is not enough on its own. At the top of the P3s the card
+ * immediately above the slot is a P1, and naming it as the previous neighbour
+ * is a request the server refuses — priority outranks hand-placement there too,
+ * so the drop came back 400 and silently did nothing. The ends of a block have
+ * no neighbour, which is exactly what null means here.
+ */
+function neighboursAt(
+  column: Task[],
+  activeId: string,
+  index: number
+): { previous?: Task; next?: Task } {
+  const active = column.find((task) => task.id === activeId);
+  const others = column.filter((task) => task.id !== activeId);
+  const inBlock = (task?: Task) =>
+    task && active && task.priority === active.priority ? task : undefined;
+
+  return { previous: inBlock(others[index - 1]), next: inBlock(others[index]) };
+}
+
+/**
+ * Whether a drop at this slot would actually move the card.
+ *
+ * A resolved slot equal to the card's own position means it lands back where it
+ * started. That happens more often than it sounds: the clamp does it every time
+ * a card already at the top of its block is aimed higher. Nothing should be
+ * drawn or saved for it — an indicator would promise a move that is not coming,
+ * and the write would be a round trip to set the position it already has.
+ */
+export function dropMovesTask(column: Task[], activeId: string, index: number): boolean {
+  const activeIndex = column.findIndex((task) => task.id === activeId);
+  return activeIndex !== -1 && index !== activeIndex;
+}
+
+/** A minute, in the milliseconds an order key is measured in. Matches the server. */
+const BOARD_ORDER_STEP = 60_000;
+
+/**
+ * The order key a drop should show straight away, before the server answers.
+ *
+ * Deliberately the same arithmetic the service does — halfway between the two
+ * neighbours, or a step past the only one — because a different guess would
+ * settle the card in one place and then move it again when the response lands.
+ * Null when there is nothing to sit between, which is not a position at all.
+ */
+export function dropBoardOrder(column: Task[], activeId: string, index: number): number | null {
+  const { previous, next } = neighboursAt(column, activeId, index);
+
+  if (previous && next) return (taskOrderKey(previous) + taskOrderKey(next)) / 2;
+  if (previous) return taskOrderKey(previous) + BOARD_ORDER_STEP;
+  if (next) return taskOrderKey(next) - BOARD_ORDER_STEP;
+  return null;
 }
 
 /**
@@ -119,7 +253,10 @@ export function groupTasksByColumn(
  */
 export function boardArrangementSignature(tasks: Task[]): string {
   return tasks
-    .map((task) => `${task.id}:${task.status}:${task.dueAt ?? ''}:${task.priority}`)
+    .map(
+      (task) =>
+        `${task.id}:${task.status}:${task.dueAt ?? ''}:${task.priority}:${task.boardOrder ?? ''}`
+    )
     .join('|');
 }
 

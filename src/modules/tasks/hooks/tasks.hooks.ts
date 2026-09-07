@@ -2,7 +2,11 @@ import { toastApiError } from '@/app/lib/toast-api-error';
 import { tasksApi } from '@/modules/tasks/api/tasks.api';
 import { toastUndoable } from '@/modules/tasks/components/toast-undoable';
 import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
-import { removeTaskFromList, shiftTaskDueDateInList } from '@/modules/tasks/lib/task-cache';
+import {
+  placeTaskInList,
+  removeTaskFromList,
+  shiftTaskDueDateInList,
+} from '@/modules/tasks/lib/task-cache';
 import type {
   CreateTaskInput,
   ListTasksParams,
@@ -93,6 +97,51 @@ export const useShiftTaskDueDateMutation = () => {
       toastApiError(error, 'Failed to move the due date');
     },
     // Whether it worked or not, the server has the last word on the date.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
+  });
+};
+
+// Dragging a card up or down within its column (elli-ui#791).
+//
+// Written to the cache on release rather than on the response: the board does
+// not reorder while you drag — it draws an indicator instead — so without this
+// the card would sit where it started until the round trip finished, and the
+// drop would look like it had been refused. `boardOrder` is the value the
+// server will settle on, so its answer replaces this with itself.
+export const useReorderTaskMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      previousId,
+      nextId,
+    }: {
+      id: string;
+      previousId: string | null;
+      nextId: string | null;
+      boardOrder: number | null;
+    }) => tasksApi.reorder(id, previousId, nextId),
+    onMutate: async ({ id, boardOrder }) => {
+      // In-flight reads would otherwise land after this and undo it.
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
+
+      const previous = queryClient.getQueriesData<TaskPaginatedResponse>({
+        queryKey: taskKeys.lists(),
+      });
+
+      queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) =>
+        page ? placeTaskInList(page, id, boardOrder) : page
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
+      toastApiError(error, 'Failed to move the task');
+    },
+    // Whether it worked or not, the server has the last word on the position.
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: taskKeys.all });
     },

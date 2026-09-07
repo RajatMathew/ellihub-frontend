@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Children, isValidElement, type ReactNode } from 'react';
 
 import { KanbanColumn, KanbanColumnContent } from '@/app/components/ui/kanban';
 import { cn } from '@/app/lib/utils';
@@ -7,6 +7,8 @@ import {
   canMoveTask,
   columnForTask,
   columnHeading,
+  dropMovesTask,
+  resolveDropIndex,
   TASK_COLUMN_TONES,
   type TaskColumnId,
 } from '@/modules/tasks/lib/task-board';
@@ -49,6 +51,16 @@ export function TaskBoardColumn({
 
   const isForbidden = isHovered && !verdict.allowed;
   const isWelcome = isHovered && verdict.allowed;
+
+  // A drag that starts and ends in this column reorders rather than reschedules,
+  // and nothing reflows for it — the indicator is the only feedback, so it has
+  // to say exactly which gap the card will land in.
+  const isReordering = Boolean(
+    draggedTask && hoveredColumn === columnId && columnForTask(draggedTask, now) === columnId
+  );
+
+  const dropSlot =
+    isReordering && draggedTask ? dropSlotFor(tasks, draggedTask, over?.id, byId) : null;
 
   return (
     <KanbanColumn
@@ -106,12 +118,75 @@ export function TaskBoardColumn({
           {tasks.length === 0 ? (
             <p className="py-6 text-center text-xs text-muted-foreground">column clear</p>
           ) : (
-            children
+            withDropIndicator(children, dropSlot)
           )}
         </KanbanColumnContent>
       </div>
     </KanbanColumn>
   );
+}
+
+/**
+ * Which gap the drop indicator goes in, counted among the rendered cards.
+ *
+ * The aim is read from whatever is hovered, clamped to the dragged card's own
+ * priority block, and then translated back into a position among the children —
+ * which still include the dragged card, so the two counts differ by one below
+ * its slot.
+ *
+ * Null when there is nowhere legal and distinct to point at.
+ */
+function dropSlotFor(
+  tasks: Task[],
+  dragged: Task,
+  overId: string | number | undefined,
+  byId: Map<string, Task>
+): number | null {
+  if (overId === undefined) return null;
+
+  const activeIndex = tasks.findIndex((task) => task.id === dragged.id);
+  if (activeIndex === -1) return null;
+
+  // Hovering the column itself rather than a card means the end of the list.
+  const overTask = byId.get(String(overId));
+  const aim = overTask
+    ? tasks.findIndex((task) => task.id === overTask.id)
+    : Math.max(0, tasks.length - 1);
+  if (aim === -1) return null;
+
+  const index = resolveDropIndex(tasks, dragged.id, aim);
+
+  // The clamp lands a card back on its own slot whenever it is aimed outside
+  // its block from the near end. Drawing a line there would promise a move that
+  // is not going to happen.
+  if (!dropMovesTask(tasks, dragged.id, index)) return null;
+
+  return index < activeIndex ? index : index + 1;
+}
+
+/**
+ * The cards with a line drawn in the gap the dragged one will land in.
+ *
+ * Rendered here rather than by the board so the indicator sits between the
+ * cards it separates, in the same flex column, instead of being positioned over
+ * them and having to track their heights.
+ */
+function withDropIndicator(children: ReactNode, slot: number | null): ReactNode {
+  if (slot === null) return children;
+
+  const cards = Children.toArray(children).filter(isValidElement);
+  if (slot < 0 || slot > cards.length) return children;
+
+  return [
+    ...cards.slice(0, slot),
+    <div
+      key="task-drop-indicator"
+      aria-hidden
+      data-slot="task-drop-indicator"
+      className="h-0.5 shrink-0 rounded-full bg-primary"
+    />,
+    ...cards.slice(slot),
+  ];
 }
 
 /** Which column something being hovered belongs to — a column id, or a card in one. */

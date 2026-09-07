@@ -26,7 +26,11 @@ export function shiftTaskDueDateInList(
     const dueAt = new Date(task.dueAt);
     dueAt.setDate(dueAt.getDate() + days);
     changed = true;
-    return { ...task, dueAt: dueAt.toISOString() };
+    // The card is landing in another column, where its hand-placed position in
+    // the old one means nothing. The server clears it on the same edit; doing it
+    // here too is what stops the card settling in one slot and then jumping to
+    // another when the response arrives.
+    return { ...task, dueAt: dueAt.toISOString(), boardOrder: null };
   });
 
   return changed ? { ...page, data } : page;
@@ -57,4 +61,32 @@ export function removeTaskFromList(page: TaskPaginatedResponse, id: string): Tas
       totalItems: Math.max(0, page.pagination.totalItems - 1),
     },
   };
+}
+
+/**
+ * Write a hand-placed position into a cached page.
+ *
+ * The board sorts on `boardOrder`, so this is what moves the card on release —
+ * the drag itself does not reorder anything. The value is the one the server
+ * will settle on (see dropBoardOrder), so the response replaces it with itself
+ * rather than moving the card a second time.
+ *
+ * Same by-reference contract as the helpers above: a page that does not hold
+ * the task comes back exactly as it came in, because the board memoises on the
+ * array.
+ */
+export function placeTaskInList(
+  page: TaskPaginatedResponse,
+  id: string,
+  boardOrder: number | null
+): TaskPaginatedResponse {
+  let changed = false;
+
+  const data = page.data.map((task): Task => {
+    if (task.id !== id) return task;
+    changed = true;
+    return { ...task, boardOrder };
+  });
+
+  return changed ? { ...page, data } : page;
 }

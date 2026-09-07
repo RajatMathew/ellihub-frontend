@@ -73,6 +73,14 @@ export const tasksApi = {
     await api.delete(`${BASE}/${id}`);
   },
 
+  // A card dragged up or down within its column. The two neighbours are what is
+  // sent, not an index: the server places the card between two rows it looks up
+  // itself, so it never has to agree with the board about the column's contents.
+  async reorder(id: string, previousId: string | null, nextId: string | null): Promise<Task> {
+    const res = await api.patch(`${BASE}/reorder`, { id, previousId, nextId });
+    return taskSchema.parse(res.data?.data ?? res.data);
+  },
+
   async restore(id: string): Promise<Task> {
     const res = await api.patch(`${BASE}/restore`, { id });
     return taskSchema.parse(res.data?.data ?? res.data);

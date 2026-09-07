@@ -97,17 +97,31 @@ describe('the drag rules', () => {
 });
 
 describe('ordering', () => {
-  test('worst first: P1 sorts above P3, then the nearer deadline', () => {
+  // The rule itself is covered in task-board-ordering.test.ts. This one guards
+  // the tiebreak that used to be here: comparing due dates decided nothing
+  // inside a column where every card shares a day, which is the swapped cards
+  // elli-ui#791 reports. The nearer deadline must NOT jump a card ahead.
+  test('worst first: P1 sorts above P3, then the older card, never the nearer deadline', () => {
     const grouped = groupTasksByColumn(
       [
         task({ id: 'low', priority: 'P3', dueAt: '2026-09-02T10:00:00.000Z' }),
-        task({ id: 'high-late', priority: 'P1', dueAt: '2026-09-02T18:00:00.000Z' }),
-        task({ id: 'high-early', priority: 'P1', dueAt: '2026-09-02T11:00:00.000Z' }),
+        task({
+          id: 'high-old',
+          priority: 'P1',
+          dueAt: '2026-09-02T18:00:00.000Z',
+          createdAt: '2026-09-01T09:00:00.000Z',
+        }),
+        task({
+          id: 'high-new',
+          priority: 'P1',
+          dueAt: '2026-09-02T11:00:00.000Z',
+          createdAt: '2026-09-01T09:05:00.000Z',
+        }),
       ],
       NOW
     );
 
-    expect(grouped.DUE_TODAY.map((item) => item.id)).toEqual(['high-early', 'high-late', 'low']);
+    expect(grouped.DUE_TODAY.map((item) => item.id)).toEqual(['high-old', 'high-new', 'low']);
   });
 });
 
