@@ -44,9 +44,11 @@ export type EmailListFilter = 'all' | 'unread' | 'flagged' | 'attachments' | 'ot
 /**
  * Thread state filter — independent of the "show messages" filter.
  * Unclassified threads default to "open" (matches how the row status pill
- * renders), so the "open" filter includes them.
+ * renders), so the "open" filter includes them. "open_our_court" and
+ * "open_their_court" narrow further to one side of an open thread, matching
+ * the same two states `EmailThreadState` already carries elsewhere.
  */
-export type EmailStatusFilter = 'all' | 'open' | 'closed';
+export type EmailStatusFilter = 'all' | 'open' | 'open_our_court' | 'open_their_court' | 'closed';
 
 interface EmailMailToolbarProps {
   selectedFolder: string;
@@ -134,6 +136,8 @@ export function EmailMailToolbar({
   const statusLabels: Record<EmailStatusFilter, string> = {
     all: 'Any status',
     open: 'Open',
+    open_our_court: 'Our court',
+    open_their_court: 'Their court',
     closed: 'Closed',
   };
   const filterLabelParts: string[] = [];
@@ -328,6 +332,10 @@ export function EmailMailToolbar({
                       >
                         <DropdownMenuRadioItem value="all">Any</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="open_our_court">Our court</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="open_their_court">
+                          Their court
+                        </DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </>

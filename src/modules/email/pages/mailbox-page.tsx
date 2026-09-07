@@ -305,8 +305,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     if (mailStatusFilter !== 'all') {
       list = list.filter((email) => {
         const status = email.classification?.status ?? 'open';
-        // 'open' covers every open variant (plain, our court, their court).
-        return mailStatusFilter === 'open' ? status !== 'closed' : status === 'closed';
+        if (mailStatusFilter === 'open') return status !== 'closed'; // every open variant
+        if (mailStatusFilter === 'closed') return status === 'closed';
+        return status === mailStatusFilter; // open_our_court / open_their_court, exact match
       });
     }
 
