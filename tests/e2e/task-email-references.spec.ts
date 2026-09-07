@@ -44,6 +44,21 @@ const message = {
   body: ['Match against PO-118 and delivery receipt — quantities and freight tie out.'],
 };
 
+// A second message in the inbox, so the picker has something to offer that is
+// not already attached — which is the whole of #861.
+const otherMessage = {
+  ...message,
+  id: 'message-2',
+  providerId: 'provider-message-2',
+  threadId: 'thread-2',
+  conversationKey: 'conversation-2',
+  senderName: 'Boyland Steel',
+  senderEmail: 'submittals@boylandsteel.com',
+  subject: 'Boyland shop drawings, rev C',
+  preview: 'Rev C supersedes what went out Friday.',
+  receivedAt: '2026-09-01T09:15:00.000Z',
+};
+
 type CreatedTask = {
   title: string;
   priority: string;
@@ -80,6 +95,7 @@ const MULTI_REFERENCE_TASKS = [
 
 async function setupMockApi(page: Page) {
   const createdTasks: CreatedTask[] = [];
+  const updatedTasks: CreatedTask[] = [];
 
   await page.route('**/api/v1/**', async (route, request) => {
     const path = new URL(request.url()).pathname;
@@ -176,7 +192,7 @@ async function setupMockApi(page: Page) {
       await route.fulfill({
         json: {
           data: {
-            records: [message],
+            records: [message, otherMessage],
             nextPageToken: null,
             pageSize: 100,
             totalCount: 1,
@@ -278,11 +294,20 @@ async function setupMockApi(page: Page) {
       return;
     }
 
+    if (method === 'PUT' && path === '/api/v1/task') {
+      const body = request.postDataJSON() as CreatedTask;
+      updatedTasks.push(body);
+      await route.fulfill({
+        json: { success: true, message: 'OK', data: { ...MULTI_REFERENCE_TASKS[0], ...body } },
+      });
+      return;
+    }
+
     // Anything else the mailbox asks for is not what this test is about.
     await route.fulfill({ json: { data: null } });
   });
 
-  return { createdTasks };
+  return { createdTasks, updatedTasks };
 }
 
 test('the open email is attached by default and more can be added', async ({ page }) => {
@@ -443,4 +468,139 @@ test('the picker does not resize as results arrive', async ({ page }) => {
   // apart — an empty list of 63px against a full one of 256 — which is the jump
   // this guards against. Anything under 40 is pinned; anything over is not.
   expect(Math.abs((full?.height ?? 0) - (empty?.height ?? 0))).toBeLessThan(40);
+});
+
+test('the picker opens on recent mail, so attaching one costs no typing', async ({ page }) => {
+  const api = await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  await page.goto(`/app/email/accounts/${ACCOUNT_SLUG}`);
+
+  await expect(page.getByText(SUBJECT).first()).toBeVisible({ timeout: 30_000 });
+  await page.getByText(SUBJECT).first().click();
+  await page.getByRole('button', { name: 'Add task for this email' }).click();
+
+  const popover = page.getByRole('dialog');
+  await popover.getByRole('button', { name: 'Attach another email' }).click();
+
+  // Scoped to the picker's own list: the mail list behind it shows the same
+  // subjects, so an unscoped locator matches twice.
+  const suggestions = page.getByLabel('Suggestions');
+  const other = suggestions.getByText('Boyland shop drawings, rev C');
+
+  // #861: it used to open on `Search your mail to attach another thread.` and
+  // show nothing until you typed. The inbox is what you almost always want.
+  await expect(page.getByPlaceholder('Search subject or sender')).toHaveValue('');
+  await expect(other).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Search your mail to attach another thread.')).toHaveCount(0);
+
+  await page.screenshot({
+    path: 'output/visual/task-refs-picker-recent.png',
+    animations: 'disabled',
+  });
+
+  // Attachable straight from that list, no search involved.
+  await other.click();
+  await page.keyboard.press('Escape');
+  await expect(popover.getByRole('button', { name: /^Remove / })).toHaveCount(2);
+
+  // Search still narrows to something the inbox list did not show.
+  await popover.getByRole('button', { name: 'Attach another email' }).click();
+  await page.getByPlaceholder('Search subject or sender').fill('a');
+  await expect(suggestions.getByText('Alpha submittal overdue')).toBeVisible({ timeout: 15_000 });
+
+  // Clearing the term falls back to the inbox rather than to an empty panel.
+  await page.getByPlaceholder('Search subject or sender').fill('');
+  await expect(other).toBeVisible({ timeout: 15_000 });
+  await page.keyboard.press('Escape');
+
+  // And what it sends is a real reference, not a row that looked attachable.
+  await popover.getByRole('button', { name: 'Add task' }).click();
+  await expect.poll(() => api.createdTasks.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const refs = api.createdTasks[0].emailReferences ?? [];
+  expect(refs.map((ref) => ref.providerId)).toContain('provider-message-2');
+});
+
+test('a task made on the board can cite mail too, without one being open', async ({ page }) => {
+  const api = await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: 'New task' }).first().click();
+
+  const dialog = page.getByRole('dialog').first();
+  await expect(dialog.getByText('New Task')).toBeVisible();
+
+  // #861: the board's dialog had no way to link mail at all.
+  await expect(dialog.getByText('Linked emails')).toBeVisible();
+
+  // Nothing is attached — a board task need not cite an email, unlike one
+  // raised from a message.
+  await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(0);
+
+  // The picker still finds a mailbox with no open message to take one from.
+  const attach = page.getByRole('button', { name: 'Attach another email' });
+  await expect(attach).toBeEnabled();
+  await attach.click();
+
+  const suggestions = page.getByLabel('Suggestions');
+  await expect(suggestions.getByText(SUBJECT)).toBeVisible({ timeout: 15_000 });
+
+  // One account, so nothing to choose between and no control offered.
+  await expect(page.getByRole('combobox', { name: /mailbox/i })).toHaveCount(0);
+
+  await suggestions.getByText(SUBJECT).click();
+  await page.keyboard.press('Escape');
+  await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(1);
+
+  await page.screenshot({
+    path: 'output/visual/task-dialog-linked-emails.png',
+    animations: 'disabled',
+  });
+
+  // And it reaches the API with the task.
+  await dialog.getByPlaceholder('Add a title').fill('Chase the Boyland cert');
+  await dialog.getByRole('button', { name: 'Create task' }).click();
+
+  await expect.poll(() => api.createdTasks.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const refs = api.createdTasks[0].emailReferences ?? [];
+  expect(refs.map((ref) => ref.providerId)).toContain(PROVIDER_ID);
+});
+
+test('editing a task keeps the emails it already cites, and saves a change to them', async ({
+  page,
+}) => {
+  const api = await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByText('Reconcile the Boyland submittals')).toBeVisible({
+    timeout: 30_000,
+  });
+  // `exact`: the dnd-kit wrapper around the card is itself role=button and its
+  // name is the whole card's text, so a substring match finds it too — and
+  // clicking the wrapper does not open the task.
+  await page
+    .getByRole('button', { name: 'Reconcile the Boyland submittals', exact: true })
+    .click();
+
+  const dialog = page.getByRole('dialog').first();
+  await expect(dialog.getByText('Edit Task')).toBeVisible();
+
+  // The five it already cites are loaded into the field, not dropped on open —
+  // saving would otherwise quietly strip a task's provenance.
+  await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(5);
+
+  // Nothing is required here, so all five can go.
+  await dialog.getByRole('button', { name: 'Remove Reference thread 5' }).click();
+  await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(4);
+
+  await dialog.getByRole('button', { name: 'Save task' }).click();
+
+  await expect.poll(() => api.updatedTasks.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const refs = api.updatedTasks[0].emailReferences ?? [];
+  expect(refs).toHaveLength(4);
+  expect(refs.map((ref) => ref.providerId)).not.toContain('ref-5');
 });

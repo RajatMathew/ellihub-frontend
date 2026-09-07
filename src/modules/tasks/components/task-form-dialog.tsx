@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -8,8 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { Form } from '@/app/components/ui/form';
+import { Form, FormItem, FormLabel } from '@/app/components/ui/form';
 import { Separator } from '@/app/components/ui/separator';
+import { TaskEmailReferences } from '@/modules/tasks/components/task-email-references';
 import { TaskFormFields } from '@/modules/tasks/components/task-form/task-form-fields';
 import {
   toTaskFormValues,
@@ -19,6 +22,7 @@ import {
   taskFormSchema,
   type CreateTaskInput,
   type Task,
+  type TaskEmailReference,
   type TaskFormData,
 } from '@/modules/tasks/schemas/task.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,13 +81,19 @@ function TaskFormDialogContent({
 }) {
   const isEdit = Boolean(task);
 
+  // Not part of the form's values: the picker owns its own shape, and the two
+  // are only joined when the task is saved.
+  const [references, setReferences] = useState<TaskEmailReference[]>(
+    () => task?.emailReferences ?? []
+  );
+
   const form = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: toTaskFormValues(task),
   });
 
   const handleSubmit = async (values: TaskFormData) => {
-    await onSubmit(toTaskPayload(values));
+    await onSubmit({ ...toTaskPayload(values), emailReferences: references });
   };
 
   return (
@@ -104,6 +114,17 @@ function TaskFormDialogContent({
           <DialogBody className="pt-7">
             <TaskFormFields
               form={form}
+              // A task made on the board can cite the mail it is about, the same
+              // as one raised from a message (#861). No mailbox is handed down
+              // here — there is no open message to take one from — so the picker
+              // resolves it, and nothing is required: a board task need cite no
+              // email at all.
+              afterTitle={
+                <FormItem className="space-y-1.5">
+                  <FormLabel className="text-base">Linked emails</FormLabel>
+                  <TaskEmailReferences value={references} onChange={setReferences} />
+                </FormItem>
+              }
               initialAssignee={
                 task?.assignee ? { value: task.assignee.id, label: task.assignee.name } : null
               }
