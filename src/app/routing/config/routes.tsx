@@ -123,9 +123,19 @@ export const routeTree: RouteDef[] = [
         component: EmailRoutes,
         title: 'Email',
         children: [
-          { path: 'procurement', title: 'Procurement' },
-          { path: 'requisitions', title: 'Requisitions' },
-          { path: 'contracts', title: 'Contracts' },
+          // 'procurement'/'requisitions'/'contracts' were never real routes
+          // under here — email.route.tsx only ever mounted 'accounts/*'. With
+          // no child owning that segment, its breadcrumb lookup fell through
+          // to this same 'email/*' entry a second time, showing "Email >
+          // Email" (elli-ui#853). 'accounts' is a REST path detail, not a
+          // navigational level, so it's hidden rather than titled.
+          { path: 'accounts', breadcrumb: { label: 'Accounts', hide: true } },
+          // The account slug segment has no static title of its own either —
+          // without an entry here it fell through to 'email/*' the same way
+          // 'accounts' did. The mailbox address is already shown in the
+          // workspace header just below, so it's hidden rather than shown
+          // twice as a raw slug.
+          { path: 'accounts/:accountSlug', breadcrumb: { label: 'Account', hide: true } },
         ],
       },
 

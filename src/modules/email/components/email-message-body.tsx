@@ -33,7 +33,7 @@ export function EmailMessageBody({
   }
 
   return (
-    <div className="max-w-prose space-y-3 px-4 text-sm leading-6 text-foreground">
+    <div className="max-w-prose space-y-3 px-4 py-4 text-sm leading-6 text-foreground">
       {content.map((paragraph, index) => (
         <p key={`${index}-${paragraph}`}>{linkifyPlainText(paragraph)}</p>
       ))}
@@ -117,13 +117,6 @@ function EmailHtmlBody({
       const documentHtml = sanitizeEmailDocument(sourceHtml, attachments, inlineImageBaseUrl);
       const parsedDocument = new DOMParser().parseFromString(documentHtml, 'text/html');
       const emailRoot = document.importNode(parsedDocument.documentElement, true);
-      // Fixed-width HTML designs (a <table width="600"> newsletter, say) need
-      // the card's full bleed or their layout clips at the right edge. Plain
-      // text that merely arrived wrapped in a stray <div> has no such layout
-      // to protect, so it gets the same horizontal padding as everything else.
-      const needsFullBleed = Boolean(
-        parsedDocument.body.querySelector('table[width], [width], [style*="width"]')
-      );
       const baseStyles = document.createElement('style');
       /* eslint-disable no-restricted-syntax -- a CSS stylesheet for the
          message's shadow root, not a Tailwind class string. `!important` here is
@@ -143,7 +136,7 @@ function EmailHtmlBody({
         min-width: 0;
         max-width: 100%;
         margin: 0;
-        padding: ${needsFullBleed ? '0' : '0 1rem'};
+        padding: 0;
         color: inherit;
         font: inherit;
       }
