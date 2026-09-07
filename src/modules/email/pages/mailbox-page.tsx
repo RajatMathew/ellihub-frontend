@@ -195,6 +195,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       search: debouncedMessageSearch || undefined,
       projectId: activeProjectId ?? undefined,
       classification: mailFilter === 'other' ? 'other' : undefined,
+      // Answered server-side against the whole cached folder (elli-ui#859) —
+      // filtering only the already-loaded page(s) client-side, as this used
+      // to, silently hid attachment/unread/flagged mail sitting further back
+      // than whatever had been fetched so far.
+      unread: mailFilter === 'unread' ? true : undefined,
+      flagged: mailFilter === 'flagged' ? true : undefined,
+      hasAttachments: mailFilter === 'attachments' ? true : undefined,
     },
     canLoadConnectedMailbox
   );
@@ -271,17 +278,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
-    // Step 1 — narrow by the "Show messages" filter.
+    // Step 1 — narrow by the "Show messages" filter. unread/flagged/attachments
+    // are answered server-side now (elli-ui#859 — passed through to
+    // useEmailMessagesQuery above), against the whole cached folder rather than
+    // just the loaded page, so only the "other" category tag still needs a
+    // client-side pass here.
     let list = emailsForActiveSearch;
-    if (mailFilter === 'unread') {
-      list = list.filter((email) => email.unread);
-    } else if (mailFilter === 'flagged') {
-      list = list.filter((email) => email.flagged);
-    } else if (mailFilter === 'attachments') {
-      list = list.filter(
-        (email) => Boolean(email.attachmentCount) || Boolean(email.attachments?.length)
-      );
-    } else if (mailFilter === 'other' && selectedCategoryTagId) {
+    if (mailFilter === 'other' && selectedCategoryTagId) {
       const selectedTag = availableOtherCategoryTags.find(
         (tag) => tag.id === selectedCategoryTagId
       );
@@ -1303,10 +1306,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoadingMore={messagesQuery.isFetchingNextPage}
                   loadMoreError={messagesQuery.isFetchNextPageError}
                   onLoadMore={messagesQuery.fetchNextPage}
-                  // "Show messages" filters (unread/flagged/attachments/etc.) are applied
-                  // client-side against already-fetched pages, so a filter can legitimately
-                  // match nothing in the loaded window while later pages still have matches.
-                  // Keep auto-paging until a match appears or pages are exhausted.
+                  // unread/flagged/attachments are filtered server-side now, but still
+                  // paginated — an empty first page can legitimately have matches further
+                  // in. "other" category tags and thread status are still filtered
+                  // client-side against whatever's loaded. Either way, keep auto-paging
+                  // until a match appears or pages are exhausted.
                   autoFetchWhileEmpty={mailFilter !== 'all' || mailStatusFilter !== 'all'}
                   groupByMonth={
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
