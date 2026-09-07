@@ -444,3 +444,43 @@ test('the picker does not resize as results arrive', async ({ page }) => {
   // this guards against. Anything under 40 is pinned; anything over is not.
   expect(Math.abs((full?.height ?? 0) - (empty?.height ?? 0))).toBeLessThan(40);
 });
+
+test('the sources are labelled as a group, not led by a line that reads as one', async ({
+  page,
+}) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByText('Reconcile the Boyland submittals')).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // The lead-in used to be concatenated into the first source's line — `from
+  // email · Reference thread 1` — so it read as a fourth subject in the list.
+  // It is a heading of its own now, and the list it names is a real list.
+  const heading = page.getByText('From email', { exact: true });
+  await expect(heading).toBeVisible();
+
+  const firstSource = page.getByRole('link', { name: 'Reference thread 1' });
+  await expect(firstSource).toHaveText('Reference thread 1');
+
+  const sources = page.getByRole('list').filter({ has: firstSource });
+  await expect(sources.getByRole('listitem')).toHaveCount(3);
+  // The heading names the list without being an item in it.
+  await expect(sources.getByText('From email')).toHaveCount(0);
+
+  // Nothing here is tinted any more. `destructive` is the colour of a delete
+  // confirmation; where a task came from is not a warning.
+  const colour = await firstSource.evaluate((el) => getComputedStyle(el).color);
+  const danger = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--destructive').trim()
+  );
+  expect(danger).not.toBe('');
+  expect(colour).not.toBe(danger);
+  await expect(firstSource).toHaveCSS('font-style', 'normal');
+
+  // The card on its own, big enough to judge the type and the spacing by.
+  const card = page.locator('[data-slot="kanban-item"]').first();
+  await card.screenshot({ path: 'output/visual/task-card-sources-detail.png', animations: 'disabled' });
+});
