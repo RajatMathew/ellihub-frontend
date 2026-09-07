@@ -192,8 +192,12 @@ export function HeaderBreadcrumbs() {
 
   // Mail deep links end in `/id/:conversationId` — an addressing detail, not a
   // navigational level. Drop that pair so the trail ends at the folder crumb.
+  // Found by matching the built (and by now hidden-segment-filtered) crumbs
+  // themselves, not by indexing into the raw path segments — the 'accounts'
+  // and account-slug segments are hidden from `breadcrumbs`, so their indices
+  // no longer line up with `pathSegments`.
   if (pathSegments[0] === 'email' && pathSegments[1] === 'accounts') {
-    const idIndex = pathSegments.indexOf('id', 3);
+    const idIndex = breadcrumbs.findIndex((crumb) => crumb.path.endsWith('/id'));
     if (idIndex !== -1) {
       breadcrumbs = breadcrumbs.slice(0, idIndex);
       const lastCrumb = breadcrumbs[breadcrumbs.length - 1];
