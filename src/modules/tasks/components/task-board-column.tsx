@@ -5,6 +5,7 @@ import { cn } from '@/app/lib/utils';
 import { useScrollEdges } from '@/modules/tasks/hooks/use-scroll-edges';
 import { withDropIndicator } from '@/modules/tasks/lib/drop-indicator';
 import {
+  arrivalIndex,
   canMoveTask,
   columnForTask,
   columnHeading,
@@ -53,15 +54,18 @@ export function TaskBoardColumn({
   const isForbidden = isHovered && !verdict.allowed;
   const isWelcome = isHovered && verdict.allowed;
 
-  // A drag that starts and ends in this column reorders rather than reschedules,
-  // and nothing reflows for it — the indicator is the only feedback, so it has
-  // to say exactly which gap the card will land in.
-  const isReordering = Boolean(
-    draggedTask && hoveredColumn === columnId && columnForTask(draggedTask, now) === columnId
-  );
+  // Both kinds of drag get a line, but they mean different things. Within a
+  // column you are choosing a slot, so the line follows the cursor, clamped to
+  // the card's own priority block. Coming from another column you are choosing
+  // nothing — the drop clears the hand-placed position and the card lands by
+  // priority and then age — so the line points at where it will end up.
+  const dropSlot = (() => {
+    if (!draggedTask || !isWelcome) return null;
 
-  const dropSlot =
-    isReordering && draggedTask ? dropSlotFor(tasks, draggedTask, over?.id, byId) : null;
+    return columnForTask(draggedTask, now) === columnId
+      ? dropSlotFor(tasks, draggedTask, over?.id, byId)
+      : arrivalSlotFor(tasks, draggedTask);
+  })();
 
   return (
     <KanbanColumn
@@ -163,6 +167,22 @@ function dropSlotFor(
   if (!dropMovesTask(tasks, dragged.id, index)) return null;
 
   return index < activeIndex ? index : index + 1;
+}
+
+/**
+ * Which gap a card arriving from another column will open, among the rendered
+ * cards.
+ *
+ * `arrivalIndex` counts against the column without the arriving card; the board
+ * may already have slid it in while the drag is in flight, so the answer is
+ * shifted by one below wherever it currently sits.
+ */
+function arrivalSlotFor(tasks: Task[], dragged: Task): number {
+  const index = arrivalIndex(tasks, dragged);
+  const listedAt = tasks.findIndex((task) => task.id === dragged.id);
+
+  if (listedAt === -1) return index;
+  return index < listedAt ? index : index + 1;
 }
 
 /** Which column something being hovered belongs to — a column id, or a card in one. */

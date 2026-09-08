@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  arrivalIndex,
   boardArrangementSignature,
   dropBoardOrder,
   dropMovesTask,
@@ -275,5 +276,60 @@ describe('a drop that would not move the card', () => {
   test('the last card of a block dropped at the end stays put', () => {
     const index = resolveDropIndex(column, 'y', column.length);
     expect(dropMovesTask(column, 'y', index)).toBe(false);
+  });
+});
+
+// Dragging a card into another column does not let you choose where it sits:
+// the drop changes its due date, which clears any hand-placed position, so it
+// takes its slot by priority and then by age. The indicator has to point at
+// that slot rather than at the cursor, or it promises a place the card will not
+// take.
+describe('where a card arriving from another column lands', () => {
+  const target = [
+    task({ id: 'p1', priority: 'P1', createdAt: '2026-09-01T09:00:00.000Z' }),
+    task({ id: 'p3-old', priority: 'P3', createdAt: '2026-09-01T09:02:00.000Z' }),
+    task({ id: 'p3-new', priority: 'P3', createdAt: '2026-09-01T09:06:00.000Z' }),
+  ];
+
+  test('it slots in among its own priority, by age', () => {
+    const arriving = task({ id: 'x', priority: 'P3', createdAt: '2026-09-01T09:04:00.000Z' });
+    expect(arrivalIndex(target, arriving)).toBe(2);
+  });
+
+  test('a higher priority goes above everything below it', () => {
+    const arriving = task({ id: 'x', priority: 'P1', createdAt: '2026-09-01T09:30:00.000Z' });
+    expect(arrivalIndex(target, arriving)).toBe(1);
+  });
+
+  test('the oldest of its priority goes to the top of that block', () => {
+    const arriving = task({ id: 'x', priority: 'P3', createdAt: '2026-09-01T09:01:00.000Z' });
+    expect(arrivalIndex(target, arriving)).toBe(1);
+  });
+
+  test('an empty column takes it at the top', () => {
+    expect(arrivalIndex([], task({ id: 'x' }))).toBe(0);
+  });
+
+  // A neighbour that someone placed by hand is measured by where it was put,
+  // the same as anywhere else on the board.
+  test('a hand-placed card in the target column is measured by its position', () => {
+    const placed = [
+      task({
+        id: 'moved-to-bottom',
+        priority: 'P3',
+        createdAt: '2026-09-01T09:00:00.000Z',
+        boardOrder: new Date('2026-09-01T23:00:00.000Z').getTime(),
+      }),
+    ];
+    const arriving = task({ id: 'x', priority: 'P3', createdAt: '2026-09-01T10:00:00.000Z' });
+
+    expect(arrivalIndex(placed, arriving)).toBe(0);
+  });
+
+  // While the drag is in flight the board may already have moved the card into
+  // the column it is hovering. It must not be counted against itself.
+  test('the arriving card is not counted if it is already listed', () => {
+    const arriving = task({ id: 'x', priority: 'P3', createdAt: '2026-09-01T09:04:00.000Z' });
+    expect(arrivalIndex([...target, arriving], arriving)).toBe(2);
   });
 });

@@ -209,6 +209,30 @@ function neighboursAt(
 }
 
 /**
+ * The slot a card arriving from another column will take.
+ *
+ * A cross-column drop is not a placement. It changes the card's due date, which
+ * clears any hand-placed position, so the card lands wherever priority and then
+ * age put it — the same rule the +N day button lands a card by. The indicator
+ * points here rather than at the cursor, because the cursor is not what decides
+ * it.
+ *
+ * The arriving card is measured by its age, since that is what it will be
+ * sorting by once it gets there, and it is discounted from the target column in
+ * case the board has already moved it in while the drag is in flight.
+ */
+export function arrivalIndex(column: Task[], arriving: Task): number {
+  const key = new Date(arriving.createdAt).getTime();
+
+  return column.filter((task) => {
+    if (task.id === arriving.id) return false;
+    if (task.priority !== arriving.priority) return task.priority < arriving.priority;
+    // Ties go below what is already there: an arriving card is the newcomer.
+    return taskOrderKey(task) <= key;
+  }).length;
+}
+
+/**
  * Whether a drop at this slot would actually move the card.
  *
  * A resolved slot equal to the card's own position means it lands back where it
