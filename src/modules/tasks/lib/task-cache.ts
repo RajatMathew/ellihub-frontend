@@ -64,12 +64,17 @@ export function removeTaskFromList(page: TaskPaginatedResponse, id: string): Tas
 }
 
 /**
- * Write a hand-placed position into a cached page.
+ * Write a hand-placed position into a cached page, and the new due date with it
+ * when the card was dragged in from another column.
  *
  * The board sorts on `boardOrder`, so this is what moves the card on release —
  * the drag itself does not reorder anything. The value is the one the server
  * will settle on (see dropBoardOrder), so the response replaces it with itself
  * rather than moving the card a second time.
+ *
+ * The two go together deliberately. Applied separately the card would land in
+ * its new column by age and then move again when the response arrived, which is
+ * the jump this whole path exists to avoid.
  *
  * Same by-reference contract as the helpers above: a page that does not hold
  * the task comes back exactly as it came in, because the board memoises on the
@@ -78,14 +83,15 @@ export function removeTaskFromList(page: TaskPaginatedResponse, id: string): Tas
 export function placeTaskInList(
   page: TaskPaginatedResponse,
   id: string,
-  boardOrder: number | null
+  boardOrder: number | null,
+  dueAt?: string
 ): TaskPaginatedResponse {
   let changed = false;
 
   const data = page.data.map((task): Task => {
     if (task.id !== id) return task;
     changed = true;
-    return { ...task, boardOrder };
+    return { ...task, boardOrder, ...(dueAt !== undefined && { dueAt }) };
   });
 
   return changed ? { ...page, data } : page;

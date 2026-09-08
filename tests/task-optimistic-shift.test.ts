@@ -120,3 +120,26 @@ describe('showing a drop before the server answers', () => {
     expect(placeTaskInList(cached, 'task-1', 1500)).toBe(cached);
   });
 });
+
+// A card dragged into another column is rescheduled and placed in one write, so
+// the optimistic update has to do both. Doing them separately would land the
+// card by age in its new column and then move it when the response arrived.
+describe('showing a card dropped into another column', () => {
+  test('the new due date and the position are written together', () => {
+    const cached = page([task({ id: 'task-1', dueAt: '2026-09-15T00:00:00.000Z' })]);
+
+    const next = placeTaskInList(cached, 'task-1', 1500, '2026-09-16T00:00:00.000Z');
+
+    expect(next.data[0].dueAt).toBe('2026-09-16T00:00:00.000Z');
+    expect(next.data[0].boardOrder).toBe(1500);
+  });
+
+  test('a reorder within a column leaves the due date alone', () => {
+    const cached = page([task({ id: 'task-1', dueAt: '2026-09-15T00:00:00.000Z' })]);
+
+    const next = placeTaskInList(cached, 'task-1', 1500);
+
+    expect(next.data[0].dueAt).toBe('2026-09-15T00:00:00.000Z');
+    expect(next.data[0].boardOrder).toBe(1500);
+  });
+});

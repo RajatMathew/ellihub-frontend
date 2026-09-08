@@ -118,7 +118,7 @@ export const useShiftTaskDueDateMutation = () => {
   });
 };
 
-// Dragging a card up or down within its column (elli-ui#791).
+// Dragging a card, within its column or into another one (elli-ui#791).
 //
 // Written to the cache on release rather than on the response: the board does
 // not reorder while you drag — it draws an indicator instead — so without this
@@ -132,13 +132,15 @@ export const useReorderTaskMutation = () => {
       id,
       previousId,
       nextId,
+      dueAt,
     }: {
       id: string;
       previousId: string | null;
       nextId: string | null;
       boardOrder: number | null;
-    }) => tasksApi.reorder(id, previousId, nextId),
-    onMutate: async ({ id, boardOrder }) => {
+      dueAt?: string;
+    }) => tasksApi.reorder(id, previousId, nextId, dueAt),
+    onMutate: async ({ id, boardOrder, dueAt }) => {
       // In-flight reads would otherwise land after this and undo it.
       await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
 
@@ -147,7 +149,7 @@ export const useReorderTaskMutation = () => {
       });
 
       queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) =>
-        page ? placeTaskInList(page, id, boardOrder) : page
+        page ? placeTaskInList(page, id, boardOrder, dueAt) : page
       );
 
       return { previous };

@@ -79,10 +79,7 @@ test('the create dialog lays out title, priority, court, due and assignee', asyn
 
   // Priority and court are segmented controls, one option pressed in each.
   const priority = dialog.getByRole('group', { name: 'Priority' });
-  await expect(priority.getByRole('radio', { name: 'P3' })).toHaveAttribute(
-    'data-state',
-    'on'
-  );
+  await expect(priority.getByRole('radio', { name: 'P3' })).toHaveAttribute('data-state', 'on');
   const court = dialog.getByRole('group', { name: 'Ball in court' });
   await expect(court.getByRole('radio', { name: 'Ours' })).toHaveAttribute('data-state', 'on');
 

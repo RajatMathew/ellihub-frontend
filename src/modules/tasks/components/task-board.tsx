@@ -35,7 +35,6 @@ export function TaskBoard({
   onOpenTask,
   onCompleteTask,
   onShiftDueDate,
-  onReschedule,
   onReorder,
   onReassign,
   onPriorityChange,
@@ -48,10 +47,16 @@ export function TaskBoard({
   onOpenTask: (task: Task) => void;
   onCompleteTask: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
-  onReschedule: (task: Task, dueAt: Date) => void;
   onReorder: (
     task: Task,
-    placement: { previousId: string | null; nextId: string | null; boardOrder: number | null }
+    placement: {
+      previousId: string | null;
+      nextId: string | null;
+      boardOrder: number | null;
+      // Set only when the card changed column, so the reschedule and the
+      // placement land as one write.
+      dueAt?: string;
+    }
   ) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
   onPriorityChange: (task: Task, priority: TaskPriority) => void;
@@ -108,44 +113,54 @@ export function TaskBoard({
     const from = columnForTask(task, now);
     const to = overContainer as TaskColumnId;
 
-    // Staying put means a reorder rather than a reschedule. There is no hover
-    // reflow within a column — a drop indicator says where the card will land
-    // instead — so `overIndex` still describes the column as rendered, and the
-    // card sitting in it is what makes an index and an insertion point the same
-    // number. The aim is then clamped to the card's own priority block, so a
-    // drop that would outrank a P1 lands at the top of the P3s instead.
-    if (from === to) {
-      const column = cardsIn(to);
-      const index = resolveDropIndex(column, task.id, overIndex);
-      if (!dropMovesTask(column, task.id, index)) return;
-
-      const { previousId, nextId } = dropNeighbours(column, task.id, index);
-
-      // Nothing either side means the card is alone in its priority block, and
-      // there is no position to save.
-      if (!previousId && !nextId) return;
-
-      onReorder(task, { previousId, nextId, boardOrder: dropBoardOrder(column, task.id, index) });
-      return;
-    }
-
     const { allowed, reason } = canMoveTask(from, to);
     if (!allowed) {
       if (reason) toast.error(reason);
       return;
     }
 
+    // Completing is a state change rather than a placement: the card lands in
+    // Completed by priority and then age, so there is nothing to save about
+    // where it was dropped.
     if (to === 'COMPLETED') {
       onCompleteTask(task);
       return;
     }
 
     // Leaving Completed for a dated column means reopening it, which the
-    // completion toggle already does; the new due date follows separately.
+    // completion toggle already does; the placement below carries the date.
     if (from === 'COMPLETED') onCompleteTask(task);
 
+    // A reorder and a move between columns are the same act — put the card where
+    // it was dropped — and differ only in whether a due date rides along.
+    // `overIndex` describes the column as the board is rendering it, which
+    // already holds the dragged card because the hover reflow put it there, so
+    // an index and an insertion point are the same number. The aim is clamped to
+    // the card's own priority block, so a drop that would outrank a P1 lands at
+    // the top of the P3s instead.
+    const column = cardsIn(to);
+    const index = resolveDropIndex(column, task.id, overIndex);
+    const { previousId, nextId } = dropNeighbours(column, task.id, index);
+    const boardOrder = dropBoardOrder(column, task.id, index);
+
+    if (from === to) {
+      if (!dropMovesTask(column, task.id, index)) return;
+
+      // Nothing either side means the card is alone in its priority block, and
+      // there is no position to save.
+      if (!previousId && !nextId) return;
+
+      onReorder(task, { previousId, nextId, boardOrder });
+      return;
+    }
+
+    // The new due date goes with the placement in one write. Sent separately,
+    // the card would land in its new column by age and then visibly jump to
+    // where it was dropped.
     const dueAt = dueDateForColumn(to, now);
-    if (dueAt) onReschedule(task, dueAt);
+    if (!dueAt) return;
+
+    onReorder(task, { previousId, nextId, boardOrder, dueAt: dueAt.toISOString() });
   };
 
   return (

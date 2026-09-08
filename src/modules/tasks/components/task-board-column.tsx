@@ -54,17 +54,22 @@ export function TaskBoardColumn({
   const isForbidden = isHovered && !verdict.allowed;
   const isWelcome = isHovered && verdict.allowed;
 
-  // Both kinds of drag get a line, but they mean different things. Within a
-  // column you are choosing a slot, so the line follows the cursor, clamped to
-  // the card's own priority block. Coming from another column you are choosing
-  // nothing — the drop clears the hand-placed position and the card lands by
-  // priority and then age — so the line points at where it will end up.
+  // The line always says where the card is going to end up, which is not always
+  // where the cursor is. Dropping into a dated column places the card, so there
+  // it follows the cursor, clamped to the card's own priority block. Completing
+  // one is a state change rather than a placement — the card lands by priority
+  // and then age however it got there — so there the line points at the slot it
+  // will take.
   const dropSlot = (() => {
     if (!draggedTask || !isWelcome) return null;
 
-    return columnForTask(draggedTask, now) === columnId
-      ? dropSlotFor(tasks, draggedTask, over?.id, byId)
-      : arrivalSlotFor(tasks, draggedTask);
+    return columnId === 'COMPLETED'
+      ? arrivalSlotFor(tasks, draggedTask)
+      : dropSlotFor(tasks, draggedTask, over?.id, byId, {
+          // Landing back on its own slot is only a no-op when the card is not
+          // also changing column.
+          sameColumn: columnForTask(draggedTask, now) === columnId,
+        });
   })();
 
   return (
@@ -145,7 +150,8 @@ function dropSlotFor(
   tasks: Task[],
   dragged: Task,
   overId: string | number | undefined,
-  byId: Map<string, Task>
+  byId: Map<string, Task>,
+  { sameColumn }: { sameColumn: boolean }
 ): number | null {
   if (overId === undefined) return null;
 
@@ -162,9 +168,10 @@ function dropSlotFor(
   const index = resolveDropIndex(tasks, dragged.id, aim);
 
   // The clamp lands a card back on its own slot whenever it is aimed outside
-  // its block from the near end. Drawing a line there would promise a move that
-  // is not going to happen.
-  if (!dropMovesTask(tasks, dragged.id, index)) return null;
+  // its block from the near end. Within its own column that is a move that is
+  // not going to happen, and drawing a line would promise one. Arriving from
+  // another column it is going somewhere regardless, so the line stays.
+  if (sameColumn && !dropMovesTask(tasks, dragged.id, index)) return null;
 
   return index < activeIndex ? index : index + 1;
 }

@@ -333,3 +333,40 @@ describe('where a card arriving from another column lands', () => {
     expect(arrivalIndex([...target, arriving], arriving)).toBe(2);
   });
 });
+
+// Dragging a card into another column places it, the same as dragging within
+// one: the slot follows the cursor, clamped to the card's own priority block.
+// The card is not in the target column's list yet, so the clamp has to work for
+// a card that is arriving rather than moving.
+describe('choosing a slot in a column the card is arriving in', () => {
+  const target = [
+    task({ id: 'p1', priority: 'P1', createdAt: '2026-09-01T09:00:00.000Z' }),
+    task({ id: 'p3-a', priority: 'P3', createdAt: '2026-09-01T09:02:00.000Z' }),
+    task({ id: 'p3-b', priority: 'P3', createdAt: '2026-09-01T09:04:00.000Z' }),
+  ];
+  const arriving = task({ id: 'x', priority: 'P3', createdAt: '2026-09-01T09:06:00.000Z' });
+
+  test('aiming above the P1 stops at the top of the P3 block', () => {
+    expect(resolveDropIndex([...target, arriving], 'x', 0)).toBe(1);
+  });
+
+  test('a slot between the two P3s is kept', () => {
+    expect(resolveDropIndex([...target, arriving], 'x', 2)).toBe(2);
+  });
+
+  test('the neighbours named are the two P3s it landed between', () => {
+    const column = [...target, arriving];
+    const index = resolveDropIndex(column, 'x', 2);
+    expect(dropNeighbours(column, 'x', index)).toEqual({ previousId: 'p3-a', nextId: 'p3-b' });
+  });
+
+  test('the position shown is halfway between them', () => {
+    const column = [...target, arriving];
+    const index = resolveDropIndex(column, 'x', 2);
+    expect(dropBoardOrder(column, 'x', index)).toBe(
+      (new Date('2026-09-01T09:02:00.000Z').getTime() +
+        new Date('2026-09-01T09:04:00.000Z').getTime()) /
+        2
+    );
+  });
+});

@@ -85,13 +85,17 @@ const rfqDetail = {
     {
       id: 'invite-2',
       sentAt: '2026-06-20T10:00:00.000Z',
-      vendor: { id: 'vendor-2', name: '3 Brothers Masonry Concrete Corp', email: '3bros@example.com' },
+      vendor: {
+        id: 'vendor-2',
+        name: '3 Brothers Masonry Concrete Corp',
+        email: '3bros@example.com',
+      },
     },
   ],
   quotes: [
     {
       id: 'quote-1',
-      grandTotal: 123.00,
+      grandTotal: 123.0,
       leadTime: '5 days',
       vendor: { id: 'vendor-2', name: '3 Brothers Masonry Concrete Corp' },
     },
@@ -202,7 +206,9 @@ async function setupMockApi(page: Page) {
 test.describe('Mobile Responsiveness and Scrollbars Check', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test('verifies RFQ Detail page has no horizontal scroll and no double scrollbars', async ({ page }) => {
+  test('verifies RFQ Detail page has no horizontal scroll and no double scrollbars', async ({
+    page,
+  }) => {
     await setupMockApi(page);
     await page.goto(`/app/project/${PROJECT_ID}/rfqs/${RFQ_ID}`);
 
@@ -222,7 +228,12 @@ test.describe('Mobile Responsiveness and Scrollbars Check', () => {
     // 3. Verify body/html is not scrollable (no double scrollbars)
     const isHtmlScrollable = await page.evaluate(() => {
       const style = window.getComputedStyle(document.documentElement);
-      return style.overflow === 'auto' || style.overflow === 'scroll' || style.overflowY === 'auto' || style.overflowY === 'scroll';
+      return (
+        style.overflow === 'auto' ||
+        style.overflow === 'scroll' ||
+        style.overflowY === 'auto' ||
+        style.overflowY === 'scroll'
+      );
     });
     // With overflow: hidden, html shouldn't be scrollable
     expect(isHtmlScrollable).toBe(false);

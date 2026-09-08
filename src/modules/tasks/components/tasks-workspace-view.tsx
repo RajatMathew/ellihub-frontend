@@ -167,9 +167,6 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             markLanded(task.id);
             shiftDueDate.mutate({ id: task.id, days });
           }}
-          onReschedule={(task, dueAt) =>
-            updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
-          }
           // Dragging a card within its column. The placement is already clamped
           // to the card's priority block by the board, and the server refuses it
           // again - see PATCH /task/reorder.

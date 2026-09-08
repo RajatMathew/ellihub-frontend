@@ -111,8 +111,20 @@ export const tasksApi = {
   // A card dragged up or down within its column. The two neighbours are what is
   // sent, not an index: the server places the card between two rows it looks up
   // itself, so it never has to agree with the board about the column's contents.
-  async reorder(id: string, previousId: string | null, nextId: string | null): Promise<Task> {
-    const res = await api.patch(`${BASE}/reorder`, { id, previousId, nextId });
+  async reorder(
+    id: string,
+    previousId: string | null,
+    nextId: string | null,
+    dueAt?: string
+  ): Promise<Task> {
+    const res = await api.patch(`${BASE}/reorder`, {
+      id,
+      previousId,
+      nextId,
+      // Only when the card changed column. Sent with the placement rather than
+      // as its own update so the card cannot land by age and then jump.
+      ...(dueAt !== undefined && { dueAt, dueHasTime: false }),
+    });
     return taskSchema.parse(res.data?.data ?? res.data);
   },
 

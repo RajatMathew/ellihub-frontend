@@ -162,7 +162,9 @@ async function mockInvoiceApi(page: Page, handlers: MockHandlers = {}) {
     }
 
     if (method === 'GET' && path === '/api/v1/vendor') {
-      await route.fulfill({ json: { data: [vendor], pagination: { ...pagination, itemsPerPage: 1000 } } });
+      await route.fulfill({
+        json: { data: [vendor], pagination: { ...pagination, itemsPerPage: 1000 } },
+      });
       return;
     }
 
