@@ -10,6 +10,7 @@ import {
 import type {
   CreateTaskInput,
   ListTasksParams,
+  TaskFilters,
   TaskPaginatedResponse,
   UpdateTaskInput,
 } from '@/modules/tasks/schemas/task.schema';
@@ -20,6 +21,20 @@ export const useTasksQuery = (params: ListTasksParams) =>
   useQuery({
     queryKey: taskKeys.list(params),
     queryFn: () => tasksApi.list(params),
+  });
+
+/**
+ * Every task at once, for the board.
+ *
+ * The board is not a paginated list: it groups tasks into columns by due date
+ * and orders them within a column itself, so a page of them is not a smaller
+ * board, it is a wrong one. Keyed under taskKeys.lists() like the paged query,
+ * so the optimistic writes in this file reach it unchanged.
+ */
+export const useAllTasksQuery = (filters: TaskFilters = {}) =>
+  useQuery({
+    queryKey: taskKeys.board(filters),
+    queryFn: () => tasksApi.listAll(filters),
   });
 
 export const useTaskDetailQuery = (id: string) =>

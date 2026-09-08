@@ -7,14 +7,13 @@ import { cn } from '@/app/lib/utils';
 import { TaskBoard } from '@/modules/tasks/components/task-board';
 import { TaskFilterBar, type TaskAssigneeFilter } from '@/modules/tasks/components/task-filter-bar';
 import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
-import { TASKS_DEFAULT_PAGE_SIZE } from '@/modules/tasks/constants/tasks.constants';
 import {
+  useAllTasksQuery,
   useCreateTaskMutation,
   useDeleteTaskMutation,
   useReorderTaskMutation,
   useSetTaskCompletedMutation,
   useShiftTaskDueDateMutation,
-  useTasksQuery,
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
 import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
@@ -34,7 +33,10 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const [editing, setEditing] = useState<Task | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>(null);
 
-  const tasksQuery = useTasksQuery({ page: 1, size: TASKS_DEFAULT_PAGE_SIZE });
+  // Every task, not a page of them: the board groups into columns and orders
+  // within them client-side, so anything it has not fetched is simply missing
+  // from the board rather than on a later page.
+  const tasksQuery = useAllTasksQuery();
   const createTask = useCreateTaskMutation();
   const updateTask = useUpdateTaskMutation();
   const setCompleted = useSetTaskCompletedMutation();

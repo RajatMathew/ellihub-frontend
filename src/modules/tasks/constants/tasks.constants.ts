@@ -46,8 +46,6 @@ export const TASK_COURT_TONES: Record<TaskCourt, { dot: string; text: string; la
  */
 export const TASK_COMPLETION_BEAT_MS = 200;
 
-export const TASKS_DEFAULT_PAGE_SIZE = 25;
-
 export const TASK_ENTITY_LABELS: Record<TaskEntityType, string> = {
   project: 'Project',
   rfq: 'RFQ',

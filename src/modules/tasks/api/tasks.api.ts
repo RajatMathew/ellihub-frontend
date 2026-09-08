@@ -1,15 +1,25 @@
 import api from '@/app/api';
+import { mergeTaskPages } from '@/modules/tasks/lib/task-pages';
 import {
   taskPaginatedResponseSchema,
   taskSchema,
   type CreateTaskInput,
   type ListTasksParams,
   type Task,
+  type TaskFilters,
   type TaskPaginatedResponse,
   type UpdateTaskInput,
 } from '@/modules/tasks/schemas/task.schema';
 
 const BASE = '/task';
+
+// The server caps a page at 100 (paginationMiddleware's maxSize), so asking for
+// more in one request gets silently trimmed rather than refused.
+const LIST_PAGE_SIZE = 100;
+
+// A guard against looping forever if pagination ever misreports itself, not a
+// ceiling anyone should be hitting.
+const LIST_MAX_PAGES = 20;
 
 // The API nests list filters under filter[...]; flatten them here so callers
 // pass a plain params object.
@@ -40,6 +50,31 @@ export const tasksApi = {
         hasPreviousPage: pagination.hasPreviousPage ?? false,
       },
     });
+  },
+
+  /**
+   * Every task the board needs, however many pages that takes.
+   *
+   * The board groups by due date and orders within a column client-side, so a
+   * single page was never enough: it sorted whichever rows arrived and the rest
+   * were simply not on the board. Worse, an edit that moved a card later in the
+   * server's due-date order pushed it off the page, so `+1 day` looked like it
+   * had deleted the task.
+   *
+   * The server caps a page at 100, so this walks the pages. MAX_PAGES is a
+   * runaway guard rather than a product limit — if a tenant ever reaches it the
+   * board is showing thousands of cards and wants filtering, not more requests.
+   */
+  async listAll(filters: TaskFilters = {}): Promise<TaskPaginatedResponse> {
+    const pages: TaskPaginatedResponse[] = [];
+
+    for (let page = 1; page <= LIST_MAX_PAGES; page += 1) {
+      const result = await this.list({ ...filters, page, size: LIST_PAGE_SIZE });
+      pages.push(result);
+      if (!result.pagination.hasNextPage) break;
+    }
+
+    return mergeTaskPages(pages);
   },
 
   async getById(id: string): Promise<Task> {

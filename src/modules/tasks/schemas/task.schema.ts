@@ -105,6 +105,9 @@ export type Task = z.infer<typeof taskSchema>;
 export type TaskPaginatedResponse = z.infer<typeof taskPaginatedResponseSchema>;
 export type TaskFormData = z.infer<typeof taskFormSchema>;
 
+/** The filters a task list accepts, without the paging the board does not use. */
+export type TaskFilters = Omit<ListTasksParams, 'page' | 'size'>;
+
 export type ListTasksParams = {
   page: number;
   size: number;
