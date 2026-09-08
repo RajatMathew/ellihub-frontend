@@ -389,11 +389,20 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     EMAIL_FOLDERS.find((folder) => folder.key === selectedFolderKey)?.label ??
     selectedConnectedFolder?.name ??
     foldersQuery.data?.find((folder) => folder.key === selectedFolder)?.name;
+  // Mailbox nickname/address for the account-segment crumb.
+  useBreadcrumbLabel(
+    accountSlug ? `/app/email/accounts/${accountSlug}` : undefined,
+    isSharedMailbox && connectedAccount?.displayName ? connectedAccount.displayName : address
+  );
   // The folder path segment can be an opaque folder id — hand the breadcrumb
   // bar its display name (well-known keys resolve to labels the same way).
+  // Outside the mail view the URL keeps the same folder segment, so the
+  // crumb instead names the active workspace view.
+  const workspaceViewLabel =
+    workspaceView === 'calendar' ? 'Calendar' : workspaceView === 'tasks' ? 'Tasks' : undefined;
   useBreadcrumbLabel(
     accountSlug ? `/app/email/accounts/${accountSlug}/${selectedFolder}` : undefined,
-    selectedFolderLabel
+    workspaceViewLabel ?? selectedFolderLabel
   );
   const isArchiveFolder = selectedConnectedFolder?.key === 'archive';
   const isDeletedFolder = selectedFolderKey === 'deleted';

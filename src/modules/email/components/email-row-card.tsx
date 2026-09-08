@@ -10,6 +10,7 @@ import {
   isOpenEmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
+import { useShowEmailAvatars } from '@/modules/email/hooks/use-email-avatar-visibility';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
@@ -91,10 +92,36 @@ export type EmailThreadMessage = {
   attachments?: EmailAttachment[];
 };
 
+/** Escapes regex metacharacters so a search query can be used as a literal match. */
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Wraps case-insensitive matches of `query` in `text` with a `<mark>`. */
+function highlightText(text: string, query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return text;
+
+  const parts = text.split(new RegExp(`(${escapeRegExp(trimmed)})`, 'gi'));
+  if (parts.length === 1) return text;
+
+  return parts.map((part, index) =>
+    part.toLowerCase() === trimmed.toLowerCase() ? (
+      <mark key={index} className="rounded-xs bg-warning-soft text-warning-soft-foreground">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 interface EmailRowCardProps {
   email: EmailListItem;
   accountId?: string;
   selected?: boolean;
+  /** Search term to highlight within the subject/preview text. */
+  highlightQuery?: string;
   onSelect?: () => void;
   onPrefetch?: () => void;
   onArchive?: () => void;
@@ -118,6 +145,7 @@ export function EmailRowCard({
   email,
   accountId,
   selected,
+  highlightQuery,
   onSelect,
   onPrefetch,
   onArchive,
@@ -129,6 +157,7 @@ export function EmailRowCard({
 }: EmailRowCardProps) {
   const isSelected = selected ?? Boolean(email.selected);
   const isCheckable = Boolean(onCheckedChange);
+  const showAvatars = useShowEmailAvatars();
   const cardRef = useRef<HTMLElement>(null);
   // Whether Shift was held when the checkbox was pressed — read back when the
   // checked state actually changes so range selection can kick in.
@@ -181,15 +210,42 @@ export function EmailRowCard({
           onSelect?.();
         }}
       >
-        <SenderAvatar
-          name={email.senderName}
-          email={email.senderEmail}
-          accountId={accountId}
-          className={cn(
-            'motion-safe:transition-opacity motion-safe:duration-100',
-            showCheckbox && 'opacity-0'
-          )}
-        />
+        {showAvatars ? (
+          <SenderAvatar
+            name={email.senderName}
+            email={email.senderEmail}
+            accountId={accountId}
+            className={cn(
+              'motion-safe:transition-opacity motion-safe:duration-100',
+              showCheckbox && 'opacity-0'
+            )}
+          />
+        ) : (
+          isCheckable && (
+            <span
+              className="flex size-5 shrink-0 cursor-pointer items-center justify-center self-start"
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => {
+                shiftClickRef.current = event.shiftKey;
+                event.stopPropagation();
+              }}
+            >
+              <Checkbox
+                className="size-4 cursor-pointer rounded-md"
+                checked={isChecked}
+                onCheckedChange={(next) => {
+                  onCheckedChange?.(next === true, { range: shiftClickRef.current });
+                  shiftClickRef.current = false;
+                }}
+                aria-label={
+                  isChecked
+                    ? `Deselect email from ${email.senderName}`
+                    : `Select email from ${email.senderName}`
+                }
+              />
+            </span>
+          )
+        )}
 
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
@@ -238,7 +294,7 @@ export function EmailRowCard({
               email.unread ? 'font-semibold' : 'font-medium'
             )}
           >
-            {email.subject}
+            {highlightQuery ? highlightText(email.subject, highlightQuery) : email.subject}
           </span>
 
           <span
@@ -247,7 +303,7 @@ export function EmailRowCard({
               email.unread ? 'text-foreground/80' : 'text-muted-foreground'
             )}
           >
-            {email.preview}
+            {highlightQuery ? highlightText(email.preview, highlightQuery) : email.preview}
           </span>
 
           <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -337,7 +393,7 @@ export function EmailRowCard({
         </span>
       </button>
 
-      {isCheckable && (
+      {isCheckable && showAvatars && (
         <span
           className={cn(
             'absolute left-3 top-2.5 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full',

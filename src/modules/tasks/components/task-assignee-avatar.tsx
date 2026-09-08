@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { cn } from '@/app/lib/utils';
 import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
+import { UserPlus } from 'lucide-react';
 
 /**
  * A person's initials, tinted the colour they carry everywhere else.
@@ -12,6 +13,12 @@ import { assigneeTone, initialsOf } from '@/modules/tasks/lib/assignee-tone';
  *
  * `id` is what picks the tint, so an unassigned chip — no id — is deliberately
  * grey rather than a colour that would read as somebody.
+ *
+ * Unassigned draws a person rather than a dash. The dash read as a minus sign
+ * and so as a control that takes something away — several people took it for a
+ * remove button (#818). `UserPlus` says both what the slot is for and that
+ * somebody can be put in it, which is the one thing you would want to do with
+ * an empty one.
  *
  * The tints are translucent, so left alone the chip takes on whatever it sits
  * on: a selected filter pill turned it navy-on-navy and the initials vanished
@@ -41,7 +48,14 @@ export function TaskAssigneeAvatar({
           id ? assigneeTone(id) : 'bg-muted text-muted-foreground'
         )}
       >
-        {name ? initialsOf(name) : '—'}
+        {name ? (
+          initialsOf(name)
+        ) : (
+          // Hidden from the accessibility tree: the trigger around this already
+          // announces "Unassigned. Choose assignee", and a second voice on the
+          // icon would only repeat it.
+          <UserPlus aria-hidden className={size === 'sm' ? 'size-3' : 'size-3.5'} />
+        )}
       </AvatarFallback>
     </Avatar>
   );
