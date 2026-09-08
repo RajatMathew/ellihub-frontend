@@ -130,12 +130,9 @@ export const routeTree: RouteDef[] = [
           // Email" (elli-ui#853). 'accounts' is a REST path detail, not a
           // navigational level, so it's hidden rather than titled.
           { path: 'accounts', breadcrumb: { label: 'Accounts', hide: true } },
-          // The account slug segment has no static title of its own either —
-          // without an entry here it fell through to 'email/*' the same way
-          // 'accounts' did. The mailbox address is already shown in the
-          // workspace header just below, so it's hidden rather than shown
-          // twice as a raw slug.
-          { path: 'accounts/:accountSlug', breadcrumb: { label: 'Account', hide: true } },
+          // The account slug has no static title — mailbox-page.tsx supplies
+          // the mailbox's display label dynamically via useBreadcrumbLabel.
+          { path: 'accounts/:accountSlug', breadcrumb: { label: 'Account' } },
         ],
       },
 
