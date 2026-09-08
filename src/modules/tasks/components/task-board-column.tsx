@@ -1,8 +1,9 @@
-import { Children, isValidElement, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { KanbanColumn, KanbanColumnContent } from '@/app/components/ui/kanban';
 import { cn } from '@/app/lib/utils';
 import { useScrollEdges } from '@/modules/tasks/hooks/use-scroll-edges';
+import { withDropIndicator } from '@/modules/tasks/lib/drop-indicator';
 import {
   canMoveTask,
   columnForTask,
@@ -162,31 +163,6 @@ function dropSlotFor(
   if (!dropMovesTask(tasks, dragged.id, index)) return null;
 
   return index < activeIndex ? index : index + 1;
-}
-
-/**
- * The cards with a line drawn in the gap the dragged one will land in.
- *
- * Rendered here rather than by the board so the indicator sits between the
- * cards it separates, in the same flex column, instead of being positioned over
- * them and having to track their heights.
- */
-function withDropIndicator(children: ReactNode, slot: number | null): ReactNode {
-  if (slot === null) return children;
-
-  const cards = Children.toArray(children).filter(isValidElement);
-  if (slot < 0 || slot > cards.length) return children;
-
-  return [
-    ...cards.slice(0, slot),
-    <div
-      key="task-drop-indicator"
-      aria-hidden
-      data-slot="task-drop-indicator"
-      className="h-0.5 shrink-0 rounded-full bg-primary"
-    />,
-    ...cards.slice(slot),
-  ];
 }
 
 /** Which column something being hovered belongs to — a column id, or a card in one. */
