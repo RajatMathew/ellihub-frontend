@@ -356,7 +356,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
     isConnected ? selectedEmail?.threadId : null,
-    canLoadConnectedMailbox
+    canLoadConnectedMailbox,
+    isConnected ? selectedEmail?.conversationKey : null
   );
   const messageDetailQuery = useEmailMessageQuery(
     connectedAccount?.id,
@@ -915,7 +916,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       if (email.threadId) {
         void queryClient.prefetchQuery({
           queryKey: emailKeys.conversation(connectedAccount.id, email.threadId),
-          queryFn: () => emailApi.listConversation(connectedAccount.id, email.threadId!),
+          queryFn: () =>
+            emailApi.listConversation(connectedAccount.id, email.threadId!, email.conversationKey),
           staleTime: 60 * 1000,
         });
         return;

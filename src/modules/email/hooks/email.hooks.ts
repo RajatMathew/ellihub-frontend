@@ -251,11 +251,12 @@ export const useRefreshEmailMessagesMutation = () => {
 export const useEmailConversationQuery = (
   accountId: string | undefined,
   threadId: string | null | undefined,
-  enabled = true
+  enabled = true,
+  conversationKey?: string | null
 ) =>
   useQuery({
     queryKey: emailKeys.conversation(accountId, threadId),
-    queryFn: () => emailApi.listConversation(accountId!, threadId!),
+    queryFn: () => emailApi.listConversation(accountId!, threadId!, conversationKey ?? undefined),
     enabled: enabled && Boolean(accountId && threadId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
@@ -1215,7 +1216,8 @@ export const useUpdateEmailMessageStatusMutation = () => {
       if (!payload.unread && payload.threadId) {
         await queryClient.ensureQueryData({
           queryKey: emailKeys.conversation(payload.accountId, payload.threadId),
-          queryFn: () => emailApi.listConversation(payload.accountId, payload.threadId!),
+          queryFn: () =>
+            emailApi.listConversation(payload.accountId, payload.threadId!, payload.conversationKey),
           staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
         });
       }
