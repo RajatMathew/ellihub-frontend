@@ -1,21 +1,24 @@
 import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
+import { Form, FormItem, FormLabel } from '@/app/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
+import { Separator } from '@/app/components/ui/separator';
 import { TaskEmailReferences } from '@/modules/tasks/components/task-email-references';
-import { TASK_PRIORITY_OPTIONS } from '@/modules/tasks/constants/tasks.constants';
+import { TaskFormFields } from '@/modules/tasks/components/task-form/task-form-fields';
+import {
+  emptyTaskFormValues,
+  toTaskPayload,
+} from '@/modules/tasks/components/task-form/task-form-values';
 import { useCreateTaskMutation } from '@/modules/tasks/hooks/tasks.hooks';
-import type { TaskEmailReference, TaskPriority } from '@/modules/tasks/schemas/task.schema';
+import {
+  taskFormSchema,
+  type TaskEmailReference,
+  type TaskFormData,
+} from '@/modules/tasks/schemas/task.schema';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ListTodo } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 
 export type AddTaskEmailContext = {
   accountId: string;
@@ -27,11 +30,16 @@ export type AddTaskEmailContext = {
 };
 
 /**
- * Quick capture of a task from an open email.
+ * Raising a task from an open email.
  *
- * A popover rather than a dialog on purpose: this is a two-field aside taken
- * without leaving the message, so it should not black out the mail behind it.
- * The full field set lives in the task dialog, reachable from the board.
+ * A popover rather than a dialog on purpose: a task raised from a message is
+ * still about that message, so the mail stays visible behind it instead of
+ * being blacked out by an overlay.
+ *
+ * It asks for everything the board's dialog asks for, and asks with the same
+ * component — `TaskFormFields`, at its compact density. Two field sets for one
+ * kind of record is how the two drift apart. The linked emails are the one
+ * field only this side has, so it goes in through the `afterTitle` slot.
  */
 export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
   const [open, setOpen] = useState(false);
@@ -47,7 +55,16 @@ export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
           <span>Add task</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96">
+      {/* Wide enough for the two segmented controls to sit side by side.
+          The height cap is Radix's own measurement of the room left beside the
+          trigger, not a slice of the viewport: the popover opens partway down
+          the message, so a `vh` fraction measured from the top of the screen ran
+          the submit button off the bottom of it. */}
+      <PopoverContent
+        align="end"
+        collisionPadding={16}
+        className="max-h-[min(var(--radix-popover-content-available-height),44rem)] w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:w-[28rem]"
+      >
         {/* Keyed by open so each visit starts clean without a reset effect. */}
         {open ? <AddTaskForm key="open" email={email} onDone={() => setOpen(false)} /> : null}
       </PopoverContent>
@@ -55,31 +72,15 @@ export function AddTaskPopover({ email }: { email: AddTaskEmailContext }) {
   );
 }
 
-// TEMPORARILY REQUIRED — the "No due date" column is commented out in
-// lib/task-board.ts, so a task raised from an email without a date would have
-// nowhere to show. Both fields open filled in and neither can be left empty.
-const todayInputValue = () => {
-  const now = new Date();
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-};
-
-// End of business, matching the create dialog's default.
-const DEFAULT_DUE_TIME = '17:00';
-
 function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: () => void }) {
+  const createTask = useCreateTaskMutation();
+
   // The subject is the obvious first draft of what needs doing, so it seeds the
   // title rather than leaving the field blank.
-  const [title, setTitle] = useState(email.subject?.trim() ?? '');
-  const [priority, setPriority] = useState<TaskPriority>('P3');
-  const [dueDate, setDueDate] = useState(todayInputValue);
-  const [dueTime, setDueTime] = useState(DEFAULT_DUE_TIME);
-  const [touched, setTouched] = useState(false);
-
-  const createTask = useCreateTaskMutation();
-  const trimmed = title.trim();
-  const isInvalid = touched && trimmed.length === 0;
-  const isDueInvalid = touched && (dueDate.length === 0 || dueTime.length === 0);
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: emptyTaskFormValues(email.subject?.trim() ?? ''),
+  });
 
   // The open message is attached from the outset — that is the reason you are
   // in this popover — and is only the starting point: more can be added, and
@@ -95,16 +96,9 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
     },
   ]);
 
-  const submit = async () => {
-    setTouched(true);
-    if (!trimmed || !dueDate || !dueTime) return;
-
+  const handleSubmit = async (values: TaskFormData) => {
     await createTask.mutateAsync({
-      title: trimmed,
-      priority,
-      court: 'OURS',
-      dueAt: new Date(`${dueDate}T${dueTime}`).toISOString(),
-      dueHasTime: true,
+      ...toTaskPayload(values),
       emailReferences: references,
     });
 
@@ -112,89 +106,44 @@ function AddTaskForm({ email, onDone }: { email: AddTaskEmailContext; onDone: ()
   };
 
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-    >
-      <div className="space-y-1.5">
-        <Label htmlFor="add-task-title">Task</Label>
-        <Input
-          id="add-task-title"
-          value={title}
-          autoFocus
-          placeholder="What needs doing?"
-          aria-invalid={isInvalid}
-          onChange={(event) => setTitle(event.target.value)}
-          onBlur={() => setTouched(true)}
-        />
-        {isInvalid ? <p className="text-xs text-destructive">A task needs a title</p> : null}
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Linked emails</Label>
-        <TaskEmailReferences
-          accountId={email.accountId}
-          value={references}
-          onChange={setReferences}
-          requireAtLeastOne
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="add-task-priority">Priority</Label>
-          <Select value={priority} onValueChange={(value) => setPriority(value as TaskPriority)}>
-            <SelectTrigger id="add-task-priority">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TASK_PRIORITY_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Form {...form}>
+      <form onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}>
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-foreground">New task</h2>
+          <p className="text-xs text-muted-foreground">Raised from this message.</p>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="add-task-due">Due</Label>
-          <Input
-            id="add-task-due"
-            type="date"
-            required
-            value={dueDate}
-            aria-invalid={isDueInvalid}
-            onChange={(event) => setDueDate(event.target.value)}
+
+        <Separator className="mt-4" />
+
+        <div className="pt-5">
+          <TaskFormFields
+            form={form}
+            density="compact"
+            afterTitle={
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-sm">Linked emails</FormLabel>
+                <TaskEmailReferences
+                  accountId={email.accountId}
+                  value={references}
+                  onChange={setReferences}
+                  requireAtLeastOne
+                />
+              </FormItem>
+            }
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="add-task-due-time">Time</Label>
-          <Input
-            id="add-task-due-time"
-            type="time"
-            required
-            value={dueTime}
-            aria-invalid={isDueInvalid}
-            onChange={(event) => setDueTime(event.target.value)}
-          />
+
+        <Separator className="mt-5" />
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" size="sm" disabled={createTask.isPending}>
+            {createTask.isPending ? 'Adding...' : 'Add task'}
+          </Button>
         </div>
-      </div>
-
-      {isDueInvalid ? (
-        <p className="text-xs text-destructive">A task needs a due date and a time</p>
-      ) : null}
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary" size="sm" disabled={createTask.isPending}>
-          {createTask.isPending ? 'Adding...' : 'Add task'}
-        </Button>
-      </div>
-    </form>
+      </form>
+    </Form>
   );
 }
