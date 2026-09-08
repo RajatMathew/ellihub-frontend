@@ -45,11 +45,7 @@ export function EmailSidebarMenu() {
       (getEmailAccountSlug(account) === activeAccountSlug || account.id === activeAccountSlug),
     [activeAccountSlug]
   );
-  // elli-ui#873: the account on screen must never end up in the "extra"
-  // bucket below and get auto-disconnected out from under whoever is looking
-  // at it — e.g. right as maxPersonalAccounts first loads and this account
-  // turns out to sit past the cap. It stays visible (even past the raw
-  // slice window) for exactly as long as it stays the active one.
+  // Never auto-disconnect the account on screen (elli-ui#873).
   const visiblePersonalAccounts = useMemo(() => {
     const withinLimit = personalAccounts.slice(0, maxPersonalAccounts);
     const activeBeyondLimit = personalAccounts.slice(maxPersonalAccounts).find(isActiveAccount);

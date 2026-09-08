@@ -605,10 +605,13 @@ export const emailApi = {
 
   async listConversation(
     accountId: string,
-    threadId: string
+    threadId: string,
+    // Narrows the backend's answer to the conversation actually opened.
+    conversationKey?: string
   ): Promise<ConnectedEmailThreadMessage[]> {
     const res = await api.get(
-      `${BASE}/accounts/${accountId}/conversations/${encodeURIComponent(threadId)}/messages`
+      `${BASE}/accounts/${accountId}/conversations/${encodeURIComponent(threadId)}/messages`,
+      { params: conversationKey ? { conversationKey } : undefined }
     );
     return z.array(emailThreadMessageSchema).parse(unwrapData(res.data, 'messages'));
   },
