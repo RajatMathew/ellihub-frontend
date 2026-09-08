@@ -285,6 +285,7 @@ export function EmailListPane({
               scrollElement={scrollContainer}
               selectedEmailId={selectedEmailId}
               groupByMonth={groupByMonth}
+              highlightQuery={search}
               onSelectEmail={onSelectEmail}
               onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
