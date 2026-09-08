@@ -536,6 +536,7 @@ export function EmailComposeDialog({
                   className="w-16 shrink-0 text-xs font-medium text-muted-foreground"
                 >
                   Subject
+                  <span className="text-destructive"> *</span>
                 </label>
                 <Input
                   id={subjectId}
@@ -1092,7 +1093,15 @@ function EmailAddressField({
             type="text"
             inputMode="email"
             value={buffer}
-            autoComplete="chrome-off"
+            // Chrome ignores autocomplete="off"/"chrome-off" on fields it
+            // heuristically recognizes as an address book entry, and shows
+            // its own suggestion popover on top of ours (elli-ui#789). Making
+            // the field readOnly until it is actually focused is what
+            // reliably stops Chrome from offering to autofill it.
+            autoComplete="off"
+            readOnly={!focused}
+            data-1p-ignore
+            data-lpignore="true"
             spellCheck={false}
             placeholder={chips.length === 0 ? placeholder : undefined}
             aria-invalid={error ? 'true' : undefined}

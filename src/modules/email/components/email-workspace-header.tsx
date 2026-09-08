@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { EmailDisplaySettingsDialog } from '@/modules/email/components/email-display-settings-dialog';
 import { Mail, MoreHorizontal, Pencil, Settings, Unplug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -35,6 +36,7 @@ export function EmailWorkspaceHeader({
   isDisconnectingAccount = false,
 }: EmailWorkspaceHeaderProps) {
   const hasAccountActions = Boolean(onEditNickname || onDisconnectAccount);
+  const [displaySettingsOpen, setDisplaySettingsOpen] = useState(false);
   // The settings menu docks next to the account crumb in the top breadcrumb
   // bar. That bar is hidden on mobile, so fall back to rendering inline here.
   const [breadcrumbSlot, setBreadcrumbSlot] = useState<HTMLElement | null>(() =>
@@ -49,6 +51,17 @@ export function EmailWorkspaceHeader({
     });
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  const displaySettingsButton = (
+    <button
+      type="button"
+      className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground outline-hidden hover:bg-surface-hover hover:text-foreground focus-visible:bg-surface-hover focus-visible:text-foreground motion-safe:transition-colors motion-safe:duration-100"
+      aria-label="Email display settings"
+      onClick={() => setDisplaySettingsOpen(true)}
+    >
+      <Settings aria-hidden="true" className="size-4" />
+    </button>
+  );
 
   const accountActionsMenu = hasAccountActions && (
     <DropdownMenu>
@@ -112,10 +125,20 @@ export function EmailWorkspaceHeader({
             )}
           </div>
 
-          {accountActionsMenu &&
-            (breadcrumbSlot
-              ? createPortal(accountActionsMenu, breadcrumbSlot)
-              : accountActionsMenu)}
+          {breadcrumbSlot
+            ? createPortal(
+                <>
+                  {displaySettingsButton}
+                  {accountActionsMenu}
+                </>,
+                breadcrumbSlot
+              )
+            : (
+                <>
+                  {displaySettingsButton}
+                  {accountActionsMenu}
+                </>
+              )}
         </div>
 
         <Tabs
@@ -149,6 +172,11 @@ export function EmailWorkspaceHeader({
           </TabsList>
         </Tabs>
       </div>
+
+      <EmailDisplaySettingsDialog
+        open={displaySettingsOpen}
+        onOpenChange={setDisplaySettingsOpen}
+      />
     </header>
   );
 }

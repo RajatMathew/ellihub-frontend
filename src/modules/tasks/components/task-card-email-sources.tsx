@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useEmailReferenceLink } from '@/modules/tasks/hooks/use-email-reference-link';
 import type { TaskEmailReference } from '@/modules/tasks/schemas/task.schema';
+import { Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
@@ -18,6 +19,13 @@ import { Link } from 'react-router-dom';
  * dnd-kit drag handle, and a Radix trigger inside one is the component in this
  * module that cannot be driven under test. Expanding in place costs a little
  * height and keeps the whole card testable and keyboard-operable.
+ *
+ * The heading is a heading, not the first few words of the first source. Run
+ * inline — `from email · Re: it works now` — it read as another subject in the
+ * list, which is the one thing the label exists to prevent. Nothing here is
+ * tinted any more either: this was `destructive`, the colour of a delete
+ * confirmation, on a card that is perfectly fine. Provenance is metadata, so it
+ * is said in the greys the rest of the card already speaks in.
  */
 
 const VISIBLE_LIMIT = 3;
@@ -29,6 +37,7 @@ function labelFor(reference: TaskEmailReference) {
 export function TaskCardEmailSources({ references }: { references: TaskEmailReference[] }) {
   const [expanded, setExpanded] = useState(false);
   const linkFor = useEmailReferenceLink();
+  const headingId = useId();
 
   if (references.length === 0) return null;
 
@@ -36,44 +45,59 @@ export function TaskCardEmailSources({ references }: { references: TaskEmailRefe
   const shown = expanded ? references : references.slice(0, VISIBLE_LIMIT);
 
   return (
-    // The design tints the provenance rather than greying it, which is what
-    // stops it reading as another line of description.
-    <div className="space-y-0.5 text-xs italic text-destructive/75">
-      {shown.map((reference, index) => {
-        const label = labelFor(reference);
-        const href = linkFor(reference);
+    // Ruled off the way the deadline above it is — half the theme's hairline,
+    // so it separates rather than divides. That rule is what makes this a
+    // section of the card rather than a sentence trailing off the end of it.
+    <div className="space-y-2 border-t border-border/50 pt-3">
+      {/* Small caps and a mail glyph, borrowing the idiom of the entity badges
+          higher up the card. No shadcn primitive covers a label for a plain
+          list — `FieldLegend` belongs to a form — so this is markup, built out
+          of tokens. */}
+      <p
+        id={headingId}
+        className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground"
+      >
+        <Mail className="size-3 shrink-0" aria-hidden="true" />
+        From email
+      </p>
 
-        return (
-          <p key={`${reference.providerId}-${index}`} className="truncate">
-            {/* The lead-in is said once. Repeating it down the list turns three
-                sources into three sentences that all start the same way. */}
-            {index === 0 ? 'from email · ' : null}
-            {href ? (
-              <Link
-                to={href}
-                title={label}
-                // Stops the click reaching the card's own open-the-task handler.
-                onClick={(event) => event.stopPropagation()}
-                className="underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {label}
-              </Link>
-            ) : (
-              // The accounts are still loading, or this mailbox is gone. A task
-              // outlives the account it was raised from, so the provenance is
-              // still worth showing — just not as a link to nowhere.
-              label
-            )}
-          </p>
-        );
-      })}
+      <ul aria-labelledby={headingId} className="space-y-1.5 text-xs">
+        {shown.map((reference, index) => {
+          const label = labelFor(reference);
+          const href = linkFor(reference);
+
+          return (
+            <li key={`${reference.providerId}-${index}`} className="truncate">
+              {href ? (
+                <Link
+                  to={href}
+                  title={label}
+                  // Stops the click reaching the card's own open-the-task handler.
+                  onClick={(event) => event.stopPropagation()}
+                  className="text-foreground/75 underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {label}
+                </Link>
+              ) : (
+                // The accounts are still loading, or this mailbox is gone. A task
+                // outlives the account it was raised from, so the provenance is
+                // still worth showing — just not as a link to nowhere.
+                <span className="text-foreground/75">{label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
 
       {hidden > 0 ? (
+        // `info`, the same token `+1 day` uses a few lines up. This is the other
+        // thing on the card you can click, and in muted-foreground it read as a
+        // third shade of grey and vanished into the list above it.
         <button
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
-          className="font-medium not-italic text-muted-foreground underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="text-xs font-semibold text-info underline-offset-2 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           {expanded ? 'Show less' : `+${hidden}`}
         </button>

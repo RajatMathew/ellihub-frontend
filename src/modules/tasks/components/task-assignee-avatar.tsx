@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { getOutlookAvatarStyle, getOutlookInitials } from '@/app/lib/outlook-avatar';
 import { cn } from '@/app/lib/utils';
+import { UserPlus } from 'lucide-react';
 
 /**
  * A person, drawn the way the mail side draws them.
@@ -16,8 +17,14 @@ import { cn } from '@/app/lib/utils';
  * no id at all. The cost is that a rename changes somebody's colour, which is
  * already true of every avatar in the mailbox.
  *
+ * Unassigned draws a person rather than a dash. The dash read as a minus sign
+ * and so as a control that takes something away — several people took it for a
+ * remove button (#818). `UserPlus` says both what the slot is for and that
+ * somebody can be put in it, which is the one thing you would want to do with
+ * an empty one.
+ *
  * The opaque base under the fallback is #821. Fluent's colours are opaque, so a
- * person's chip no longer mixes with anything - but the unassigned one is still
+ * person's chip no longer mixes with anything — but the unassigned one is still
  * a theme tint, and a selected filter pill would otherwise show through it.
  */
 export function TaskAssigneeAvatar({
@@ -48,10 +55,17 @@ export function TaskAssigneeAvatar({
         // they are Microsoft's values, deliberately not design-system tokens.
         style={name ? getOutlookAvatarStyle(name) : undefined}
       >
-        {/* Fluent returns nothing for a name it cannot abbreviate - a phone
-            number, or a script that does not use initials - and shows a question
-            mark rather than inventing letters. */}
-        {name ? initials || '?' : '—'}
+        {name ? (
+          // Fluent returns nothing for a name it cannot abbreviate — a phone
+          // number, or a script that does not use initials — and shows a
+          // question mark rather than inventing letters.
+          initials || '?'
+        ) : (
+          // Hidden from the accessibility tree: the trigger around this already
+          // announces "Unassigned. Choose assignee", and a second voice on the
+          // icon would only repeat it.
+          <UserPlus aria-hidden className={size === 'sm' ? 'size-3' : 'size-3.5'} />
+        )}
       </AvatarFallback>
     </Avatar>
   );

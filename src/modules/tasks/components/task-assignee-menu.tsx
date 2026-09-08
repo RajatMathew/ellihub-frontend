@@ -43,7 +43,13 @@ export function TaskAssigneeMenu({
           // card. Keeping the event to ourselves lets the menu open, at the cost
           // of not being able to start a drag from the chip itself.
           onPointerDown={(event) => event.stopPropagation()}
-          className="flex items-center gap-0.5 rounded-md p-0.5 hover:bg-surface-hover focus-visible:bg-surface-hover"
+          // The chip is 42x28 drawn, which is a comfortable click and a mean
+          // target for a thumb. The pseudo-element grows the touch area to 58x44
+          // without moving a pixel of the layout — raising the padding instead
+          // would have pushed the whole card header taller on a phone. Nothing
+          // sits within 8px of it: the completion circle is at the far end of
+          // the row.
+          className="relative flex items-center gap-0.5 rounded-md p-0.5 before:absolute before:-inset-2 before:content-[''] hover:bg-surface-hover focus-visible:bg-surface-hover"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
           <TaskAssigneeAvatar name={name} />
@@ -51,7 +57,18 @@ export function TaskAssigneeMenu({
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
+      {/* Capped and scrolling, the way the mail toolbar's menus already do it:
+          the employee list is as long as the company is, and uncapped it ran off
+          the bottom of a phone with the last few names unreachable. The cap is
+          shorter on a phone than on a desktop because the viewport is.
+
+          Narrower too, but only from sm up. On a phone the rows stay their full
+          height — this is the same thumb the trigger was just widened for, and
+          shrinking a list you scroll with it would take back what that gained. */}
+      <DropdownMenuContent
+        align="end"
+        className="max-h-56 w-52 overflow-y-auto sm:max-h-72 sm:w-56"
+      >
         <DropdownMenuLabel>Assign to</DropdownMenuLabel>
         <DropdownMenuSeparator />
 
@@ -70,6 +87,7 @@ export function TaskAssigneeMenu({
               // Employees without a login cannot hold a task; the API refuses them.
               disabled={option.badge === 'Unlinked'}
               onSelect={() => onReassign(option.value)}
+              className="sm:py-1 sm:text-xs"
             >
               <TaskAssigneeAvatar name={option.label} size="sm" />
               <span className="truncate">{option.label}</span>
