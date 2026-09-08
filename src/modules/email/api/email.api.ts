@@ -504,6 +504,13 @@ export const emailApi = {
     search?: string;
     projectId?: string;
     classification?: 'other';
+    // Answered from the whole cached folder server-side (elli-ui#859) rather
+    // than filtered against whatever page happens to already be loaded — a
+    // mailbox with more unread/flagged/attachment mail than one page holds
+    // would otherwise show only a few of them.
+    unread?: boolean;
+    flagged?: boolean;
+    hasAttachments?: boolean;
     signal?: AbortSignal;
   }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
@@ -515,6 +522,9 @@ export const emailApi = {
         search: params.search || undefined,
         projectId: params.projectId || undefined,
         classification: params.classification,
+        unread: params.unread || undefined,
+        flagged: params.flagged || undefined,
+        hasAttachments: params.hasAttachments || undefined,
       },
       signal: params.signal,
     });
@@ -595,10 +605,13 @@ export const emailApi = {
 
   async listConversation(
     accountId: string,
-    threadId: string
+    threadId: string,
+    // Narrows the backend's answer to the conversation actually opened.
+    conversationKey?: string
   ): Promise<ConnectedEmailThreadMessage[]> {
     const res = await api.get(
-      `${BASE}/accounts/${accountId}/conversations/${encodeURIComponent(threadId)}/messages`
+      `${BASE}/accounts/${accountId}/conversations/${encodeURIComponent(threadId)}/messages`,
+      { params: conversationKey ? { conversationKey } : undefined }
     );
     return z.array(emailThreadMessageSchema).parse(unwrapData(res.data, 'messages'));
   },
