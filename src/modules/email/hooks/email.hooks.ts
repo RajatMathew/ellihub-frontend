@@ -53,7 +53,10 @@ export const emailKeys = {
     size?: number,
     search?: string,
     projectId?: string,
-    classification?: 'other'
+    classification?: 'other',
+    unread?: boolean,
+    flagged?: boolean,
+    hasAttachments?: boolean
   ) =>
     [
       ...emailKeys.messagesRoot(accountId),
@@ -62,6 +65,9 @@ export const emailKeys = {
       search,
       projectId ?? null,
       classification ?? null,
+      unread ?? null,
+      flagged ?? null,
+      hasAttachments ?? null,
     ] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
@@ -123,7 +129,15 @@ export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
 export const useEmailMessagesQuery = (
   accountId: string | undefined,
   folder: { key?: EmailFolderKey; id?: string },
-  pagination?: { size?: number; search?: string; projectId?: string; classification?: 'other' },
+  pagination?: {
+    size?: number;
+    search?: string;
+    projectId?: string;
+    classification?: 'other';
+    unread?: boolean;
+    flagged?: boolean;
+    hasAttachments?: boolean;
+  },
   enabled = true
 ) => {
   const currentKey = emailKeys.messages(
@@ -132,7 +146,10 @@ export const useEmailMessagesQuery = (
     pagination?.size,
     pagination?.search,
     pagination?.projectId,
-    pagination?.classification
+    pagination?.classification,
+    pagination?.unread,
+    pagination?.flagged,
+    pagination?.hasAttachments
   );
 
   return useInfiniteQuery({
@@ -147,6 +164,9 @@ export const useEmailMessagesQuery = (
         search: pagination?.search,
         projectId: pagination?.projectId,
         classification: pagination?.classification,
+        unread: pagination?.unread,
+        flagged: pagination?.flagged,
+        hasAttachments: pagination?.hasAttachments,
         signal,
       }),
     initialPageParam: null as string | null,
@@ -231,11 +251,12 @@ export const useRefreshEmailMessagesMutation = () => {
 export const useEmailConversationQuery = (
   accountId: string | undefined,
   threadId: string | null | undefined,
-  enabled = true
+  enabled = true,
+  conversationKey?: string | null
 ) =>
   useQuery({
     queryKey: emailKeys.conversation(accountId, threadId),
-    queryFn: () => emailApi.listConversation(accountId!, threadId!),
+    queryFn: () => emailApi.listConversation(accountId!, threadId!, conversationKey ?? undefined),
     enabled: enabled && Boolean(accountId && threadId),
     staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
@@ -1195,7 +1216,8 @@ export const useUpdateEmailMessageStatusMutation = () => {
       if (!payload.unread && payload.threadId) {
         await queryClient.ensureQueryData({
           queryKey: emailKeys.conversation(payload.accountId, payload.threadId),
-          queryFn: () => emailApi.listConversation(payload.accountId, payload.threadId!),
+          queryFn: () =>
+            emailApi.listConversation(payload.accountId, payload.threadId!, payload.conversationKey),
           staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
         });
       }

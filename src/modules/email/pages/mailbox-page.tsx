@@ -195,6 +195,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       search: debouncedMessageSearch || undefined,
       projectId: activeProjectId ?? undefined,
       classification: mailFilter === 'other' ? 'other' : undefined,
+      // Answered server-side across the whole folder (elli-ui#859).
+      unread: mailFilter === 'unread' ? true : undefined,
+      flagged: mailFilter === 'flagged' ? true : undefined,
+      hasAttachments: mailFilter === 'attachments' ? true : undefined,
     },
     canLoadConnectedMailbox
   );
@@ -271,17 +275,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
-    // Step 1 — narrow by the "Show messages" filter.
+    // unread/flagged/attachments are answered server-side (elli-ui#859);
+    // only "other" category tag still needs a client-side pass here.
     let list = emailsForActiveSearch;
-    if (mailFilter === 'unread') {
-      list = list.filter((email) => email.unread);
-    } else if (mailFilter === 'flagged') {
-      list = list.filter((email) => email.flagged);
-    } else if (mailFilter === 'attachments') {
-      list = list.filter(
-        (email) => Boolean(email.attachmentCount) || Boolean(email.attachments?.length)
-      );
-    } else if (mailFilter === 'other' && selectedCategoryTagId) {
+    if (mailFilter === 'other' && selectedCategoryTagId) {
       const selectedTag = availableOtherCategoryTags.find(
         (tag) => tag.id === selectedCategoryTagId
       );
@@ -302,8 +299,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     if (mailStatusFilter !== 'all') {
       list = list.filter((email) => {
         const status = email.classification?.status ?? 'open';
-        // 'open' covers every open variant (plain, our court, their court).
-        return mailStatusFilter === 'open' ? status !== 'closed' : status === 'closed';
+        if (mailStatusFilter === 'open') return status !== 'closed'; // every open variant
+        if (mailStatusFilter === 'closed') return status === 'closed';
+        return status === mailStatusFilter; // open_our_court / open_their_court, exact match
       });
     }
 
@@ -352,7 +350,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
     isConnected ? selectedEmail?.threadId : null,
-    canLoadConnectedMailbox
+    canLoadConnectedMailbox,
+    isConnected ? selectedEmail?.conversationKey : null
   );
   const messageDetailQuery = useEmailMessageQuery(
     connectedAccount?.id,
@@ -911,7 +910,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       if (email.threadId) {
         void queryClient.prefetchQuery({
           queryKey: emailKeys.conversation(connectedAccount.id, email.threadId),
-          queryFn: () => emailApi.listConversation(connectedAccount.id, email.threadId!),
+          queryFn: () =>
+            emailApi.listConversation(connectedAccount.id, email.threadId!, email.conversationKey),
           staleTime: 60 * 1000,
         });
         return;
@@ -1303,10 +1303,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoadingMore={messagesQuery.isFetchingNextPage}
                   loadMoreError={messagesQuery.isFetchNextPageError}
                   onLoadMore={messagesQuery.fetchNextPage}
-                  // "Show messages" filters (unread/flagged/attachments/etc.) are applied
-                  // client-side against already-fetched pages, so a filter can legitimately
-                  // match nothing in the loaded window while later pages still have matches.
-                  // Keep auto-paging until a match appears or pages are exhausted.
+                  // Keep auto-paging until a filtered match appears or pages run out.
                   autoFetchWhileEmpty={mailFilter !== 'all' || mailStatusFilter !== 'all'}
                   groupByMonth={
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
