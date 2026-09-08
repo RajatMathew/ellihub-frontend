@@ -12,6 +12,8 @@ interface VirtualizedEmailListProps {
   scrollElement: HTMLDivElement;
   selectedEmailId?: string;
   groupByMonth?: boolean;
+  /** Search term to highlight within each row's subject/preview text. */
+  highlightQuery?: string;
   onSelectEmail?: (emailId: string) => void;
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
@@ -31,6 +33,7 @@ export function VirtualizedEmailList({
   scrollElement,
   selectedEmailId,
   groupByMonth = false,
+  highlightQuery,
   onSelectEmail,
   onPrefetchEmail,
   onArchiveEmail,
@@ -47,6 +50,7 @@ export function VirtualizedEmailList({
         accountId={accountId}
         scrollElement={scrollElement}
         selectedEmailId={selectedEmailId}
+        highlightQuery={highlightQuery}
         onSelectEmail={onSelectEmail}
         onPrefetchEmail={onPrefetchEmail}
         onArchiveEmail={onArchiveEmail}
@@ -65,6 +69,7 @@ export function VirtualizedEmailList({
       accountId={accountId}
       scrollElement={scrollElement}
       selectedEmailId={selectedEmailId}
+      highlightQuery={highlightQuery}
       onSelectEmail={onSelectEmail}
       onPrefetchEmail={onPrefetchEmail}
       onArchiveEmail={onArchiveEmail}
@@ -82,6 +87,7 @@ function VirtualizedFlatEmailList({
   accountId,
   scrollElement,
   selectedEmailId,
+  highlightQuery,
   onSelectEmail,
   onPrefetchEmail,
   onArchiveEmail,
@@ -126,6 +132,7 @@ function VirtualizedFlatEmailList({
               accountId={accountId}
               email={email}
               selected={email.id === selectedEmailId}
+              highlightQuery={highlightQuery}
               onSelect={() => onSelectEmail?.(email.id)}
               onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
               onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
@@ -151,6 +158,7 @@ function VirtualizedMonthGroups({
   accountId,
   scrollElement,
   selectedEmailId,
+  highlightQuery,
   onSelectEmail,
   onPrefetchEmail,
   onArchiveEmail,
@@ -203,6 +211,7 @@ function VirtualizedMonthGroups({
               group={group}
               collapsed={collapsedMonthKeys.has(group.key)}
               selectedEmailId={selectedEmailId}
+              highlightQuery={highlightQuery}
               onSelectEmail={onSelectEmail}
               onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
@@ -235,6 +244,7 @@ function MonthGroupSection({
   accountId,
   collapsed,
   selectedEmailId,
+  highlightQuery,
   onSelectEmail,
   onPrefetchEmail,
   onArchiveEmail,
@@ -249,6 +259,7 @@ function MonthGroupSection({
   accountId?: string;
   collapsed: boolean;
   selectedEmailId?: string;
+  highlightQuery?: string;
   onSelectEmail?: (emailId: string) => void;
   onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
@@ -302,6 +313,7 @@ function MonthGroupSection({
                   accountId={accountId}
                   email={email}
                   selected={email.id === selectedEmailId}
+                  highlightQuery={highlightQuery}
                   onSelect={() => onSelectEmail?.(email.id)}
                   onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
                   onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}

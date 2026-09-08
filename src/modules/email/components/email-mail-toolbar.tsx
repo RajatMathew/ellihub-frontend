@@ -28,7 +28,13 @@ import type {
 } from '@/modules/email/api';
 import { EMAIL_FOLDERS } from '@/modules/email/constants/email-folders';
 import {
+  addRecentEmailSearch,
+  clearRecentEmailSearches,
+  useRecentEmailSearches,
+} from '@/modules/email/hooks/use-recent-email-searches';
+import {
   ChevronDown,
+  Clock,
   FolderPlus,
   Inbox,
   Plus,
@@ -107,6 +113,14 @@ export function EmailMailToolbar({
 }: EmailMailToolbarProps) {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const recentSearches = useRecentEmailSearches();
+  const showRecentSearches = searchFocused && !search.trim() && recentSearches.length > 0;
+
+  const commitSearch = (value: string) => {
+    onSearchChange(value);
+    addRecentEmailSearch(value);
+  };
   const inboxFolder = folders.find((folder) => folder.key === 'inbox');
   const otherFolders = folders.filter((folder) => folder.key !== 'inbox');
   const selectedFolderRecord = folders.find(
@@ -345,7 +359,7 @@ export function EmailMailToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="min-w-52 flex-1 sm:max-w-sm">
+          <div className="relative min-w-52 flex-1 sm:max-w-sm">
             <label htmlFor="email-workspace-search" className="sr-only">
               Search mail
             </label>
@@ -360,6 +374,11 @@ export function EmailMailToolbar({
                 placeholder="Search mail…"
                 autoComplete="off"
                 onChange={(event) => onSearchChange(event.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && search.trim()) addRecentEmailSearch(search);
+                }}
               />
               {search && (
                 <button
@@ -372,6 +391,48 @@ export function EmailMailToolbar({
                 </button>
               )}
             </InputWrapper>
+
+            {showRecentSearches && (
+              <ul
+                role="listbox"
+                aria-label="Recent searches"
+                className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md"
+              >
+                <li className="flex items-center justify-between px-2 py-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Recent searches
+                  </span>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      clearRecentEmailSearches();
+                    }}
+                  >
+                    Clear
+                  </button>
+                </li>
+                {recentSearches.map((entry) => (
+                  <li key={entry} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      // onMouseDown so the field's blur never fires before the pick lands.
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        commitSearch(entry);
+                      }}
+                    >
+                      <Clock aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 truncate">{entry}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {onRefresh && (
