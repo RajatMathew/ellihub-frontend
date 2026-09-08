@@ -606,11 +606,7 @@ export const emailApi = {
   async listConversation(
     accountId: string,
     threadId: string,
-    // The provider's own conversationId (threadId) can group genuinely
-    // unrelated messages together — see the matching comment in elli-core's
-    // conversationKey. Passing the conversation actually opened lets the
-    // backend narrow the provider's answer back down to it instead of
-    // showing whatever else got bundled under the same provider id.
+    // Narrows the backend's answer to the conversation actually opened.
     conversationKey?: string
   ): Promise<ConnectedEmailThreadMessage[]> {
     const res = await api.get(
