@@ -187,8 +187,10 @@ export function EmailRichTextEditor({
   };
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      <div className="relative">
+    <div className={cn('flex min-h-0 flex-col gap-2', className)}>
+      {/* Only the writing surface scrolls; the toolbar below stays put
+          however long the message gets (elli-ui#807). */}
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         {isEmptyEmailHtml(value) && (
           <p className="pointer-events-none absolute inset-x-0 top-0 text-sm leading-6 text-muted-foreground/70">
             {placeholder}
@@ -205,7 +207,7 @@ export function EmailRichTextEditor({
           contentEditable={!disabled}
           spellCheck
           className={cn(
-            'min-h-72 w-full min-w-0 overflow-x-auto text-sm leading-6 text-foreground outline-none',
+            'min-h-full w-full min-w-0 overflow-x-auto text-sm leading-6 text-foreground outline-none',
             'focus-visible:outline-none',
             PASTED_CONTENT_CLASSES,
             editorClassName
@@ -219,6 +221,7 @@ export function EmailRichTextEditor({
         />
       </div>
       <EmailRichTextToolbar
+        className="shrink-0"
         activeCommands={activeCommands}
         disabled={disabled}
         onCommand={runCommand}

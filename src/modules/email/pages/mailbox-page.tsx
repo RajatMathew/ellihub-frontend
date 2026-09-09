@@ -12,7 +12,6 @@ import {
   EmailBulkProgressPanel,
   type EmailBulkOperationState,
 } from '@/modules/email/components/email-bulk-progress-panel';
-import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
 import { EmailMailToolbar } from '@/modules/email/components/email-mail-toolbar';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
@@ -57,6 +56,10 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import {
+  useEmailCompose,
+  type EditableComposeDraft,
+} from '@/modules/email/hooks/use-email-compose';
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
@@ -105,9 +108,9 @@ const EmailAgentPanel = lazy(() =>
     default: module.EmailAgentPanel,
   }))
 );
-const EmailComposeDialog = lazy(() =>
-  import('@/modules/email/components/email-compose-dialog').then((module) => ({
-    default: module.EmailComposeDialog,
+const EmailComposePane = lazy(() =>
+  import('@/modules/email/components/compose/email-compose-pane').then((module) => ({
+    default: module.EmailComposePane,
   }))
 );
 
@@ -133,10 +136,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const debouncedMessageSearch = mailboxUrlState.search;
   const attemptedInitialSyncs = useRef(new Set<string>());
   const agentTriggerRef = useRef<HTMLButtonElement>(null);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeLoaded, setComposeLoaded] = useState(false);
-  const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
-  const [composeRecipient, setComposeRecipient] = useState<string | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
@@ -414,6 +413,63 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
+  // Compose lives on the page rather than inside its shell so the page can ask
+  // it to close — and save what was typed — before navigating somewhere else.
+  const compose = useEmailCompose({
+    isSending: sendDraftMutation.isPending,
+    onSaveDraft: connectedAccount
+      ? async (payload, draft) => {
+          const result = await saveDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft?.draftId,
+            messageId: draft?.messageId,
+            subject: payload.subject,
+            body: richTextToEmailHtml(payload.body),
+            bodyType: 'html',
+            to: parseEmailAddresses(payload.to),
+            cc: parseEmailAddresses(payload.cc),
+            bcc: parseEmailAddresses(payload.bcc),
+            attachments: payload.attachments,
+            removedAttachmentIds: payload.removedAttachmentIds,
+          });
+          return {
+            draftId: result.draftId,
+            messageId: result.messageId,
+            attachments: result.message?.attachments,
+          };
+        }
+      : undefined,
+    onSendDraft: connectedAccount
+      ? (draft) =>
+          sendDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft.draftId,
+            messageId: draft.messageId,
+          })
+      : undefined,
+    onDiscardDraft: connectedAccount
+      ? (draft, options) =>
+          deleteDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft.draftId,
+            messageId: draft.messageId,
+            silent: options?.silent,
+          })
+      : undefined,
+    onClosed: () => {
+      // Nothing was open behind the composer, so on a narrow screen closing it
+      // returns to the list rather than to an empty reading pane.
+      if (!routeConversationId) setMobilePane('list');
+      if (selectedFolderKey === 'drafts') {
+        void messagesQuery.refetch();
+        void foldersQuery.refetch();
+      }
+    },
+    // The composer no longer sits on top of the mailbox, so say out loud where
+    // an interrupted message went instead of letting it vanish behind the list.
+    onDraftSaved: () => toast.success('Draft saved.'),
+  });
+  const composeOpen = compose.isOpen;
   const navigateToFolder = useCallback(
     (nextFolder: string, options?: { replace?: boolean; resetFilters?: boolean }) => {
       if (!accountSlug) return;
@@ -896,18 +952,26 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     setEmailListVisible(true);
   }, []);
 
-  const openNewCompose = useCallback(() => {
-    setComposeDraft(null);
-    setComposeRecipient(null);
-    setComposeLoaded(true);
-    setComposeOpen(true);
-  }, []);
-  const openComposeTo = useCallback((address: string) => {
-    setComposeDraft(null);
-    setComposeRecipient(address);
-    setComposeLoaded(true);
-    setComposeOpen(true);
-  }, []);
+  const { openNew: openComposeSurface, openDraft: openComposeDraft } = compose;
+  // The composer takes over the reading pane, so on a narrow screen the page has
+  // to switch to that pane or compose would open off-screen behind the list.
+  const openComposeTo = useCallback(
+    (recipient?: string) => {
+      openComposeSurface(recipient);
+      setMobilePane('reading');
+    },
+    [openComposeSurface]
+  );
+  // Zero-arg on purpose: it is wired straight to a button's onClick, which would
+  // otherwise hand the click event over as the recipient.
+  const openNewCompose = useCallback(() => openComposeTo(), [openComposeTo]);
+  const openDraftInCompose = useCallback(
+    (draft: EditableComposeDraft) => {
+      openComposeDraft(draft);
+      setMobilePane('reading');
+    },
+    [openComposeDraft]
+  );
 
   const setWorkspaceView = useCallback(
     (view: EmailWorkspaceView) => setMailboxUrlState({ view }),
@@ -931,6 +995,14 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     [accountSlug, buildMailboxSearch, folderEmails, navigate, routeConversationId, selectedFolder]
   );
 
+  /**
+   * Opening a message from the list while a draft is open. The composer is a
+   * popover now, so it neither blocks the click nor gets torn down by it — the
+   * draft stays exactly as typed while the reader changes underneath it. This
+   * used to close the composer first, which a floating surface should not do.
+   */
+  const requestSelectEmail = useCallback((run: () => void) => run(), []);
+
   useEffect(() => {
     if (!isConnected || workspaceView !== 'mail') return;
 
@@ -945,7 +1017,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       }
 
       const target = event.target as HTMLElement | null;
-      if (target?.closest('[role="dialog"], [role="menu"]')) {
+      // Already composing: swallow the shortcut rather than resetting the
+      // message the user is part-way through writing.
+      if (composeOpen || target?.closest('[role="dialog"], [role="menu"]')) {
         event.preventDefault();
         return;
       }
@@ -956,7 +1030,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
     window.addEventListener('keydown', handleComposeShortcut, { capture: true });
     return () => window.removeEventListener('keydown', handleComposeShortcut, { capture: true });
-  }, [isConnected, openNewCompose, workspaceView]);
+  }, [composeOpen, isConnected, openNewCompose, workspaceView]);
 
   const prefetchEmail = useCallback(
     (email: EmailListItem) => {
@@ -1005,6 +1079,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       ) {
         return;
       }
+      // Arrow-key browsing would swap the message under an open composer without
+      // asking; the composer has to be closed (and saved) deliberately first.
+      if (composeOpen && event.key !== 'e' && event.key !== 'E') return;
 
       if (event.key.toLowerCase() === 'e') {
         event.preventDefault();
@@ -1024,7 +1101,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nextEmail, previousEmail, selectEmail, workspaceView]);
+  }, [composeOpen, nextEmail, previousEmail, selectEmail, workspaceView]);
 
   const handleDisconnectAccount = useCallback(() => {
     if (!connectedAccount) return;
@@ -1321,21 +1398,21 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isError={isMailboxError}
                   selectedEmailId={selectedEmailId}
                   onSelectEmail={(emailId) => {
-                    if (connectedAccount && selectedFolderKey === 'drafts') {
-                      openDraftMutation.mutate(
-                        { accountId: connectedAccount.id, messageId: emailId },
-                        {
-                          onSuccess: (result) => {
-                            if (!result.message) return;
-                            setComposeDraft(toEditableComposeDraft(result));
-                            setComposeLoaded(true);
-                            setComposeOpen(true);
-                          },
-                        }
-                      );
-                      return;
-                    }
-                    selectEmail(emailId);
+                    requestSelectEmail(() => {
+                      if (connectedAccount && selectedFolderKey === 'drafts') {
+                        openDraftMutation.mutate(
+                          { accountId: connectedAccount.id, messageId: emailId },
+                          {
+                            onSuccess: (result) => {
+                              if (!result.message) return;
+                              openDraftInCompose(toEditableComposeDraft(result));
+                            },
+                          }
+                        );
+                        return;
+                      }
+                      selectEmail(emailId);
+                    });
                   }}
                   onRetry={() => {
                     if (connectedAccount) {
@@ -1422,10 +1499,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
             <div
               className={cn(
-                'min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
+                'relative min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
                 mobilePane === 'list' ? 'hidden lg:flex' : 'flex'
               )}
             >
+              {/*
+                elli-ui#807 — the composer is a popover over the workspace, so
+                the message behind it stays readable and the list stays usable.
+                Nothing is unmounted to make room for it, which is why a draft
+                survives clicking through the mailbox.
+              */}
               <EmailReadingPane
                 email={visibleEmail}
                 accountId={connectedAccount?.id}
@@ -1607,6 +1690,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     : undefined
                 }
               />
+
+              {composeOpen && (
+                <Suspense fallback={null}>
+                  <EmailComposePane
+                    compose={compose}
+                    mailboxAddress={address}
+                    accountId={connectedAccount?.id}
+                  />
+                </Suspense>
+              )}
             </div>
           </div>
         </div>
@@ -1655,73 +1748,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             }}
             onLayoutChange={handleAgentLayoutChange}
             onRequestMailboxCollapse={() => setEmailListVisible(false)}
-          />
-        </Suspense>
-      )}
-      {composeLoaded && (
-        <Suspense fallback={null}>
-          <EmailComposeDialog
-            open={composeOpen}
-            mailboxAddress={address}
-            accountId={connectedAccount?.id}
-            initialDraft={composeDraft}
-            initialRecipient={composeRecipient ?? undefined}
-            isSending={sendDraftMutation.isPending}
-            onOpenChange={(nextOpen) => {
-              setComposeOpen(nextOpen);
-              if (!nextOpen) {
-                setComposeDraft(null);
-                if (selectedFolderKey === 'drafts') {
-                  void messagesQuery.refetch();
-                  void foldersQuery.refetch();
-                }
-              }
-            }}
-            onSaveDraft={
-              connectedAccount
-                ? async (payload, draft) => {
-                    const result = await saveDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft?.draftId,
-                      messageId: draft?.messageId,
-                      subject: payload.subject,
-                      body: richTextToEmailHtml(payload.body),
-                      bodyType: 'html',
-                      to: parseEmailAddresses(payload.to),
-                      cc: parseEmailAddresses(payload.cc),
-                      bcc: parseEmailAddresses(payload.bcc),
-                      attachments: payload.attachments,
-                      removedAttachmentIds: payload.removedAttachmentIds,
-                    });
-                    return {
-                      draftId: result.draftId,
-                      messageId: result.messageId,
-                      attachments: result.message?.attachments,
-                    };
-                  }
-                : undefined
-            }
-            onSendDraft={
-              connectedAccount
-                ? (draft) =>
-                    sendDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft.draftId,
-                      messageId: draft.messageId,
-                    })
-                : undefined
-            }
-            onDiscardDraft={
-              connectedAccount
-                ? (draft, options) =>
-                    deleteDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft.draftId,
-                      messageId: draft.messageId,
-                      silent: options?.silent,
-                    })
-                : undefined
-            }
           />
         </Suspense>
       )}

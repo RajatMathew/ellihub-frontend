@@ -262,25 +262,28 @@ test('prepares an attachment before enabling a lightweight draft send', async ({
 
   await page.goto('/app/email/accounts/mailbox');
   await page.getByRole('button', { name: 'New email' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByRole('textbox', { name: 'To *', exact: true }).fill('client@example.com');
-  await dialog.getByRole('textbox', { name: 'Subject', exact: true }).fill('Prepared attachment');
-  await dialog.locator('input[type="file"]').setInputFiles({
+  // elli-ui#807 — the composer is an inline region in the reading pane now, not a dialog.
+  const composer = page.getByRole('region', { name: 'New email' });
+  await composer.getByRole('textbox', { name: 'To *', exact: true }).fill('client@example.com');
+  await composer
+    .getByRole('textbox', { name: 'Subject *', exact: true })
+    .fill('Prepared attachment');
+  await composer.locator('input[type="file"]').setInputFiles({
     name: 'recording.mp4',
     mimeType: 'video/mp4',
     buffer: Buffer.alloc(1024, 7),
   });
 
-  const sendButton = dialog.locator('button[type="submit"]');
+  const sendButton = composer.locator('button[type="submit"]');
   await expect(sendButton).toBeDisabled();
   await expect.poll(api.getDraftSaveRequests).toBe(1);
-  await expect(page.getByText('Preparing…')).toBeVisible();
+  await expect(composer.getByText('Preparing…')).toBeVisible();
 
-  await expect(page.getByText('Ready')).toBeVisible();
+  await expect(composer.getByText('Ready')).toBeVisible();
   await expect(sendButton).toBeEnabled();
   await sendButton.click();
 
   await expect.poll(() => api.getDraftSendBodies().length).toBe(1);
   expect(api.getDraftSendBodies()[0]).toEqual({ messageId: 'draft-message-1' });
-  await expect(dialog).toBeHidden();
+  await expect(composer).toBeHidden();
 });
