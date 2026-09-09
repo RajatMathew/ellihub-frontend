@@ -260,18 +260,15 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     if (!query || !isWaitingForServerSearch) return connectedEmails;
     return connectedEmails.filter((email) => matchesEmailSearch(email, query));
   }, [connectedEmails, debouncedMessageSearch, messageSearch, messagesQuery.isPlaceholderData]);
+  // The "Other" filter narrows by Elli's own tags. Provider categories are
+  // read-only and not Elli's vocabulary, so they do not appear here.
   const availableOtherCategoryTags = useMemo(() => {
     if (mailFilter !== 'other') return [];
-    const tagKeywords = new Set(
-      emailsForActiveSearch.flatMap((email) =>
-        (email.keywords ?? []).map((keyword) => keyword.toLowerCase())
-      )
+    const applied = new Set(
+      emailsForActiveSearch.flatMap((email) => (email.tags ?? []).map((tag) => tag.toLowerCase()))
     );
     return (tagsQuery.data ?? []).filter(
-      (tag) =>
-        tagKeywords.has(tag.id.toLowerCase()) ||
-        tagKeywords.has(tag.providerId.toLowerCase()) ||
-        tagKeywords.has(tag.name.toLowerCase())
+      (tag) => tag.source === 'custom' && applied.has(tag.name.toLowerCase())
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
@@ -283,13 +280,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
         (tag) => tag.id === selectedCategoryTagId
       );
       if (selectedTag) {
-        const tagKeys = new Set([
-          selectedTag.id.toLowerCase(),
-          selectedTag.providerId.toLowerCase(),
-          selectedTag.name.toLowerCase(),
-        ]);
+        const tagName = selectedTag.name.toLowerCase();
         list = list.filter((email) =>
-          (email.keywords ?? []).some((keyword) => tagKeys.has(keyword.toLowerCase()))
+          (email.tags ?? []).some((tag) => tag.toLowerCase() === tagName)
         );
       }
     }
@@ -1444,8 +1437,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         updateTagsMutation.mutate({
                           accountId: connectedAccount.id,
                           messageId,
-                          add: enabled ? [tag.providerId] : [],
-                          remove: enabled ? [] : [tag.providerId],
+                          add: enabled ? [tag.id] : [],
+                          remove: enabled ? [] : [tag.id],
+                          addNames: enabled ? [tag.name] : [],
+                          removeNames: enabled ? [] : [tag.name],
                         })
                     : undefined
                 }

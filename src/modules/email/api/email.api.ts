@@ -70,12 +70,17 @@ const emailAttachmentSchema = z.object({
   contentUrl: z.string().optional(),
 });
 
+/**
+ * `source: 'custom'` is one of Elli's own tags — writable, created here.
+ * `source: 'provider'` is an Outlook/Gmail category shown read-only, because
+ * the client files their own mail with those. See zubblehq/elli-ui#652.
+ */
 const emailTagSchema = z.object({
   id: z.string(),
-  providerId: z.string(),
   name: z.string(),
   color: z.string().nullable().optional(),
-  source: z.enum(['provider', 'cache']),
+  source: z.enum(['custom', 'provider']),
+  readOnly: z.boolean(),
 });
 
 const emailAddressSchema = z.object({
@@ -206,7 +211,10 @@ export const emailListItemSchema = z.object({
   to: z.array(emailAddressSchema).optional(),
   cc: z.array(emailAddressSchema).optional(),
   bcc: z.array(emailAddressSchema).optional(),
+  // Provider categories, read-only.
   keywords: z.array(z.string()).optional(),
+  // Elli's own tags applied to this message.
+  tags: z.array(z.string()).optional(),
   meetingResponse: emailMeetingResponseSchema.optional(),
   meetingEvent: emailMeetingEventSchema.optional(),
   attachmentCount: z.number().optional(),
@@ -229,6 +237,7 @@ const emailThreadMessageSchema = z.object({
   sentAt: z.string(),
   folderId: z.string().nullable().optional(),
   keywords: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
   meetingResponse: emailMeetingResponseSchema.optional(),
   meetingEvent: emailMeetingEventSchema.optional(),
   body: z.array(z.string()),

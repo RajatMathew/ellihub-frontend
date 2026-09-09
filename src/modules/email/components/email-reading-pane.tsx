@@ -253,16 +253,15 @@ export function EmailReadingPane({
     state: referenceMarkerState,
     messageId: referenceActionMessageId,
     tags,
-    keywords: email?.keywords,
+    appliedTags: email?.tags,
     isUpdatingTags,
     isCreatingTag,
     isSaving: saveClassificationMutation.isPending,
     onToggleTag: onToggleTag
-      ? (tag, enabled) => referenceActionMessageId && onToggleTag(referenceActionMessageId, tag, enabled)
+      ? (tag, enabled) =>
+          referenceActionMessageId && onToggleTag(referenceActionMessageId, tag, enabled)
       : undefined,
-    onCreateTag: onCreateTag
-      ? (name) => onCreateTag(name, referenceActionMessageId)
-      : undefined,
+    onCreateTag: onCreateTag ? (name) => onCreateTag(name, referenceActionMessageId) : undefined,
     onChange: saveReferenceMarkerState,
   });
 
@@ -719,6 +718,7 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       body: email.body?.length ? email.body : [email.preview],
       attachments: email.attachments ?? [],
       keywords: email.keywords ?? [],
+      tags: email.tags ?? [],
     },
   ];
 }

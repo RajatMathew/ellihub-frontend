@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@/app/components/ui/button';
 import { useEntityReferenceMarker } from '@/app/components/entity-reference-marker';
 import type { EntityReferenceApi } from '@/app/components/entity-reference-marker-storage';
+import { Button } from '@/app/components/ui/button';
 import { emailApi } from '@/modules/email/api';
 import type { ConnectedEmailTag } from '@/modules/email/api';
+import {
+  OtherTagPanel,
+  OtherTagSummary,
+} from '@/modules/email/components/email-reference-marker-parts';
 import type { EmailReferenceMarkerState } from '@/modules/email/components/email-reference-marker-storage';
-import { OtherTagPanel, OtherTagSummary } from '@/modules/email/components/email-reference-marker-parts';
 import { Plus } from 'lucide-react';
 
 type EmailReferenceMarkerProps = {
@@ -14,7 +17,8 @@ type EmailReferenceMarkerProps = {
   state: EmailReferenceMarkerState;
   messageId?: string;
   tags?: ConnectedEmailTag[];
-  keywords?: string[];
+  /** Elli tags applied to this message. Provider categories are not offered here. */
+  appliedTags?: string[];
   isUpdatingTags?: boolean;
   isCreatingTag?: boolean;
   isSaving?: boolean;
@@ -49,7 +53,7 @@ export function useEmailReferenceMarker({
   state,
   messageId,
   tags = [],
-  keywords = [],
+  appliedTags = [],
   isUpdatingTags = false,
   isCreatingTag = false,
   isSaving,
@@ -60,17 +64,16 @@ export function useEmailReferenceMarker({
   const [newTagName, setNewTagName] = useState('');
   const [closedOtherPanelKey, setClosedOtherPanelKey] = useState<string | null>(null);
 
-  const keywordSet = useMemo(
-    () => new Set(keywords.map((keyword) => keyword.toLowerCase())),
-    [keywords]
+  // Only Elli's own tags are offered here. Outlook/Gmail categories are
+  // read-only and belong to the mailbox owner — see zubblehq/elli-ui#652.
+  const customTags = useMemo(() => tags.filter((tag) => tag.source === 'custom'), [tags]);
+  const appliedSet = useMemo(
+    () => new Set(appliedTags.map((name) => name.toLowerCase())),
+    [appliedTags]
   );
   const selectedOtherTags = useMemo(
-    () =>
-      tags.filter(
-        (tag) =>
-          keywordSet.has(tag.name.toLowerCase()) || keywordSet.has(tag.providerId.toLowerCase())
-      ),
-    [keywordSet, tags]
+    () => customTags.filter((tag) => appliedSet.has(tag.name.toLowerCase())),
+    [appliedSet, customTags]
   );
 
   const marker = useEntityReferenceMarker({
@@ -133,8 +136,8 @@ export function useEmailReferenceMarker({
   const otherTagPanel =
     showOtherTagPanel && !marker.isProjectMode ? (
       <OtherTagPanel
-        tags={tags}
-        keywordSet={keywordSet}
+        tags={customTags}
+        appliedSet={appliedSet}
         messageId={messageId}
         newTagName={newTagName}
         isUpdatingTags={isUpdatingTags}
