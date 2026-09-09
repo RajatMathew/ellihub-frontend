@@ -251,7 +251,7 @@ export function TaskFormFields({
                 options={assigneeOptions}
                 size={controlSize}
                 leadingSlot={
-                  <TaskAssigneeAvatar id={selectedAssignee?.value} name={selectedAssignee?.label} />
+                  <TaskAssigneeAvatar name={selectedAssignee?.label} />
                 }
                 value={field.value || null}
                 selectedOption={selectedAssignee}
