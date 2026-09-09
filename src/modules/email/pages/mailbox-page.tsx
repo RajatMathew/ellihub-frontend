@@ -60,10 +60,13 @@ import {
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
-import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
+import {
+  emailDraftBodyToEditorHtml,
+  richTextToEmailHtml,
+} from '@/modules/email/lib/email-rich-text';
 import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
@@ -1545,7 +1548,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         replyMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
-                          body: plainTextToEmailHtml(draft.body),
+                          body: richTextToEmailHtml(draft.body),
                           bodyType: 'html',
                           subject: selectedEmail?.subject,
                           to: parseEmailAddresses(draft.to),
@@ -1560,7 +1563,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         forwardMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
-                          body: plainTextToEmailHtml(draft.body),
+                          body: richTextToEmailHtml(draft.body),
                           bodyType: 'html',
                           subject: selectedEmail?.subject,
                           to: parseEmailAddresses(draft.to),
@@ -1682,7 +1685,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                       draftId: draft?.draftId,
                       messageId: draft?.messageId,
                       subject: payload.subject,
-                      body: plainTextToEmailHtml(payload.body),
+                      body: richTextToEmailHtml(payload.body),
                       bodyType: 'html',
                       to: parseEmailAddresses(payload.to),
                       cc: parseEmailAddresses(payload.cc),
@@ -1742,7 +1745,7 @@ function toEditableComposeDraft(result: EmailDraftResult): EditableComposeDraft 
     cc: formatEmailAddresses(message.cc),
     bcc: formatEmailAddresses(message.bcc),
     subject: message.subject === '(No subject)' ? '' : message.subject,
-    body: htmlToPlainText(message.body?.[0] ?? ''),
+    body: emailDraftBodyToEditorHtml(message.body),
     attachments: message.attachments ?? [],
   };
 }
@@ -1753,14 +1756,6 @@ function formatEmailAddresses(addresses?: Array<{ address: string; name?: string
       recipient.name ? `${recipient.name} <${recipient.address}>` : recipient.address
     )
     .join(', ');
-}
-
-function htmlToPlainText(value: string) {
-  if (!value) return '';
-  const document = new DOMParser().parseFromString(value, 'text/html');
-  document.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
-  document.querySelectorAll('p,div,li').forEach((block) => block.append('\n'));
-  return (document.body.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
 }
 
 function isConnectedWellKnownFolderKey(folder: string): folder is EmailFolderKey {
