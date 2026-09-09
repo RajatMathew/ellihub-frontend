@@ -131,9 +131,7 @@ export function TaskBoardColumn({
               changes and the tick reads as the card being deleted rather than
               completed — the cards below still slide up, but after something
               that was never there. See TaskBoardCardSlot for the motion itself. */}
-          <AnimatePresence initial={false}>
-            {withDropIndicator(children, dropSlot)}
-          </AnimatePresence>
+          <AnimatePresence initial={false}>{withDropIndicator(children, dropSlot)}</AnimatePresence>
 
           {/* Fades rather than appears. The last card out of a column is still
               on screen finishing its exit when this mounts, so a hard cut would
