@@ -47,19 +47,21 @@ interface EmailRichTextToolbarProps {
   activeCommands: ReadonlySet<EmailRichTextCommand>;
   disabled?: boolean;
   onCommand: (command: EmailRichTextCommand) => void;
+  className?: string;
 }
 
 export function EmailRichTextToolbar({
   activeCommands,
   disabled = false,
   onCommand,
+  className,
 }: EmailRichTextToolbarProps) {
   return (
     <div
       role="toolbar"
       aria-label="Text formatting"
       aria-orientation="horizontal"
-      className="flex flex-wrap items-center gap-0.5"
+      className={cn('flex flex-wrap items-center gap-0.5', className)}
     >
       {TOOLBAR_ACTIONS.map((action) => {
         const Icon = action.icon;

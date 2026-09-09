@@ -7,7 +7,6 @@ import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
 import { EmailCalendarView } from '@/modules/email/components/calendar/email-calendar-view';
-import { EmailComposePaneSkeleton } from '@/modules/email/components/compose/email-compose-pane-skeleton';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
 import {
   EmailBulkProgressPanel,
@@ -996,20 +995,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     [accountSlug, buildMailboxSearch, folderEmails, navigate, routeConversationId, selectedFolder]
   );
 
-  const { requestClose: requestComposeClose } = compose;
   /**
-   * Opening a message from the list while the inline composer is up. The
-   * composer is not modal any more, so the list stays clickable — but the click
-   * has to persist whatever was typed before the pane is handed back to the
-   * message, and stand down if that save fails rather than dropping it.
+   * Opening a message from the list while a draft is open. The composer is a
+   * popover now, so it neither blocks the click nor gets torn down by it — the
+   * draft stays exactly as typed while the reader changes underneath it. This
+   * used to close the composer first, which a floating surface should not do.
    */
-  const requestSelectEmail = useCallback(
-    async (run: () => void) => {
-      if (composeOpen && !(await requestComposeClose())) return;
-      run();
-    },
-    [composeOpen, requestComposeClose]
-  );
+  const requestSelectEmail = useCallback((run: () => void) => run(), []);
 
   useEffect(() => {
     if (!isConnected || workspaceView !== 'mail') return;
@@ -1406,7 +1398,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isError={isMailboxError}
                   selectedEmailId={selectedEmailId}
                   onSelectEmail={(emailId) => {
-                    void requestSelectEmail(() => {
+                    requestSelectEmail(() => {
                       if (connectedAccount && selectedFolderKey === 'drafts') {
                         openDraftMutation.mutate(
                           { accountId: connectedAccount.id, messageId: emailId },
@@ -1507,212 +1499,206 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
             <div
               className={cn(
-                'min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
+                'relative min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
                 mobilePane === 'list' ? 'hidden lg:flex' : 'flex'
               )}
             >
               {/*
-                elli-ui#807 — composing happens in the reading pane, Outlook
-                style, so the folder rail and the message list stay put and stay
-                usable. The open conversation stays in the URL untouched, so
-                closing or sending puts the reader straight back on it.
+                elli-ui#807 — the composer is a popover over the workspace, so
+                the message behind it stays readable and the list stays usable.
+                Nothing is unmounted to make room for it, which is why a draft
+                survives clicking through the mailbox.
               */}
-              {composeOpen ? (
-                <Suspense fallback={<EmailComposePaneSkeleton />}>
+              <EmailReadingPane
+                email={visibleEmail}
+                accountId={connectedAccount?.id}
+                mailboxAddress={address}
+                inlineImageBaseUrl={connectedAccount?.inlineImageBaseUrl}
+                isLoading={isReadingLoading}
+                isError={isReadingError}
+                onPrevious={
+                  previousEmail ? () => selectEmail(previousEmail.id, { replace: true }) : undefined
+                }
+                onNext={nextEmail ? () => selectEmail(nextEmail.id, { replace: true }) : undefined}
+                onBack={() => {
+                  clearRouteSelection();
+                  setMobilePane('list');
+                }}
+                onOpenAgent={() => setAgentOpen(true)}
+                agentTriggerRef={agentTriggerRef}
+                onRetry={() => {
+                  if (connectedAccount) {
+                    refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
+                  }
+                }}
+                folders={isConnected ? foldersQuery.data : undefined}
+                tags={isConnected ? tagsQuery.data : undefined}
+                isUpdatingTags={updateTagsMutation.isPending}
+                isCreatingTag={createTagMutation.isPending}
+                archiveActionLabel={isArchiveFolder ? 'Unarchive' : 'Archive'}
+                onMoveToFolder={
+                  connectedAccount
+                    ? (messageId, folderId) => {
+                        if (accountSlug) {
+                          navigate(
+                            buildMailPath(
+                              accountSlug,
+                              folderId,
+                              selectedEmail ? getEmailConversationId(selectedEmail) : undefined,
+                              buildMailboxSearch()
+                            )
+                          );
+                        }
+                        moveMessageMutation.mutate({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          folderId,
+                        });
+                      }
+                    : undefined
+                }
+                onToggleTag={
+                  connectedAccount
+                    ? (messageId, tag, enabled) =>
+                        updateTagsMutation.mutate({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          add: enabled ? [tag.id] : [],
+                          remove: enabled ? [] : [tag.id],
+                          addNames: enabled ? [tag.name] : [],
+                          removeNames: enabled ? [] : [tag.name],
+                        })
+                    : undefined
+                }
+                onCreateTag={
+                  connectedAccount
+                    ? (name, messageId) =>
+                        createTagMutation.mutate({
+                          accountId: connectedAccount.id,
+                          name,
+                          messageId,
+                        })
+                    : undefined
+                }
+                onArchive={
+                  connectedAccount
+                    ? (messageId) => {
+                        if (isArchiveFolder) {
+                          clearRouteSelection();
+                          unarchiveMessageMutation.mutate({
+                            accountId: connectedAccount.id,
+                            messageId,
+                            targetFolderId: inboxFolderId,
+                          });
+                          return;
+                        }
+                        requestArchive(messageId);
+                      }
+                    : undefined
+                }
+                onDelete={connectedAccount && !isDeletedFolder ? requestDelete : undefined}
+                onPermanentDelete={
+                  connectedAccount && isDeletedFolder
+                    ? async (messageId) => {
+                        await permanentlyDeleteMessageMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                        });
+                        clearRouteSelection();
+                      }
+                    : undefined
+                }
+                isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}
+                onMarkUnread={
+                  connectedAccount
+                    ? (messageId) =>
+                        updateMessageStatusMutation.mutate({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          conversationKey:
+                            selectedEmail?.conversationKey ?? selectedEmail?.threadId ?? undefined,
+                          threadId: selectedEmail?.threadId ?? undefined,
+                          unread: true,
+                        })
+                    : undefined
+                }
+                isUpdatingReadStatus={updateMessageStatusMutation.isPending}
+                onComposeTo={openComposeTo}
+                onSearchSender={setMessageSearch}
+                onReply={
+                  connectedAccount
+                    ? (messageId, draft) =>
+                        replyMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          body: richTextToEmailHtml(draft.body),
+                          bodyType: 'html',
+                          subject: selectedEmail?.subject,
+                          to: parseEmailAddresses(draft.to),
+                          cc: parseEmailAddresses(draft.cc),
+                          bcc: parseEmailAddresses(draft.bcc),
+                        })
+                    : undefined
+                }
+                onForward={
+                  connectedAccount
+                    ? (messageId, draft) =>
+                        forwardMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          body: richTextToEmailHtml(draft.body),
+                          bodyType: 'html',
+                          subject: selectedEmail?.subject,
+                          to: parseEmailAddresses(draft.to),
+                          cc: parseEmailAddresses(draft.cc),
+                          bcc: parseEmailAddresses(draft.bcc),
+                        })
+                    : undefined
+                }
+                isRespondingToMeeting={respondToMeetingMutation.isPending}
+                isUpdatingMeeting={updateMeetingMutation.isPending}
+                isCancellingMeeting={cancelMeetingMutation.isPending}
+                onRespondToMeeting={
+                  connectedAccount
+                    ? (messageId, response) =>
+                        respondToMeetingMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          response,
+                          sendResponse: true,
+                        })
+                    : undefined
+                }
+                onUpdateMeeting={
+                  connectedAccount
+                    ? (messageId, input) =>
+                        updateMeetingMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          ...input,
+                        })
+                    : undefined
+                }
+                onCancelMeeting={
+                  connectedAccount
+                    ? (messageId, comment) =>
+                        cancelMeetingMutation.mutateAsync({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          comment,
+                        })
+                    : undefined
+                }
+              />
+
+              {composeOpen && (
+                <Suspense fallback={null}>
                   <EmailComposePane
                     compose={compose}
                     mailboxAddress={address}
                     accountId={connectedAccount?.id}
                   />
                 </Suspense>
-              ) : (
-                <EmailReadingPane
-                  email={visibleEmail}
-                  accountId={connectedAccount?.id}
-                  mailboxAddress={address}
-                  inlineImageBaseUrl={connectedAccount?.inlineImageBaseUrl}
-                  isLoading={isReadingLoading}
-                  isError={isReadingError}
-                  onPrevious={
-                    previousEmail
-                      ? () => selectEmail(previousEmail.id, { replace: true })
-                      : undefined
-                  }
-                  onNext={
-                    nextEmail ? () => selectEmail(nextEmail.id, { replace: true }) : undefined
-                  }
-                  onBack={() => {
-                    clearRouteSelection();
-                    setMobilePane('list');
-                  }}
-                  onOpenAgent={() => setAgentOpen(true)}
-                  agentTriggerRef={agentTriggerRef}
-                  onRetry={() => {
-                    if (connectedAccount) {
-                      refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
-                    }
-                  }}
-                  folders={isConnected ? foldersQuery.data : undefined}
-                  tags={isConnected ? tagsQuery.data : undefined}
-                  isUpdatingTags={updateTagsMutation.isPending}
-                  isCreatingTag={createTagMutation.isPending}
-                  archiveActionLabel={isArchiveFolder ? 'Unarchive' : 'Archive'}
-                  onMoveToFolder={
-                    connectedAccount
-                      ? (messageId, folderId) => {
-                          if (accountSlug) {
-                            navigate(
-                              buildMailPath(
-                                accountSlug,
-                                folderId,
-                                selectedEmail ? getEmailConversationId(selectedEmail) : undefined,
-                                buildMailboxSearch()
-                              )
-                            );
-                          }
-                          moveMessageMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            folderId,
-                          });
-                        }
-                      : undefined
-                  }
-                  onToggleTag={
-                    connectedAccount
-                      ? (messageId, tag, enabled) =>
-                          updateTagsMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            add: enabled ? [tag.id] : [],
-                            remove: enabled ? [] : [tag.id],
-                            addNames: enabled ? [tag.name] : [],
-                            removeNames: enabled ? [] : [tag.name],
-                          })
-                      : undefined
-                  }
-                  onCreateTag={
-                    connectedAccount
-                      ? (name, messageId) =>
-                          createTagMutation.mutate({
-                            accountId: connectedAccount.id,
-                            name,
-                            messageId,
-                          })
-                      : undefined
-                  }
-                  onArchive={
-                    connectedAccount
-                      ? (messageId) => {
-                          if (isArchiveFolder) {
-                            clearRouteSelection();
-                            unarchiveMessageMutation.mutate({
-                              accountId: connectedAccount.id,
-                              messageId,
-                              targetFolderId: inboxFolderId,
-                            });
-                            return;
-                          }
-                          requestArchive(messageId);
-                        }
-                      : undefined
-                  }
-                  onDelete={connectedAccount && !isDeletedFolder ? requestDelete : undefined}
-                  onPermanentDelete={
-                    connectedAccount && isDeletedFolder
-                      ? async (messageId) => {
-                          await permanentlyDeleteMessageMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                          });
-                          clearRouteSelection();
-                        }
-                      : undefined
-                  }
-                  isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}
-                  onMarkUnread={
-                    connectedAccount
-                      ? (messageId) =>
-                          updateMessageStatusMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            conversationKey:
-                              selectedEmail?.conversationKey ??
-                              selectedEmail?.threadId ??
-                              undefined,
-                            threadId: selectedEmail?.threadId ?? undefined,
-                            unread: true,
-                          })
-                      : undefined
-                  }
-                  isUpdatingReadStatus={updateMessageStatusMutation.isPending}
-                  onComposeTo={openComposeTo}
-                  onSearchSender={setMessageSearch}
-                  onReply={
-                    connectedAccount
-                      ? (messageId, draft) =>
-                          replyMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            body: richTextToEmailHtml(draft.body),
-                            bodyType: 'html',
-                            subject: selectedEmail?.subject,
-                            to: parseEmailAddresses(draft.to),
-                            cc: parseEmailAddresses(draft.cc),
-                            bcc: parseEmailAddresses(draft.bcc),
-                          })
-                      : undefined
-                  }
-                  onForward={
-                    connectedAccount
-                      ? (messageId, draft) =>
-                          forwardMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            body: richTextToEmailHtml(draft.body),
-                            bodyType: 'html',
-                            subject: selectedEmail?.subject,
-                            to: parseEmailAddresses(draft.to),
-                            cc: parseEmailAddresses(draft.cc),
-                            bcc: parseEmailAddresses(draft.bcc),
-                          })
-                      : undefined
-                  }
-                  isRespondingToMeeting={respondToMeetingMutation.isPending}
-                  isUpdatingMeeting={updateMeetingMutation.isPending}
-                  isCancellingMeeting={cancelMeetingMutation.isPending}
-                  onRespondToMeeting={
-                    connectedAccount
-                      ? (messageId, response) =>
-                          respondToMeetingMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            response,
-                            sendResponse: true,
-                          })
-                      : undefined
-                  }
-                  onUpdateMeeting={
-                    connectedAccount
-                      ? (messageId, input) =>
-                          updateMeetingMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            ...input,
-                          })
-                      : undefined
-                  }
-                  onCancelMeeting={
-                    connectedAccount
-                      ? (messageId, comment) =>
-                          cancelMeetingMutation.mutateAsync({
-                            accountId: connectedAccount.id,
-                            messageId,
-                            comment,
-                          })
-                      : undefined
-                  }
-                />
               )}
             </div>
           </div>

@@ -25,7 +25,7 @@ export function EmailComposeFields({
   return (
     <div
       className={cn(
-        'relative min-h-0 flex-1 overflow-auto',
+        'relative flex min-h-0 flex-1 flex-col',
         isDragging && 'bg-primary/5 ring-2 ring-inset ring-primary/40',
         className
       )}
@@ -50,7 +50,8 @@ export function EmailComposeFields({
           Drop files to attach
         </div>
       )}
-      <div className="divide-y divide-border">
+      {/* Recipients and subject stay put; only the body scrolls. */}
+      <div className="shrink-0 divide-y divide-border">
         <EmailComposeAddressField
           accountId={accountId}
           id={fieldIds.to}
@@ -117,8 +118,9 @@ export function EmailComposeFields({
         </div>
       </div>
 
-      <div className="px-5 py-4">
+      <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
         <EmailRichTextEditor
+          className="min-h-0 flex-1"
           id={fieldIds.body}
           value={form.body}
           label="Email body"
@@ -131,7 +133,9 @@ export function EmailComposeFields({
         />
       </div>
 
-      <EmailComposeAttachments compose={compose} />
+      <div className="shrink-0 border-t border-border">
+        <EmailComposeAttachments compose={compose} />
+      </div>
     </div>
   );
 }
