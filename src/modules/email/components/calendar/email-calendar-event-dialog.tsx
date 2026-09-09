@@ -184,7 +184,10 @@ export function EmailCalendarEventDialog({
       return;
     }
     // A custom zone reinterprets the entered wall time in that zone; the
-    // default path keeps the browser-local interpretation.
+    // default path keeps the browser-local interpretation. Both modes resolve
+    // to an absolute instant here, which is what gets sent — an edit carries
+    // its zone in the resulting UTC start/end, not as a separate field (the
+    // update endpoint has no `timeZone`, unlike create).
     const usesCustomZone = !allDay && timeZone !== BROWSER_TIME_ZONE;
     const start = allDay
       ? startOfDay(parseDate(date))
@@ -272,7 +275,11 @@ export function EmailCalendarEventDialog({
     allDay !== seed.allDay ||
     location !== seed.location ||
     calendarId !== seed.calendarId ||
-    attendees.trim() !== seed.attendees.trim();
+    attendees.trim() !== seed.attendees.trim() ||
+    // The zone is re-seeded to the browser's on every open, so anything else
+    // means the user reinterpreted the wall times above in another zone —
+    // that moves the instant we save, so it has to count as a change.
+    (!allDay && timeZone !== BROWSER_TIME_ZONE);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -335,21 +342,23 @@ export function EmailCalendarEventDialog({
                       –
                     </span>
                     <TimePickerButton label="End time" value={endTime} onChange={setEndTime} />
-                    {!isEdit && (
-                      <button
-                        type="button"
-                        aria-label="Choose time zone"
-                        aria-pressed={showTimeZone}
-                        onClick={() => setShowTimeZone((value) => !value)}
-                        className={cn(
-                          'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
-                          (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
-                            'bg-muted text-foreground'
-                        )}
-                      >
-                        <Globe aria-hidden="true" className="size-4" />
-                      </button>
-                    )}
+                    {/* Editing an event needs the zone as much as creating one
+                        does — the times above are wall-clock, and the zone is
+                        what decides which instant they mean. It rides with the
+                        time pickers, so an all-day event hides both. */}
+                    <button
+                      type="button"
+                      aria-label="Choose time zone"
+                      aria-pressed={showTimeZone}
+                      onClick={() => setShowTimeZone((value) => !value)}
+                      className={cn(
+                        'flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                        (showTimeZone || timeZone !== BROWSER_TIME_ZONE) &&
+                          'bg-muted text-foreground'
+                      )}
+                    >
+                      <Globe aria-hidden="true" className="size-4" />
+                    </button>
                   </>
                 )}
                 <label
@@ -360,7 +369,7 @@ export function EmailCalendarEventDialog({
                   <Switch id="calendar-event-allday" checked={allDay} onCheckedChange={setAllDay} />
                 </label>
               </div>
-              {!isEdit && !allDay && showTimeZone && (
+              {!allDay && showTimeZone && (
                 <div className="mt-1.5">
                   <SearchableSelect
                     options={TIME_ZONE_OPTIONS}
