@@ -12,6 +12,10 @@ import {
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useShowEmailAvatars } from '@/modules/email/hooks/use-email-avatar-visibility';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import {
+  getMeetingResponseLabel,
+  MEETING_RESPONSE_ICONS,
+} from '@/modules/email/lib/email-meeting-response';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
@@ -177,6 +181,14 @@ export function EmailRowCard({
   const primaryProject = projectReferences[0];
   const extraProjectCount = projectReferences.length - 1;
   const showCheckbox = isChecked || bulkSelectActive;
+  // Outlook mails the organiser an "Accepted: <meeting>" notification with an
+  // empty body, so the row would otherwise be a subject over a blank line with
+  // nothing saying who accepted (zubblehq/elli-ui#876). Say it where the
+  // preview would have been, in the wording the thread strip uses.
+  const meetingResponse = email.preview.trim() ? undefined : email.meetingResponse;
+  const MeetingResponseIcon = meetingResponse
+    ? MEETING_RESPONSE_ICONS[meetingResponse.status]
+    : null;
 
   useEffect(() => {
     if (!isSelected) return;
@@ -307,7 +319,20 @@ export function EmailRowCard({
               email.unread ? 'text-foreground/80' : 'text-muted-foreground'
             )}
           >
-            {highlightQuery ? highlightText(email.preview, highlightQuery) : email.preview}
+            {meetingResponse && MeetingResponseIcon ? (
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 align-bottom">
+                <MeetingResponseIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.8}
+                />
+                <span className="truncate">{getMeetingResponseLabel(meetingResponse)}</span>
+              </span>
+            ) : highlightQuery ? (
+              highlightText(email.preview, highlightQuery)
+            ) : (
+              email.preview
+            )}
           </span>
 
           <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">

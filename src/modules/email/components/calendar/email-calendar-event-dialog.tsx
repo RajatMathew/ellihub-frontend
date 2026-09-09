@@ -38,9 +38,15 @@ import {
   type CalendarEvent,
 } from '@/modules/email/components/calendar/email-calendar-types';
 import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
-import { EMAIL_ADDRESS_PATTERN, parseEmailAddresses } from '@/modules/email/lib/email-addresses';
+import {
+  EMAIL_ADDRESS_PATTERN,
+  formatEmailAddress,
+  parseEmailAddresses,
+  partitionEmailAddresses,
+} from '@/modules/email/lib/email-addresses';
 import { addMinutes, differenceInMinutes, format, isSameDay, parse, startOfDay } from 'date-fns';
 import {
+  AlertCircle,
   AlignLeft,
   CalendarDays,
   ChevronDown,
@@ -773,6 +779,7 @@ function AttendeesField({
   onChange: (value: string) => void;
 }) {
   const [buffer, setBuffer] = useState('');
+  const [invalidMessage, setInvalidMessage] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
@@ -789,32 +796,50 @@ function AttendeesField({
   const suggestionsOpen =
     focused && hasTypedQuery && !suggestionsDismissed && suggestions.length > 0;
 
-  const addAddress = (text: string) => {
-    setBuffer('');
-    setActiveSuggestionIndex(-1);
+  /** Appends every address that is not already a chip. */
+  const addAddresses = (texts: string[]) => {
     // Compare on the parsed address, not the raw string — a suggestion pick
     // arrives as "Name <email>" and would otherwise duplicate a chip the
     // user already typed as the bare address.
-    const address = parseEmailAddresses(text)[0]?.address ?? text;
-    if (addresses.includes(address)) return;
-    onChange([value, text].filter(Boolean).join(', '));
+    const seen = new Set(addresses);
+    const additions = texts.filter((text) => {
+      const address = parseEmailAddresses(text)[0]?.address ?? text;
+      if (seen.has(address)) return false;
+      seen.add(address);
+      return true;
+    });
+    if (additions.length) onChange([value, ...additions].filter(Boolean).join(', '));
+  };
+
+  /**
+   * Turns `text` into chips. Only complete addresses are committed — anything
+   * else stays in the field with a message next to it, so a stray word can
+   * never become an attendee, and is never silently dropped either.
+   */
+  const commit = (text: string) => {
+    const { valid, invalid } = partitionEmailAddresses(text);
+    addAddresses(valid);
+    setBuffer(invalid.join(', '));
+    setInvalidMessage(invalid.length ? incompleteAddressMessage(invalid[0]) : null);
+    setActiveSuggestionIndex(-1);
   };
 
   const selectSuggestion = (suggestion: { name?: string | null; address: string }) => {
-    addAddress(suggestion.name ? `${suggestion.name} <${suggestion.address}>` : suggestion.address);
-  };
-
-  const commitBuffer = () => {
-    const trimmed = buffer.trim().replace(/[,;]+$/, '').trim();
-    if (!trimmed) {
-      setBuffer('');
-      return;
-    }
-    addAddress(trimmed);
+    addAddresses([
+      suggestion.name ? `${suggestion.name} <${suggestion.address}>` : suggestion.address,
+    ]);
+    setBuffer('');
+    setInvalidMessage(null);
+    setActiveSuggestionIndex(-1);
   };
 
   const removeChip = (index: number) => {
-    onChange(chips.filter((_, i) => i !== index).map((chip) => chip.address).join(', '));
+    onChange(
+      chips
+        .filter((_, i) => i !== index)
+        .map(formatEmailAddress)
+        .join(', ')
+    );
   };
 
   return (
@@ -845,6 +870,8 @@ function AttendeesField({
           role="combobox"
           aria-expanded={suggestionsOpen}
           aria-controls="calendar-event-attendee-suggestions"
+          aria-invalid={invalidMessage ? true : undefined}
+          aria-describedby={invalidMessage ? ATTENDEE_ERROR_ID : undefined}
           autoComplete="off"
           value={buffer}
           placeholder={chips.length ? 'Add another attendee' : 'Invite attendees'}
@@ -853,18 +880,31 @@ function AttendeesField({
             const raw = e.target.value;
             setSuggestionsDismissed(false);
             setActiveSuggestionIndex(-1);
+            // A separator ends an address: commit what precedes it, and leave
+            // the tail — still being typed — in the field, unjudged.
             if (/[,;]/.test(raw)) {
-              const parts = raw.split(/[,;]/).map((part) => part.trim());
-              const nextBuffer = parts.pop() ?? '';
-              const seen = new Set(addresses);
-              const additions = parts.filter((part) => part && !seen.has(part));
-              if (additions.length) {
-                onChange([...addresses, ...additions].join(', '));
-              }
-              setBuffer(nextBuffer);
+              const parts = raw.split(/[,;]/);
+              const pending = parts.pop()?.trim() ?? '';
+              const { valid, invalid } = partitionEmailAddresses(parts.join(','));
+              addAddresses(valid);
+              setBuffer([...invalid, pending].filter(Boolean).join(', '));
+              setInvalidMessage(invalid.length ? incompleteAddressMessage(invalid[0]) : null);
               return;
             }
             setBuffer(raw);
+            setInvalidMessage(null);
+          }}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            const { valid, invalid } = partitionEmailAddresses(pasted);
+            // A single fragment is a half-typed address rather than a list —
+            // let it land in the field so the user can finish it.
+            if (!valid.length && invalid.length <= 1) return;
+            e.preventDefault();
+            setActiveSuggestionIndex(-1);
+            addAddresses(valid);
+            setBuffer([buffer.trim(), ...invalid].filter(Boolean).join(', '));
+            setInvalidMessage(invalid.length ? incompleteAddressMessage(invalid[0]) : null);
           }}
           onKeyDown={(e) => {
             if (suggestionsOpen && e.key === 'ArrowDown') {
@@ -888,14 +928,14 @@ function AttendeesField({
                 selectSuggestion(suggestions[activeSuggestionIndex]);
                 return;
               }
-              commitBuffer();
+              commit(buffer);
             } else if (e.key === 'Backspace' && !buffer && chips.length > 0) {
               removeChip(chips.length - 1);
             }
           }}
           onBlur={() => {
             setFocused(false);
-            commitBuffer();
+            commit(buffer);
           }}
           className={cn(GHOST_FIELD, 'h-7 w-40 flex-1 px-1.5')}
         />
@@ -909,13 +949,29 @@ function AttendeesField({
             onSelect={(address) => {
               const suggestion = suggestions.find((item) => item.address === address);
               if (suggestion) selectSuggestion(suggestion);
-              else addAddress(address);
+              else selectSuggestion({ address });
             }}
           />
         </div>
       )}
+      {invalidMessage && (
+        <p
+          id={ATTENDEE_ERROR_ID}
+          role="alert"
+          className="mt-1 flex items-start gap-1 text-xs text-destructive"
+        >
+          <AlertCircle aria-hidden="true" className="mt-px size-3 shrink-0" />
+          {invalidMessage}
+        </p>
+      )}
     </div>
   );
+}
+
+const ATTENDEE_ERROR_ID = 'calendar-event-attendees-error';
+
+function incompleteAddressMessage(text: string): string {
+  return `“${text}” is not an email address. Attendees need one, like name@company.com.`;
 }
 
 function calendarDotClass(row: CalendarSelectionRow): string {
@@ -965,7 +1021,7 @@ interface DialogSeed {
 
 /** "Ada Lovelace <ada@example.com>" when there's a name, bare address otherwise. */
 function attendeeToChipText(attendee: { email: string; name?: string }): string {
-  return attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email;
+  return formatEmailAddress({ address: attendee.email, name: attendee.name });
 }
 
 function buildSeed(
