@@ -9,6 +9,7 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -330,6 +331,14 @@ function Kanban<T>({
     <KanbanContext.Provider value={contextValue}>
       <DndContext
         sensors={sensors}
+        // Measure the droppables continuously rather than once when the drag
+        // starts. The default caches every card's position at pick-up, which is
+        // fine for a static list and wrong for this one: the cards animate as
+        // they rearrange, so the cached boxes describe where each card *was*.
+        // Hit-testing then looks for cards in their old positions and mostly
+        // misses — the column only lights up where the old and new boxes still
+        // happen to overlap.
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
