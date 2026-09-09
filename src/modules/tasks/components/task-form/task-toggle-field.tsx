@@ -4,6 +4,7 @@ import {
   segmentedDotClassName,
   segmentedItemClassName,
   segmentedTrackClassName,
+  type TaskFormDensity,
 } from '@/modules/tasks/components/task-form/task-form-layout';
 
 export interface TaskToggleOption<T extends string> {
@@ -27,6 +28,7 @@ export function TaskToggleField<T extends string>({
   value,
   onChange,
   label,
+  density = 'comfortable',
   className,
 }: {
   options: readonly TaskToggleOption<T>[];
@@ -34,12 +36,13 @@ export function TaskToggleField<T extends string>({
   onChange: (value: T) => void;
   /** Names the group for a screen reader; the visible label is the field's own. */
   label: string;
+  density?: TaskFormDensity;
   className?: string;
 }) {
   return (
     <ToggleGroup
       type="single"
-      size="lg"
+      size={density === 'comfortable' ? 'lg' : 'md'}
       value={value}
       aria-label={label}
       // Radix clears the value when you press the segment that is already on.
@@ -48,10 +51,14 @@ export function TaskToggleField<T extends string>({
       onValueChange={(next) => {
         if (next) onChange(next as T);
       }}
-      className={cn(segmentedTrackClassName, className)}
+      className={cn(segmentedTrackClassName(density), className)}
     >
       {options.map((option) => (
-        <ToggleGroupItem key={option.value} value={option.value} className={segmentedItemClassName}>
+        <ToggleGroupItem
+          key={option.value}
+          value={option.value}
+          className={segmentedItemClassName(density)}
+        >
           <span className={cn(segmentedDotClassName, option.tone)} aria-hidden="true" />
           {option.label}
         </ToggleGroupItem>

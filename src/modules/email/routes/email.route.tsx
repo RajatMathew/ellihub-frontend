@@ -9,6 +9,7 @@ import { EmailConnectErrorDialog } from '@/modules/email/components/email-connec
 import { useEmailAccountsQuery, useEmailConfigQuery } from '@/modules/email/hooks';
 import { EmailAccountsPage } from '@/modules/email/pages/email-accounts-page';
 import { MailboxPage } from '@/modules/email/pages/mailbox-page';
+import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 
 export default function EmailRoutes() {
@@ -67,7 +68,11 @@ function EmailIndexRoute() {
 
   const firstAccount = accountsQuery.data?.[0];
   if (firstAccount) {
-    return <Navigate to={`accounts/${firstAccount.id}`} replace />;
+    // The slug (falling back to the id only inside getEmailAccountSlug itself,
+    // when nothing better exists), not the raw id — every other link into a
+    // mailbox uses it, and the URL should read the same way regardless of how
+    // it was reached.
+    return <Navigate to={`accounts/${getEmailAccountSlug(firstAccount)}`} replace />;
   }
   return <Navigate to="add-account" replace />;
 }

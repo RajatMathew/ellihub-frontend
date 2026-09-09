@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { SidebarGroupMenu } from '@/app/components/sidebar/sidebar-menu-group';
 import type { MenuConfig } from '@/app/config/types';
@@ -12,6 +12,7 @@ import { emailKeys, useEmailAccountsQuery, useEmailConfigQuery } from '@/modules
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { useQueryClient } from '@tanstack/react-query';
 import { Mail, Plus } from 'lucide-react';
+import { useMatch } from 'react-router-dom';
 
 type StoredEmailAccount = Pick<
   EmailAccount,
@@ -23,6 +24,11 @@ export function EmailSidebarMenu() {
   const cleanedAccountIdsRef = useRef(new Set<string>());
   const accountsQuery = useEmailAccountsQuery();
   const configQuery = useEmailConfigQuery();
+  // Whichever account's mailbox is on screen right now, if any — found by URL
+  // rather than accepted as a prop, since this menu is mounted once in the
+  // persistent sidebar, outside the routes it needs to know about.
+  const activeAccountMatch = useMatch('/app/email/accounts/:accountSlug/*');
+  const activeAccountSlug = activeAccountMatch?.params.accountSlug;
   const connectedAccounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const maxPersonalAccounts = configQuery.data?.maxPersonalAccounts ?? Number.POSITIVE_INFINITY;
   const sharedAccounts = useMemo(
@@ -33,13 +39,21 @@ export function EmailSidebarMenu() {
     () => connectedAccounts.filter((account) => !account.sharedMailboxKey),
     [connectedAccounts]
   );
-  const visiblePersonalAccounts = useMemo(
-    () => personalAccounts.slice(0, maxPersonalAccounts),
-    [maxPersonalAccounts, personalAccounts]
+  const isActiveAccount = useCallback(
+    (account: EmailAccount) =>
+      activeAccountSlug != null &&
+      (getEmailAccountSlug(account) === activeAccountSlug || account.id === activeAccountSlug),
+    [activeAccountSlug]
   );
+  // Never auto-disconnect the account on screen (elli-ui#873).
+  const visiblePersonalAccounts = useMemo(() => {
+    const withinLimit = personalAccounts.slice(0, maxPersonalAccounts);
+    const activeBeyondLimit = personalAccounts.slice(maxPersonalAccounts).find(isActiveAccount);
+    return activeBeyondLimit ? [...withinLimit, activeBeyondLimit] : withinLimit;
+  }, [isActiveAccount, maxPersonalAccounts, personalAccounts]);
   const extraPersonalAccounts = useMemo(
-    () => personalAccounts.slice(maxPersonalAccounts),
-    [maxPersonalAccounts, personalAccounts]
+    () => personalAccounts.slice(maxPersonalAccounts).filter((account) => !isActiveAccount(account)),
+    [isActiveAccount, maxPersonalAccounts, personalAccounts]
   );
 
   useEffect(() => {

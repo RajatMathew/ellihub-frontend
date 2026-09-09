@@ -195,10 +195,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       search: debouncedMessageSearch || undefined,
       projectId: activeProjectId ?? undefined,
       classification: mailFilter === 'other' ? 'other' : undefined,
-      // Answered server-side against the whole cached folder (elli-ui#859) —
-      // filtering only the already-loaded page(s) client-side, as this used
-      // to, silently hid attachment/unread/flagged mail sitting further back
-      // than whatever had been fetched so far.
+      // Answered server-side across the whole folder (elli-ui#859).
       unread: mailFilter === 'unread' ? true : undefined,
       flagged: mailFilter === 'flagged' ? true : undefined,
       hasAttachments: mailFilter === 'attachments' ? true : undefined,
@@ -278,11 +275,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
-    // Step 1 — narrow by the "Show messages" filter. unread/flagged/attachments
-    // are answered server-side now (elli-ui#859 — passed through to
-    // useEmailMessagesQuery above), against the whole cached folder rather than
-    // just the loaded page, so only the "other" category tag still needs a
-    // client-side pass here.
+    // unread/flagged/attachments are answered server-side (elli-ui#859);
+    // only "other" category tag still needs a client-side pass here.
     let list = emailsForActiveSearch;
     if (mailFilter === 'other' && selectedCategoryTagId) {
       const selectedTag = availableOtherCategoryTags.find(
@@ -356,7 +350,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
     isConnected ? selectedEmail?.threadId : null,
-    canLoadConnectedMailbox
+    canLoadConnectedMailbox,
+    isConnected ? selectedEmail?.conversationKey : null
   );
   const messageDetailQuery = useEmailMessageQuery(
     connectedAccount?.id,
@@ -394,11 +389,20 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     EMAIL_FOLDERS.find((folder) => folder.key === selectedFolderKey)?.label ??
     selectedConnectedFolder?.name ??
     foldersQuery.data?.find((folder) => folder.key === selectedFolder)?.name;
+  // Mailbox nickname/address for the account-segment crumb.
+  useBreadcrumbLabel(
+    accountSlug ? `/app/email/accounts/${accountSlug}` : undefined,
+    isSharedMailbox && connectedAccount?.displayName ? connectedAccount.displayName : address
+  );
   // The folder path segment can be an opaque folder id — hand the breadcrumb
   // bar its display name (well-known keys resolve to labels the same way).
+  // Outside the mail view the URL keeps the same folder segment, so the
+  // crumb instead names the active workspace view.
+  const workspaceViewLabel =
+    workspaceView === 'calendar' ? 'Calendar' : workspaceView === 'tasks' ? 'Tasks' : undefined;
   useBreadcrumbLabel(
     accountSlug ? `/app/email/accounts/${accountSlug}/${selectedFolder}` : undefined,
-    selectedFolderLabel
+    workspaceViewLabel ?? selectedFolderLabel
   );
   const isArchiveFolder = selectedConnectedFolder?.key === 'archive';
   const isDeletedFolder = selectedFolderKey === 'deleted';
@@ -915,7 +919,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       if (email.threadId) {
         void queryClient.prefetchQuery({
           queryKey: emailKeys.conversation(connectedAccount.id, email.threadId),
-          queryFn: () => emailApi.listConversation(connectedAccount.id, email.threadId!),
+          queryFn: () =>
+            emailApi.listConversation(connectedAccount.id, email.threadId!, email.conversationKey),
           staleTime: 60 * 1000,
         });
         return;
@@ -1307,11 +1312,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoadingMore={messagesQuery.isFetchingNextPage}
                   loadMoreError={messagesQuery.isFetchNextPageError}
                   onLoadMore={messagesQuery.fetchNextPage}
-                  // unread/flagged/attachments are filtered server-side now, but still
-                  // paginated — an empty first page can legitimately have matches further
-                  // in. "other" category tags and thread status are still filtered
-                  // client-side against whatever's loaded. Either way, keep auto-paging
-                  // until a match appears or pages are exhausted.
+                  // Keep auto-paging until a filtered match appears or pages run out.
                   autoFetchWhileEmpty={mailFilter !== 'all' || mailStatusFilter !== 'all'}
                   groupByMonth={
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
