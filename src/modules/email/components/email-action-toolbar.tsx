@@ -31,6 +31,9 @@ import {
 type EmailActionToolbarProps = {
   folders?: ConnectedEmailFolder[];
   tags?: ConnectedEmailTag[];
+  /** Elli tags applied to this message; provider categories are not togglable. */
+  appliedTags?: string[];
+  /** Provider categories on this message, shown read-only. */
   keywords?: string[];
   currentFolderId?: string | null;
   isUpdatingTags?: boolean;
@@ -51,6 +54,7 @@ type EmailActionToolbarProps = {
 export function EmailActionToolbar({
   folders = [],
   tags = [],
+  appliedTags = [],
   keywords = [],
   currentFolderId,
   isUpdatingTags = false,
@@ -70,7 +74,11 @@ export function EmailActionToolbar({
   const [newTagName, setNewTagName] = useState('');
   const [permanentDeleteDialogOpen, setPermanentDeleteDialogOpen] = useState(false);
   const movableFolders = folders.filter((folder) => folder.id !== currentFolderId);
-  const keywordSet = new Set(keywords.map((keyword) => keyword.toLowerCase()));
+  // Only Elli's own tags can be toggled. Outlook/Gmail categories belong to the
+  // mailbox owner and are shown read-only — see zubblehq/elli-ui#652.
+  const customTags = tags.filter((tag) => tag.source === 'custom');
+  const appliedSet = new Set(appliedTags.map((name) => name.toLowerCase()));
+  const providerCategories = keywords.filter(Boolean);
 
   const submitNewTag = () => {
     const name = newTagName.trim();
@@ -161,27 +169,21 @@ export function EmailActionToolbar({
                 Tags
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-72">
-                <DropdownMenuLabel>Tags</DropdownMenuLabel>
-                {tags.length === 0 ? (
+                <DropdownMenuLabel>Elli tags</DropdownMenuLabel>
+                {customTags.length === 0 ? (
                   <DropdownMenuItem disabled>No tags yet</DropdownMenuItem>
                 ) : (
-                  tags.map((tag) => {
-                    const checked =
-                      keywordSet.has(tag.name.toLowerCase()) ||
-                      keywordSet.has(tag.providerId.toLowerCase());
-
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={tag.id}
-                        checked={checked}
-                        disabled={isUpdatingTags}
-                        onSelect={(event) => event.preventDefault()}
-                        onCheckedChange={(enabled) => onToggleTag(tag, Boolean(enabled))}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{tag.name}</span>
-                      </DropdownMenuCheckboxItem>
-                    );
-                  })
+                  customTags.map((tag) => (
+                    <DropdownMenuCheckboxItem
+                      key={tag.id}
+                      checked={appliedSet.has(tag.name.toLowerCase())}
+                      disabled={isUpdatingTags}
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={(enabled) => onToggleTag(tag, Boolean(enabled))}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{tag.name}</span>
+                    </DropdownMenuCheckboxItem>
+                  ))
                 )}
                 {onCreateTag && (
                   <>
@@ -215,6 +217,19 @@ export function EmailActionToolbar({
                         <Plus aria-hidden="true" className="size-3.5" />
                       </Button>
                     </div>
+                  </>
+                )}
+                {providerCategories.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-muted-foreground">
+                      Mailbox categories (read-only)
+                    </DropdownMenuLabel>
+                    {providerCategories.map((category) => (
+                      <DropdownMenuItem key={category} disabled>
+                        <span className="min-w-0 flex-1 truncate">{category}</span>
+                      </DropdownMenuItem>
+                    ))}
                   </>
                 )}
               </DropdownMenuSubContent>

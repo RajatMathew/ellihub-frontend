@@ -5,6 +5,7 @@
  * fast-refresh boundary (`react-refresh/only-export-components`) requires a
  * file to export either only components or only non-components, not both.
  */
+
 import { useId } from 'react';
 
 import { Button } from '@/app/components/ui/button';
@@ -19,13 +20,13 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
 import type { ConnectedEmailTag } from '@/modules/email/api';
+import { useEmailReferenceMarker } from '@/modules/email/components/email-reference-marker';
 import {
   EMAIL_THREAD_STATE_LABELS,
   isOpenEmailThreadState,
   type EmailReferenceMarkerState,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
-import { useEmailReferenceMarker } from '@/modules/email/components/email-reference-marker';
 import { CheckCircle2, ChevronDown, CircleDotDashed, Plus, Tag, X } from 'lucide-react';
 
 type EmailReferenceMarkerProps = {
@@ -76,7 +77,7 @@ export function OtherTagSummary({
   return (
     <span
       className="inline-flex h-9 max-w-full min-w-0 items-center overflow-hidden rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground shadow-xs shadow-black/5"
-      title={`Categories: ${tags.map((tag) => tag.name).join(', ')}`}
+      title={`Tags: ${tags.map((tag) => tag.name).join(', ')}`}
     >
       <span className="flex min-w-0 items-center overflow-hidden">
         {tags.map((tag, index) => (
@@ -104,7 +105,7 @@ export function OtherTagSummary({
 
 export function OtherTagPanel({
   tags,
-  keywordSet,
+  appliedSet,
   messageId,
   newTagName,
   isUpdatingTags,
@@ -116,7 +117,8 @@ export function OtherTagPanel({
   onDismiss,
 }: {
   tags: ConnectedEmailTag[];
-  keywordSet: Set<string>;
+  /** Lowercased names of the Elli tags already on this message. */
+  appliedSet: Set<string>;
   messageId?: string;
   newTagName: string;
   isUpdatingTags: boolean;
@@ -137,8 +139,7 @@ export function OtherTagPanel({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">Organize with tags</p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            Provider tags keep this mail in its tagged folder while Other stays separate from
-            project references.
+            Elli tags keep this mail findable while Other stays separate from project references.
           </p>
         </div>
         <button
@@ -153,12 +154,10 @@ export function OtherTagPanel({
 
       <div className="mt-3 flex flex-wrap gap-2">
         {tags.length === 0 ? (
-          <span className="text-xs text-muted-foreground">No provider tags yet.</span>
+          <span className="text-xs text-muted-foreground">No tags yet.</span>
         ) : (
           tags.map((tag) => {
-            const selected =
-              keywordSet.has(tag.name.toLowerCase()) ||
-              keywordSet.has(tag.providerId.toLowerCase());
+            const selected = appliedSet.has(tag.name.toLowerCase());
 
             return (
               <button

@@ -136,10 +136,7 @@ export function EmailMailToolbar({
       'Inbox');
   const selectedProject =
     projects.find((project) => project.entityId === selectedProjectId) ?? null;
-  const selectedCategoryTag =
-    categoryTags.find((tag) => tag.id === selectedCategoryTagId) ??
-    categoryTags.find((tag) => tag.providerId === selectedCategoryTagId) ??
-    null;
+  const selectedCategoryTag = categoryTags.find((tag) => tag.id === selectedCategoryTagId) ?? null;
   const filterLabels: Record<EmailListFilter, string> = {
     all: 'All emails',
     unread: 'Unread',
@@ -346,7 +343,9 @@ export function EmailMailToolbar({
                       >
                         <DropdownMenuRadioItem value="all">Any</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="open_our_court">Our court</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="open_our_court">
+                          Our court
+                        </DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="open_their_court">
                           Their court
                         </DropdownMenuRadioItem>
@@ -399,9 +398,7 @@ export function EmailMailToolbar({
                 className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md"
               >
                 <li className="flex items-center justify-between px-2 py-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Recent searches
-                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">Recent searches</span>
                   <button
                     type="button"
                     tabIndex={-1}
@@ -426,7 +423,10 @@ export function EmailMailToolbar({
                         commitSearch(entry);
                       }}
                     >
-                      <Clock aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+                      <Clock
+                        aria-hidden="true"
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
                       <span className="min-w-0 truncate">{entry}</span>
                     </button>
                   </li>

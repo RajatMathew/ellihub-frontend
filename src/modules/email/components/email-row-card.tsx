@@ -30,7 +30,10 @@ export type EmailListItem = {
   mailbox: string;
   unread: boolean;
   flagged?: boolean;
+  /** Provider categories mirrored from Outlook/Gmail. Read-only. */
   keywords?: string[];
+  /** Elli's own tags applied to this message. */
+  tags?: string[];
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
   selected?: boolean;
@@ -85,6 +88,7 @@ export type EmailThreadMessage = {
   sentAt: string;
   folderId?: string | null;
   keywords?: string[];
+  tags?: string[];
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
   deliveryStatus?: 'sending' | 'failed' | 'sent';
