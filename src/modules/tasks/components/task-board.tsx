@@ -93,6 +93,18 @@ export function TaskBoard({
     setColumns(groupedIds);
   }
 
+  /**
+   * Put the arrangement back the way the server has it.
+   *
+   * The hover reflow moves a card between columns as you pass over them, and
+   * nothing undoes that on its own. A drag from Pending to Overdue crosses Due
+   * Today, which is a legal target, so the card is already sitting there by the
+   * time Overdue refuses the drop — and refusing only means "do not save", so
+   * the card stayed in Due Today looking moved. Same for a drag released over
+   * nothing, or cancelled with Escape.
+   */
+  const restoreArrangement = () => setColumns(groupedIds);
+
   // Ids back to the cards they name, dropping any the server has since removed.
   const cardsIn = (columnId: TaskColumnId) =>
     columns[columnId].map((id) => byId.get(id)).filter((task): task is Task => Boolean(task));
@@ -104,7 +116,7 @@ export function TaskBoard({
    */
   const handleMove = ({ overContainer, overIndex, event }: KanbanMoveEvent) => {
     const task = byId.get(String(event.active.id));
-    if (!task) return;
+    if (!task) return restoreArrangement();
 
     // Where the card came from has to be read from the server data, not from
     // the board's current arrangement: the hover reflow has already moved it
@@ -116,6 +128,7 @@ export function TaskBoard({
     const { allowed, reason } = canMoveTask(from, to);
     if (!allowed) {
       if (reason) toast.error(reason);
+      restoreArrangement();
       return;
     }
 
@@ -144,11 +157,11 @@ export function TaskBoard({
     const boardOrder = dropBoardOrder(column, task.id, index);
 
     if (from === to) {
-      if (!dropMovesTask(column, task.id, index)) return;
+      if (!dropMovesTask(column, task.id, index)) return restoreArrangement();
 
       // Nothing either side means the card is alone in its priority block, and
       // there is no position to save.
-      if (!previousId && !nextId) return;
+      if (!previousId && !nextId) return restoreArrangement();
 
       onReorder(task, { previousId, nextId, boardOrder });
       return;
@@ -158,7 +171,7 @@ export function TaskBoard({
     // the card would land in its new column by age and then visibly jump to
     // where it was dropped.
     const dueAt = dueDateForColumn(to, now);
-    if (!dueAt) return;
+    if (!dueAt) return restoreArrangement();
 
     onReorder(task, { previousId, nextId, boardOrder, dueAt: dueAt.toISOString() });
   };
@@ -176,6 +189,9 @@ export function TaskBoard({
       canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
       getItemValue={(id: string) => id}
       onMove={handleMove}
+      // A refused drop, a release over nothing, or Escape: the hover reflow has
+      // already moved the card and only this puts it back.
+      onDragDiscarded={restoreArrangement}
       accessibility={{
         announcements: {
           onDragStart: ({ active }) => `Picked up ${byId.get(String(active.id))?.title ?? 'task'}.`,

@@ -111,6 +111,16 @@ export interface KanbanRootProps<T> {
    */
   canMove?: (from: string, to: string) => boolean;
   /**
+   * A drag that ended without anything being applied — released over nothing,
+   * or cancelled with Escape.
+   *
+   * The hover reflow is not undone by either: a card dragged across a legal
+   * column on its way somewhere else has already been moved into it, and a drag
+   * that then ends nowhere leaves it sitting there. The owner of the value has
+   * to put its arrangement back, and this is how it hears that it should.
+   */
+  onDragDiscarded?: () => void;
+  /**
    * Screen-reader announcements for the drag lifecycle. Without these a drag is
    * silent to assistive tech, which the keyboard sensor otherwise supports.
    */
@@ -125,6 +135,7 @@ function Kanban<T>({
   className,
   onMove,
   canMove,
+  onDragDiscarded,
   accessibility,
 }: KanbanRootProps<T>) {
   const columns = value;
@@ -167,6 +178,13 @@ function Kanban<T>({
     setActiveId(event.active.id);
   }, []);
 
+  // Escape mid-drag left the card wherever the hover reflow had put it, and left
+  // the board thinking a drag was still in progress.
+  const handleDragCancel = React.useCallback(() => {
+    setActiveId(null);
+    onDragDiscarded?.();
+  }, [onDragDiscarded]);
+
   const handleDragOver = React.useCallback(
     (event: DragOverEvent) => {
       const { active, over } = event;
@@ -199,13 +217,22 @@ function Kanban<T>({
         overIndex = overItems.length;
       }
 
+      // Copy, never splice. `activeItems` is the array held in state, and the
+      // owner may be holding the very same array — the task board seeds its
+      // state straight from a memo — so splicing here reached back into that
+      // memo and removed the card from it for good. Putting the arrangement
+      // back afterwards then restored a list the card was already missing from,
+      // and it rendered in no column at all.
+      const movedItem = activeItems[activeIndex];
+      if (!movedItem) return;
+
+      const newActiveItems = activeItems.filter((_, index) => index !== activeIndex);
       const newOverItems = [...overItems];
-      const [movedItem] = activeItems.splice(activeIndex, 1);
       newOverItems.splice(overIndex, 0, movedItem);
 
       setColumns({
         ...columns,
-        [activeContainer]: [...activeItems],
+        [activeContainer]: newActiveItems,
         [overContainer]: newOverItems,
       });
     },
@@ -217,7 +244,12 @@ function Kanban<T>({
       const { active, over } = event;
       setActiveId(null);
 
-      if (!over) return;
+      // Released over nothing. The reflow that happened on the way is still
+      // applied, so the owner has to be told to put its arrangement back.
+      if (!over) {
+        onDragDiscarded?.();
+        return;
+      }
 
       // Handle item move callback
       if (onMove && !isColumn(active.id)) {
@@ -277,7 +309,7 @@ function Kanban<T>({
         }
       }
     },
-    [columnIds, columns, findContainer, getItemValue, isColumn, setColumns, onMove]
+    [columnIds, columns, findContainer, getItemValue, isColumn, setColumns, onMove, onDragDiscarded]
   );
 
   const contextValue = React.useMemo(
@@ -301,6 +333,7 @@ function Kanban<T>({
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
         accessibility={accessibility}
       >
         <div data-slot="kanban" data-dragging={activeId !== null} className={cn(className)}>
