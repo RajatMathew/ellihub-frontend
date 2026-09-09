@@ -19,9 +19,9 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Input } from '@/app/components/ui/input';
-import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
 import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
+import { EmailRichTextEditor } from '@/modules/email/components/email-rich-text-editor';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
 import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
 import {
@@ -29,6 +29,7 @@ import {
   getEmailAddressListError,
   parseEmailAddresses,
 } from '@/modules/email/lib/email-addresses';
+import { isEmptyEmailHtml } from '@/modules/email/lib/email-rich-text';
 import { AlertCircle, FileText, Paperclip, Send, Trash2, X } from 'lucide-react';
 
 /**
@@ -43,6 +44,7 @@ type ComposeForm = {
   cc: string;
   bcc: string;
   subject: string;
+  /** Rich-text HTML, matching the `bodyType: 'html'` the draft is saved with. */
   body: string;
 };
 
@@ -149,7 +151,7 @@ export function EmailComposeDialog({
     form.cc.trim() ||
     form.bcc.trim() ||
     form.subject.trim() ||
-    form.body.trim() ||
+    !isEmptyEmailHtml(form.body) ||
     attachments.length ||
     existingAttachments.length
   );
@@ -428,6 +430,14 @@ export function EmailComposeDialog({
 
         <form
           className="flex min-h-0 flex-1 flex-col"
+          onKeyDown={(event) => {
+            // Cmd/Ctrl + Enter sends from anywhere in the composer, including the
+            // body, where a bare Enter has to keep inserting a new line.
+            if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
+            event.preventDefault();
+            if (!canSend || isBusy || isPreparingAttachments) return;
+            event.currentTarget.requestSubmit();
+          }}
           onSubmit={async (event) => {
             event.preventDefault();
             if (!canSend || isBusy || !validateAddresses(true)) return;
@@ -553,18 +563,18 @@ export function EmailComposeDialog({
             </div>
 
             <div className="px-5 py-4">
-              <label htmlFor={bodyId} className="sr-only">
-                Email body
-              </label>
-              <Textarea
+              <EmailRichTextEditor
                 id={bodyId}
                 value={form.body}
-                rows={14}
+                label="Email body"
                 placeholder="Write your message..."
-                className="min-h-72 resize-y border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
-                onChange={(event) => {
-                  setForm((current) => ({ ...current, body: event.target.value }));
+                disabled={isBusy}
+                onChange={(body) => {
+                  setForm((current) => ({ ...current, body }));
                   if (saveStatus === 'error') setSaveStatus('idle');
+                }}
+                onFilesSelected={(files) => {
+                  if (!isPreparingAttachments) handleAttachmentSelection(files);
                 }}
               />
             </div>
@@ -1000,6 +1010,8 @@ function EmailAddressField({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Cmd/Ctrl + Enter is the send shortcut; it must reach the form untouched.
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) return;
     if (suggestionsOpen) {
       if (event.key === 'ArrowDown') {
         event.preventDefault();

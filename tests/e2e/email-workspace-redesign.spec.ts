@@ -208,9 +208,9 @@ test('renders the redesigned live mailbox and workspace tabs', async ({ page }) 
     /↑↓\s*navigate\s*·\s*R\s*reply\s*·\s*E\s*archive/
   );
   await page.keyboard.press('r');
-  await expect(page.getByPlaceholder('Write your reply...')).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Reply message' })).toBeFocused();
   await page.getByRole('button', { name: 'Discard' }).click();
-  await expect(page.getByPlaceholder('Write your reply...')).toBeHidden();
+  await expect(page.getByRole('textbox', { name: 'Reply message' })).toBeHidden();
 
   const search = page.getByRole('textbox', { name: 'Search mail' });
   const searchRequest = page.waitForRequest((request) => {

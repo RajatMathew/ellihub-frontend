@@ -374,7 +374,7 @@ test('an immediate second reply targets the first reply real cache id', async ({
 
   const originalMessage = page.getByRole('article').first();
   await originalMessage.getByRole('button', { name: 'Reply', exact: true }).click();
-  await page.getByPlaceholder('Write your reply...').fill('Reply 1');
+  await page.getByRole('textbox', { name: 'Reply message' }).fill('Reply 1');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect.poll(() => api.getReplyMessageIds()).toEqual([ORIGINAL_MESSAGE_ID]);
@@ -385,7 +385,7 @@ test('an immediate second reply targets the first reply real cache id', async ({
     .getByRole('button', { name: 'Expand message from Mailbox', exact: true })
     .click();
   await firstReply.getByRole('button', { name: 'Reply', exact: true }).click();
-  await page.getByPlaceholder('Write your reply...').fill('Reply 2');
+  await page.getByRole('textbox', { name: 'Reply message' }).fill('Reply 2');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect
