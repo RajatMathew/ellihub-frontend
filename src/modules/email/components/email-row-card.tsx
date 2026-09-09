@@ -214,7 +214,11 @@ export function EmailRowCard({
         type="button"
         className="flex w-full cursor-pointer gap-2.5 px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         aria-current={isSelected ? 'true' : undefined}
-        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
+        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
+          email.attachmentCount
+            ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
+            : ''
+        }`}
         onPointerEnter={onPrefetch}
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button === 0) onSelect?.();
@@ -281,16 +285,6 @@ export function EmailRowCard({
                 ({email.threadMessageCount})
               </span>
             )}
-            {Boolean(email.attachmentCount) && (
-              <span
-                className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
-                title={`${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`}
-              >
-                <span aria-hidden="true">·</span>
-                <Paperclip aria-hidden="true" className="size-3" strokeWidth={1.8} />
-                {email.attachmentCount}
-              </span>
-            )}
             <span className="ms-auto flex shrink-0 items-center gap-1.5">
               <span
                 className={cn(
@@ -335,7 +329,7 @@ export function EmailRowCard({
             )}
           </span>
 
-          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 pe-12">
             {isOtherClassified && (
               <span className="rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
                 Other
@@ -368,7 +362,7 @@ export function EmailRowCard({
           </span>
 
           {primaryProject && (
-            <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
+            <span className="mt-1.5 flex min-w-0 items-center gap-1.5 pe-12">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
@@ -420,6 +414,20 @@ export function EmailRowCard({
             </span>
           )}
         </span>
+
+        {/* Bottom-right corner, matching the button's own px-3/py-2.5 inset.
+            Absolute against the relative <article>, but rendered INSIDE the
+            button so the corner stays part of the row's click target
+            (zubblehq/elli-ui#858). */}
+        {Boolean(email.attachmentCount) && (
+          <span
+            aria-hidden="true"
+            className="absolute bottom-2.5 right-3 inline-flex items-center gap-1 text-xs text-muted-foreground"
+          >
+            <Paperclip className="size-3" strokeWidth={1.8} />
+            {email.attachmentCount}
+          </span>
+        )}
       </button>
 
       {isCheckable && showAvatars && (
