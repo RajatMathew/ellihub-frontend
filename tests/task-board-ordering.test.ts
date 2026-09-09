@@ -370,3 +370,20 @@ describe('choosing a slot in a column the card is arriving in', () => {
     );
   });
 });
+
+// The last tie left on the board. Two cards of the same priority created in the
+// same millisecond compare equal, and a stable sort then keeps whatever order
+// they arrived in — which is the server's `ORDER BY dueAt`, arbitrary between
+// rows sharing a date. That is exactly the swap elli-ui#791 reports, surviving
+// in the one case the creation-time rule cannot separate. A drop reachable by
+// +1 day: shift a card into a column holding one card of the same priority and
+// age, and nothing decides which sits on top.
+describe('two cards the rules cannot tell apart', () => {
+  const SAME = '2026-09-01T09:00:00.000Z';
+  const a = task({ id: 'aaa', priority: 'P3', createdAt: SAME });
+  const b = task({ id: 'bbb', priority: 'P3', createdAt: SAME });
+
+  test('the order does not depend on which arrived first', () => {
+    expect(order([a, b])).toEqual(order([b, a]));
+  });
+});

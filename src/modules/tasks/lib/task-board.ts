@@ -130,7 +130,17 @@ export function taskOrderKey(task: Task): number {
  */
 function compareForBoard(a: Task, b: Task): number {
   if (a.priority !== b.priority) return a.priority.localeCompare(b.priority);
-  return taskOrderKey(a) - taskOrderKey(b);
+
+  const byOrder = taskOrderKey(a) - taskOrderKey(b);
+  if (byOrder !== 0) return byOrder;
+
+  // Two cards of the same priority made in the same millisecond compare equal,
+  // and a stable sort then keeps whatever order they arrived in — the server's
+  // `ORDER BY dueAt`, which is arbitrary between rows sharing a date. That is
+  // the swap elli-ui#791 reports, surviving in the one case the rules above
+  // cannot separate. The id decides nothing meaningful; it decides the same
+  // thing every time, which is the whole requirement.
+  return a.id.localeCompare(b.id);
 }
 
 /**
