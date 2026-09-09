@@ -96,3 +96,43 @@ export function placeTaskInList(
 
   return changed ? { ...page, data } : page;
 }
+
+/**
+ * Flip a task's completion in a cached page.
+ *
+ * COMPLETED is the one column the board reads off the status rather than the
+ * due date, so writing the status here is what moves the card. It happens on
+ * the click for the same reason the shift above does: the card has to start
+ * leaving while the tick is still under the cursor, or the motion arrives
+ * seconds later attached to nothing the user did. See elli-ui#862.
+ *
+ * `completedAt` is the server's to stamp — it decides the real time and this
+ * only needs a truthy value for anything reading "is it done". The refetch
+ * replaces it either way.
+ *
+ * Same by-reference contract as the helpers above: an untouched page comes back
+ * as it went in, because the board memoises on the array.
+ */
+export function setTaskCompletedInList(
+  page: TaskPaginatedResponse,
+  id: string,
+  completed: boolean
+): TaskPaginatedResponse {
+  let changed = false;
+
+  const data = page.data.map((task): Task => {
+    if (task.id !== id) return task;
+
+    const status = completed ? 'COMPLETED' : 'OPEN';
+    if (task.status === status) return task;
+
+    changed = true;
+    return {
+      ...task,
+      status,
+      completedAt: completed ? new Date().toISOString() : null,
+    };
+  });
+
+  return changed ? { ...page, data } : page;
+}

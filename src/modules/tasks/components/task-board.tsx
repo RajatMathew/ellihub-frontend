@@ -8,6 +8,7 @@ import {
   KanbanOverlay,
   type KanbanMoveEvent,
 } from '@/app/components/ui/kanban';
+import { TaskBoardCardSlot } from '@/modules/tasks/components/task-board-card-slot';
 import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
 import {
@@ -229,28 +230,30 @@ export function TaskBoard({
             now={now}
           >
             {cardsIn(columnId).map((task) => (
-              <KanbanItem key={task.id} value={task.id}>
-                {/* KanbanItem keeps the drag listeners in context rather than
+              <TaskBoardCardSlot key={task.id}>
+                <KanbanItem value={task.id}>
+                  {/* KanbanItem keeps the drag listeners in context rather than
                     spreading them, so a card only becomes draggable once it
                     contains a handle. The whole card is the handle; the sensor's
                     10px activation distance leaves the buttons inside clickable. */}
-                <KanbanItemHandle asChild>
-                  <div>
-                    <TaskCard
-                      task={task}
-                      now={now}
-                      isBusy={busyTaskId === task.id}
-                      justLanded={justLandedTaskId === task.id}
-                      onOpen={onOpenTask}
-                      onComplete={onCompleteTask}
-                      onShiftDueDate={onShiftDueDate}
-                      onReassign={(assigneeId) => onReassign(task, assigneeId)}
-                      onPriorityChange={(priority) => onPriorityChange(task, priority)}
-                      onCourtChange={(court) => onCourtChange(task, court)}
-                    />
-                  </div>
-                </KanbanItemHandle>
-              </KanbanItem>
+                  <KanbanItemHandle asChild>
+                    <div>
+                      <TaskCard
+                        task={task}
+                        now={now}
+                        isBusy={busyTaskId === task.id}
+                        justLanded={justLandedTaskId === task.id}
+                        onOpen={onOpenTask}
+                        onComplete={onCompleteTask}
+                        onShiftDueDate={onShiftDueDate}
+                        onReassign={(assigneeId) => onReassign(task, assigneeId)}
+                        onPriorityChange={(priority) => onPriorityChange(task, priority)}
+                        onCourtChange={(court) => onCourtChange(task, court)}
+                      />
+                    </div>
+                  </KanbanItemHandle>
+                </KanbanItem>
+              </TaskBoardCardSlot>
             ))}
           </TaskBoardColumn>
         ))}

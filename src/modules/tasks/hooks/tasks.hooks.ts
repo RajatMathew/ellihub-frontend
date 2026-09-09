@@ -5,6 +5,7 @@ import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
 import {
   placeTaskInList,
   removeTaskFromList,
+  setTaskCompletedInList,
   shiftTaskDueDateInList,
 } from '@/modules/tasks/lib/task-cache';
 import type {
@@ -69,16 +70,44 @@ export const useUpdateTaskMutation = () => {
   });
 };
 
+// Backs the card's completion circle.
+//
+// The new status is written into the cache before the request goes out, for the
+// reason the shift below spells out: COMPLETED is a column, so the status is
+// what moves the card, and it has to move while the tick is still under the
+// cursor. Waiting for the round trip left a second of nothing and then a jump,
+// which is what made ticking a card look unlike dragging one. A failure puts
+// the old status back. See elli-ui#862.
 export const useSetTaskCompletedMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
       tasksApi.setCompleted(id, completed),
+    onMutate: async ({ id, completed }) => {
+      // In-flight reads would otherwise land after this and put the card back.
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
+
+      const previous = queryClient.getQueriesData<TaskPaginatedResponse>({
+        queryKey: taskKeys.lists(),
+      });
+
+      queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) =>
+        page ? setTaskCompletedInList(page, id, completed) : page
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
+      toastApiError(error, 'Failed to update task');
+    },
     onSuccess: (task) => {
-      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
       toast.success(task.status === 'COMPLETED' ? 'Task completed' : 'Task reopened');
     },
-    onError: (error) => toastApiError(error, 'Failed to update task'),
+    // Whether it worked or not, the server has the last word on the status.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
   });
 };
 

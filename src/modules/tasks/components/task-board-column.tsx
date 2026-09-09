@@ -17,6 +17,7 @@ import {
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { useDndContext } from '@dnd-kit/core';
 import { Ban } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 
 /**
  * One column of the board, and the live feedback for whether the card you are
@@ -125,11 +126,28 @@ export function TaskBoardColumn({
         className="scroll-fade scrollbar-on-hover min-h-0 flex-1 overflow-y-auto"
       >
         <KanbanColumnContent value={columnId} className="gap-2">
+          {/* A card that leaves this column has to stay on screen long enough to
+              be seen leaving. Without this it unmounts on the frame its status
+              changes and the tick reads as the card being deleted rather than
+              completed — the cards below still slide up, but after something
+              that was never there. See TaskBoardCardSlot for the motion itself. */}
+          <AnimatePresence initial={false}>
+            {withDropIndicator(children, dropSlot)}
+          </AnimatePresence>
+
+          {/* Fades rather than appears. The last card out of a column is still
+              on screen finishing its exit when this mounts, so a hard cut would
+              put a "column clear" under a card that is plainly still there. */}
           {tasks.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">column clear</p>
-          ) : (
-            withDropIndicator(children, dropSlot)
-          )}
+            <motion.p
+              layout="position"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="py-6 text-center text-xs text-muted-foreground"
+            >
+              column clear
+            </motion.p>
+          ) : null}
         </KanbanColumnContent>
       </div>
     </KanbanColumn>
