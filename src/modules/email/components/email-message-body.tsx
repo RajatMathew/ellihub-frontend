@@ -173,13 +173,26 @@ function EmailHtmlBody({
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(120);
 
+  // Keyed by content, not by array identity. Callers write
+  // `message.attachments ?? []`, so a message without attachments hands us a
+  // new array on every render — and reassigning `srcdoc` reloads the frame,
+  // which would visibly flash the message on any unrelated re-render.
+  const attachmentKey = attachments
+    .map((attachment) => `${attachment.id}:${attachment.contentId ?? ''}`)
+    .join('|');
+  const stableAttachments = useMemo(
+    () => attachments,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key is the real dependency
+    [attachmentKey]
+  );
+
   const frameDocument = useMemo(
     () =>
       buildEmailFrameDocument({
-        bodyHtml: prepareEmailBody(sourceHtml, attachments, inlineImageBaseUrl),
+        bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl),
         apiOrigin: getApiOrigin(),
       }),
-    [attachments, inlineImageBaseUrl, sourceHtml]
+    [stableAttachments, inlineImageBaseUrl, sourceHtml]
   );
 
   const handleMessage = useCallback((event: MessageEvent) => {
