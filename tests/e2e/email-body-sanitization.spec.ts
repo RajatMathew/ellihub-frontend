@@ -218,6 +218,46 @@ test.describe('email body frame isolation', () => {
     expect(height).toBeLessThan(60);
   });
 
+  /**
+   * Paragraph margins must be counted in the reported height.
+   *
+   * With no vertical padding on the body, the first and last child's margins
+   * collapse out through the body box, so `scrollHeight` measures short by
+   * exactly those margins — a four-paragraph message reported 132px against
+   * 160px of content and rendered with its last line sliced in half.
+   */
+  test('counts collapsed child margins in the reported height', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { buildEmailFrameDocument, EMAIL_FRAME_SANDBOX } = window.__email;
+      const frame = document.createElement('iframe');
+      frame.setAttribute('sandbox', EMAIL_FRAME_SANDBOX);
+      frame.style.cssText = 'display:block;width:700px;border:0';
+
+      const reported = await new Promise<number>((resolve) => {
+        window.addEventListener('message', (event) => {
+          const data = event.data as Record<string, unknown>;
+          if (data && data.__elliEmailHeight === true) resolve(Number(data.height));
+        });
+        frame.srcdoc = buildEmailFrameDocument({
+          bodyHtml: '<p>One.</p><p>Two.</p><p>Three.</p><p>Four.</p>',
+        });
+        document.body.append(frame);
+        setTimeout(() => resolve(0), 3000);
+      });
+
+      // What the frame actually occupies, margins included.
+      const actual = frame.contentDocument?.documentElement.scrollHeight ?? null;
+      return { reported, actual };
+    });
+
+    expect(result.reported).toBeGreaterThan(0);
+    // Cross-origin sandbox: the parent cannot read contentDocument, which is
+    // the point. Assert against the known layout instead — four paragraphs at
+    // 14px margins measure 160px, and the collapsing bug reported 132px.
+    expect(result.actual).toBeNull();
+    expect(result.reported).toBeGreaterThanOrEqual(160);
+  });
+
   test('reports its height so the frame can be sized', async ({ page }) => {
     const height = await page.evaluate(async () => {
       const { buildEmailFrameDocument, EMAIL_FRAME_SANDBOX } = window.__email;

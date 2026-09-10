@@ -111,6 +111,12 @@ html { background: #ffffff; color-scheme: light; }
 body {
   margin: 0;
   padding: ${padding};
+  /* Establishes a block formatting context so the first and last child's
+     margins are contained rather than collapsing out through the body box.
+     Without it the body measures short by exactly those margins — a paragraph
+     message reported 132px against 160px of content and had its last line
+     sliced in half. Adds no space of its own. */
+  display: flow-root;
   background: #ffffff;
   color: #18181b;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
