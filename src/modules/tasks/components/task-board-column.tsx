@@ -44,8 +44,20 @@ export function TaskBoardColumn({
   const { ref: scrollRef, scrollEdgeProps } = useScrollEdges<HTMLDivElement>();
 
   const draggedTask = active ? byId.get(String(active.id)) : undefined;
-  const hoveredColumn = over ? resolveColumn(over.id, byId, now) : null;
-  const isHovered = Boolean(draggedTask && hoveredColumn === columnId);
+
+  // Hovered means the pointer is over this column or over a card this column is
+  // rendering *right now* — asked of the board's arrangement, not the server's.
+  // The two disagree mid-drag by design: the hover reflow has already slid the
+  // dragged card into the column under the pointer, so the card most often
+  // under the cursor is the dragged card's own ghost, which the server still
+  // files under the column it came from. Resolving through the server said
+  // "not me" to the column the card was visibly sitting in, and the drop line
+  // vanished exactly when the pointer settled.
+  const isHovered = Boolean(
+    draggedTask &&
+    over &&
+    (String(over.id) === columnId || tasks.some((task) => task.id === String(over.id)))
+  );
 
   const verdict =
     draggedTask && isHovered
@@ -206,15 +218,4 @@ function arrivalSlotFor(tasks: Task[], dragged: Task): number {
 
   if (listedAt === -1) return index;
   return index < listedAt ? index : index + 1;
-}
-
-/** Which column something being hovered belongs to — a column id, or a card in one. */
-function resolveColumn(
-  overId: string | number,
-  byId: Map<string, Task>,
-  now: Date
-): TaskColumnId | null {
-  const overTask = byId.get(String(overId));
-  if (overTask) return columnForTask(overTask, now);
-  return String(overId) as TaskColumnId;
 }
