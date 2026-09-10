@@ -5,6 +5,7 @@ import type { EmailAttachment } from '@/modules/email/components/email-row-card'
 import {
   getEmailInlineImageCid,
   getInlineEmailImageSources,
+  loadInlineEmailImageData,
   resolveZohoInlineImageUrl,
 } from '@/modules/email/lib/email-attachments';
 import {
@@ -188,14 +189,40 @@ function EmailHtmlBody({
     [attachmentKey]
   );
 
-  const frameDocument = useMemo(
-    () =>
-      buildEmailFrameDocument({
-        bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl),
-        apiOrigin: getApiOrigin(),
-      }),
-    [stableAttachments, inlineImageBaseUrl, sourceHtml]
+  // Built asynchronously because inline images are fetched here rather than by
+  // the frame — see `loadInlineEmailImageData`. The body without them is
+  // rendered first so text is never gated on an image request.
+  const [frameDocument, setFrameDocument] = useState(() =>
+    buildEmailFrameDocument({
+      bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl),
+      apiOrigin: getApiOrigin(),
+    })
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const build = async (inlineImages?: ReadonlyMap<string, string>) =>
+      buildEmailFrameDocument({
+        bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl, inlineImages),
+        apiOrigin: getApiOrigin(),
+      });
+
+    void (async () => {
+      setFrameDocument(await build());
+      const sources = getInlineEmailImageSources(
+        stableAttachments,
+        import.meta.env.VITE_API_BASE_URL
+      );
+      if (sources.size === 0) return;
+
+      const inlineImages = await loadInlineEmailImageData(sources, controller.signal);
+      if (controller.signal.aborted || inlineImages.size === 0) return;
+      setFrameDocument(await build(inlineImages));
+    })();
+
+    return () => controller.abort();
+  }, [stableAttachments, inlineImageBaseUrl, sourceHtml]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     // Only this frame's own reports: the message channel is shared with every
@@ -246,7 +273,8 @@ function getApiOrigin(): string | null {
 function prepareEmailBody(
   value: string,
   attachments: EmailAttachment[],
-  inlineImageBaseUrl?: string | null
+  inlineImageBaseUrl?: string | null,
+  inlineImages?: ReadonlyMap<string, string>
 ): string {
   if (typeof window === 'undefined') return '';
 
@@ -256,7 +284,7 @@ function prepareEmailBody(
   // `<head>` and lost when the body is serialized back out.
   const document = new DOMParser().parseFromString(`<body>${clean}</body>`, 'text/html');
 
-  resolveInlineImages(document, attachments, inlineImageBaseUrl);
+  resolveInlineImages(document, attachments, inlineImageBaseUrl, inlineImages);
   applyLinkAttributes(document);
   linkifyTextNodes(document);
   markQuotedEmailContent(document);
@@ -274,12 +302,15 @@ function applyLinkAttributes(document: Document) {
 function resolveInlineImages(
   document: Document,
   attachments: EmailAttachment[],
-  inlineImageBaseUrl?: string | null
+  inlineImageBaseUrl?: string | null,
+  inlineImages?: ReadonlyMap<string, string>
 ) {
-  const inlineImageSources = getInlineEmailImageSources(
-    attachments,
-    import.meta.env.VITE_API_BASE_URL
-  );
+  // Prefer the fetched `data:` URI; the API URL is only a fallback for the
+  // first render, before the bytes have arrived.
+  const inlineImageSources =
+    inlineImages && inlineImages.size > 0
+      ? inlineImages
+      : getInlineEmailImageSources(attachments, import.meta.env.VITE_API_BASE_URL);
 
   document.body
     .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img, source')

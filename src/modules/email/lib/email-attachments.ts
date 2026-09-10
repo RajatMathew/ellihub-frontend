@@ -144,3 +144,62 @@ export function resolveZohoInlineImageUrl(
   target.search = parsedSource.search;
   return target.toString();
 }
+
+/** Bytes we are willing to inline into one message's frame document. */
+const MAX_INLINED_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Fetches inline images and returns them as `data:` URIs.
+ *
+ * The message renders inside a sandboxed frame with no `allow-same-origin`, so
+ * its document has a null origin — and a null-origin document sends no cookies.
+ * Verified directly: the same image URL carries the session cookie when the
+ * page requests it and carries nothing when the frame does, so every
+ * authenticated attachment URL inside the frame comes back 401 and draws an
+ * empty box.
+ *
+ * Fetching here, in the parent, is what makes them load: the request is a
+ * normal same-site one with credentials, and the bytes travel into the frame as
+ * data rather than as a URL it would have to authenticate for itself.
+ */
+export async function loadInlineEmailImageData(
+  sources: ReadonlyMap<string, string>,
+  signal?: AbortSignal
+): Promise<Map<string, string>> {
+  const resolved = new Map<string, string>();
+  if (sources.size === 0) return resolved;
+
+  // One fetch per distinct URL — a content id and a filename often point at the
+  // same attachment.
+  const byUrl = new Map<string, string[]>();
+  for (const [key, url] of sources) {
+    byUrl.set(url, [...(byUrl.get(url) ?? []), key]);
+  }
+
+  let inlinedBytes = 0;
+  await Promise.all(
+    [...byUrl].map(async ([url, keys]) => {
+      try {
+        const response = await fetch(url, { credentials: 'include', signal });
+        if (!response.ok) return;
+
+        const blob = await response.blob();
+        if (inlinedBytes + blob.size > MAX_INLINED_IMAGE_BYTES) return;
+        inlinedBytes += blob.size;
+
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        for (const key of keys) resolved.set(key, dataUrl);
+      } catch {
+        // A missing or unreadable inline image is not worth failing the message
+        // over; it renders as it would have without this step.
+      }
+    })
+  );
+
+  return resolved;
+}
