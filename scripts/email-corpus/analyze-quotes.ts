@@ -20,6 +20,8 @@
  *   bun scripts/email-corpus/analyze-quotes.ts [--corpus PATH] [--samples N]
  */
 
+import { unlink } from 'node:fs/promises';
+
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 // Resource loading OFF. Real bodies reference remote images, stylesheets and
@@ -151,13 +153,28 @@ function classify(html: string): Result {
 }
 
 function parseArgs(argv: string[]) {
-  const corpusIndex = argv.indexOf('--corpus');
-  const samplesIndex = argv.indexOf('--samples');
+  const value = (flag: string) =>
+    argv.indexOf(flag) >= 0 ? argv[argv.indexOf(flag) + 1] : undefined;
   return {
-    corpus: corpusIndex >= 0 ? (argv[corpusIndex + 1] ?? DEFAULT_CORPUS) : DEFAULT_CORPUS,
-    samples: samplesIndex >= 0 ? Number(argv[samplesIndex + 1]) : DEFAULT_SAMPLES,
+    corpus: value('--corpus') ?? DEFAULT_CORPUS,
+    samples: Number(value('--samples') ?? DEFAULT_SAMPLES),
+    skip: Number(value('--skip') ?? 0),
+    limit: Number(value('--limit') ?? Number.POSITIVE_INFINITY),
+    isWorker: argv.includes('--worker'),
+    chunk: Number(value('--chunk') ?? DEFAULT_CHUNK),
   };
 }
+
+/**
+ * Bodies per worker process.
+ *
+ * The corpus is analysed in chunks, each in a fresh process, because happy-dom
+ * retains every document it parses: a single long-lived run grows past a
+ * gigabyte and then thrashes, which looked exactly like a hang. Individual
+ * chunks were always fast — 200 bodies in under two seconds — so the fix is to
+ * stop asking one process to hold all seventeen thousand.
+ */
+const DEFAULT_CHUNK = 1500;
 
 function percent(count: number, total: number): string {
   return total === 0 ? '0.0%' : `${((count / total) * 100).toFixed(1)}%`;
@@ -173,14 +190,124 @@ function table(title: string, rows: Array<[string, number]>, total: number) {
   }
 }
 
-async function main() {
-  const { corpus, samples } = parseArgs(process.argv.slice(2));
+/** Worker: analyse one slice of the corpus and append its rows to the JSONL. */
+async function runWorker(options: ReturnType<typeof parseArgs>) {
+  const { corpus, skip, limit } = options;
+  // Its own file: `Bun.file().writer()` truncates, so workers sharing one path
+  // overwrite each other from position zero and leave torn lines behind.
+  const rows = Bun.file(partPath(detectorName, skip)).writer();
+  const stream = Bun.file(corpus).stream();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let index = 0;
+  let analysed = 0;
 
-  // Counters and bounded samples only. An earlier version retained a result
-  // object per body and was killed by the OS partway through the corpus.
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    const position = index++;
+    if (position < skip || analysed >= limit) return;
+
+    const row = JSON.parse(line) as CorpusRow;
+    if (!row.bodyHtml) {
+      rows.write(`${JSON.stringify({ id: row.id, outcome: 'text-only' })}\n`);
+      analysed += 1;
+      return;
+    }
+
+    const result = classify(row.bodyHtml);
+    result.id = row.id;
+    rows.write(`${JSON.stringify(result)}\n`);
+    analysed += 1;
+  };
+
+  for await (const chunk of stream) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) handleLine(line);
+    if (analysed >= limit) break;
+  }
+  if (buffer.trim() && analysed < limit) handleLine(buffer);
+  await rows.end();
+}
+
+function resultsPath(name: string) {
+  return `output/email-corpus/quote-analysis-${name}.jsonl`;
+}
+
+function partPath(name: string, skip: number) {
+  return `output/email-corpus/quote-analysis-${name}.part-${skip}.jsonl`;
+}
+
+async function countCorpusLines(corpus: string): Promise<number> {
+  const stream = Bun.file(corpus).stream();
+  const decoder = new TextDecoder();
+  let count = 0;
+  let buffer = '';
+  for await (const chunk of stream) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    count += lines.filter((line) => line.trim()).length;
+  }
+  if (buffer.trim()) count += 1;
+  return count;
+}
+
+/** Driver: run the workers, then read their rows back and print the report. */
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+
+  if (options.isWorker) {
+    await runWorker(options);
+    return;
+  }
+
+  const { corpus, samples, chunk } = options;
+  const output = resultsPath(detectorName);
+  await Bun.write(output, '');
+
+  const totalLines = await countCorpusLines(corpus);
+  const parts: string[] = [];
+  for (let skip = 0; skip < totalLines; skip += chunk) {
+    const worker = Bun.spawn(
+      [
+        'bun',
+        'scripts/email-corpus/analyze-quotes.ts',
+        '--worker',
+        '--detector',
+        detectorName,
+        '--corpus',
+        corpus,
+        '--skip',
+        String(skip),
+        '--limit',
+        String(chunk),
+      ],
+      { stdout: 'inherit', stderr: 'inherit' }
+    );
+    const code = await worker.exited;
+    if (code !== 0) {
+      console.error(`worker for rows ${skip}+ exited with ${code}`);
+      break;
+    }
+
+    const part = Bun.file(partPath(detectorName, skip));
+    parts.push(await part.text());
+    await unlink(partPath(detectorName, skip)).catch(() => {});
+    console.error(`  …${Math.min(skip + chunk, totalLines)}/${totalLines} analysed`);
+  }
+
+  await Bun.write(output, parts.join(''));
+
+  await report(output, samples);
+}
+
+async function report(path: string, samples: number) {
   const markerCounts = new Map<string, number>();
-  const outcomeCounts = new Map<Outcome, number>();
+  const outcomeCounts = new Map<string, number>();
   const bucketSamples = new Map<string, Result[]>();
+  const suspicious = { missed: 0, swallowed: 0, threw: 0 };
   let total = 0;
   let skipped = 0;
 
@@ -198,34 +325,25 @@ async function main() {
     if (bucket.length < samples) bucket.push(result);
     bucketSamples.set(name, bucket);
   };
-  const suspicious = { missed: 0, swallowed: 0, threw: 0 };
 
-  const report = Bun.file(`output/email-corpus/quote-analysis-${detectorName}.jsonl`).writer();
-
-  const file = Bun.file(corpus);
-  const stream = file.stream();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  const handleLine = (line: string) => {
-    if (!line.trim()) return;
-    const row = JSON.parse(line) as CorpusRow;
-    const html = row.bodyHtml;
-    if (!html) {
+  for (const line of (await Bun.file(path).text()).split('\n')) {
+    if (!line.trim()) continue;
+    const result = JSON.parse(line) as Result;
+    if (result.outcome === ('text-only' as Outcome)) {
       skipped += 1;
-      return;
+      continue;
     }
 
-    const result = classify(html);
-    result.id = row.id;
     total += 1;
-
-    for (const marker of result.markers) {
+    for (const marker of result.markers ?? []) {
       markerCounts.set(marker, (markerCounts.get(marker) ?? 0) + 1);
     }
     outcomeCounts.set(result.outcome, (outcomeCounts.get(result.outcome) ?? 0) + 1);
 
-    if (result.outcome === 'no-quote-found' && result.markers.some((m) => QUOTE_MARKERS.has(m))) {
+    if (
+      result.outcome === 'no-quote-found' &&
+      (result.markers ?? []).some((m) => QUOTE_MARKERS.has(m))
+    ) {
       suspicious.missed += 1;
       sampleBucket('markers present, nothing collapsed', result);
     }
@@ -237,27 +355,7 @@ async function main() {
       suspicious.threw += 1;
       sampleBucket('threw', result);
     }
-
-    report.write(
-      `${JSON.stringify({
-        id: result.id,
-        outcome: result.outcome,
-        visibleChars: result.visibleChars,
-        quotedChars: result.quotedChars,
-      })}\n`
-    );
-
-    if (total % 2000 === 0) console.error(`  …${total} analysed`);
-  };
-
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    for (const line of lines) handleLine(line);
   }
-  if (buffer.trim()) handleLine(buffer);
-  await report.end();
 
   console.log(
     `\nDetector: ${detectorName}` +
@@ -269,7 +367,6 @@ async function main() {
     [...markerCounts].sort((a, b) => b[1] - a[1]),
     total
   );
-
   table(
     'Detector outcome',
     [...outcomeCounts].map(([outcome, count]) => [outcome, count] as [string, number]),
@@ -288,13 +385,11 @@ async function main() {
     console.log(`\n  sample — ${label}`);
     for (const row of rows) {
       const detail = row.error ? ` error=${row.error}` : ` visible=${row.visibleChars}`;
-      console.log(`    ${row.id}${detail}  [${row.markers.join(', ')}]`);
+      console.log(`    ${row.id}${detail}  [${(row.markers ?? []).join(', ')}]`);
     }
   }
 
-  console.log(
-    `\nPer-body results written to output/email-corpus/quote-analysis-${detectorName}.jsonl`
-  );
+  console.log(`\nPer-body results in ${path}`);
 }
 
 await main();
