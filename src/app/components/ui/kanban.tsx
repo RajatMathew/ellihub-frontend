@@ -11,9 +11,12 @@ import {
   KeyboardSensor,
   MeasuringStrategy,
   MouseSensor,
+  pointerWithin,
+  rectIntersection,
   TouchSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DraggableAttributes,
   type DraggableSyntheticListeners,
@@ -179,6 +182,21 @@ function Kanban<T>({
     setActiveId(event.active.id);
   }, []);
 
+  // The pointer decides what is being hovered, not the dragged card's box.
+  //
+  // dnd-kit's default scores every droppable by how much of it the dragged box
+  // overlaps — and every card is a droppable, not only the columns. That score
+  // favours small targets: a card's edge clipping one card in the next column
+  // outscores most of the card sitting over this column's open space, so the
+  // wrong column lit up, the right one never did, and which won depended on
+  // card sizes and edges the user could not see. Whatever is under the cursor
+  // is what a person means. The rectangle fallback is for the keyboard sensor,
+  // which has no pointer to ask.
+  const collisionDetection = React.useCallback<CollisionDetection>((args) => {
+    const underPointer = pointerWithin(args);
+    return underPointer.length > 0 ? underPointer : rectIntersection(args);
+  }, []);
+
   // Escape mid-drag left the card wherever the hover reflow had put it, and left
   // the board thinking a drag was still in progress.
   const handleDragCancel = React.useCallback(() => {
@@ -331,6 +349,7 @@ function Kanban<T>({
     <KanbanContext.Provider value={contextValue}>
       <DndContext
         sensors={sensors}
+        collisionDetection={collisionDetection}
         // Measure the droppables continuously rather than once when the drag
         // starts. The default caches every card's position at pick-up, which is
         // fine for a static list and wrong for this one: the cards animate as
