@@ -192,6 +192,32 @@ test.describe('email body frame isolation', () => {
     expect(reachedParent).toBe(false);
   });
 
+  /**
+   * The short-content case, which the tall-content test above cannot catch: an
+   * iframe defaults to 150px, and measuring the root element's scrollHeight
+   * returns that floor rather than the content height. Every message shorter
+   * than 150px was framed in empty space until this was measured.
+   */
+  test('reports a height below the iframe default for a short body', async ({ page }) => {
+    const height = await page.evaluate(async () => {
+      const { buildEmailFrameDocument, EMAIL_FRAME_SANDBOX } = window.__email;
+      return new Promise<number>((resolve) => {
+        const frame = document.createElement('iframe');
+        frame.setAttribute('sandbox', EMAIL_FRAME_SANDBOX);
+        window.addEventListener('message', (event) => {
+          const data = event.data as Record<string, unknown>;
+          if (data && data.__elliEmailHeight === true) resolve(Number(data.height));
+        });
+        frame.srcdoc = buildEmailFrameDocument({ bodyHtml: '<div>Test body.</div>' });
+        document.body.append(frame);
+        setTimeout(() => resolve(0), 3000);
+      });
+    });
+
+    expect(height).toBeGreaterThan(0);
+    expect(height).toBeLessThan(60);
+  });
+
   test('reports its height so the frame can be sized', async ({ page }) => {
     const height = await page.evaluate(async () => {
       const { buildEmailFrameDocument, EMAIL_FRAME_SANDBOX } = window.__email;

@@ -171,7 +171,9 @@ function EmailHtmlBody({
   inlineImageBaseUrl?: string | null;
 }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const [height, setHeight] = useState(120);
+  // Starts at roughly one line and grows to whatever the frame reports. Starting
+  // tall instead makes every short message visibly collapse on first paint.
+  const [height, setHeight] = useState(24);
 
   // Keyed by content, not by array identity. Callers write
   // `message.attachments ?? []`, so a message without attachments hands us a

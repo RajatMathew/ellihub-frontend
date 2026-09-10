@@ -66,7 +66,10 @@ const FRAME_SCRIPT = `
   var toggle = document.querySelector('[${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]');
 
   function report() {
-    var height = document.documentElement.scrollHeight || document.body.scrollHeight;
+    // Measured on the body, never on the root element: documentElement's
+    // scrollHeight is clamped to the viewport, so it reported the iframe's own
+    // default 150px for every message however long or short the content was.
+    var height = document.body.scrollHeight;
     if (height > 0) parent.postMessage({ ${EMAIL_IFRAME_HEIGHT_MESSAGE}: true, height: height }, '*');
   }
 
@@ -85,7 +88,7 @@ const FRAME_SCRIPT = `
   report();
   // Images and late layout change the height after first paint; re-measure
   // rather than guessing a settling delay.
-  if (window.ResizeObserver) new ResizeObserver(report).observe(document.documentElement);
+  if (window.ResizeObserver) new ResizeObserver(report).observe(document.body);
   window.addEventListener('load', report);
 })();
 `;
@@ -203,7 +206,9 @@ export function buildEmailFrameDocument(input: {
   apiOrigin?: string | null;
   padding?: string;
 }): string {
-  const padding = input.padding ?? '16px';
+  // Horizontal only. The message card wraps this in its own vertical padding,
+  // and a second set here framed a one-line reply in 64px of empty space.
+  const padding = input.padding ?? '0 16px';
   return `<!DOCTYPE html>
 <html>
 <head>
