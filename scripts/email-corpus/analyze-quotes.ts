@@ -99,7 +99,7 @@ const MARKERS: Array<[string, (html: string) => boolean]> = [
   ['cid: image', (h) => /src=["']?cid:/i.test(h)],
 ];
 
-type Outcome = 'no-quote-found' | 'collapsed' | 'collapsed-almost-everything' | 'error';
+type Outcome = 'no-quote-found' | 'collapsed' | 'collapsed-hiding-signature' | 'error';
 
 type Result = {
   id: string;
@@ -136,9 +136,16 @@ function classify(html: string): Result {
     if (!container) {
       return { id: '', outcome: 'no-quote-found', visibleChars, quotedChars, markers };
     }
-    // Under ~40 visible characters means the toggle is hiding essentially the
-    // whole message — a reader sees a near-empty card and a dot pill.
-    const outcome: Outcome = visibleChars < 40 ? 'collapsed-almost-everything' : 'collapsed';
+    // The defect that matters: something of the sender's own ended up inside
+    // the collapsed run.
+    //
+    // An earlier version flagged "under 40 visible characters" instead, which
+    // measured the wrong thing entirely — the bodies it caught were replies
+    // reading "ohh", "For real" and "whatcha doing", all collapsed correctly.
+    // Terse replies are the common case in a thread, not a bug.
+    const outcome: Outcome = hidesSignature(doc, container)
+      ? 'collapsed-hiding-signature'
+      : 'collapsed';
     return { id: '', outcome, visibleChars, quotedChars, markers };
   } catch (error) {
     return {
@@ -150,6 +157,31 @@ function classify(html: string): Result {
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+/**
+ * Signature markup inside the collapsed run — the sender's own sign-off hidden
+ * behind the toggle. Kept as its own list rather than imported from the
+ * detector so the measurement cannot agree with the implementation by
+ * construction.
+ */
+const SIGNATURE_SELECTORS = [
+  '[class*="gmail_signature"]',
+  '[class*="protonmail_signature"]',
+  '[class*="moz-signature"]',
+  '[id="Signature"]',
+  '[id="signature"]',
+].join(', ');
+
+/**
+ * The *first* signature in document order belongs to whoever wrote this
+ * message; later ones belong to the quoted authors below and are supposed to be
+ * hidden. Only the first ending up inside the collapsed run is a defect.
+ */
+function hidesSignature(doc: Document, container: Element | null): boolean {
+  if (!container) return false;
+  const first = doc.body.querySelector(SIGNATURE_SELECTORS);
+  return first !== null && container.contains(first);
 }
 
 function parseArgs(argv: string[]) {
@@ -347,9 +379,9 @@ async function report(path: string, samples: number) {
       suspicious.missed += 1;
       sampleBucket('markers present, nothing collapsed', result);
     }
-    if (result.outcome === 'collapsed-almost-everything') {
+    if (result.outcome === 'collapsed-hiding-signature') {
       suspicious.swallowed += 1;
-      sampleBucket('collapsed almost everything', result);
+      sampleBucket('hid the sender signature', result);
     }
     if (result.outcome === 'error') {
       suspicious.threw += 1;
@@ -376,7 +408,7 @@ async function report(path: string, samples: number) {
   console.log(
     `\nSuspicious buckets` +
       `\n  quote markers present but nothing collapsed:  ${suspicious.missed}  (${percent(suspicious.missed, total)})` +
-      `\n  collapsed almost the whole message:           ${suspicious.swallowed}  (${percent(suspicious.swallowed, total)})` +
+      `\n  hid the sender's own signature:               ${suspicious.swallowed}  (${percent(suspicious.swallowed, total)})` +
       `\n  threw:                                        ${suspicious.threw}`
   );
 
