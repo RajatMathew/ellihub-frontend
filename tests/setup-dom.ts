@@ -9,6 +9,7 @@
  * passing test here would be worse than no test. Sanitizer behaviour is covered
  * by the Playwright suite instead.
  */
+
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 if (typeof globalThis.document === 'undefined') {

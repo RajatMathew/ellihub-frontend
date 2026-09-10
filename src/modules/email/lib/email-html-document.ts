@@ -22,6 +22,7 @@
  * stripping stylesheets would flatten almost every message we actually
  * receive. The iframe is what makes keeping them safe.
  */
+
 import DOMPurify from 'dompurify';
 
 export const EMAIL_QUOTED_CONTENT_ATTRIBUTE = 'data-elli-quoted-content';

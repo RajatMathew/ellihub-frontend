@@ -1,6 +1,5 @@
-import { describe, expect, test } from 'bun:test';
-
 import axios from 'axios';
+import { describe, expect, test } from 'bun:test';
 
 import {
   isEmailReconnectRequiredError,

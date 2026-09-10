@@ -10,14 +10,22 @@
  * structure genuinely is not enough, and do not copy the output anywhere.
  *
  *   bun scripts/email-corpus/show-body.ts <id> [--corpus PATH] [--depth N] [--raw]
+ *                                          [--detector current|v0]
  */
+
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 if (typeof globalThis.document === 'undefined') GlobalRegistrator.register();
 
-const { markQuotedEmailContent, QUOTED_CONTENT_ATTRIBUTE, QUOTE_TOGGLE_ATTRIBUTE } = await import(
-  './detector-v0'
-);
+/** Defaults to the detector the app ships; `--detector v0` inspects the baseline. */
+const detectorName = process.argv.includes('--detector')
+  ? process.argv[process.argv.indexOf('--detector') + 1]
+  : 'current';
+
+const { markQuotedEmailContent, QUOTED_CONTENT_ATTRIBUTE, QUOTE_TOGGLE_ATTRIBUTE } =
+  detectorName === 'v0'
+    ? await import('./detector-v0')
+    : await import('../../src/modules/email/lib/email-quoted-content');
 
 const DEFAULT_CORPUS = 'output/email-corpus/bodies.jsonl';
 
@@ -99,7 +107,9 @@ async function main() {
   }
 
   const html = row.bodyHtml ?? '';
-  console.log(`id=${row.id}  service=${row.serviceType}  bytes=${html.length}`);
+  console.log(
+    `id=${row.id}  service=${row.serviceType}  bytes=${html.length}  detector=${detectorName}`
+  );
 
   if (raw) {
     console.log('\n--- raw body (real correspondence — do not copy) ---\n');

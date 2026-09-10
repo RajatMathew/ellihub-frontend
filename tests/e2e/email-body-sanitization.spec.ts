@@ -158,7 +158,10 @@ test.describe('email body frame isolation', () => {
 
   test('locks the frame down with a content security policy', async ({ page }) => {
     const document = await page.evaluate(() =>
-      window.__email.buildEmailFrameDocument({ bodyHtml: '<p>x</p>', apiOrigin: 'https://api.test' })
+      window.__email.buildEmailFrameDocument({
+        bodyHtml: '<p>x</p>',
+        apiOrigin: 'https://api.test',
+      })
     );
 
     expect(document).toContain("default-src 'none'");

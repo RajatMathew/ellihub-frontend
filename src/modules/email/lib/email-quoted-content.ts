@@ -144,8 +144,8 @@ const HEADER_LABELS = new Set([
  */
 const MAX_HEADER_BLOCK_CHARS = 600;
 
-/** Bound on the header scan, so a pathological subtree cannot dominate a render. */
-const MAX_HEADER_SCAN_ELEMENTS = 400;
+/** Bound on the label scan, so a pathological subtree cannot dominate a render. */
+const MAX_HEADER_SCAN_ELEMENTS = 4000;
 
 /**
  * A body with nothing at all above the quote is a bare forward: collapsing it
@@ -300,7 +300,17 @@ function hasSenderContentBefore(element: Element): boolean {
   return kinds.slice(0, firstQuote).some((kind) => kind === 'sender' || kind === 'signature');
 }
 
+const classificationCache = new WeakMap<Element, ChildKind>();
+
 function classifyChild(element: Element): ChildKind {
+  const cached = classificationCache.get(element);
+  if (cached) return cached;
+  const kind = computeChildKind(element);
+  classificationCache.set(element, kind);
+  return kind;
+}
+
+function computeChildKind(element: Element): ChildKind {
   if (isSignature(element)) return 'signature';
   if (isQuoteContainer(element)) return 'quote-container';
   if (isQuoteBoundary(element)) return 'quote-boundary';
@@ -379,23 +389,48 @@ function isAttribution(element: Element): boolean {
  * it lets a wrapper stand in for the header it contains.
  */
 function containsHeaderBlock(element: Element): boolean {
-  const candidates = [element, ...Array.from(element.querySelectorAll('*'))];
-  for (const candidate of candidates.slice(0, MAX_HEADER_SCAN_ELEMENTS)) {
-    if (normalize(candidate.textContent ?? '').length > MAX_HEADER_BLOCK_CHARS) continue;
-    if (countHeaderLabels(candidate) >= 3) return true;
+  const labelNodes = findHeaderLabelNodes(element);
+  if (new Set(labelNodes.map(([, label]) => label)).size < 3) return false;
+
+  // Walk up from the first label to the smallest element that holds three of
+  // them: that is the header block, and its size is what the ceiling judges.
+  //
+  // Deliberately not a scan of every descendant. That version called
+  // `querySelectorAll` once per candidate, which is quadratic in the size of
+  // the body — on a large real message it stalled for minutes, and it would
+  // have done the same on the render path, not just in the harness.
+  const first = labelNodes[0]?.[0];
+  if (!first) return false;
+
+  for (
+    let ancestor = first.parentElement;
+    ancestor && ancestor !== element.parentElement;
+    ancestor = ancestor.parentElement
+  ) {
+    const labels = new Set(
+      labelNodes.filter(([node]) => ancestor.contains(node)).map(([, label]) => label)
+    );
+    if (labels.size < 3) continue;
+    return normalize(ancestor.textContent ?? '').length <= MAX_HEADER_BLOCK_CHARS;
   }
+
   return false;
 }
 
-function countHeaderLabels(element: Element): number {
-  const labels = new Set<string>();
-  for (const node of element.querySelectorAll('b, strong, span, font')) {
+/** Every `From:`-style label under `element`, found in a single pass. */
+function findHeaderLabelNodes(element: Element): Array<[Element, string]> {
+  const found: Array<[Element, string]> = [];
+  const nodes = element.querySelectorAll('b, strong, span, font');
+
+  for (let index = 0; index < nodes.length && index < MAX_HEADER_SCAN_ELEMENTS; index += 1) {
+    const node = nodes[index]!;
     const text = (node.textContent ?? '').trim();
     if (!text.endsWith(':') || text.length > 20) continue;
     const label = text.replace(/\s*:$/, '').toLowerCase();
-    if (HEADER_LABELS.has(label)) labels.add(label);
+    if (HEADER_LABELS.has(label)) found.push([node, label]);
   }
-  return labels.size;
+
+  return found;
 }
 
 /**
@@ -457,8 +492,6 @@ function visibleCharsBefore(start: Node, body: Node): number {
   const quoted = normalize(collectFrom(start).join(' ')).length;
   return Math.max(total - quoted, 0);
 }
-
-
 
 /** Text of `start` and everything after it, for measuring what a collapse hides. */
 function collectFrom(start: Node): string[] {

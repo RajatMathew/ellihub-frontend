@@ -19,6 +19,7 @@
  *
  *   bun scripts/email-corpus/analyze-quotes.ts [--corpus PATH] [--samples N]
  */
+
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 // Resource loading OFF. Real bodies reference remote images, stylesheets and
@@ -96,11 +97,7 @@ const MARKERS: Array<[string, (html: string) => boolean]> = [
   ['cid: image', (h) => /src=["']?cid:/i.test(h)],
 ];
 
-type Outcome =
-  | 'no-quote-found'
-  | 'collapsed'
-  | 'collapsed-almost-everything'
-  | 'error';
+type Outcome = 'no-quote-found' | 'collapsed' | 'collapsed-almost-everything' | 'error';
 
 type Result = {
   id: string;
@@ -139,8 +136,7 @@ function classify(html: string): Result {
     }
     // Under ~40 visible characters means the toggle is hiding essentially the
     // whole message — a reader sees a near-empty card and a dot pill.
-    const outcome: Outcome =
-      visibleChars < 40 ? 'collapsed-almost-everything' : 'collapsed';
+    const outcome: Outcome = visibleChars < 40 ? 'collapsed-almost-everything' : 'collapsed';
     return { id: '', outcome, visibleChars, quotedChars, markers };
   } catch (error) {
     return {
@@ -296,7 +292,9 @@ async function main() {
     }
   }
 
-  console.log(`\nPer-body results written to output/email-corpus/quote-analysis-${detectorName}.jsonl`);
+  console.log(
+    `\nPer-body results written to output/email-corpus/quote-analysis-${detectorName}.jsonl`
+  );
 }
 
 await main();
