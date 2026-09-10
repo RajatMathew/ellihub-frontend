@@ -374,7 +374,7 @@ test('an immediate second reply targets the first reply real cache id', async ({
 
   const originalMessage = page.getByRole('article').first();
   await originalMessage.getByRole('button', { name: 'Reply', exact: true }).click();
-  await page.getByPlaceholder('Write your reply...').fill('Reply 1');
+  await page.getByRole('textbox', { name: 'Reply message' }).fill('Reply 1');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect.poll(() => api.getReplyMessageIds()).toEqual([ORIGINAL_MESSAGE_ID]);
@@ -385,7 +385,7 @@ test('an immediate second reply targets the first reply real cache id', async ({
     .getByRole('button', { name: 'Expand message from Mailbox', exact: true })
     .click();
   await firstReply.getByRole('button', { name: 'Reply', exact: true }).click();
-  await page.getByPlaceholder('Write your reply...').fill('Reply 2');
+  await page.getByRole('textbox', { name: 'Reply message' }).fill('Reply 2');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect
@@ -469,15 +469,18 @@ test('does not autosave while composing and saves once when an unsent email is c
 
   await page.goto('/app/email/accounts/mailbox');
   await page.getByRole('button', { name: 'New email' }).click();
-  await page.getByPlaceholder('Add a subject').fill('Quarterly update');
+  // elli-ui#807 — composing happens inline in the reading pane, so the composer
+  // is a labelled region rather than a dialog.
+  const composer = page.getByRole('region', { name: 'New email' });
+  await composer.getByPlaceholder('Add a subject').fill('Quarterly update');
 
   await page.waitForTimeout(1_600);
   expect(api.getDraftSaveRequests()).toBe(0);
 
-  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await composer.getByRole('button', { name: 'Close compose' }).click();
 
   await expect.poll(() => api.getDraftSaveRequests()).toBe(1);
-  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(composer).toBeHidden();
 });
 
 test('closes an unfinished new email without saving it as a draft', async ({ page }) => {
@@ -485,15 +488,15 @@ test('closes an unfinished new email without saving it as a draft', async ({ pag
 
   await page.goto('/app/email/accounts/mailbox');
   await page.getByRole('button', { name: 'New email' }).click();
-  await page.getByPlaceholder('recipient@example.com').fill('someone@outlook');
-  await page.getByPlaceholder('Add a subject').fill('Quarterly update');
+  const composer = page.getByRole('region', { name: 'New email' });
+  await composer.getByRole('textbox', { name: 'To *', exact: true }).fill('someone@outlook');
+  await composer.getByPlaceholder('Add a subject').fill('Quarterly update');
 
   await page.waitForTimeout(1_600);
   expect(api.getDraftSaveRequests()).toBe(0);
 
-  const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Close' }).click();
-  await expect(dialog).toBeHidden();
+  await composer.getByRole('button', { name: 'Close compose' }).click();
+  await expect(composer).toBeHidden();
   expect(api.getDraftSaveRequests()).toBe(0);
   expect(api.getDraftDiscardRequests()).toBe(0);
 });
@@ -512,13 +515,14 @@ test('removes a sent draft from the Drafts list before the send request finishes
   const draftRow = page.getByRole('button', { name: /Mailbox: Draft ready/ });
   await expect(draftRow).toBeVisible();
   await draftRow.click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Send', exact: true }).click();
+  const composer = page.getByRole('region', { name: 'Edit draft' });
+  await composer.getByRole('button', { name: 'Send', exact: true }).click();
 
   await expect.poll(() => api.getDraftSendRequests()).toBe(1);
   await expect(draftRow).toBeHidden();
 
   api.releaseDraftSend();
-  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(composer).toBeHidden();
 });
 
 test('prepares and uploads an attachment immediately without validating partial recipients', async ({
@@ -528,8 +532,9 @@ test('prepares and uploads an attachment immediately without validating partial 
 
   await page.goto('/app/email/accounts/mailbox');
   await page.getByRole('button', { name: 'New email' }).click();
-  await page.getByPlaceholder('recipient@example.com').fill('someone@outlook');
-  await page.locator('input[type="file"]').setInputFiles({
+  const composer = page.getByRole('region', { name: 'New email' });
+  await composer.getByRole('textbox', { name: 'To *', exact: true }).fill('someone@outlook');
+  await composer.locator('input[type="file"]').setInputFiles({
     name: 'proposal.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('Proposal'),
@@ -541,10 +546,10 @@ test('prepares and uploads an attachment immediately without validating partial 
   expect(payload?.attachments).toEqual([
     expect.objectContaining({ name: 'proposal.txt', mimeType: 'text/plain' }),
   ]);
-  await expect(page.getByText('Ready', { exact: true })).toBeVisible();
+  await expect(composer.getByText('Ready', { exact: true })).toBeVisible();
   await expect(page.getByText(/invalid email/i)).toHaveCount(0);
 
-  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('dialog')).toBeHidden();
+  await composer.getByRole('button', { name: 'Close compose' }).click();
+  await expect(composer).toBeHidden();
   await expect.poll(() => api.getDraftDiscardRequests()).toBe(1);
 });

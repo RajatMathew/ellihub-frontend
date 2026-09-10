@@ -12,6 +12,10 @@ import {
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useShowEmailAvatars } from '@/modules/email/hooks/use-email-avatar-visibility';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import {
+  getMeetingResponseLabel,
+  MEETING_RESPONSE_ICONS,
+} from '@/modules/email/lib/email-meeting-response';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
@@ -30,7 +34,10 @@ export type EmailListItem = {
   mailbox: string;
   unread: boolean;
   flagged?: boolean;
+  /** Provider categories mirrored from Outlook/Gmail. Read-only. */
   keywords?: string[];
+  /** Elli's own tags applied to this message. */
+  tags?: string[];
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
   selected?: boolean;
@@ -85,6 +92,7 @@ export type EmailThreadMessage = {
   sentAt: string;
   folderId?: string | null;
   keywords?: string[];
+  tags?: string[];
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
   deliveryStatus?: 'sending' | 'failed' | 'sent';
@@ -173,6 +181,14 @@ export function EmailRowCard({
   const primaryProject = projectReferences[0];
   const extraProjectCount = projectReferences.length - 1;
   const showCheckbox = isChecked || bulkSelectActive;
+  // Outlook mails the organiser an "Accepted: <meeting>" notification with an
+  // empty body, so the row would otherwise be a subject over a blank line with
+  // nothing saying who accepted (zubblehq/elli-ui#876). Say it where the
+  // preview would have been, in the wording the thread strip uses.
+  const meetingResponse = email.preview.trim() ? undefined : email.meetingResponse;
+  const MeetingResponseIcon = meetingResponse
+    ? MEETING_RESPONSE_ICONS[meetingResponse.status]
+    : null;
 
   useEffect(() => {
     if (!isSelected) return;
@@ -198,7 +214,11 @@ export function EmailRowCard({
         type="button"
         className="flex w-full cursor-pointer gap-2.5 px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         aria-current={isSelected ? 'true' : undefined}
-        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}`}
+        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
+          email.attachmentCount
+            ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
+            : ''
+        }`}
         onPointerEnter={onPrefetch}
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button === 0) onSelect?.();
@@ -265,16 +285,6 @@ export function EmailRowCard({
                 ({email.threadMessageCount})
               </span>
             )}
-            {Boolean(email.attachmentCount) && (
-              <span
-                className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
-                title={`${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`}
-              >
-                <span aria-hidden="true">·</span>
-                <Paperclip aria-hidden="true" className="size-3" strokeWidth={1.8} />
-                {email.attachmentCount}
-              </span>
-            )}
             <span className="ms-auto flex shrink-0 items-center gap-1.5">
               <span
                 className={cn(
@@ -303,10 +313,23 @@ export function EmailRowCard({
               email.unread ? 'text-foreground/80' : 'text-muted-foreground'
             )}
           >
-            {highlightQuery ? highlightText(email.preview, highlightQuery) : email.preview}
+            {meetingResponse && MeetingResponseIcon ? (
+              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 align-bottom">
+                <MeetingResponseIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.8}
+                />
+                <span className="truncate">{getMeetingResponseLabel(meetingResponse)}</span>
+              </span>
+            ) : highlightQuery ? (
+              highlightText(email.preview, highlightQuery)
+            ) : (
+              email.preview
+            )}
           </span>
 
-          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 pe-12">
             {isOtherClassified && (
               <span className="rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
                 Other
@@ -339,7 +362,7 @@ export function EmailRowCard({
           </span>
 
           {primaryProject && (
-            <span className="mt-1.5 flex min-w-0 items-center gap-1.5">
+            <span className="mt-1.5 flex min-w-0 items-center gap-1.5 pe-12">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
@@ -391,6 +414,20 @@ export function EmailRowCard({
             </span>
           )}
         </span>
+
+        {/* Bottom-right corner, matching the button's own px-3/py-2.5 inset.
+            Absolute against the relative <article>, but rendered INSIDE the
+            button so the corner stays part of the row's click target
+            (zubblehq/elli-ui#858). */}
+        {Boolean(email.attachmentCount) && (
+          <span
+            aria-hidden="true"
+            className="absolute bottom-2.5 right-3 inline-flex items-center gap-1 text-xs text-muted-foreground"
+          >
+            <Paperclip className="size-3" strokeWidth={1.8} />
+            {email.attachmentCount}
+          </span>
+        )}
       </button>
 
       {isCheckable && showAvatars && (

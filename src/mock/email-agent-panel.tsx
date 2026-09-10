@@ -196,7 +196,10 @@ type RfqPublishAgentAction = {
 };
 
 type RfqAgentAction =
-  QuoteUploadAgentAction | QuoteRemoveAgentAction | VendorRemoveAgentAction | RfqPublishAgentAction;
+  | QuoteUploadAgentAction
+  | QuoteRemoveAgentAction
+  | VendorRemoveAgentAction
+  | RfqPublishAgentAction;
 
 type MockAgentPanelProps = {
   open: boolean;
@@ -271,6 +274,7 @@ function getEmailContext(
             body: email.threadMessages?.map((message) => message.body).flat() ?? email.body ?? [],
             receivedAt: email.receivedAt,
             keywords: email.keywords ?? [],
+            tags: email.tags ?? [],
             attachments: collectActiveThreadAttachments(email),
           }
         : null,
@@ -282,9 +286,10 @@ function getEmailContext(
       sender: { name: item.senderName, address: item.senderEmail },
       preview: item.preview,
       keywords: item.keywords ?? [],
+      tags: item.tags ?? [],
     })),
     folders: folders.map((folder) => ({ id: folder.id, key: folder.key, name: folder.name })),
-    tags: tags.map((tag) => ({ id: tag.id, providerId: tag.providerId, name: tag.name })),
+    tags: tags.map((tag) => ({ id: tag.id, name: tag.name, source: tag.source })),
   };
 }
 
@@ -746,13 +751,17 @@ export function EmailAgentPanel({
         return `Email moved to ${target.name}${bulkSuffix}.`;
       }
       if (action.action === 'tag') {
-        const matchedTags = tags.filter((tag) =>
-          (action.tagNames ?? []).some((name) => name.toLowerCase() === tag.name.toLowerCase())
+        // Only Elli's own tags can be applied; provider categories are read-only.
+        const matchedTags = tags.filter(
+          (tag) =>
+            tag.source === 'custom' &&
+            (action.tagNames ?? []).some((name) => name.toLowerCase() === tag.name.toLowerCase())
         );
         if (!matchedTags.length) throw new Error('I could not match the requested tag.');
-        const add = matchedTags.map((tag) => tag.providerId);
+        const add = matchedTags.map((tag) => tag.id);
+        const addNames = matchedTags.map((tag) => tag.name);
         await runBulkAgent(messageIds, (messageId) =>
-          tagsMutation.mutateAsync({ accountId, messageId, add })
+          tagsMutation.mutateAsync({ accountId, messageId, add, addNames })
         );
         return `Added ${matchedTags.map((tag) => tag.name).join(', ')}${bulkSuffix}.`;
       }

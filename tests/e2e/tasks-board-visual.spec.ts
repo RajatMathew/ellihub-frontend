@@ -384,3 +384,51 @@ test('a selected filter pill leaves its assignee avatar the colour it already wa
 
   expect((await faceOfTheAvatar()).equals(unselected)).toBe(true);
 });
+
+test('an assignee wears the mailbox colours, and an empty slot wears a person', async ({
+  page,
+}) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Both halves of this were written on separate branches that changed the same
+  // few lines of TaskAssigneeAvatar, so a careless merge could keep one and drop
+  // the other with nothing looking wrong. This asserts both at once.
+
+  // #798: a named person is coloured by outlook-avatar, which sets the colour
+  // inline — a theme class would leave backgroundColor empty on the element.
+  const named = page
+    .getByRole('button', { name: /Assigned to Cari Alvarez/ })
+    .first()
+    .locator('[data-slot="avatar-fallback"]');
+  await expect(named).toBeVisible();
+  await expect(named).toHaveText('CA');
+  const inlineColour = await named.evaluate((el) => (el as HTMLElement).style.backgroundColor);
+  expect(inlineColour).not.toBe('');
+
+  // #818: an unassigned slot draws a person, not the dash that read as a minus
+  // sign and so as a control that removes something. Taken from the dialog: every
+  // task on the board fixture has somebody on it.
+  await page.getByRole('button', { name: 'New task' }).first().click();
+  const empty = page
+    .getByRole('dialog')
+    .first()
+    .getByRole('combobox')
+    .locator('[data-slot="avatar-fallback"]');
+  await expect(empty).toBeVisible();
+  await expect(empty.locator('svg')).toHaveCount(1);
+  await expect(empty).not.toHaveText('—');
+  // It keeps the theme's grey rather than borrowing a person's colour.
+  const emptyColour = await empty.evaluate((el) => (el as HTMLElement).style.backgroundColor);
+  expect(emptyColour).toBe('');
+
+  await page.screenshot({
+    path: 'output/visual/task-assignee-avatars.png',
+    animations: 'disabled',
+  });
+});

@@ -54,7 +54,7 @@ export function TaskFilterBar({
             className="h-7 rounded-full px-2 pe-3 text-xs"
             onClick={() => onChange(active ? null : id)}
           >
-            <TaskAssigneeAvatar id={id} name={name} size="sm" />
+            <TaskAssigneeAvatar name={name} size="sm" />
             <span className="truncate">{name.split(' ')[0]}</span>
           </Button>
         );

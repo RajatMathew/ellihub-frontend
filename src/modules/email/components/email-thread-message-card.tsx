@@ -87,7 +87,10 @@ export function EmailThreadMessageCard({
   const hasBodyContent = hasVisibleEmailBodyContent(message.body);
   const isSingleAttachmentOnly =
     visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
-  const tags = message.keywords ?? [];
+  // Elli's own tags and the mailbox's own categories are different things, so
+  // they are drawn differently: the categories are read-only and say so.
+  const elliTags = message.tags ?? [];
+  const providerCategories = message.keywords ?? [];
   const canReply = isReplyableEmailMessage(message);
   // An in-flight/failed message shows its DeliveryStatus badge in the slot
   // where the timestamp normally sits; its sentAt is only the 'Sending...'
@@ -187,14 +190,23 @@ export function EmailThreadMessageCard({
               <div className={cn(canCollapse && 'pointer-events-auto w-fit max-w-full')}>
                 <EmailRecipientDetails message={message} />
               </div>
-              {tags.length > 0 && (
+              {(elliTags.length > 0 || providerCategories.length > 0) && (
                 <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
-                  {tags.map((tag) => (
+                  {elliTags.map((tag) => (
                     <span
-                      key={tag}
-                      className="max-w-36 truncate rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                      key={`tag-${tag}`}
+                      className="max-w-36 truncate rounded-sm border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-foreground"
                     >
                       {tag}
+                    </span>
+                  ))}
+                  {providerCategories.map((category) => (
+                    <span
+                      key={`category-${category}`}
+                      title="Mailbox category, set in Outlook or Gmail. Read-only in Elli."
+                      className="max-w-36 truncate rounded-sm border border-border border-dashed bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                    >
+                      {category}
                     </span>
                   ))}
                 </div>

@@ -1,13 +1,15 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
-import { Textarea } from '@/app/components/ui/textarea';
+import { EmailRichTextEditor } from '@/modules/email/components/email-rich-text-editor';
 import type { EmailThreadMessage } from '@/modules/email/components/email-row-card';
 import { getEmailAddressListError } from '@/modules/email/lib/email-addresses';
+import { isEmptyEmailHtml } from '@/modules/email/lib/email-rich-text';
 import { Paperclip, Send, Trash2 } from 'lucide-react';
 
 export type EmailReplyDraft = {
+  /** Rich-text HTML, sent with `bodyType: 'html'`. */
   body: string;
   to: string;
   cc: string;
@@ -45,18 +47,13 @@ export function EmailReplyComposer({
   const toId = useId();
   const ccId = useId();
   const bccId = useId();
-  const textareaId = useId();
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const canSend = (isForward || body.trim().length > 0) && to.trim().length > 0 && !isSending;
+  const bodyId = useId();
+  const canSend = (isForward || !isEmptyEmailHtml(body)) && to.trim().length > 0 && !isSending;
 
   useEffect(() => {
     // A forward needs a recipient first; a reply already has one.
-    if (isForward) {
-      document.getElementById(toId)?.focus();
-      return;
-    }
-    textareaRef.current?.focus();
-  }, [isForward, toId]);
+    document.getElementById(isForward ? toId : bodyId)?.focus();
+  }, [bodyId, isForward, toId]);
 
   return (
     <form
@@ -64,6 +61,12 @@ export function EmailReplyComposer({
       aria-label={
         isForward ? `Forward message from ${message.senderName}` : `Reply to ${message.senderName}`
       }
+      onKeyDown={(event) => {
+        // Cmd/Ctrl + Enter sends, matching the new-message composer.
+        if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
+        event.preventDefault();
+        if (canSend) event.currentTarget.requestSubmit();
+      }}
       onSubmit={async (event) => {
         event.preventDefault();
         const nextErrors = {
@@ -141,18 +144,14 @@ export function EmailReplyComposer({
       </div>
 
       <div className="space-y-3 p-4">
-        <label htmlFor={textareaId} className="sr-only">
-          {isForward ? 'Forward message' : 'Reply message'}
-        </label>
-        <Textarea
-          ref={textareaRef}
-          id={textareaId}
+        <EmailRichTextEditor
+          id={bodyId}
           value={body}
-          rows={6}
+          label={isForward ? 'Forward message' : 'Reply message'}
           placeholder={isForward ? 'Add a message (optional)...' : 'Write your reply...'}
-          className="min-h-36 resize-y border-0 bg-transparent px-0 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
           disabled={isSending}
-          onChange={(event) => setBody(event.target.value)}
+          editorClassName="min-h-36"
+          onChange={setBody}
         />
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">

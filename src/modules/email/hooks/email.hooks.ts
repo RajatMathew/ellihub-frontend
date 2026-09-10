@@ -753,6 +753,17 @@ export const useCreateEmailFolderMutation = () => {
   });
 };
 
+/** A tag change alters both the tag list and every message showing that tag. */
+const refreshEmailTagQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: emailKeys.tags(accountId) }),
+    queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(accountId) }),
+    queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(accountId) }),
+  ]);
+
 export const useCreateEmailTagMutation = () => {
   const queryClient = useQueryClient();
 
@@ -766,15 +777,11 @@ export const useCreateEmailTagMutation = () => {
     onSuccess: async (tag: ConnectedEmailTag, payload) => {
       if (payload.messageId) {
         await emailApi.updateMessageTags(payload.accountId, payload.messageId, {
-          add: [tag.providerId],
+          add: [tag.id],
           remove: [],
         });
       }
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: emailKeys.tags(payload.accountId) }),
-        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
-        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
-      ]);
+      await refreshEmailTagQueries(queryClient, payload.accountId);
       toast.success(payload.messageId ? 'Tag created and applied.' : 'Tag created.');
     },
     onError: (error) => toastApiError(error, 'Failed to create tag.'),
@@ -1059,7 +1066,12 @@ type EmailTagsSnapshot = Array<[QueryKey, EmailMessagePages | undefined]>;
 
 async function applyOptimisticEmailTags(
   queryClient: ReturnType<typeof useQueryClient>,
-  payload: { accountId: string; messageId: string; add?: string[]; remove?: string[] }
+  payload: {
+    accountId: string;
+    messageId: string;
+    addNames?: string[];
+    removeNames?: string[];
+  }
 ): Promise<EmailTagsSnapshot> {
   await Promise.all([
     queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
@@ -1067,8 +1079,10 @@ async function applyOptimisticEmailTags(
   ]);
 
   const snapshots = getMessageQuerySnapshots(queryClient, payload.accountId);
-  const add = new Set(payload.add ?? []);
-  const remove = new Set(payload.remove ?? []);
+  // The caller toggles Elli tags, which live on `tags`. `keywords` holds the
+  // mail provider's own categories and is read-only, so it is never touched.
+  const add = payload.addNames ?? [];
+  const remove = new Set((payload.removeNames ?? []).map((name) => name.toLowerCase()));
   queryClient.setQueriesData<EmailMessagePages>(
     { queryKey: emailKeys.messagesRoot(payload.accountId) },
     (current) =>
@@ -1081,10 +1095,14 @@ async function applyOptimisticEmailTags(
                 if (message.id !== payload.messageId && message.providerId !== payload.messageId) {
                   return message;
                 }
-                const keywords = new Set(message.keywords ?? []);
-                remove.forEach((keyword) => keywords.delete(keyword));
-                add.forEach((keyword) => keywords.add(keyword));
-                return { ...message, keywords: Array.from(keywords) };
+                const tags = new Map(
+                  (message.tags ?? []).map((name) => [name.toLowerCase(), name])
+                );
+                remove.forEach((name) => tags.delete(name));
+                add.forEach((name) => {
+                  if (!remove.has(name.toLowerCase())) tags.set(name.toLowerCase(), name);
+                });
+                return { ...message, tags: Array.from(tags.values()).sort() };
               }),
             })),
           }
@@ -1116,6 +1134,9 @@ export const useUpdateEmailMessageTagsMutation = () => {
       messageId: string;
       add?: string[];
       remove?: string[];
+      // Display names for the optimistic pass; `add`/`remove` carry tag ids.
+      addNames?: string[];
+      removeNames?: string[];
     }) =>
       emailApi.updateMessageTags(payload.accountId, payload.messageId, {
         add: payload.add,
@@ -1217,7 +1238,11 @@ export const useUpdateEmailMessageStatusMutation = () => {
         await queryClient.ensureQueryData({
           queryKey: emailKeys.conversation(payload.accountId, payload.threadId),
           queryFn: () =>
-            emailApi.listConversation(payload.accountId, payload.threadId!, payload.conversationKey),
+            emailApi.listConversation(
+              payload.accountId,
+              payload.threadId!,
+              payload.conversationKey
+            ),
           staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
         });
       }

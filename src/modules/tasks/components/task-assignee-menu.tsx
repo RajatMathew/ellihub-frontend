@@ -52,7 +52,7 @@ export function TaskAssigneeMenu({
           className="relative flex items-center gap-0.5 rounded-md p-0.5 before:absolute before:-inset-2 before:content-[''] hover:bg-surface-hover focus-visible:bg-surface-hover"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
-          <TaskAssigneeAvatar id={task.assigneeId} name={name} />
+          <TaskAssigneeAvatar name={name} />
           <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
@@ -89,7 +89,7 @@ export function TaskAssigneeMenu({
               onSelect={() => onReassign(option.value)}
               className="sm:py-1 sm:text-xs"
             >
-              <TaskAssigneeAvatar id={option.value} name={option.label} size="sm" />
+              <TaskAssigneeAvatar name={option.label} size="sm" />
               <span className="truncate">{option.label}</span>
             </DropdownMenuItem>
           ))

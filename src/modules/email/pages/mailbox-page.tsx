@@ -3,7 +3,6 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import { emailApi, type EmailDraftResult } from '@/modules/email/api';
@@ -13,13 +12,8 @@ import {
   EmailBulkProgressPanel,
   type EmailBulkOperationState,
 } from '@/modules/email/components/email-bulk-progress-panel';
-import type { EditableComposeDraft } from '@/modules/email/components/email-compose-dialog';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
-import {
-  EmailMailToolbar,
-  type EmailListFilter,
-  type EmailStatusFilter,
-} from '@/modules/email/components/email-mail-toolbar';
+import { EmailMailToolbar } from '@/modules/email/components/email-mail-toolbar';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
 import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
@@ -62,12 +56,21 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import {
+  useEmailCompose,
+  type EditableComposeDraft,
+} from '@/modules/email/hooks/use-email-compose';
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
+import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
-import { plainTextToEmailHtml } from '@/modules/email/lib/email-body-format';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
+import {
+  emailDraftBodyToEditorHtml,
+  richTextToEmailHtml,
+} from '@/modules/email/lib/email-rich-text';
+import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
 import { useQueryClient } from '@tanstack/react-query';
@@ -85,7 +88,6 @@ interface MailboxPageProps {
 
 const CONNECTED_EMAIL_PAGE_SIZE = 50;
 const PROJECT_EMAIL_PAGE_SIZE = 100;
-const EMAIL_SEARCH_DEBOUNCE_MS = 150;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
   'drafts',
@@ -106,9 +108,9 @@ const EmailAgentPanel = lazy(() =>
     default: module.EmailAgentPanel,
   }))
 );
-const EmailComposeDialog = lazy(() =>
-  import('@/modules/email/components/email-compose-dialog').then((module) => ({
-    default: module.EmailComposeDialog,
+const EmailComposePane = lazy(() =>
+  import('@/modules/email/components/compose/email-compose-pane').then((module) => ({
+    default: module.EmailComposePane,
   }))
 );
 
@@ -116,17 +118,24 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  // Folder and open conversation live in the URL (Outlook-style deep links).
+  // Folder and open conversation live in the path (Outlook-style deep links);
+  // the workspace view and everything that narrows the folder live in the query
+  // string. `useMailboxUrlState` is the only place that mapping is written.
+  const {
+    state: mailboxUrlState,
+    searchDraft: messageSearch,
+    setState: setMailboxUrlState,
+    setSearchDraft: setMessageSearch,
+    resetFilters: resetMailboxFilters,
+    buildSearchString: buildMailboxSearch,
+  } = useMailboxUrlState();
   const selectedFolder = folder || 'inbox';
   const routeConversationId = conversationId ?? null;
-  const [messageSearch, setMessageSearch] = useState('');
-  const debouncedMessageSearch = useDebouncedValue(messageSearch.trim(), EMAIL_SEARCH_DEBOUNCE_MS);
+  // The URL only takes the search term once typing settles, which makes it the
+  // debounced value the mail query (and its cache key) is built from.
+  const debouncedMessageSearch = mailboxUrlState.search;
   const attemptedInitialSyncs = useRef(new Set<string>());
   const agentTriggerRef = useRef<HTMLButtonElement>(null);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [composeLoaded, setComposeLoaded] = useState(false);
-  const [composeDraft, setComposeDraft] = useState<EditableComposeDraft | null>(null);
-  const [composeRecipient, setComposeRecipient] = useState<string | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [archiveConfirmation, setArchiveConfirmation] = useState<{ messageId: string } | null>(
     null
@@ -134,10 +143,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ messageId: string } | null>(null);
   const [agentLayout, setAgentLayout] = useState<EmailAgentLayout>(DEFAULT_AGENT_LAYOUT);
   const [emailListVisible, setEmailListVisible] = useState(true);
-  const [mailFilter, setMailFilter] = useState<EmailListFilter>('all');
-  const [mailStatusFilter, setMailStatusFilter] = useState<EmailStatusFilter>('all');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedCategoryTagId, setSelectedCategoryTagId] = useState<string | null>(null);
+  const {
+    filter: mailFilter,
+    statusFilter: mailStatusFilter,
+    projectId: selectedProjectId,
+    categoryTagId: selectedCategoryTagId,
+    view: workspaceView,
+  } = mailboxUrlState;
   const [mobilePane, setMobilePane] = useState<'list' | 'reading'>('list');
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
   const [reconnectRequiredAccountId, setReconnectRequiredAccountId] = useState<string | null>(null);
@@ -146,7 +158,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const [emptyFolderConfirm, setEmptyFolderConfirm] = useState<{ folderId: string } | null>(null);
   const [bulkOperation, setBulkOperation] = useState<EmailBulkOperationState | null>(null);
   const accountsQuery = useEmailAccountsQuery();
-  const workspaceView = getWorkspaceView(searchParams.get('view'));
   const isConnectedRoute = Boolean(accountSlug);
   const connectedAccount = accountSlug
     ? (accountsQuery.data?.find(
@@ -260,18 +271,15 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     if (!query || !isWaitingForServerSearch) return connectedEmails;
     return connectedEmails.filter((email) => matchesEmailSearch(email, query));
   }, [connectedEmails, debouncedMessageSearch, messageSearch, messagesQuery.isPlaceholderData]);
+  // The "Other" filter narrows by Elli's own tags. Provider categories are
+  // read-only and not Elli's vocabulary, so they do not appear here.
   const availableOtherCategoryTags = useMemo(() => {
     if (mailFilter !== 'other') return [];
-    const tagKeywords = new Set(
-      emailsForActiveSearch.flatMap((email) =>
-        (email.keywords ?? []).map((keyword) => keyword.toLowerCase())
-      )
+    const applied = new Set(
+      emailsForActiveSearch.flatMap((email) => (email.tags ?? []).map((tag) => tag.toLowerCase()))
     );
     return (tagsQuery.data ?? []).filter(
-      (tag) =>
-        tagKeywords.has(tag.id.toLowerCase()) ||
-        tagKeywords.has(tag.providerId.toLowerCase()) ||
-        tagKeywords.has(tag.name.toLowerCase())
+      (tag) => tag.source === 'custom' && applied.has(tag.name.toLowerCase())
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
@@ -283,13 +291,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
         (tag) => tag.id === selectedCategoryTagId
       );
       if (selectedTag) {
-        const tagKeys = new Set([
-          selectedTag.id.toLowerCase(),
-          selectedTag.providerId.toLowerCase(),
-          selectedTag.name.toLowerCase(),
-        ]);
+        const tagName = selectedTag.name.toLowerCase();
         list = list.filter((email) =>
-          (email.keywords ?? []).some((keyword) => tagKeys.has(keyword.toLowerCase()))
+          (email.tags ?? []).some((tag) => tag.toLowerCase() === tagName)
         );
       }
     }
@@ -409,17 +413,103 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const inboxFolderId = foldersQuery.data?.find((folder) => folder.key === 'inbox')?.id ?? null;
   const archiveFolderId = foldersQuery.data?.find((folder) => folder.key === 'archive')?.id ?? null;
   const deletedFolderId = foldersQuery.data?.find((folder) => folder.key === 'deleted')?.id ?? null;
-  const navigateToFolder = useCallback(
-    (nextFolder: string, options?: { replace?: boolean }) => {
-      if (!accountSlug) return;
-      navigate(buildMailPath(accountSlug, nextFolder), options);
+  // Compose lives on the page rather than inside its shell so the page can ask
+  // it to close — and save what was typed — before navigating somewhere else.
+  const compose = useEmailCompose({
+    isSending: sendDraftMutation.isPending,
+    onSaveDraft: connectedAccount
+      ? async (payload, draft) => {
+          const result = await saveDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft?.draftId,
+            messageId: draft?.messageId,
+            subject: payload.subject,
+            body: richTextToEmailHtml(payload.body),
+            bodyType: 'html',
+            to: parseEmailAddresses(payload.to),
+            cc: parseEmailAddresses(payload.cc),
+            bcc: parseEmailAddresses(payload.bcc),
+            attachments: payload.attachments,
+            removedAttachmentIds: payload.removedAttachmentIds,
+          });
+          return {
+            draftId: result.draftId,
+            messageId: result.messageId,
+            attachments: result.message?.attachments,
+          };
+        }
+      : undefined,
+    onSendDraft: connectedAccount
+      ? (draft) =>
+          sendDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft.draftId,
+            messageId: draft.messageId,
+          })
+      : undefined,
+    onDiscardDraft: connectedAccount
+      ? (draft, options) =>
+          deleteDraftMutation.mutateAsync({
+            accountId: connectedAccount.id,
+            draftId: draft.draftId,
+            messageId: draft.messageId,
+            silent: options?.silent,
+          })
+      : undefined,
+    onClosed: () => {
+      // Nothing was open behind the composer, so on a narrow screen closing it
+      // returns to the list rather than to an empty reading pane.
+      if (!routeConversationId) setMobilePane('list');
+      if (selectedFolderKey === 'drafts') {
+        void messagesQuery.refetch();
+        void foldersQuery.refetch();
+      }
     },
-    [accountSlug, navigate]
+    // The composer no longer sits on top of the mailbox, so say out loud where
+    // an interrupted message went instead of letting it vanish behind the list.
+    onDraftSaved: () => toast.success('Draft saved.'),
+  });
+  const composeOpen = compose.isOpen;
+  const navigateToFolder = useCallback(
+    (nextFolder: string, options?: { replace?: boolean; resetFilters?: boolean }) => {
+      if (!accountSlug) return;
+      // Carry the query string across the path change, or deliberately reset it:
+      // a different folder starts unfiltered, the same folder keeps its view.
+      const search = buildMailboxSearch(options?.resetFilters ? MAILBOX_FILTER_RESET : undefined);
+      navigate(buildMailPath(accountSlug, nextFolder, null, search), {
+        replace: options?.replace,
+      });
+    },
+    [accountSlug, buildMailboxSearch, navigate]
   );
   // Drops the `/id/…` segment so the folder shows its default (first) mail again.
   const clearRouteSelection = useCallback(() => {
     if (routeConversationId) navigateToFolder(selectedFolder, { replace: true });
   }, [navigateToFolder, routeConversationId, selectedFolder]);
+  // A project change re-filters the list, which drops the open conversation with
+  // it. Both are one navigation so the new filter is not computed from the URL
+  // the other one is about to replace.
+  const changeProjectFilter = useCallback(
+    (projectId: string | null) => {
+      if (accountSlug && routeConversationId) {
+        navigate(
+          buildMailPath(accountSlug, selectedFolder, null, buildMailboxSearch({ projectId })),
+          { replace: true }
+        );
+      } else {
+        setMailboxUrlState({ projectId });
+      }
+      setMobilePane('list');
+    },
+    [
+      accountSlug,
+      buildMailboxSearch,
+      navigate,
+      routeConversationId,
+      selectedFolder,
+      setMailboxUrlState,
+    ]
+  );
 
   const requestArchive = useCallback((messageId: string) => {
     setArchiveConfirmation({ messageId });
@@ -736,12 +826,23 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     });
   }, [connectedAccount, selectedEmail, selectedFolder, updateMessageStatusMutation]);
 
+  // Switching mailbox starts from an unfiltered inbox. Compared against the
+  // previous account rather than run on every change of it, so the first time
+  // an account resolves it cannot wipe the filters a deep link arrived with.
+  // Read through a ref so the effect keys on the account alone — a re-run while
+  // the reset is queued would cancel it through the cleanup.
+  const resetMailboxFiltersRef = useRef(resetMailboxFilters);
   useEffect(() => {
+    resetMailboxFiltersRef.current = resetMailboxFilters;
+  });
+  const previousAccountIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const accountId = connectedAccount?.id;
+    const previousAccountId = previousAccountIdRef.current;
+    previousAccountIdRef.current = accountId;
+    if (!previousAccountId || previousAccountId === accountId) return;
     const timeout = window.setTimeout(() => {
-      setMessageSearch('');
-      setMailFilter('all');
-      setSelectedProjectId(null);
-      setSelectedCategoryTagId(null);
+      resetMailboxFiltersRef.current();
       setMobilePane('list');
     }, 0);
     return () => window.clearTimeout(timeout);
@@ -794,14 +895,19 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       const targetFolder = isConnectedWellKnownFolderKey(resolved.folder)
         ? resolved.folder
         : (resolved.folderId ?? 'inbox');
-      navigate(buildMailPath(accountSlug, targetFolder, canonicalId), { replace: true });
+      navigate(buildMailPath(accountSlug, targetFolder, canonicalId, buildMailboxSearch()), {
+        replace: true,
+      });
       return;
     }
     if (canonicalId !== routeConversationId) {
-      navigate(buildMailPath(accountSlug, selectedFolder, canonicalId), { replace: true });
+      navigate(buildMailPath(accountSlug, selectedFolder, canonicalId, buildMailboxSearch()), {
+        replace: true,
+      });
     }
   }, [
     accountSlug,
+    buildMailboxSearch,
     deepLinkQuery.data,
     navigate,
     routeConversationId,
@@ -846,27 +952,30 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     setEmailListVisible(true);
   }, []);
 
-  const openNewCompose = useCallback(() => {
-    setComposeDraft(null);
-    setComposeRecipient(null);
-    setComposeLoaded(true);
-    setComposeOpen(true);
-  }, []);
-  const openComposeTo = useCallback((address: string) => {
-    setComposeDraft(null);
-    setComposeRecipient(address);
-    setComposeLoaded(true);
-    setComposeOpen(true);
-  }, []);
+  const { openNew: openComposeSurface, openDraft: openComposeDraft } = compose;
+  // The composer takes over the reading pane, so on a narrow screen the page has
+  // to switch to that pane or compose would open off-screen behind the list.
+  const openComposeTo = useCallback(
+    (recipient?: string) => {
+      openComposeSurface(recipient);
+      setMobilePane('reading');
+    },
+    [openComposeSurface]
+  );
+  // Zero-arg on purpose: it is wired straight to a button's onClick, which would
+  // otherwise hand the click event over as the recipient.
+  const openNewCompose = useCallback(() => openComposeTo(), [openComposeTo]);
+  const openDraftInCompose = useCallback(
+    (draft: EditableComposeDraft) => {
+      openComposeDraft(draft);
+      setMobilePane('reading');
+    },
+    [openComposeDraft]
+  );
 
   const setWorkspaceView = useCallback(
-    (view: EmailWorkspaceView) => {
-      const next = new URLSearchParams(searchParams);
-      if (view === 'mail') next.delete('view');
-      else next.set('view', view);
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams]
+    (view: EmailWorkspaceView) => setMailboxUrlState({ view }),
+    [setMailboxUrlState]
   );
 
   const selectEmail = useCallback(
@@ -876,14 +985,23 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       const targetConversationId = email ? getEmailConversationId(email) : emailId;
       // Re-clicking the open conversation must not push duplicate history entries.
       if (targetConversationId !== routeConversationId) {
-        navigate(buildMailPath(accountSlug, selectedFolder, targetConversationId), {
-          replace: options?.replace,
-        });
+        navigate(
+          buildMailPath(accountSlug, selectedFolder, targetConversationId, buildMailboxSearch()),
+          { replace: options?.replace }
+        );
       }
       setMobilePane('reading');
     },
-    [accountSlug, folderEmails, navigate, routeConversationId, selectedFolder]
+    [accountSlug, buildMailboxSearch, folderEmails, navigate, routeConversationId, selectedFolder]
   );
+
+  /**
+   * Opening a message from the list while a draft is open. The composer is a
+   * popover now, so it neither blocks the click nor gets torn down by it — the
+   * draft stays exactly as typed while the reader changes underneath it. This
+   * used to close the composer first, which a floating surface should not do.
+   */
+  const requestSelectEmail = useCallback((run: () => void) => run(), []);
 
   useEffect(() => {
     if (!isConnected || workspaceView !== 'mail') return;
@@ -899,7 +1017,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       }
 
       const target = event.target as HTMLElement | null;
-      if (target?.closest('[role="dialog"], [role="menu"]')) {
+      // Already composing: swallow the shortcut rather than resetting the
+      // message the user is part-way through writing.
+      if (composeOpen || target?.closest('[role="dialog"], [role="menu"]')) {
         event.preventDefault();
         return;
       }
@@ -910,7 +1030,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
     window.addEventListener('keydown', handleComposeShortcut, { capture: true });
     return () => window.removeEventListener('keydown', handleComposeShortcut, { capture: true });
-  }, [isConnected, openNewCompose, workspaceView]);
+  }, [composeOpen, isConnected, openNewCompose, workspaceView]);
 
   const prefetchEmail = useCallback(
     (email: EmailListItem) => {
@@ -959,6 +1079,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       ) {
         return;
       }
+      // Arrow-key browsing would swap the message under an open composer without
+      // asking; the composer has to be closed (and saved) deliberately first.
+      if (composeOpen && event.key !== 'e' && event.key !== 'E') return;
 
       if (event.key.toLowerCase() === 'e') {
         event.preventDefault();
@@ -978,7 +1101,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nextEmail, previousEmail, selectEmail, workspaceView]);
+  }, [composeOpen, nextEmail, previousEmail, selectEmail, workspaceView]);
 
   const handleDisconnectAccount = useCallback(() => {
     if (!connectedAccount) return;
@@ -1222,28 +1345,14 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             isRefreshing={showEmailSyncIndicator}
             isCreatingFolder={createFolderMutation.isPending}
             onSelectFolder={(nextFolder) => {
-              navigateToFolder(nextFolder);
-              setMailFilter('all');
-              setMailStatusFilter('all');
-              setSelectedCategoryTagId(null);
+              // One navigation: the new folder and its reset filters together.
+              navigateToFolder(nextFolder, { resetFilters: true });
               setMobilePane('list');
             }}
-            onFilterChange={(filter) => {
-              setMailFilter(filter);
-              if (filter !== 'other') setSelectedCategoryTagId(null);
-            }}
-            onStatusFilterChange={setMailStatusFilter}
-            onProjectChange={(projectId) => {
-              setSelectedProjectId(projectId);
-              clearRouteSelection();
-              // 'Other' shows unclassified mail, which cannot intersect a project filter.
-              if (projectId && mailFilter === 'other') {
-                setMailFilter('all');
-                setSelectedCategoryTagId(null);
-              }
-              setMobilePane('list');
-            }}
-            onCategoryTagChange={setSelectedCategoryTagId}
+            onFilterChange={(filter) => setMailboxUrlState({ filter })}
+            onStatusFilterChange={(statusFilter) => setMailboxUrlState({ statusFilter })}
+            onProjectChange={changeProjectFilter}
+            onCategoryTagChange={(categoryTagId) => setMailboxUrlState({ categoryTagId })}
             onSearchChange={setMessageSearch}
             onRefresh={() => {
               if (connectedAccount) {
@@ -1256,7 +1365,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                 ? (name) =>
                     createFolderMutation.mutate(
                       { accountId: connectedAccount.id, name },
-                      { onSuccess: (created) => navigateToFolder(created.id) }
+                      {
+                        onSuccess: (created) =>
+                          navigateToFolder(created.id, { resetFilters: true }),
+                      }
                     )
                 : undefined
             }
@@ -1286,21 +1398,21 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isError={isMailboxError}
                   selectedEmailId={selectedEmailId}
                   onSelectEmail={(emailId) => {
-                    if (connectedAccount && selectedFolderKey === 'drafts') {
-                      openDraftMutation.mutate(
-                        { accountId: connectedAccount.id, messageId: emailId },
-                        {
-                          onSuccess: (result) => {
-                            if (!result.message) return;
-                            setComposeDraft(toEditableComposeDraft(result));
-                            setComposeLoaded(true);
-                            setComposeOpen(true);
-                          },
-                        }
-                      );
-                      return;
-                    }
-                    selectEmail(emailId);
+                    requestSelectEmail(() => {
+                      if (connectedAccount && selectedFolderKey === 'drafts') {
+                        openDraftMutation.mutate(
+                          { accountId: connectedAccount.id, messageId: emailId },
+                          {
+                            onSuccess: (result) => {
+                              if (!result.message) return;
+                              openDraftInCompose(toEditableComposeDraft(result));
+                            },
+                          }
+                        );
+                        return;
+                      }
+                      selectEmail(emailId);
+                    });
                   }}
                   onRetry={() => {
                     if (connectedAccount) {
@@ -1387,10 +1499,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
             <div
               className={cn(
-                'min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
+                'relative min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
                 mobilePane === 'list' ? 'hidden lg:flex' : 'flex'
               )}
             >
+              {/*
+                elli-ui#807 — the composer is a popover over the workspace, so
+                the message behind it stays readable and the list stays usable.
+                Nothing is unmounted to make room for it, which is why a draft
+                survives clicking through the mailbox.
+              */}
               <EmailReadingPane
                 email={visibleEmail}
                 accountId={connectedAccount?.id}
@@ -1426,7 +1544,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                             buildMailPath(
                               accountSlug,
                               folderId,
-                              selectedEmail ? getEmailConversationId(selectedEmail) : undefined
+                              selectedEmail ? getEmailConversationId(selectedEmail) : undefined,
+                              buildMailboxSearch()
                             )
                           );
                         }
@@ -1444,8 +1563,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         updateTagsMutation.mutate({
                           accountId: connectedAccount.id,
                           messageId,
-                          add: enabled ? [tag.providerId] : [],
-                          remove: enabled ? [] : [tag.providerId],
+                          add: enabled ? [tag.id] : [],
+                          remove: enabled ? [] : [tag.id],
+                          addNames: enabled ? [tag.name] : [],
+                          removeNames: enabled ? [] : [tag.name],
                         })
                     : undefined
                 }
@@ -1510,7 +1631,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         replyMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
-                          body: plainTextToEmailHtml(draft.body),
+                          body: richTextToEmailHtml(draft.body),
                           bodyType: 'html',
                           subject: selectedEmail?.subject,
                           to: parseEmailAddresses(draft.to),
@@ -1525,7 +1646,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         forwardMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
-                          body: plainTextToEmailHtml(draft.body),
+                          body: richTextToEmailHtml(draft.body),
                           bodyType: 'html',
                           subject: selectedEmail?.subject,
                           to: parseEmailAddresses(draft.to),
@@ -1569,6 +1690,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     : undefined
                 }
               />
+
+              {composeOpen && (
+                <Suspense fallback={null}>
+                  <EmailComposePane
+                    compose={compose}
+                    mailboxAddress={address}
+                    accountId={connectedAccount?.id}
+                  />
+                </Suspense>
+              )}
             </div>
           </div>
         </div>
@@ -1620,73 +1751,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
           />
         </Suspense>
       )}
-      {composeLoaded && (
-        <Suspense fallback={null}>
-          <EmailComposeDialog
-            open={composeOpen}
-            mailboxAddress={address}
-            accountId={connectedAccount?.id}
-            initialDraft={composeDraft}
-            initialRecipient={composeRecipient ?? undefined}
-            isSending={sendDraftMutation.isPending}
-            onOpenChange={(nextOpen) => {
-              setComposeOpen(nextOpen);
-              if (!nextOpen) {
-                setComposeDraft(null);
-                if (selectedFolderKey === 'drafts') {
-                  void messagesQuery.refetch();
-                  void foldersQuery.refetch();
-                }
-              }
-            }}
-            onSaveDraft={
-              connectedAccount
-                ? async (payload, draft) => {
-                    const result = await saveDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft?.draftId,
-                      messageId: draft?.messageId,
-                      subject: payload.subject,
-                      body: plainTextToEmailHtml(payload.body),
-                      bodyType: 'html',
-                      to: parseEmailAddresses(payload.to),
-                      cc: parseEmailAddresses(payload.cc),
-                      bcc: parseEmailAddresses(payload.bcc),
-                      attachments: payload.attachments,
-                      removedAttachmentIds: payload.removedAttachmentIds,
-                    });
-                    return {
-                      draftId: result.draftId,
-                      messageId: result.messageId,
-                      attachments: result.message?.attachments,
-                    };
-                  }
-                : undefined
-            }
-            onSendDraft={
-              connectedAccount
-                ? (draft) =>
-                    sendDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft.draftId,
-                      messageId: draft.messageId,
-                    })
-                : undefined
-            }
-            onDiscardDraft={
-              connectedAccount
-                ? (draft, options) =>
-                    deleteDraftMutation.mutateAsync({
-                      accountId: connectedAccount.id,
-                      draftId: draft.draftId,
-                      messageId: draft.messageId,
-                      silent: options?.silent,
-                    })
-                : undefined
-            }
-          />
-        </Suspense>
-      )}
       {nicknameDialog}
       {disconnectDialog}
       {archiveDialog}
@@ -1707,7 +1771,7 @@ function toEditableComposeDraft(result: EmailDraftResult): EditableComposeDraft 
     cc: formatEmailAddresses(message.cc),
     bcc: formatEmailAddresses(message.bcc),
     subject: message.subject === '(No subject)' ? '' : message.subject,
-    body: htmlToPlainText(message.body?.[0] ?? ''),
+    body: emailDraftBodyToEditorHtml(message.body),
     attachments: message.attachments ?? [],
   };
 }
@@ -1720,20 +1784,8 @@ function formatEmailAddresses(addresses?: Array<{ address: string; name?: string
     .join(', ');
 }
 
-function htmlToPlainText(value: string) {
-  if (!value) return '';
-  const document = new DOMParser().parseFromString(value, 'text/html');
-  document.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
-  document.querySelectorAll('p,div,li').forEach((block) => block.append('\n'));
-  return (document.body.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
-}
-
 function isConnectedWellKnownFolderKey(folder: string): folder is EmailFolderKey {
   return CONNECTED_WELL_KNOWN_FOLDER_KEYS.has(folder);
-}
-
-function getWorkspaceView(value: string | null): EmailWorkspaceView {
-  return value === 'tasks' || value === 'calendar' ? value : 'mail';
 }
 
 function matchesEmailSearch(email: EmailListItem, query: string) {
