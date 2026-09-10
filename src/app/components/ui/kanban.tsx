@@ -32,7 +32,6 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-  type SortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Slot } from '@radix-ui/react-slot';
@@ -48,7 +47,6 @@ interface KanbanContextProps<T> {
   setActiveId: (id: UniqueIdentifier | null) => void;
   findContainer: (id: UniqueIdentifier) => string | undefined;
   isColumn: (id: UniqueIdentifier) => boolean;
-  itemStrategy: SortingStrategy;
 }
 
 const KanbanContext = React.createContext<KanbanContextProps<any>>({
@@ -60,7 +58,6 @@ const KanbanContext = React.createContext<KanbanContextProps<any>>({
   setActiveId: () => {},
   findContainer: () => undefined,
   isColumn: () => false,
-  itemStrategy: verticalListSortingStrategy,
 });
 
 const ColumnContext = React.createContext<{
@@ -128,24 +125,6 @@ export interface KanbanRootProps<T> {
    */
   onDragDiscarded?: () => void;
   /**
-   * How the cards in a column move while one of them is dragged over it.
-   *
-   * The default slides the others apart to open a gap under the dragged card.
-   * An owner that draws its own drop indicator wants none of that: the gap and
-   * the indicator are two answers to "where will this land", and the sliding
-   * is done with transforms the indicator does not take part in, so the two
-   * drift apart. Pass a strategy that returns null and the cards hold still.
-   */
-  itemStrategy?: SortingStrategy;
-  /**
-   * The index a card slides into when it is dragged over another column.
-   *
-   * The reflow inserts it wherever the pointer is. An owner with placement
-   * rules — a card may only sit among its own priority, say — can pin the index
-   * here, so the ghost the reflow shows and the slot the drop will use agree.
-   */
-  resolveIndex?: (container: string, itemId: string, proposedIndex: number) => number;
-  /**
    * Screen-reader announcements for the drag lifecycle. Without these a drag is
    * silent to assistive tech, which the keyboard sensor otherwise supports.
    */
@@ -161,8 +140,6 @@ function Kanban<T>({
   onMove,
   canMove,
   onDragDiscarded,
-  itemStrategy = verticalListSortingStrategy,
-  resolveIndex,
   accessibility,
 }: KanbanRootProps<T>) {
   const columns = value;
@@ -259,8 +236,6 @@ function Kanban<T>({
         overIndex = overItems.length;
       }
 
-      if (resolveIndex) overIndex = resolveIndex(overContainer, String(active.id), overIndex);
-
       // Copy, never splice. `activeItems` is the array held in state, and the
       // owner may be holding the very same array — the task board seeds its
       // state straight from a memo — so splicing here reached back into that
@@ -280,7 +255,7 @@ function Kanban<T>({
         [overContainer]: newOverItems,
       });
     },
-    [findContainer, getItemValue, isColumn, setColumns, columns, canMove, resolveIndex]
+    [findContainer, getItemValue, isColumn, setColumns, columns, canMove]
   );
 
   const handleDragEnd = React.useCallback(
@@ -366,9 +341,8 @@ function Kanban<T>({
       setActiveId,
       findContainer,
       isColumn,
-      itemStrategy,
     }),
-    [columns, setColumns, getItemValue, columnIds, activeId, findContainer, isColumn, itemStrategy]
+    [columns, setColumns, getItemValue, columnIds, activeId, findContainer, isColumn]
   );
 
   return (
@@ -586,12 +560,12 @@ export interface KanbanColumnContentProps {
 }
 
 function KanbanColumnContent({ value, className, children }: KanbanColumnContentProps) {
-  const { columns, getItemId, itemStrategy } = React.useContext(KanbanContext);
+  const { columns, getItemId } = React.useContext(KanbanContext);
 
   const itemIds = React.useMemo(() => columns[value].map(getItemId), [columns, getItemId, value]);
 
   return (
-    <SortableContext items={itemIds} strategy={itemStrategy}>
+    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
       <div data-slot="kanban-column-content" className={cn('flex flex-col gap-2', className)}>
         {children}
       </div>

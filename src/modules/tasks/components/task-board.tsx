@@ -26,11 +26,7 @@ import {
   type TaskColumnId,
 } from '@/modules/tasks/lib/task-board';
 import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
-import type { SortingStrategy } from '@dnd-kit/sortable';
 import { toast } from 'sonner';
-
-/** A sorting strategy that moves nothing: the drop line is the only indicator. */
-const holdStill: SortingStrategy = () => null;
 
 export function TaskBoard({
   tasks,
@@ -115,26 +111,6 @@ export function TaskBoard({
     columns[columnId].map((id) => byId.get(id)).filter((task): task is Task => Boolean(task));
 
   /**
-   * Where a card dragged in from another column slides to.
-   *
-   * The reflow would put it wherever the pointer is; the drop will put it in
-   * its own priority block. Pinning the reflow to the same slot means the ghost
-   * a person watches and the line that marks the landing spot say the same
-   * thing — before this they could sit a whole block apart.
-   */
-  const resolveReflowIndex = (container: string, itemId: string, proposedIndex: number) => {
-    const arriving = byId.get(itemId);
-    if (!arriving) return proposedIndex;
-    // resolveDropIndex reads the card's priority off the column it is given, so
-    // the arriving card rides along; it is filtered back out of the count.
-    return resolveDropIndex(
-      [...cardsIn(container as TaskColumnId), arriving],
-      itemId,
-      proposedIndex
-    );
-  };
-
-  /**
    * Supplying onMove puts this component in charge of every drop: the Kanban
    * primitive stops reordering on its own and commits nothing. So a rejected
    * move is simply one we decline to apply, and the card springs back.
@@ -214,13 +190,6 @@ export function TaskBoard({
       canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
       getItemValue={(id: string) => id}
       onMove={handleMove}
-      // The cards hold still under a drag. dnd-kit would slide them apart to
-      // open a gap, but that gap and the drop line are two answers to the same
-      // question, and the sliding is done with transforms the line takes no part
-      // in — so the two drifted apart and the line landed anywhere. One
-      // indicator: the line.
-      itemStrategy={holdStill}
-      resolveIndex={resolveReflowIndex}
       // A refused drop, a release over nothing, or Escape: the hover reflow has
       // already moved the card and only this puts it back.
       onDragDiscarded={restoreArrangement}
