@@ -16,6 +16,7 @@ import {
 } from '@/modules/email/lib/email-html-document';
 import {
   markQuotedEmailContent,
+  QUOTED_CONTENT_ATTRIBUTE,
   splitQuotedPlainText,
 } from '@/modules/email/lib/email-quoted-content';
 
@@ -189,40 +190,45 @@ function EmailHtmlBody({
     [attachmentKey]
   );
 
-  // Built asynchronously because inline images are fetched here rather than by
-  // the frame — see `loadInlineEmailImageData`. The body without them is
-  // rendered first so text is never gated on an image request.
+  // The body is prepared synchronously so text paints immediately; inline
+  // images are fetched afterwards and folded in, because the frame cannot
+  // authenticate for them itself (see `loadInlineEmailImageData`).
+  const prepared = useMemo(
+    () => prepareEmailBody(sourceHtml, inlineImageBaseUrl),
+    [sourceHtml, inlineImageBaseUrl]
+  );
   const [frameDocument, setFrameDocument] = useState(() =>
-    buildEmailFrameDocument({
-      bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl),
-      apiOrigin: getApiOrigin(),
-    })
+    buildEmailFrameDocument({ bodyHtml: prepared.html, apiOrigin: getApiOrigin() })
   );
 
   useEffect(() => {
     const controller = new AbortController();
+    setFrameDocument(
+      buildEmailFrameDocument({ bodyHtml: prepared.html, apiOrigin: getApiOrigin() })
+    );
 
-    const build = async (inlineImages?: ReadonlyMap<string, string>) =>
-      buildEmailFrameDocument({
-        bodyHtml: prepareEmailBody(sourceHtml, stableAttachments, inlineImageBaseUrl, inlineImages),
-        apiOrigin: getApiOrigin(),
-      });
+    // Only the images the reader can actually see. Everything behind the quote
+    // toggle is deliberately left alone.
+    const sources = getInlineEmailImageSources(
+      stableAttachments,
+      import.meta.env.VITE_API_BASE_URL,
+      prepared.visibleContentIds
+    );
+    if (sources.size === 0) return () => controller.abort();
 
     void (async () => {
-      setFrameDocument(await build());
-      const sources = getInlineEmailImageSources(
-        stableAttachments,
-        import.meta.env.VITE_API_BASE_URL
-      );
-      if (sources.size === 0) return;
-
       const inlineImages = await loadInlineEmailImageData(sources, controller.signal);
       if (controller.signal.aborted || inlineImages.size === 0) return;
-      setFrameDocument(await build(inlineImages));
+      setFrameDocument(
+        buildEmailFrameDocument({
+          bodyHtml: prepareEmailBody(sourceHtml, inlineImageBaseUrl, inlineImages).html,
+          apiOrigin: getApiOrigin(),
+        })
+      );
     })();
 
     return () => controller.abort();
-  }, [stableAttachments, inlineImageBaseUrl, sourceHtml]);
+  }, [prepared, stableAttachments, inlineImageBaseUrl, sourceHtml]);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     // Only this frame's own reports: the message channel is shared with every
@@ -270,13 +276,18 @@ function getApiOrigin(): string | null {
  * which the sanitizer strips as a phishing vector — are never fed back through
  * it.
  */
+type PreparedBody = {
+  html: string;
+  /** Content ids referenced by images the reader can actually see. */
+  visibleContentIds: string[];
+};
+
 function prepareEmailBody(
   value: string,
-  attachments: EmailAttachment[],
   inlineImageBaseUrl?: string | null,
   inlineImages?: ReadonlyMap<string, string>
-): string {
-  if (typeof window === 'undefined') return '';
+): PreparedBody {
+  if (typeof window === 'undefined') return { html: '', visibleContentIds: [] };
 
   const clean = sanitizeEmailHtml(value);
   // Explicit `<body>` keeps the parser in "in body" mode: a fragment that opens
@@ -284,12 +295,32 @@ function prepareEmailBody(
   // `<head>` and lost when the body is serialized back out.
   const document = new DOMParser().parseFromString(`<body>${clean}</body>`, 'text/html');
 
-  resolveInlineImages(document, attachments, inlineImageBaseUrl, inlineImages);
+  resolveInlineImages(document, inlineImageBaseUrl, inlineImages);
   applyLinkAttributes(document);
   linkifyTextNodes(document);
   markQuotedEmailContent(document);
 
-  return document.body.innerHTML;
+  return { html: document.body.innerHTML, visibleContentIds: collectVisibleContentIds(document) };
+}
+
+/**
+ * Content ids of images outside the collapsed quote.
+ *
+ * A long thread repeats the sender's signature logo in every quoted round, and
+ * all of it is hidden behind the toggle — fetching those images on open pulled
+ * megabytes the reader never sees. One real thread pulled sixteen attachments
+ * this way. Images inside the quote load when it is expanded.
+ */
+function collectVisibleContentIds(document: Document): string[] {
+  const ids = new Set<string>();
+
+  for (const element of document.body.querySelectorAll<HTMLElement>('[data-inline-cid]')) {
+    if (element.closest(`[${QUOTED_CONTENT_ATTRIBUTE}]`)) continue;
+    const cid = element.getAttribute('data-inline-cid');
+    if (cid) ids.add(cid);
+  }
+
+  return [...ids];
 }
 
 function applyLinkAttributes(document: Document) {
@@ -301,17 +332,9 @@ function applyLinkAttributes(document: Document) {
 
 function resolveInlineImages(
   document: Document,
-  attachments: EmailAttachment[],
   inlineImageBaseUrl?: string | null,
   inlineImages?: ReadonlyMap<string, string>
 ) {
-  // Prefer the fetched `data:` URI; the API URL is only a fallback for the
-  // first render, before the bytes have arrived.
-  const inlineImageSources =
-    inlineImages && inlineImages.size > 0
-      ? inlineImages
-      : getInlineEmailImageSources(attachments, import.meta.env.VITE_API_BASE_URL);
-
   document.body
     .querySelectorAll<HTMLImageElement | HTMLSourceElement>('img, source')
     .forEach((element) => {
@@ -344,21 +367,26 @@ function resolveInlineImages(
       });
       if (!cid) return;
 
-      const contentUrl = inlineImageSources.get(cid);
-      if (contentUrl) {
-        if (element instanceof HTMLSourceElement) {
-          element.setAttribute('srcset', contentUrl);
-          element.removeAttribute('src');
-        } else {
-          element.setAttribute('src', contentUrl);
-          element.removeAttribute('srcset');
-        }
-      } else {
-        // A `cid:` reference with no matching attachment would draw a broken
-        // image; drop the source so nothing is rendered for it.
-        element.removeAttribute('src');
-        element.removeAttribute('srcset');
+      // Marked whether or not it resolves, so the visible-image scan can see it.
+      element.setAttribute('data-inline-cid', cid);
+
+      // Only a `data:` URI is ever set here. An API URL would be requested by
+      // the frame, which cannot authenticate for it — sixteen guaranteed
+      // failures on opening one thread — and a `cid:` with no attachment draws
+      // a broken image. Either way, leave the element sourceless.
+      const dataUrl = inlineImages?.get(cid);
+      element.removeAttribute('src');
+      element.removeAttribute('srcset');
+      if (!dataUrl) {
         element.setAttribute('data-missing-inline-image', cid);
+        return;
+      }
+
+      element.removeAttribute('data-missing-inline-image');
+      if (element instanceof HTMLSourceElement) {
+        element.setAttribute('srcset', dataUrl);
+      } else {
+        element.setAttribute('src', dataUrl);
       }
     });
 }
