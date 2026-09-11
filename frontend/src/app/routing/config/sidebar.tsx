@@ -26,6 +26,10 @@ export const mainSidebarMenu: MenuConfig = [
         title: 'Monthly Bills',
         path: '../monthly-bills',
       },
+      {
+        title: 'Requisitions',
+        path: '../requisitions',
+      },
     ],
   },
   {
