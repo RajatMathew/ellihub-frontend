@@ -90,6 +90,8 @@ const CONNECTED_EMAIL_PAGE_SIZE = 50;
 const PROJECT_EMAIL_PAGE_SIZE = 100;
 /** Dwell before a hover counts as intent to open, rather than passing through. */
 const PREFETCH_HOVER_INTENT_MS = 350;
+/** How long after a scroll the list is still considered to be moving. */
+const PREFETCH_SCROLL_QUIET_MS = 500;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
   'drafts',
@@ -1039,6 +1041,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   // each — for every row the mouse swept past; one pass down the list was six.
   // A short dwell separates intent from transit.
   const prefetchTimer = useRef<number | null>(null);
+  const lastScrollAt = useRef(0);
   const cancelPrefetch = useCallback(() => {
     if (prefetchTimer.current === null) return;
     window.clearTimeout(prefetchTimer.current);
@@ -1070,10 +1073,32 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     [connectedAccount, queryClient]
   );
 
+  // Scrolling slides rows under a stationary pointer, and each one then "dwells"
+  // there indefinitely — so a timer alone never filters it out. Scrolling the
+  // inbox with the mouse over it fired ten conversation requests. A prefetch
+  // needs both conditions: the pointer settled, and the list not moving.
+  useEffect(() => {
+    const noteScroll = () => {
+      lastScrollAt.current = Date.now();
+      cancelPrefetch();
+    };
+    window.addEventListener('scroll', noteScroll, { capture: true, passive: true });
+    window.addEventListener('wheel', noteScroll, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener('scroll', noteScroll, { capture: true });
+      window.removeEventListener('wheel', noteScroll, { capture: true });
+    };
+  }, [cancelPrefetch]);
+
   const prefetchEmail = useCallback(
     (email: EmailListItem) => {
       cancelPrefetch();
-      prefetchTimer.current = window.setTimeout(() => runPrefetch(email), PREFETCH_HOVER_INTENT_MS);
+      prefetchTimer.current = window.setTimeout(() => {
+        // Checked when the timer fires rather than when it was set: a scroll can
+        // begin after the pointer has already entered the row.
+        if (Date.now() - lastScrollAt.current < PREFETCH_SCROLL_QUIET_MS) return;
+        runPrefetch(email);
+      }, PREFETCH_HOVER_INTENT_MS);
     },
     [cancelPrefetch, runPrefetch]
   );
