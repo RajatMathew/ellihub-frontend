@@ -16,6 +16,7 @@ const isDev = import.meta.env.DEV;
 // Main (top-level) layout & pages
 const Costcodes = lazy(() => import('@/modules/catalog/routes/costcodes.route'));
 const MonthlyBillsRoute = lazy(() => import('@/modules/monthly-bills/routes/monthly-bills.route'));
+const RequisitionsModule = lazy(() => import('@/modules/requisitions/requisitions-module'));
 const FinanceRoute = lazy(() => import('@/modules/finance/routes/finance.route'));
 const EmailRoutes = lazy(() => import('@/modules/email/routes/email.route'));
 const LookupRoutes = lazy(() => import('@/modules/lookup/routes/lookup.route'));
@@ -84,6 +85,7 @@ export const routeTree: RouteDef[] = [
 
       { path: 'projects/*', component: ProjectsRoutes, title: 'Projects' },
       { path: 'monthly-bills/*', component: MonthlyBillsRoute, title: 'Monthly Bills' },
+      { path: 'requisitions', component: RequisitionsModule, title: 'Requisitions' },
       {
         path: 'finance/*',
         component: FinanceRoute,
