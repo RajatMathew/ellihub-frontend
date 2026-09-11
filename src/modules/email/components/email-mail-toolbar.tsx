@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -114,6 +114,7 @@ export function EmailMailToolbar({
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const recentSearches = useRecentEmailSearches();
   const showRecentSearches = searchFocused && !search.trim() && recentSearches.length > 0;
 
@@ -365,6 +366,7 @@ export function EmailMailToolbar({
             <InputWrapper variant="sm" className="h-10 gap-2 bg-background px-3 sm:h-9">
               <Search aria-hidden="true" className="size-4" />
               <Input
+                ref={searchInputRef}
                 id="email-workspace-search"
                 type="text"
                 inputMode="search"
@@ -384,7 +386,20 @@ export function EmailMailToolbar({
                   type="button"
                   className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:size-9 motion-safe:transition-colors motion-safe:duration-100"
                   aria-label="Clear email search"
-                  onClick={() => onSearchChange('')}
+                  // Clearing unmounts this button, so a mouse click that moved
+                  // focus onto it would drop focus to <body> when it goes —
+                  // and the next keystrokes would land nowhere, reading as a
+                  // search box that swallows the first characters typed.
+                  // onMouseDown keeps focus in the field for the mouse; the
+                  // explicit focus() covers keyboard activation (Enter/Space,
+                  // where no mousedown fires) and the case where the field was
+                  // not focused to begin with. Neither makes the button any
+                  // less Tab-reachable.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onSearchChange('');
+                    searchInputRef.current?.focus();
+                  }}
                 >
                   <X aria-hidden="true" className="size-3.5" />
                 </button>
