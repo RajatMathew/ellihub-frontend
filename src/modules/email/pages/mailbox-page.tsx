@@ -418,9 +418,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const compose = useEmailCompose({
     isSending: sendDraftMutation.isPending,
     onSaveDraft: connectedAccount
-      ? async (payload, draft) => {
+      ? async (payload, draft, saveOptions) => {
           const result = await saveDraftMutation.mutateAsync({
             accountId: connectedAccount.id,
+            signal: saveOptions?.signal,
             draftId: draft?.draftId,
             messageId: draft?.messageId,
             subject: payload.subject,

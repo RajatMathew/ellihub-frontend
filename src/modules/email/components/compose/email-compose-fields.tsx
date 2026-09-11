@@ -29,17 +29,15 @@ export function EmailComposeFields({
         isDragging && 'bg-primary/5 ring-2 ring-inset ring-primary/40',
         className
       )}
-      onDragEnter={(event) => {
-        event.preventDefault();
-        compose.setIsDragging(true);
-      }}
+      onDragEnter={compose.handleDragEnter}
       onDragOver={(event) => event.preventDefault()}
-      onDragLeave={(event) => {
-        if (event.currentTarget === event.target) compose.setIsDragging(false);
-      }}
+      onDragLeave={compose.handleDragLeave}
+      // Capture phase: the body editor handles its own drop and stops the event
+      // from bubbling, so a bubble-phase reset here would never run and the
+      // overlay would stay up for good (elli-ui#910).
+      onDropCapture={compose.endDrag}
       onDrop={(event) => {
         event.preventDefault();
-        compose.setIsDragging(false);
         if (!isPreparingAttachments) {
           compose.handleAttachmentSelection(event.dataTransfer.files);
         }

@@ -77,9 +77,8 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
             <button
               type="button"
               className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-              disabled={isPreparingAttachments}
               onClick={() => {
-                compose.replacePendingAttachments([]);
+                compose.removePendingAttachments([]);
                 compose.setRemovedAttachmentIds((current) => [
                   ...new Set([
                     ...current,
@@ -142,10 +141,13 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
                 <button
                   type="button"
                   className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Remove ${file.name}`}
-                  disabled={isPreparingAttachments}
+                  // Stays live while the file is preparing: cancelling is the
+                  // only way out of an upload that never answers (elli-ui#910).
+                  aria-label={
+                    isPreparingAttachments ? `Cancel ${file.name}` : `Remove ${file.name}`
+                  }
                   onClick={() =>
-                    compose.replacePendingAttachments(attachments.filter((item) => item !== file))
+                    compose.removePendingAttachments(attachments.filter((item) => item !== file))
                   }
                 >
                   <X className="size-3.5" aria-hidden="true" />

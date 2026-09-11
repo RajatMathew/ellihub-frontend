@@ -4,6 +4,10 @@
  * the `useEmailCompose` controller work from one copy of the rules.
  */
 
+import { isAxiosError } from 'axios';
+
+export const ATTACHMENT_PREPARATION_FALLBACK = 'The attachment could not be prepared. Try again.';
+
 /**
  * Providers cap the WHOLE message, not each file — Outlook silently drops mail
  * whose combined attachments exceed ~25 MB, so the budget must be enforced
@@ -35,6 +39,31 @@ export function fileToAttachment(file: File) {
     reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Names the transport failure behind a preparation that did not complete —
+ * a timeout, an unreachable server, a refused size, a server fault — each of
+ * which needs a different next step from the user. Returns `null` when the
+ * answer carries the server's own reason, which says more than anything
+ * generic; the caller falls back to `getApiErrorMessage` there. None of these
+ * may be swallowed: a silent failure is what left the composer stuck on
+ * "Preparing attachments…" (elli-ui#910).
+ */
+export function getAttachmentTransportErrorMessage(error: unknown): string | null {
+  if (!isAxiosError(error)) return null;
+  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+    return 'Attaching the file timed out. Check your connection and try again.';
+  }
+  if (!error.response) {
+    return 'Could not reach the mail server while attaching the file. Try again.';
+  }
+  const { status } = error.response;
+  if (status === 413) return 'That file is too large for the mail server to accept.';
+  if (status >= 500) {
+    return 'The mail server could not store the attachment. Try again in a moment.';
+  }
+  return null;
 }
 
 export function getNewAttachments(

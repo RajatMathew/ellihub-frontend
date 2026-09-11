@@ -4,19 +4,24 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
 
+import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
 import { getEmailAddressListError } from '@/modules/email/lib/email-addresses';
 import {
+  ATTACHMENT_PREPARATION_FALLBACK,
   fileKey,
   fileToAttachment,
+  getAttachmentTransportErrorMessage,
   getNewAttachments,
   MAX_TOTAL_ATTACHMENT_BYTES,
 } from '@/modules/email/lib/email-compose-attachments';
 import { isEmptyEmailHtml } from '@/modules/email/lib/email-rich-text';
+import { toast } from 'sonner';
 
 export type ComposeForm = {
   to: string;
@@ -58,7 +63,8 @@ export interface UseEmailComposeOptions {
   isSending?: boolean;
   onSaveDraft?: (
     payload: ComposeDraftPayload,
-    draft?: ComposeDraftIdentity
+    draft?: ComposeDraftIdentity,
+    options?: { signal?: AbortSignal }
   ) => Promise<ComposeDraftSaveResult>;
   onSendDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
   onDiscardDraft?: (draft: ComposeDraftIdentity, options?: { silent?: boolean }) => Promise<void>;
@@ -108,6 +114,14 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
   const draftRef = useRef<ComposeDraftIdentity | undefined>(undefined);
   const attachmentsRef = useRef<File[]>([]);
   const attachmentPreparationRef = useRef<Promise<void>>(Promise.resolve());
+  /** Aborts the upload behind the current preparation when the user cancels it. */
+  const attachmentAbortRef = useRef<AbortController | null>(null);
+  /**
+   * `dragenter`/`dragleave` fire for every descendant the pointer crosses, so
+   * the overlay can only be driven by how deep the drag is, never by a single
+   * boolean flipped on the first leave (elli-ui#910).
+   */
+  const dragDepthRef = useRef(0);
   const lastPersistedFormRef = useRef<ComposeForm>(EMPTY_FORM);
   const lastSavedSignatureRef = useRef('');
   /** The control that opened the composer, so closing can hand focus back. */
@@ -169,6 +183,8 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setSaveStatus('idle');
     setAddressErrors({});
     setAttachmentError(null);
+    attachmentAbortRef.current = null;
+    dragDepthRef.current = 0;
     setIsDragging(false);
     setIsClosing(false);
     setIsSubmitting(false);
@@ -205,6 +221,8 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setSaveStatus('idle');
     setAddressErrors({});
     setAttachmentError(null);
+    attachmentAbortRef.current = null;
+    dragDepthRef.current = 0;
     setIsDragging(false);
     setIsClosing(false);
     setIsSubmitting(false);
@@ -368,25 +386,47 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setAttachments(next);
   }
 
+  /**
+   * Abandons the preparation in flight and hands the composer back to the user.
+   * Without it, a draft save that never answers leaves the composer stuck on
+   * "Preparing attachments…" with every escape hatch disabled (elli-ui#910).
+   */
+  function cancelAttachmentPreparation() {
+    const controller = attachmentAbortRef.current;
+    if (!controller) return;
+    attachmentAbortRef.current = null;
+    controller.abort();
+    attachmentPreparationRef.current = Promise.resolve();
+    setSaveStatus('idle');
+  }
+
   function startAttachmentPreparation(files: File[]) {
     if (!files.length || !onSaveDraft) return;
 
     const formSnapshot = { ...lastPersistedFormRef.current };
     const removedIdsSnapshot = [...removedAttachmentIds];
     const uploadedKeys = new Set(files.map(fileKey));
+    // Only one preparation may own `saveStatus`; an earlier one still in flight
+    // would otherwise report its own outcome over this batch's.
+    attachmentAbortRef.current?.abort();
+    const controller = new AbortController();
+    attachmentAbortRef.current = controller;
     setSaveStatus('saving');
 
     const preparation = (async () => {
       try {
         const encodedAttachments = await Promise.all(files.map(fileToAttachment));
+        if (controller.signal.aborted) return;
         const result = await onSaveDraft(
           {
             ...formSnapshot,
             attachments: encodedAttachments,
             removedAttachmentIds: removedIdsSnapshot,
           },
-          draftRef.current
+          draftRef.current,
+          { signal: controller.signal }
         );
+        if (controller.signal.aborted) return;
         draftRef.current = { draftId: result.draftId, messageId: result.messageId };
         if (result.attachments) {
           setExistingAttachments(result.attachments);
@@ -395,12 +435,45 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
           );
         }
         setSaveStatus('idle');
-      } catch {
+      } catch (error: unknown) {
+        // A cancelled upload is the user's own doing — `cancelAttachmentPreparation`
+        // has already put the composer back to idle.
+        if (controller.signal.aborted) return;
         setSaveStatus('error');
+        toast.error(
+          getAttachmentTransportErrorMessage(error) ??
+            getApiErrorMessage(error, ATTACHMENT_PREPARATION_FALLBACK)
+        );
+      } finally {
+        if (attachmentAbortRef.current === controller) attachmentAbortRef.current = null;
       }
     })();
 
     attachmentPreparationRef.current = preparation;
+  }
+
+  /** Drops pending files, cancelling the upload they are still riding on. */
+  function removePendingAttachments(next: File[]) {
+    cancelAttachmentPreparation();
+    replacePendingAttachments(next);
+  }
+
+  function handleDragEnter(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragging(false);
+  }
+
+  /** Takes the overlay down however the drag ended, including a drop a child handled. */
+  function endDrag() {
+    dragDepthRef.current = 0;
+    setIsDragging(false);
   }
 
   function handleAttachmentSelection(files: FileList | null) {
@@ -500,11 +573,16 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setShowCc,
     setShowBcc,
     setIsDragging,
+    handleDragEnter,
+    handleDragLeave,
+    endDrag,
     setSubject,
     setBody,
     updateAddressField,
     handleAttachmentSelection,
     replacePendingAttachments,
+    removePendingAttachments,
+    cancelAttachmentPreparation,
     setExistingAttachments,
     setRemovedAttachmentIds,
     formProps,
