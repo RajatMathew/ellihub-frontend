@@ -6,6 +6,8 @@ import {
   buildMailboxSearchString,
   MAILBOX_FILTER_RESET,
   parseMailboxUrlState,
+  resolveMailboxSearchSync,
+  type MailboxSearchSyncState,
   type MailboxUrlState,
 } from '@/modules/email/lib/mailbox-url-state';
 import { useSearchParams } from 'react-router-dom';
@@ -60,28 +62,32 @@ export function useMailboxUrlState(): UseMailboxUrlStateResult {
   );
 
   const [searchDraft, setSearchDraftValue] = useState(urlSearch);
-  // Mirrors the term the URL held as of the last render, and is set alongside
-  // the hook's own commits. A URL term that does not match it therefore came
-  // from somewhere else — Back/Forward, a filter reset, a folder switch — and
-  // has to be typed back into the box.
-  const [committedSearch, setCommittedSearch] = useState(urlSearch);
-  // The same value again, for the code that runs after render: adjusting state
-  // during render is what keeps the box from painting stale text, but it also
-  // means `committedSearch` has already caught up by the time effects run.
-  const committedSearchRef = useRef(urlSearch);
+  // What the box knows about the URL's term: the term the URL held when it last
+  // looked, plus any term the box wrote whose navigation has not arrived yet.
+  // See `resolveMailboxSearchSync` for why the second field is needed.
+  const [searchSync, setSearchSync] = useState<MailboxSearchSyncState>({
+    committedSearch: urlSearch,
+    pendingCommit: null,
+  });
+  // The same two facts again, for the code that runs after render: adjusting
+  // state during render is what keeps the box from painting stale text, but it
+  // also means `searchSync` has already caught up by the time effects run.
+  const pendingCommitRef = useRef<string | null>(null);
+  const lastUrlSearchRef = useRef(urlSearch);
 
   const commitSearch = useCancellableDebouncedCallback((value: string) => {
     const term = value.trim();
-    committedSearchRef.current = term;
-    setCommittedSearch(term);
+    pendingCommitRef.current = term;
+    setSearchSync((previous) => ({ ...previous, pendingCommit: term }));
     setState({ search: term });
   }, MAILBOX_SEARCH_DEBOUNCE_MS);
 
   // Adjusted during render rather than in an effect so the box never paints a
   // frame of stale text after Back/Forward.
-  if (committedSearch !== urlSearch) {
-    setCommittedSearch(urlSearch);
-    setSearchDraftValue(urlSearch);
+  const resolution = resolveMailboxSearchSync(searchSync, urlSearch);
+  if (resolution.next) {
+    setSearchSync(resolution.next);
+    if (resolution.draft !== null) setSearchDraftValue(resolution.draft);
   }
 
   // Drop a keystroke still in flight when the term changed from outside, so it
@@ -89,9 +95,11 @@ export function useMailboxUrlState(): UseMailboxUrlStateResult {
   // this hook committed itself is not an outside change, and must not cancel a
   // key pressed while that commit was on its way to the URL.
   useEffect(() => {
-    if (committedSearchRef.current === urlSearch) return;
-    committedSearchRef.current = urlSearch;
-    commitSearch.cancel();
+    if (lastUrlSearchRef.current === urlSearch) return;
+    const wasOwnCommit = pendingCommitRef.current === urlSearch;
+    lastUrlSearchRef.current = urlSearch;
+    pendingCommitRef.current = null;
+    if (!wasOwnCommit) commitSearch.cancel();
   }, [commitSearch, urlSearch]);
 
   const setSearchDraft = useCallback(

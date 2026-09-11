@@ -6,6 +6,7 @@ import {
   DEFAULT_MAILBOX_URL_STATE,
   MAILBOX_FILTER_RESET,
   parseMailboxUrlState,
+  resolveMailboxSearchSync,
   type MailboxUrlState,
 } from '../src/modules/email/lib/mailbox-url-state';
 
@@ -167,5 +168,57 @@ describe('round trip', () => {
       const encoded = buildMailboxSearchString(new URLSearchParams(), state);
       expect(parseMailboxUrlState(new URLSearchParams(encoded))).toEqual(state);
     }
+  });
+});
+
+describe('resolveMailboxSearchSync', () => {
+  test('leaves the box alone while the URL still holds the committed term', () => {
+    expect(resolveMailboxSearchSync({ committedSearch: 'h', pendingCommit: null }, 'h')).toEqual({
+      next: null,
+      draft: null,
+    });
+  });
+
+  test('a commit that has not reached the URL yet is not an outside change', () => {
+    // The render in between `setSearchSync` and the router publishing the new
+    // location. Typing the old term back in here is what swallowed keystrokes.
+    expect(resolveMailboxSearchSync({ committedSearch: '', pendingCommit: 'h' }, '')).toEqual({
+      next: null,
+      draft: null,
+    });
+  });
+
+  test('the box keeps what was typed when its own commit finally lands', () => {
+    // The user has typed on past 'h' by now; adopting the URL must not rewind
+    // the box to it.
+    expect(resolveMailboxSearchSync({ committedSearch: '', pendingCommit: 'h' }, 'h')).toEqual({
+      next: { committedSearch: 'h', pendingCommit: null },
+      draft: null,
+    });
+  });
+
+  test('a term the box did not write is typed back into it', () => {
+    expect(
+      resolveMailboxSearchSync({ committedSearch: 'h', pendingCommit: null }, 'invoice')
+    ).toEqual({ next: { committedSearch: 'invoice', pendingCommit: null }, draft: 'invoice' });
+  });
+
+  test('Back to an empty term clears the box', () => {
+    expect(
+      resolveMailboxSearchSync({ committedSearch: 'invoice', pendingCommit: null }, '')
+    ).toEqual({ next: { committedSearch: '', pendingCommit: null }, draft: '' });
+  });
+
+  test('an outside change wins over a commit still in flight', () => {
+    expect(resolveMailboxSearchSync({ committedSearch: 'a', pendingCommit: 'ab' }, 'zzz')).toEqual({
+      next: { committedSearch: 'zzz', pendingCommit: null },
+      draft: 'zzz',
+    });
+  });
+
+  test('re-resolving the result changes nothing, so the render-phase adjust settles', () => {
+    const first = resolveMailboxSearchSync({ committedSearch: '', pendingCommit: 'h' }, 'h');
+    if (first.next === null) throw new Error('expected the URL to be adopted');
+    expect(resolveMailboxSearchSync(first.next, 'h')).toEqual({ next: null, draft: null });
   });
 });

@@ -211,3 +211,61 @@ export function buildMailboxSearchString(
 ): string {
   return applyMailboxUrlState(params, patch).toString();
 }
+
+/**
+ * What the search box knows about the term in the URL.
+ *
+ * The box leads the URL by a debounce, so the two are routinely out of step and
+ * "out of step" alone cannot mean "someone else changed the URL". These two
+ * fields are what tells the two cases apart.
+ */
+export interface MailboxSearchSyncState {
+  /** The term the URL held the last time the box looked at it. */
+  committedSearch: string;
+  /**
+   * A term the box itself wrote to the URL whose navigation has not been seen
+   * yet, or `null` when nothing is in flight.
+   */
+  pendingCommit: string | null;
+}
+
+/** What `resolveMailboxSearchSync` decided to do about the term in the URL. */
+export interface MailboxSearchSyncResolution {
+  /** The sync state to move to, or `null` when nothing has to change. */
+  next: MailboxSearchSyncState | null;
+  /**
+   * The term to type back into the box, or `null` to leave whatever the user
+   * has typed alone.
+   */
+  draft: string | null;
+}
+
+/**
+ * Reconciles the search box with the term in the URL.
+ *
+ * A search commit is two updates — the box records what it wrote, and the
+ * router navigates — and React does not have to apply them in the same render:
+ * `BrowserRouter` publishes the new location inside `startTransition`, so the
+ * higher-priority state update can render one or more times against the *old*
+ * location first. Comparing the box's term to the URL's on its own therefore
+ * reports a phantom "someone else changed the URL" in that window, and typing
+ * the old term back in swallows whatever was typed since.
+ *
+ * Remembering the term that was written (`pendingCommit`) closes that window:
+ * a URL that matches it is this box's own commit arriving late and must never
+ * overwrite the draft; a URL that matches neither it nor the last committed
+ * term is a genuine outside change — Back/Forward, a filter reset, a folder
+ * switch — and is typed back in.
+ */
+export function resolveMailboxSearchSync(
+  sync: MailboxSearchSyncState,
+  urlSearch: string
+): MailboxSearchSyncResolution {
+  if (sync.pendingCommit !== null && sync.pendingCommit === urlSearch) {
+    return { next: { committedSearch: urlSearch, pendingCommit: null }, draft: null };
+  }
+  if (sync.committedSearch === urlSearch) {
+    return { next: null, draft: null };
+  }
+  return { next: { committedSearch: urlSearch, pendingCommit: null }, draft: urlSearch };
+}
