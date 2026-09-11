@@ -130,23 +130,58 @@ export function EmailListPane({
     scrollContainer?.scrollTo({ top: 0 });
   }, [folder, mailbox, scrollContainer, search]);
 
+  /**
+   * Paging state read at the moment the sentinel is seen, rather than captured
+   * when the observer was built.
+   *
+   * Putting these in the effect's dependencies instead tore the observer down
+   * and rebuilt it on every state flip, and re-observing a sentinel that is
+   * still on screen fires the callback again immediately — so finishing one
+   * page could start the next without the reader having moved. The observer is
+   * now built once per scroll container and consults this.
+   */
+  const pagingRef = useRef({ hasNextPage, isLoadingMore, loadMoreError, onLoadMore });
+  useEffect(() => {
+    pagingRef.current = { hasNextPage, isLoadingMore, loadMoreError, onLoadMore };
+  }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore]);
+
   useEffect(() => {
     const root = scrollContainer;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!root || !sentinel || !hasNextPage || isLoadingMore || loadMoreError || !onLoadMore) {
-      return;
-    }
+    if (!root) return;
 
+    // `rootMargin: 0` — the next page is asked for when the end of the list is
+    // actually reached, not before it.
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) onLoadMore();
+        if (!entry?.isIntersecting) return;
+        const paging = pagingRef.current;
+        if (!paging.hasNextPage || paging.isLoadingMore || paging.loadMoreError) return;
+        paging.onLoadMore?.();
       },
-      { root, rootMargin: '320px 0px' }
+      { root, rootMargin: '0px' }
     );
-    observer.observe(sentinel);
 
-    return () => observer.disconnect();
-  }, [hasNextPage, isLoadingMore, loadMoreError, onLoadMore, scrollContainer]);
+    // The sentinel mounts and unmounts with the list, so it is watched rather
+    // than observed once: an observer bound to a detached node silently never
+    // fires again.
+    let observed: Element | null = null;
+    const attach = () => {
+      const sentinel = loadMoreSentinelRef.current;
+      if (sentinel === observed) return;
+      if (observed) observer.unobserve(observed);
+      observed = sentinel;
+      if (sentinel) observer.observe(sentinel);
+    };
+
+    attach();
+    const listWatcher = new MutationObserver(attach);
+    listWatcher.observe(root, { childList: true, subtree: true });
+
+    return () => {
+      listWatcher.disconnect();
+      observer.disconnect();
+    };
+  }, [scrollContainer]);
 
   // A filter can have zero matches among the pages loaded so far while more
   // pages remain server-side. The load-more sentinel above only mounts once
