@@ -50,10 +50,11 @@ themselves behave the same under `npm run` or `bun run`.
 - `npm run lint` — ESLint. Must pass.
 - `npm run build` — `tsc -b && vite build`. Must pass.
 - `npm run format` / `format:check` — Prettier (it owns import order; do not hand-sort).
+- `npm run test` — the `bun:test` unit suite (`tests/*.test.ts`). Needs `bun` on PATH.
 - `npm run test:e2e` — Playwright.
 
-There is no unit-test script; the `tests/*.test.ts` files are not wired to a runner in
-`package.json`. Do not claim "tests pass" from `npm run lint && npm run build`.
+`npm run lint && npm run build` runs **no tests** — do not claim "tests pass" from a type-check.
+`tests/email-account-identity.test.ts` has one known pre-existing failure; everything else is green.
 
 ## Hard rules (the ones that cost the most rework)
 
@@ -101,6 +102,8 @@ There is no unit-test script; the `tests/*.test.ts` files are not wired to a run
 | `error-handling.md` | toasts, error states, typed catch |
 | `accessibility.md` | keyboard, labels, Radix |
 | `ui-quality.md` | anti-AI-aesthetic patterns |
+| `testing.md` | what to test, how the suite runs |
+| `performance.md` | earning every request, cache reuse |
 
 `AGENTS.md` is the short cross-tool version of the same material.
 

@@ -103,3 +103,5 @@ For more specific conventions, see the rule files in `.claude/rules/`:
 - `typescript.md` — Strict mode, no `any`
 - `ui-quality.md` — Anti-AI-aesthetic patterns
 - `accessibility.md` — Keyboard, screen reader, semantic HTML
+- `testing.md` — Ship a regression test with every change; how the suite runs
+- `performance.md` — Earn every request: no loops, no waterfalls, reuse the cache
