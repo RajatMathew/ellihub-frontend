@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  commitAddressChips,
   formatEmailAddress,
   getEmailAddressListError,
   isValidEmailAddress,
@@ -82,6 +83,89 @@ describe('partitionEmailAddresses', () => {
 
   test('reports nothing for an empty field', () => {
     expect(partitionEmailAddresses('  ')).toEqual({ valid: [], invalid: [] });
+  });
+});
+
+describe('commitAddressChips', () => {
+  const INVALID_S = '“s” is not a complete email address. Recipients look like name@company.com.';
+
+  test('refuses to chip a stray word and leaves it in the field to fix', () => {
+    // The reported bug: typing "s" and pressing Enter committed a chip anyway.
+    expect(commitAddressChips([], 's')).toEqual({
+      chips: [],
+      buffer: 's',
+      error: INVALID_S,
+    });
+  });
+
+  test('refuses a half-typed address rather than committing it red', () => {
+    const result = commitAddressChips(['a@example.com'], 'someone@outlook');
+
+    expect(result.chips).toEqual(['a@example.com']);
+    expect(result.buffer).toBe('someone@outlook');
+    expect(result.error).not.toBeNull();
+  });
+
+  test('commits a complete address and clears the field', () => {
+    expect(commitAddressChips([], 'sharuntest0@outlook.com')).toEqual({
+      chips: ['sharuntest0@outlook.com'],
+      buffer: '',
+      error: null,
+    });
+  });
+
+  test('commits a named address without splitting it on its spaces', () => {
+    expect(commitAddressChips([], 'Project Manager <manager@example.com>')).toEqual({
+      chips: ['Project Manager <manager@example.com>'],
+      buffer: '',
+      error: null,
+    });
+  });
+
+  test('keeps the valid half of a paste and hands the rest back', () => {
+    const result = commitAddressChips([], 'a@example.com, nonsense, b@example.com');
+
+    expect(result.chips).toEqual(['a@example.com', 'b@example.com']);
+    expect(result.buffer).toBe('nonsense');
+    expect(result.error).toBe(
+      '“nonsense” is not a complete email address. Recipients look like name@company.com.'
+    );
+  });
+
+  test('carries the still-being-typed tail back unjudged', () => {
+    expect(commitAddressChips([], 'a@example.com', 'b@exa')).toEqual({
+      chips: ['a@example.com'],
+      buffer: 'b@exa',
+      error: null,
+    });
+  });
+
+  test('puts the refused fragments before the tail the user is still typing', () => {
+    expect(commitAddressChips([], 'a@example.com, junk', 'c@exa').buffer).toBe('junk, c@exa');
+  });
+
+  test('deduplicates against an existing chip, including its named form', () => {
+    const already = ['a@example.com'];
+
+    expect(commitAddressChips(already, 'a@example.com').chips).toBe(already);
+    expect(commitAddressChips(already, 'Ada <a@example.com>').chips).toBe(already);
+  });
+
+  test('an empty buffer is a no-op, not an error', () => {
+    expect(commitAddressChips(['a@example.com'], '   ')).toEqual({
+      chips: ['a@example.com'],
+      buffer: '',
+      error: null,
+    });
+  });
+
+  test('anything it accepts also passes the send-time gate', () => {
+    const committed = ['a@example.com', 'Ada <ada@example.com>', 'b@example.com'].reduce<string[]>(
+      (chips, text) => commitAddressChips(chips, text).chips,
+      []
+    );
+
+    expect(getEmailAddressListError(committed.join(', '), 'To', true)).toBeNull();
   });
 });
 

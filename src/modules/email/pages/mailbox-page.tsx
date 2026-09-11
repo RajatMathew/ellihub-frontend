@@ -426,6 +426,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
           const result = await saveDraftMutation.mutateAsync({
             accountId: connectedAccount.id,
             signal: saveOptions?.signal,
+            onUploadProgress: saveOptions?.onProgress
+              ? (event) => saveOptions.onProgress?.(event.loaded, event.total)
+              : undefined,
             draftId: draft?.draftId,
             messageId: draft?.messageId,
             subject: payload.subject,

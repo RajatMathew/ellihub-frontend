@@ -1,10 +1,12 @@
 import { useRef } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { Progress } from '@/app/components/ui/progress';
 import { cn } from '@/app/lib/utils';
 import type { EmailComposeController } from '@/modules/email/hooks/use-email-compose';
 import {
   formatFileSize,
+  getAttachmentStatusLabel,
   MAX_TOTAL_ATTACHMENT_BYTES,
 } from '@/modules/email/lib/email-compose-attachments';
 import { AlertCircle, FileText, Paperclip, Trash2, X } from 'lucide-react';
@@ -24,6 +26,7 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
     attachmentsOverBudget,
     saveStatus,
     isPreparingAttachments,
+    attachmentProgress,
   } = compose;
   const attachmentCount = attachments.length + existingAttachments.length;
 
@@ -34,7 +37,6 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
         id={attachmentInputId}
         type="file"
         multiple
-        disabled={isPreparingAttachments}
         className="sr-only"
         onChange={(event) => {
           compose.handleAttachmentSelection(event.target.files);
@@ -50,7 +52,6 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
           variant="ghost"
           size="sm"
           className="-ms-2"
-          disabled={isPreparingAttachments}
           onClick={() => inputRef.current?.click()}
         >
           <Paperclip className="size-3.5" aria-hidden="true" />
@@ -122,21 +123,21 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
             {attachments.map((file) => (
               <li
                 key={`${file.name}-${file.lastModified}`}
-                className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2"
+                className="relative flex min-w-0 items-center gap-2 overflow-hidden rounded-md border border-border bg-background px-2.5 py-2"
               >
                 <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-xs text-foreground">{file.name}</span>
                 <span
                   className={cn(
-                    'shrink-0 text-[11px] font-medium',
+                    'shrink-0 text-xs font-medium tabular-nums',
                     saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground'
                   )}
                 >
-                  {saveStatus === 'saving'
-                    ? 'Preparing…'
-                    : saveStatus === 'error'
-                      ? 'Failed'
-                      : formatFileSize(file.size)}
+                  {getAttachmentStatusLabel({
+                    saveStatus,
+                    percent: attachmentProgress,
+                    sizeBytes: file.size,
+                  })}
                 </span>
                 <button
                   type="button"
@@ -152,6 +153,13 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
                 >
                   <X className="size-3.5" aria-hidden="true" />
                 </button>
+                {saveStatus === 'saving' && attachmentProgress !== null && (
+                  <Progress
+                    value={attachmentProgress}
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 h-0.5 rounded-none"
+                  />
+                )}
               </li>
             ))}
           </ul>

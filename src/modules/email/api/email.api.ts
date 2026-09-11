@@ -2,6 +2,7 @@ import api from '@/app/api';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import type { EmailProvider } from '@/modules/email/constants/email-providers';
 import { dedupeEmailAccounts } from '@/modules/email/utils/email-account-identity';
+import type { AxiosProgressEvent } from 'axios';
 import { z } from 'zod';
 
 const BASE = '/email';
@@ -330,6 +331,12 @@ export type EmailDraftMessagePayload = {
   removedAttachmentIds?: string[];
   /** Lets the composer abandon an upload the user cancelled. */
   signal?: AbortSignal;
+  /**
+   * Reports bytes sent so the composer can show real progress. The payload is
+   * base64, so a 25 MB message is ~33 MB on the wire and takes as long as the
+   * uplink takes — an indeterminate "Preparing…" for that long reads as a hang.
+   */
+  onUploadProgress?: (event: AxiosProgressEvent) => void;
 };
 
 /**
@@ -580,8 +587,8 @@ export const emailApi = {
   },
 
   async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
-    const { accountId, draftId, signal, ...draft } = payload;
-    const config = { timeout: DRAFT_SAVE_TIMEOUT_MS, signal };
+    const { accountId, draftId, signal, onUploadProgress, ...draft } = payload;
+    const config = { timeout: DRAFT_SAVE_TIMEOUT_MS, signal, onUploadProgress };
     const res = draftId
       ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
       : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);

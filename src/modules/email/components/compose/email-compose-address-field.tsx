@@ -3,7 +3,11 @@ import { useCallback, useMemo, useRef, useState, type ChangeEvent, type ReactNod
 import { cn } from '@/app/lib/utils';
 import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
-import { EMAIL_ADDRESS_PATTERN, parseEmailAddresses } from '@/modules/email/lib/email-addresses';
+import {
+  commitAddressChips,
+  EMAIL_ADDRESS_PATTERN,
+  parseEmailAddresses,
+} from '@/modules/email/lib/email-addresses';
 import { X } from 'lucide-react';
 
 /**
@@ -43,6 +47,11 @@ export function EmailComposeAddressField({
   const [focused, setFocused] = useState(false);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  // Keystroke-level feedback for a buffer we refused to turn into a chip. It
+  // outranks the parent's send-time error because it is about what the user
+  // just did; a toast would be far too loud for a keypress.
+  const [bufferError, setBufferError] = useState<string | null>(null);
+  const shownError = bufferError ?? error;
 
   // Chips are derived from the parent-owned value string — nothing about the
   // outer contract changes. `buffer` is only for text the user is typing right
@@ -63,6 +72,7 @@ export function EmailComposeAddressField({
   const selectSuggestion = useCallback(
     (address: string) => {
       setBuffer('');
+      setBufferError(null);
       setActiveSuggestionIndex(-1);
       if (!chips.includes(address)) onChange([...chips, address].join(', '));
       inputRef.current?.focus();
@@ -70,17 +80,22 @@ export function EmailComposeAddressField({
     [chips, onChange]
   );
 
-  const commitBuffer = useCallback(() => {
-    const trimmed = buffer
-      .trim()
-      .replace(/[,;]+$/, '')
-      .trim();
-    setBuffer('');
-    if (!trimmed) return;
-    // Deduplicate — chip already present is a no-op.
-    if (chips.includes(trimmed)) return;
-    onChange([...chips, trimmed].join(', '));
-  }, [buffer, chips, onChange]);
+  /**
+   * Turns whatever is in the buffer into chips. Complete addresses commit;
+   * anything else stays in the field with an inline error beside it, so a
+   * stray word can never become a recipient and is never dropped either.
+   * Returns whether the whole buffer was accepted.
+   */
+  const commitBuffer = useCallback(
+    (text: string, pending = '') => {
+      const result = commitAddressChips(chips, text, pending);
+      setBuffer(result.buffer);
+      setBufferError(result.error);
+      if (result.chips !== chips) onChange(result.chips.join(', '));
+      return result.error === null;
+    },
+    [chips, onChange]
+  );
 
   const removeChip = useCallback(
     (index: number) => {
@@ -94,24 +109,19 @@ export function EmailComposeAddressField({
     const raw = event.target.value;
     setSuggestionsDismissed(false);
     setActiveSuggestionIndex(-1);
-    // Pastes / typed delimiters split into chips immediately, leaving whatever
-    // trails the last delimiter as the still-editable buffer.
-    if (/[,;]/.test(raw)) {
-      const parts = raw.split(/[,;]/).map((part) => part.trim());
-      const nextBuffer = parts.pop() ?? '';
-      const seen = new Set(chips);
-      const additions = parts.filter((part) => {
-        if (!part || seen.has(part)) return false;
-        seen.add(part);
-        return true;
-      });
-      setBuffer(nextBuffer);
-      if (additions.length) {
-        onChange([...chips, ...additions].join(', '));
-      }
+    // Pastes / typed delimiters split into chips immediately. Only the
+    // complete addresses commit; the incomplete ones come back into the field
+    // alongside whatever trails the last delimiter, which is still being typed
+    // and so is not judged yet.
+    if (/[,;\n]/.test(raw)) {
+      const parts = raw.split(/[,;\n]/);
+      const pending = parts.pop() ?? '';
+      commitBuffer(parts.join(','), pending);
       return;
     }
     setBuffer(raw);
+    // Editing is the user answering the message — retract it as they type.
+    setBufferError(null);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -145,8 +155,11 @@ export function EmailComposeAddressField({
       }
     }
     if ((event.key === 'Enter' || event.key === 'Tab') && buffer.trim()) {
-      event.preventDefault();
-      commitBuffer();
+      // Tab is the one key that still has somewhere to go when the buffer is
+      // refused: swallowing it would trap focus in a field the user cannot
+      // satisfy, so only a successful commit consumes it.
+      const accepted = commitBuffer(buffer);
+      if (event.key === 'Enter' || accepted) event.preventDefault();
       return;
     }
     if (event.key === 'Backspace' && buffer === '' && chips.length > 0) {
@@ -173,13 +186,17 @@ export function EmailComposeAddressField({
         <div
           className={cn(
             'relative flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
-            error && 'text-destructive'
+            shownError && 'text-destructive'
           )}
           onClick={(event) => {
             if (event.target === event.currentTarget) inputRef.current?.focus();
           }}
         >
           {chips.map((address, index) => {
+            // Typing can no longer produce an invalid chip, but `value` is
+            // parent-owned: a server draft's recipients and a "compose to this
+            // sender" prefill both land here unvalidated, so the destructive
+            // state stays reachable and stays rendered.
             const isValid = EMAIL_ADDRESS_PATTERN.test(address);
             return (
               <span
@@ -224,8 +241,8 @@ export function EmailComposeAddressField({
             data-lpignore="true"
             spellCheck={false}
             placeholder={chips.length === 0 ? placeholder : undefined}
-            aria-invalid={error ? 'true' : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-invalid={shownError ? 'true' : undefined}
+            aria-describedby={shownError ? errorId : undefined}
             className="min-w-24 flex-1 border-0 bg-transparent px-0 py-0.5 text-sm outline-none placeholder:text-muted-foreground/70"
             onChange={handleBufferChange}
             onKeyDown={handleKeyDown}
@@ -236,7 +253,11 @@ export function EmailComposeAddressField({
             onBlur={() => {
               setFocused(false);
               setActiveSuggestionIndex(-1);
-              commitBuffer();
+              // Same rule as Enter: a complete address chips itself so the user
+              // does not have to press anything, and an incomplete one stays
+              // put with its error. Discarding it would lose typing the user
+              // never agreed to lose, and committing it is the bug.
+              if (buffer.trim()) commitBuffer(buffer);
             }}
           />
           {suggestionsOpen && (
@@ -260,9 +281,9 @@ export function EmailComposeAddressField({
           </button>
         )}
       </div>
-      {error && (
+      {shownError && (
         <p id={errorId} className="px-5 pb-2.5 pl-24 text-xs text-destructive" role="alert">
-          {error}
+          {shownError}
         </p>
       )}
     </div>

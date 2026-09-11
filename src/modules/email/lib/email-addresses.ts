@@ -67,6 +67,59 @@ export function partitionEmailAddresses(value: string): {
   return { valid, invalid };
 }
 
+export type AddressChipCommit = {
+  /** The chip list after the commit. Unchanged when nothing was complete. */
+  chips: string[];
+  /** Text that must stay in the input — never silently dropped. */
+  buffer: string;
+  /** Inline message for the field, or `null` when everything committed. */
+  error: string | null;
+};
+
+/** Field-level copy for a fragment that is not a complete address. */
+export function incompleteEmailAddressMessage(text: string): string {
+  return `“${text}” is not a complete email address. Recipients look like name@company.com.`;
+}
+
+/**
+ * The single decision every commit path in a recipient chip input runs
+ * through — Enter, Tab, a typed separator, a paste, and blur.
+ *
+ * Only complete addresses become chips. Anything else stays in `buffer` with
+ * an `error` explaining why, so a stray word can neither turn into a chip nor
+ * be thrown away behind the user's back. The predicate is the same
+ * `EMAIL_ADDRESS_PATTERN` that `getEmailAddressListError` gates sending on, so
+ * the field can never accept something send would later reject.
+ *
+ * `pending` is the tail the user is still typing after the last separator. It
+ * is carried back into the buffer unjudged — mid-word is not an error yet.
+ */
+export function commitAddressChips(chips: string[], text: string, pending = ''): AddressChipCommit {
+  const { valid, invalid } = partitionEmailAddresses(text);
+
+  // Deduplicate on the parsed address so a suggestion pick that arrives as
+  // `Name <a@b.com>` does not double up a chip already typed as `a@b.com`.
+  const seen = new Set(chips.map(addressOf));
+  const additions: string[] = [];
+  for (const candidate of valid) {
+    const address = addressOf(candidate);
+    if (seen.has(address)) continue;
+    seen.add(address);
+    additions.push(candidate);
+  }
+
+  const tail = pending.trim();
+  return {
+    chips: additions.length ? [...chips, ...additions] : chips,
+    buffer: [...invalid, tail].filter(Boolean).join(', '),
+    error: invalid.length ? incompleteEmailAddressMessage(invalid[0]) : null,
+  };
+}
+
+function addressOf(text: string): string {
+  return parseEmailAddresses(text)[0]?.address ?? text.trim();
+}
+
 /** Renders a parsed address back to the `Name <address>` text form. */
 export function formatEmailAddress({ address, name }: ParsedEmailAddress): string {
   return name ? `${name} <${address}>` : address;
