@@ -15,6 +15,9 @@ import { useNavigate } from 'react-router-dom';
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 
+/** Window over which a burst of sync events collapses into one refetch. */
+const REFETCH_COALESCE_MS = 1500;
+
 /**
  * Live mail updates: one WebSocket to the API's /email/realtime endpoint
  * (session cookie authenticates the upgrade). On `email.synced` the affected
@@ -31,6 +34,19 @@ export function useEmailRealtime(enabled: boolean) {
 
     let socket: WebSocket | null = null;
     let reconnectTimer: number | null = null;
+    let refetchTimer: number | null = null;
+
+    // Coalesce a burst of events into one refetch. Several messages arriving at
+    // once is one sync as far as the views are concerned.
+    const scheduleRefetch = (accountId: string) => {
+      if (refetchTimer !== null) return;
+      refetchTimer = window.setTimeout(() => {
+        refetchTimer = null;
+        void queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(accountId) });
+        void queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(accountId) });
+        void queryClient.invalidateQueries({ queryKey: emailKeys.folders(accountId) });
+      }, REFETCH_COALESCE_MS);
+    };
     let attempts = 0;
     let disposed = false;
 
@@ -77,13 +93,12 @@ export function useEmailRealtime(enabled: boolean) {
           insertRealtimeMessage(queryClient, eventAccountId, parsedItem.data);
         }
 
-        void queryClient.invalidateQueries({
-          queryKey: emailKeys.messagesRoot(eventAccountId),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: emailKeys.conversationRoot(eventAccountId),
-        });
-        void queryClient.invalidateQueries({ queryKey: emailKeys.folders(eventAccountId) });
+        // Only when the sync actually landed something. The server publishes
+        // `email.synced` after every sync run, new mail or not, and invalidating
+        // three query roots each time refetched the message list, the open
+        // conversation and the folder counts on a loop — with nothing to show
+        // for it. A quiet mailbox was issuing a request every few seconds.
+        if (parsed.newMail) scheduleRefetch(eventAccountId);
 
         const newMail = parsed.newMail;
         if (newMail?.conversationId) {
@@ -118,6 +133,7 @@ export function useEmailRealtime(enabled: boolean) {
     return () => {
       disposed = true;
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (refetchTimer) window.clearTimeout(refetchTimer);
       socket?.close();
     };
   }, [enabled, navigate, queryClient]);
