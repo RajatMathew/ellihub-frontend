@@ -228,7 +228,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const replyMutation = useReplyConnectedEmailMutation();
   const forwardMutation = useForwardConnectedEmailMutation();
   // Live push: refetch this account's mail when the backend reports new sync.
-  useEmailRealtime(Boolean(connectedAccount?.id));
+  // The open mailbox is passed through so realtime events can be scoped to
+  // accounts this session actually owns (elli-ui#918).
+  useEmailRealtime(connectedAccount?.id);
   const createFolderMutation = useCreateEmailFolderMutation();
   const createTagMutation = useCreateEmailTagMutation();
   const moveMessageMutation = useMoveEmailMessageMutation();
