@@ -13,11 +13,17 @@ import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
 import { getEmailAddressListError } from '@/modules/email/lib/email-addresses';
 import {
+  createAttachmentPreparationQueue,
+  type AttachmentPreparationQueue,
+} from '@/modules/email/lib/email-compose-attachment-queue';
+import {
   ATTACHMENT_PREPARATION_FALLBACK,
   fileKey,
   fileToAttachment,
   getAttachmentTransportErrorMessage,
   getNewAttachments,
+  getUnpreparedAttachments,
+  getUploadPercent,
   MAX_TOTAL_ATTACHMENT_BYTES,
 } from '@/modules/email/lib/email-compose-attachments';
 import { isEmptyEmailHtml } from '@/modules/email/lib/email-rich-text';
@@ -64,7 +70,11 @@ export interface UseEmailComposeOptions {
   onSaveDraft?: (
     payload: ComposeDraftPayload,
     draft?: ComposeDraftIdentity,
-    options?: { signal?: AbortSignal }
+    options?: {
+      signal?: AbortSignal;
+      /** Bytes sent so far, so the tray can show a real percentage. */
+      onProgress?: (loaded: number, total?: number) => void;
+    }
   ) => Promise<ComposeDraftSaveResult>;
   onSendDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
   onDiscardDraft?: (draft: ComposeDraftIdentity, options?: { silent?: boolean }) => Promise<void>;
@@ -111,11 +121,25 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDiscarding, setIsDiscarding] = useState(false);
 
+  /** Whole percent of the upload in flight; `null` while no total is known. */
+  const [attachmentProgress, setAttachmentProgress] = useState<number | null>(null);
+
   const draftRef = useRef<ComposeDraftIdentity | undefined>(undefined);
   const attachmentsRef = useRef<File[]>([]);
-  const attachmentPreparationRef = useRef<Promise<void>>(Promise.resolve());
-  /** Aborts the upload behind the current preparation when the user cancels it. */
-  const attachmentAbortRef = useRef<AbortController | null>(null);
+  /**
+   * Files the server has already accepted. The draft endpoint *adds*
+   * attachments, so re-sending one costs a second full upload of the same bytes
+   * and puts the file on the message twice — which is exactly what happened
+   * whenever the provider hydration came back without an attachment list and
+   * the pending row was therefore never cleared.
+   */
+  const preparedKeysRef = useRef<Set<string>>(new Set());
+  /** Serialises uploads so a new selection never discards one in flight. */
+  const preparationQueueRef = useRef<AttachmentPreparationQueue | null>(null);
+  /** Kept current every render so the queue's uploader never closes over stale form state. */
+  const uploadAttachmentBatchRef = useRef<(files: File[], signal: AbortSignal) => Promise<void>>(
+    () => Promise.resolve()
+  );
   /**
    * `dragenter`/`dragleave` fire for every descendant the pointer crosses, so
    * the overlay can only be driven by how deep the drag is, never by a single
@@ -183,7 +207,9 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setSaveStatus('idle');
     setAddressErrors({});
     setAttachmentError(null);
-    attachmentAbortRef.current = null;
+    preparationQueueRef.current?.cancel();
+    preparedKeysRef.current = new Set();
+    setAttachmentProgress(null);
     dragDepthRef.current = 0;
     setIsDragging(false);
     setIsClosing(false);
@@ -221,7 +247,9 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     setSaveStatus('idle');
     setAddressErrors({});
     setAttachmentError(null);
-    attachmentAbortRef.current = null;
+    preparationQueueRef.current?.cancel();
+    preparedKeysRef.current = new Set();
+    setAttachmentProgress(null);
     dragDepthRef.current = 0;
     setIsDragging(false);
     setIsClosing(false);
@@ -241,13 +269,17 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
 
   const saveDraft = useCallback(async () => {
     if (!hasContent || !onSaveDraft) return draftRef.current;
-    await attachmentPreparationRef.current;
+    await preparationQueueRef.current?.settled();
     if (signature === lastSavedSignatureRef.current && draftRef.current) {
       return draftRef.current;
     }
 
     const currentForm = form;
-    const currentFiles = attachmentsRef.current;
+    // Anything the preparation queue already delivered stays out of this
+    // request: the draft endpoint appends attachments, so re-sending a file
+    // costs a second full upload of the same bytes *and* duplicates it on the
+    // message.
+    const currentFiles = getUnpreparedAttachments(attachmentsRef.current, preparedKeysRef.current);
     const currentRemovedIds = removedAttachmentIds;
     setSaveStatus('saving');
 
@@ -263,6 +295,7 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
         },
         draftRef.current
       );
+      for (const file of currentFiles) preparedKeysRef.current.add(fileKey(file));
       const nextDraft = { draftId: result.draftId, messageId: result.messageId };
       draftRef.current = nextDraft;
       lastPersistedFormRef.current = currentForm;
@@ -297,7 +330,7 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
       // Nothing addressable to save. A draft auto-created while attaching a file
       // is cleaned up so a half-typed address does not litter the Drafts folder.
       setIsClosing(true);
-      await attachmentPreparationRef.current;
+      await preparationQueueRef.current?.settled();
       const preparedNewDraft = isEditingDraft ? undefined : draftRef.current;
       finishClose();
       if (preparedNewDraft) {
@@ -387,75 +420,97 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
   }
 
   /**
+   * Uploads one batch of pending files. Reassigned every render so the queue
+   * never closes over a stale form snapshot or a stale draft id, and it reports
+   * its own failures because the queue must keep draining whatever a batch does.
+   */
+  uploadAttachmentBatchRef.current = async (files: File[], signal: AbortSignal) => {
+    if (!onSaveDraft) return;
+    const formSnapshot = { ...lastPersistedFormRef.current };
+    const removedIdsSnapshot = [...removedAttachmentIds];
+    const batchKeys = new Set(files.map(fileKey));
+    setAttachmentProgress(null);
+
+    try {
+      const encodedAttachments = await Promise.all(files.map(fileToAttachment));
+      if (signal.aborted) return;
+      const result = await onSaveDraft(
+        {
+          ...formSnapshot,
+          attachments: encodedAttachments,
+          removedAttachmentIds: removedIdsSnapshot,
+        },
+        draftRef.current,
+        {
+          signal,
+          onProgress: (loaded, total) => setAttachmentProgress(getUploadPercent(loaded, total)),
+        }
+      );
+      if (signal.aborted) return;
+      // The server has these bytes now. Recording the keys here — rather than
+      // relying on the pending rows being cleared — is what keeps a save whose
+      // provider hydration came back empty from uploading them all over again.
+      for (const key of batchKeys) preparedKeysRef.current.add(key);
+      draftRef.current = { draftId: result.draftId, messageId: result.messageId };
+      if (result.attachments) {
+        setExistingAttachments(result.attachments);
+        replacePendingAttachments(
+          attachmentsRef.current.filter((file) => !batchKeys.has(fileKey(file)))
+        );
+      }
+    } catch (error: unknown) {
+      // A cancelled upload is the user's own doing — `cancelAttachmentPreparation`
+      // has already put the composer back to idle.
+      if (signal.aborted) return;
+      setSaveStatus('error');
+      toast.error(
+        getAttachmentTransportErrorMessage(error) ??
+          getApiErrorMessage(error, ATTACHMENT_PREPARATION_FALLBACK)
+      );
+    } finally {
+      setAttachmentProgress(null);
+    }
+  };
+
+  function getAttachmentQueue() {
+    preparationQueueRef.current ??= createAttachmentPreparationQueue({
+      upload: (files, signal) => uploadAttachmentBatchRef.current(files, signal),
+      // The queue owns only the saving↔idle transition; a batch that failed
+      // keeps its own 'error' so the tray can still say which file failed.
+      onBusyChange: (isBusy) =>
+        setSaveStatus((current) => (isBusy ? 'saving' : current === 'error' ? 'error' : 'idle')),
+    });
+    return preparationQueueRef.current;
+  }
+
+  /**
    * Abandons the preparation in flight and hands the composer back to the user.
    * Without it, a draft save that never answers leaves the composer stuck on
    * "Preparing attachments…" with every escape hatch disabled (elli-ui#910).
    */
   function cancelAttachmentPreparation() {
-    const controller = attachmentAbortRef.current;
-    if (!controller) return;
-    attachmentAbortRef.current = null;
-    controller.abort();
-    attachmentPreparationRef.current = Promise.resolve();
+    preparationQueueRef.current?.cancel();
+    setAttachmentProgress(null);
     setSaveStatus('idle');
   }
 
   function startAttachmentPreparation(files: File[]) {
     if (!files.length || !onSaveDraft) return;
-
-    const formSnapshot = { ...lastPersistedFormRef.current };
-    const removedIdsSnapshot = [...removedAttachmentIds];
-    const uploadedKeys = new Set(files.map(fileKey));
-    // Only one preparation may own `saveStatus`; an earlier one still in flight
-    // would otherwise report its own outcome over this batch's.
-    attachmentAbortRef.current?.abort();
-    const controller = new AbortController();
-    attachmentAbortRef.current = controller;
-    setSaveStatus('saving');
-
-    const preparation = (async () => {
-      try {
-        const encodedAttachments = await Promise.all(files.map(fileToAttachment));
-        if (controller.signal.aborted) return;
-        const result = await onSaveDraft(
-          {
-            ...formSnapshot,
-            attachments: encodedAttachments,
-            removedAttachmentIds: removedIdsSnapshot,
-          },
-          draftRef.current,
-          { signal: controller.signal }
-        );
-        if (controller.signal.aborted) return;
-        draftRef.current = { draftId: result.draftId, messageId: result.messageId };
-        if (result.attachments) {
-          setExistingAttachments(result.attachments);
-          replacePendingAttachments(
-            attachmentsRef.current.filter((file) => !uploadedKeys.has(fileKey(file)))
-          );
-        }
-        setSaveStatus('idle');
-      } catch (error: unknown) {
-        // A cancelled upload is the user's own doing — `cancelAttachmentPreparation`
-        // has already put the composer back to idle.
-        if (controller.signal.aborted) return;
-        setSaveStatus('error');
-        toast.error(
-          getAttachmentTransportErrorMessage(error) ??
-            getApiErrorMessage(error, ATTACHMENT_PREPARATION_FALLBACK)
-        );
-      } finally {
-        if (attachmentAbortRef.current === controller) attachmentAbortRef.current = null;
-      }
-    })();
-
-    attachmentPreparationRef.current = preparation;
+    // Queued, never raced. This used to abort whatever was in flight, which
+    // threw away every byte already uploaded for the previous selection and
+    // left that file to be uploaded a second time at send.
+    getAttachmentQueue().enqueue(getUnpreparedAttachments(files, preparedKeysRef.current));
   }
 
   /** Drops pending files, cancelling the upload they are still riding on. */
   function removePendingAttachments(next: File[]) {
+    const wasPreparing = preparationQueueRef.current?.isBusy() ?? false;
     cancelAttachmentPreparation();
     replacePendingAttachments(next);
+    // Cancelling stops the whole queue, not just the removed file, so whatever
+    // the user kept has to go back on it — but only if something really was in
+    // flight, so removing a file from an idle tray stays a plain removal.
+    if (wasPreparing) startAttachmentPreparation(next);
   }
 
   function handleDragEnter(event: DragEvent<HTMLElement>) {
@@ -582,6 +637,7 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     handleAttachmentSelection,
     replacePendingAttachments,
     removePendingAttachments,
+    attachmentProgress,
     cancelAttachmentPreparation,
     setExistingAttachments,
     setRemovedAttachmentIds,

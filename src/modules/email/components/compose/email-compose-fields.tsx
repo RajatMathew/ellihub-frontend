@@ -38,9 +38,10 @@ export function EmailComposeFields({
       onDropCapture={compose.endDrag}
       onDrop={(event) => {
         event.preventDefault();
-        if (!isPreparingAttachments) {
-          compose.handleAttachmentSelection(event.dataTransfer.files);
-        }
+        // Dropping during an upload queues behind it instead of being ignored:
+        // the user no longer has to wait out a 25 MB round trip to add the next
+        // file.
+        compose.handleAttachmentSelection(event.dataTransfer.files);
       }}
     >
       {isDragging && (
