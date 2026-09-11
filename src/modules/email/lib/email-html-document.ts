@@ -185,7 +185,15 @@ pre { overflow-x: auto; }
  * to API URLs before this point) load.
  */
 function frameCsp(apiOrigin: string | null): string {
-  const imageSources = ['data:', 'blob:', 'https:', apiOrigin].filter(Boolean).join(' ');
+  // The app's own origin matters as much as the API's: attachment URLs are
+  // relative (`/api/...`) and resolve against the page, which in development is
+  // `http://localhost:5173` — not covered by `https:`, so without this the
+  // fallback URL is blocked outright.
+  const appOrigin = typeof window === 'undefined' ? null : window.location.origin;
+  const imageSources = ['data:', 'blob:', 'https:', appOrigin, apiOrigin]
+    .filter(Boolean)
+    .filter((source, index, all) => all.indexOf(source) === index)
+    .join(' ');
   return [
     "default-src 'none'",
     "style-src 'unsafe-inline'",
