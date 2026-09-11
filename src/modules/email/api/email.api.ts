@@ -328,7 +328,17 @@ export type EmailDraftMessagePayload = {
     content: string;
   }>;
   removedAttachmentIds?: string[];
+  /** Lets the composer abandon an upload the user cancelled. */
+  signal?: AbortSignal;
 };
+
+/**
+ * Draft saves carry base64 attachments, so they need far longer than the
+ * client's default 30s — but never an unbounded wait: a request that hangs
+ * leaves the composer pinned on "Preparing attachments…" with no way out
+ * (elli-ui#910).
+ */
+export const DRAFT_SAVE_TIMEOUT_MS = 120_000;
 
 export type EmailDraftResult = z.infer<typeof emailDraftResultSchema>;
 
@@ -570,8 +580,8 @@ export const emailApi = {
   },
 
   async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
-    const { accountId, draftId, ...draft } = payload;
-    const config = { timeout: 0 };
+    const { accountId, draftId, signal, ...draft } = payload;
+    const config = { timeout: DRAFT_SAVE_TIMEOUT_MS, signal };
     const res = draftId
       ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
       : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);
