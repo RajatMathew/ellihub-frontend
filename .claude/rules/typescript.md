@@ -13,4 +13,6 @@ paths:
 - Use named exports, not default exports.
 - Derive types from Zod schemas with `z.infer<typeof schema>` — do not duplicate type definitions manually.
 - Export response/payload types from API files so hooks and components can import them directly.
-- Always run `npm run lint` and `npm run build` (which includes `tsc -b`) before considering work complete.
+- `verbatimModuleSyntax` is on. Write type-only imports inline — `import { type VendorDetail, vendorsApi } from '...'` — which is also what ESLint's `consistent-type-imports` rule autofixes to.
+- `noUnusedLocals` and `noUnusedParameters` are on, so an unused variable fails `tsc -b`, not just lint. Prefix a deliberately unused parameter with `_`.
+- Always run `npm run lint` and `npm run build` (which includes `tsc -b`) before considering work complete. There is no unit-test script — `npm run test:e2e` runs Playwright against `tests/e2e/`, and the `tests/*.test.ts` files are not wired to a runner in `package.json`.

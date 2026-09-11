@@ -15,7 +15,7 @@ Every interactive UI must be usable by keyboard and screen reader. The shadcn/Ra
 
 ## Forms
 
-- Every `<input>`, `<select>`, `<textarea>` must have a label. Prefer `<Label htmlFor="...">` + matching input `id`.
+- Every `<input>`, `<select>`, `<textarea>` must have a label. Prefer `<Label htmlFor="...">` + matching input `id`. In a form page, `FormFieldLabel` (`@/app/components/form-field-label`) already wires the label, the required marker and the invalid-control styling — use it rather than a bare `<Label>`.
 - Error messages must be rendered, not just announced by color change.
 - Required fields: mark with both the `required` attribute and a visible indicator.
 
@@ -33,7 +33,7 @@ Every interactive UI must be usable by keyboard and screen reader. The shadcn/Ra
 ## Color & state
 
 - Never use color as the sole signal for state. Pair red/green with an icon or text label.
-- Use semantic tokens (`bg-destructive`, `text-muted-foreground`), not hard-coded colors.
+- Use semantic tokens (`bg-destructive`, `text-muted-foreground`), not hard-coded colors. For record status, `StatusBadge` + `status-tone.ts` (`@/app/components`) pair every tone with a label already.
 
 ## Images and media
 

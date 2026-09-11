@@ -40,8 +40,9 @@ twice for the same shape, that shape wants a preset.
   A boolean covers entity-scoped capabilities the server returns per record and record state; a
   `{ resource, action }` ref resolves through `useAccess().can()`; an array requires every
   condition. An action whose capability is unmet never renders, so a page cannot forget to gate one.
-  Verify the resource and action against `elli-core/src/lib/permissions.ts` — `leave`, for one, has
-  no `update` or `delete`.
+  Verify the resource and action against `../elli-core/src/lib/permissions.ts` (the `statement`
+  object) — `leave`, for one, has only `create`, `approve` and `view`. A misspelled pair does not
+  error; the action silently never renders.
 - **Destructive actions belong in `overflow`** with `destructive: true`. The header sorts them last
   behind a separator.
 - **Never render a breadcrumb trail in a page.** `HeaderBreadcrumbs` draws it once, globally, from
@@ -60,4 +61,16 @@ twice for the same shape, that shape wants a preset.
 Page titles, back-link labels and crumb labels all come from the route tree
 (`src/app/routing/config/routes.tsx`). Renaming a section is one edit there, not a search for the
 string. `breadcrumb.entityLabel` declares the singular record name and drives the `Create X` /
-`Edit X` titles, the placeholder crumb, and the back link together.
+`Edit X` titles, the placeholder crumb, and the back link together — spread `resourceRoutes(label)`
+into the route entry and you get all of it at once.
+
+## Worked examples to copy
+
+| Shape | File |
+| --- | --- |
+| List page | `src/modules/directory/pages/vendor-list.tsx` |
+| Detail page | `src/modules/directory/pages/vendor-detail.tsx` |
+| Form page | `src/modules/directory/pages/vendor-form.tsx` |
+
+`src/core/ui/pages/page-header-kit.tsx` renders every preset and variant; in a dev build it is
+reachable at `/app/ui/page-header`.
