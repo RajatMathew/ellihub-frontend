@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import {
   emailListItemSchema,
@@ -9,6 +9,11 @@ import {
 import { showNewMailToast } from '@/modules/email/components/email-new-mail-toast';
 import { emailKeys } from '@/modules/email/hooks/email.hooks';
 import { buildMailPath } from '@/modules/email/lib/email-paths';
+import {
+  decideEmailRealtimeScope,
+  DEFAULT_EMAIL_NOTIFICATION_SCOPE,
+  type EmailNotificationScope,
+} from '@/modules/email/lib/email-realtime-scope';
 import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,10 +29,32 @@ const REFETCH_COALESCE_MS = 1500;
  * account's message/conversation/folder queries are invalidated, so whatever
  * is on screen refetches — new mail appears without a reload.
  * Reconnects with capped exponential backoff and cleans up on unmount.
+ *
+ * Every event is scoped before it is acted on (`decideEmailRealtimeScope`): the
+ * server fans realtime events out per organization, so an event for another
+ * user's mailbox can reach this socket (elli-ui#918). One that this session is
+ * not entitled to is dropped before it touches the cache or the toast.
+ *
+ * `activeAccountId` is the mailbox currently open. It is read through a ref at
+ * event time rather than captured by the effect, so switching mailboxes does
+ * not reconnect the socket and cannot leave a handler answering with the
+ * previously open account.
  */
-export function useEmailRealtime(enabled: boolean) {
+export function useEmailRealtime(
+  activeAccountId: string | undefined,
+  scope: EmailNotificationScope = DEFAULT_EMAIL_NOTIFICATION_SCOPE
+) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const activeAccountIdRef = useRef<string | undefined>(activeAccountId);
+  const scopeRef = useRef<EmailNotificationScope>(scope);
+
+  useEffect(() => {
+    activeAccountIdRef.current = activeAccountId;
+    scopeRef.current = scope;
+  }, [activeAccountId, scope]);
+
+  const enabled = Boolean(activeAccountId);
 
   useEffect(() => {
     if (!enabled) return;
@@ -83,6 +110,27 @@ export function useEmailRealtime(enabled: boolean) {
         if (parsed?.type !== 'email.synced' || !parsed.accountId) return;
         const eventAccountId = parsed.accountId;
 
+        // Defence in depth: never act on an event for a mailbox this session is
+        // not entitled to, whatever the server sent. Read the account list from
+        // the cache *now* — a captured array would go stale the moment the user
+        // connects, disconnects or switches accounts.
+        const knownAccounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
+        const decision = decideEmailRealtimeScope({
+          eventAccountId,
+          knownAccountIds: knownAccounts?.map((account) => account.id) ?? [],
+          activeAccountId: activeAccountIdRef.current ?? null,
+          scope: scopeRef.current,
+        });
+        if (decision.isScopeViolation) {
+          // A server-side scoping fault, not a user-facing problem. Log it so it
+          // stays diagnosable instead of being silently swallowed here.
+          console.warn(
+            '[email realtime] dropped an email.synced event for an account this session is not entitled to',
+            { accountId: eventAccountId }
+          );
+        }
+        if (!decision.allowCacheWrite) return;
+
         // Insert the new message into any already-loaded inbox view right away,
         // instead of only invalidating and waiting on a full refetch round trip
         // before it appears. The background invalidation below still runs to
@@ -101,9 +149,8 @@ export function useEmailRealtime(enabled: boolean) {
         if (parsed.newMail) scheduleRefetch(eventAccountId);
 
         const newMail = parsed.newMail;
-        if (newMail?.conversationId) {
-          const accounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
-          const account = accounts?.find((item) => item.id === eventAccountId);
+        if (newMail?.conversationId && decision.allowNotification) {
+          const account = knownAccounts?.find((item) => item.id === eventAccountId);
           const slug = account?.slug ?? eventAccountId;
           showNewMailToast({
             accountId: eventAccountId,
