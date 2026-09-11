@@ -24,7 +24,9 @@ output/
 *.njsproj
 *.sln
 *.sw?
-CLAUDE.md
+# CLAUDE.md is the committed agent entry point — do not ignore it.
+# Personal, uncommitted agent notes go in CLAUDE.local.md.
+CLAUDE.local.md
 claude-docs/
 .deepsec
 .env

@@ -15,7 +15,7 @@ Routing is three tiers:
 ## RouteDef
 
 ```ts
-// src/app/routing/config/types.ts
+// src/app/routing/config/types.ts — abridged; read the file for the doc comments
 interface RouteDef {
   path: string;
   component?: ComponentType<unknown> | LazyExoticComponent<ComponentType<unknown>>;
@@ -27,7 +27,12 @@ interface RouteDef {
 }
 ```
 
-A child **without** a `component` is not rendered as a route — it exists only to supply a title for a path the module router owns. `formRouteTitles(resourceName)` generates the `create` / `:id/edit` title pair.
+A child **without** a `component` is not rendered as a route — it exists only to supply a title for a path the module router owns. The helper `resourceRoutes(entityLabel)` in `routes.tsx` generates the `create` / `:id/edit` title pair together with the `breadcrumb.entityLabel`, so spread it rather than hand-writing the three:
+
+```ts
+{ path: 'directory/vendors/*', component: DirectoryVendors, title: 'Vendors',
+  ...resourceRoutes('Vendor') },
+```
 
 ## Rules
 
@@ -39,11 +44,13 @@ A child **without** a `component` is not rendered as a route — it exists only 
 - Layout routes use `<Outlet />`.
 - Use `useParams()` for path params, `useSearchParams()` for query strings.
 - Navigate with `<Link>` / `useNavigate()`, never `window.location` or `<a href>`.
-- Lazy load page components with `React.lazy()`.
+- Lazy load module routers and page components with `React.lazy()` — `routes.tsx` lazy-loads every module router, and `vite.config.ts` splits chunks accordingly.
+- The sidebar is a separate list: `src/app/routing/config/sidebar.tsx`. Adding a `routeTree` entry does not add a nav item, and vice versa.
+- Dev-only routes gate on `import.meta.env.DEV` in `routes.tsx` **and** carry `access: 'dev'`.
 
 ## Titles and breadcrumbs
 
-- Document titles resolve at runtime via `getTitleForPathname()` (`src/app/routing/config/route-title.ts`), which flattens `routeTree` and regex-matches the pathname. Longest match wins.
+- Document titles resolve at runtime via `getTitleForPathname()` (`src/app/routing/config/route-lookup.ts`, re-exported from `config/index.ts`), which flattens `routeTree` and regex-matches the pathname. Longest match wins.
 - The app is mounted at `ROUTER_BASE_PATH = '/app'`.
 - The breadcrumb trail is rendered once, globally, by `HeaderBreadcrumbs` (`src/app/components/header/header-breadcrumbs.tsx`). **Pages must not render their own breadcrumb trail.**
 - A page that needs a dynamic crumb label (an entity name, an open folder) registers it with `useBreadcrumbLabel(path, label)` rather than rendering its own trail.
@@ -53,3 +60,9 @@ A child **without** a `component` is not rendered as a route — it exists only 
 - Route file: `src/modules/{name}/routes/{name}.route.tsx`
 - Page file: `src/modules/{name}/pages/{page-name}.tsx` (kebab-case)
 - Page components are suffixed `Page` (`VendorListPage`, `VendorDetailPage`), except where an existing module has established another convention.
+
+## Worked example
+
+`src/modules/directory/` is the module to copy: `routes/vendors.route.tsx`, `routes/gc.route.tsx`
+and `routes/contacts.route.tsx` are three small routers registered as three `routeTree` entries,
+each with `...resourceRoutes('Vendor' | 'General Contractor' | 'Contact')`.
