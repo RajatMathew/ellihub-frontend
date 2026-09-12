@@ -105,8 +105,12 @@ export const useSetTaskCompletedMutation = () => {
       toast.success(task.status === 'COMPLETED' ? 'Task completed' : 'Task reopened');
     },
     // Whether it worked or not, the server has the last word on the status.
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    // The lists and this task's detail — not `all`, which would also throw
+    // away every other open task's detail and refetch the whole board's page
+    // walk on every tick.
+    onSettled: (_task, _error, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(id) });
     },
   });
 };
@@ -140,9 +144,11 @@ export const useShiftTaskDueDateMutation = () => {
       for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
       toastApiError(error, 'Failed to move the due date');
     },
-    // Whether it worked or not, the server has the last word on the date.
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    // Whether it worked or not, the server has the last word on the date. The
+    // lists and this task's detail, not `all` — see useSetTaskCompletedMutation.
+    onSettled: (_task, _error, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(id) });
     },
   });
 };
@@ -188,8 +194,10 @@ export const useReorderTaskMutation = () => {
       toastApiError(error, 'Failed to move the task');
     },
     // Whether it worked or not, the server has the last word on the position.
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    // The lists and this task's detail, not `all` — see useSetTaskCompletedMutation.
+    onSettled: (_task, _error, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(id) });
     },
   });
 };
