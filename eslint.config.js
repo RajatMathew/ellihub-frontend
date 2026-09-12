@@ -47,6 +47,15 @@ export default defineConfig([
     },
   },
   {
+    // Developer harnesses run from a terminal: their output IS the deliverable,
+    // so the console restriction that keeps logging out of shipped UI does not
+    // apply. They are not bundled into the app.
+    files: ['scripts/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     // Resource lists go through the shared kit in src/app/components/data-table.
     // Type-only imports stay allowed so column files can annotate ColumnDef.
     files: ['src/modules/**/*.{ts,tsx}'],
