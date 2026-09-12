@@ -119,7 +119,12 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         <div className="flex items-center gap-3">
           {!tasksQuery.isLoading && !tasksQuery.isError ? (
             <span className="text-sm text-muted-foreground">
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+              {/* A board past the fetch cap says so, rather than passing a
+                  subset off as everything. hasNextPage is only ever true here
+                  when the page walk stopped short. */}
+              {tasksQuery.data?.pagination.hasNextPage
+                ? `showing ${tasks.length} of ${tasksQuery.data.pagination.totalItems} tasks`
+                : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
             </span>
           ) : null}
           <Button type="button" variant="primary" onClick={openCreate}>

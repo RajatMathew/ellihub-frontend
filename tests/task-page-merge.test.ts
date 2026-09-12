@@ -59,8 +59,10 @@ describe('collapsing the pages the board fetched into one list', () => {
   // holding fewer rows is how a board says "25 tasks" above 25 cards when there
   // are 39 — the count has to describe what is actually on screen.
   test('the count describes what was actually fetched', () => {
+    // A complete walk whose server total disagrees with what came back —
+    // a row deleted between pages, say. What is on the board is what counts.
     const merged = mergeTaskPages([
-      page([task('a')], { currentPage: 1, totalPages: 9, totalItems: 900, hasNextPage: true }),
+      page([task('a')], { currentPage: 1, totalPages: 1, totalItems: 9, hasNextPage: false }),
     ]);
 
     expect(merged.pagination.totalItems).toBe(1);
@@ -83,5 +85,30 @@ describe('collapsing the pages the board fetched into one list', () => {
 
     expect(merged.data).toEqual([]);
     expect(merged.pagination.totalItems).toBe(0);
+  });
+});
+
+// Review on #907: a walk that hit its cap reported "nothing further to fetch"
+// with a count matching what it held, so a board past the cap showed a subset
+// and claimed it was everything. Truncation has to say so.
+describe('a walk that stopped at its cap', () => {
+  test('still reports that there is more', () => {
+    const merged = mergeTaskPages([
+      page([task('a')], { currentPage: 1, totalPages: 3, totalItems: 3, hasNextPage: true }),
+      page([task('b')], { currentPage: 2, totalPages: 3, totalItems: 3, hasNextPage: true }),
+    ]);
+
+    expect(merged.pagination.hasNextPage).toBe(true);
+    expect(merged.pagination.totalItems).toBe(3);
+  });
+
+  test('a walk that reached the end reports nothing more', () => {
+    const merged = mergeTaskPages([
+      page([task('a')], { currentPage: 1, totalPages: 2, totalItems: 2, hasNextPage: true }),
+      page([task('b')], { currentPage: 2, totalPages: 2, totalItems: 2 }),
+    ]);
+
+    expect(merged.pagination.hasNextPage).toBe(false);
+    expect(merged.pagination.totalItems).toBe(2);
   });
 });
