@@ -17,6 +17,7 @@ import {
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
 import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
+import { changedTaskFields } from '@/modules/tasks/lib/task-edit';
 import type { CreateTaskInput, Task } from '@/modules/tasks/schemas/task.schema';
 import { Plus } from 'lucide-react';
 
@@ -72,7 +73,11 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
 
   const handleSubmit = async (payload: CreateTaskInput) => {
     if (editing) {
-      await updateTask.mutateAsync({ ...payload, id: editing.id });
+      // Only what changed. The update is partial — an absent field is left
+      // alone — and the dialog rebuilds the due date on every save, so sending
+      // the whole form told the server the date had moved when nobody had
+      // touched it, and a title-only edit cost the card its hand-placed spot.
+      await updateTask.mutateAsync({ ...changedTaskFields(editing, payload), id: editing.id });
     } else {
       await createTask.mutateAsync(payload);
     }
