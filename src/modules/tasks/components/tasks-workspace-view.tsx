@@ -177,10 +177,14 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             markLanded(task.id);
             shiftDueDate.mutate({ id: task.id, days });
           }}
-          // Dragging a card within its column. The placement is already clamped
-          // to the card's priority block by the board, and the server refuses it
-          // again - see PATCH /task/reorder.
-          onReorder={(task, placement) => reorderTask.mutate({ id: task.id, ...placement })}
+          // Dragging a card to a spot. The placement is already clamped to the
+          // card's priority block by the board, and the server refuses it again
+          // - see PATCH /task/reorder. A card leaving Completed gets the same
+          // landing ring a reopened one does: it has moved columns.
+          onReorder={(task, placement) => {
+            if (placement.reopen) markLanded(task.id);
+            reorderTask.mutate({ id: task.id, ...placement });
+          }}
           onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
           // Priority and court are ordinary fields, so changing them from the
           // card is the same PUT the dialog sends - no new endpoint. Neither

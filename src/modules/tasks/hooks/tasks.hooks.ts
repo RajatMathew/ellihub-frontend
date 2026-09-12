@@ -8,6 +8,7 @@ import {
   setTaskCompletedInList,
   shiftTaskDueDateInList,
 } from '@/modules/tasks/lib/task-cache';
+import { placeTask, type PlacementRequest } from '@/modules/tasks/lib/task-placement';
 import type {
   CreateTaskInput,
   ListTasksParams,
@@ -163,19 +164,13 @@ export const useShiftTaskDueDateMutation = () => {
 export const useReorderTaskMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    // A card dragged out of Completed is reopened first, then placed — see
+    // placeTask for why the order matters and what a failure part-way undoes.
     mutationFn: ({
-      id,
-      previousId,
-      nextId,
-      dueAt,
-    }: {
-      id: string;
-      previousId: string | null;
-      nextId: string | null;
-      boardOrder: number | null;
-      dueAt?: string;
-    }) => tasksApi.reorder(id, previousId, nextId, dueAt),
-    onMutate: async ({ id, boardOrder, dueAt }) => {
+      boardOrder: _boardOrder,
+      ...request
+    }: PlacementRequest & { boardOrder: number | null }) => placeTask(tasksApi, request),
+    onMutate: async ({ id, boardOrder, dueAt, reopen }) => {
       // In-flight reads would otherwise land after this and undo it.
       await queryClient.cancelQueries({ queryKey: taskKeys.lists() });
 
@@ -183,15 +178,22 @@ export const useReorderTaskMutation = () => {
         queryKey: taskKeys.lists(),
       });
 
-      queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) =>
-        page ? placeTaskInList(page, id, boardOrder, dueAt) : page
-      );
+      // Both steps at once, so the card goes straight to the drop rather than
+      // showing up reopened on its old date for the length of a round trip.
+      queryClient.setQueriesData<TaskPaginatedResponse>({ queryKey: taskKeys.lists() }, (page) => {
+        if (!page) return page;
+        const reopened = reopen ? setTaskCompletedInList(page, id, false) : page;
+        return placeTaskInList(reopened, id, boardOrder, dueAt);
+      });
 
       return { previous };
     },
     onError: (error, _variables, context) => {
       for (const [key, page] of context?.previous ?? []) queryClient.setQueryData(key, page);
       toastApiError(error, 'Failed to move the task');
+    },
+    onSuccess: (_task, { reopen }) => {
+      if (reopen) toast.success('Task reopened');
     },
     // Whether it worked or not, the server has the last word on the position.
     // The lists and this task's detail, not `all` — see useSetTaskCompletedMutation.

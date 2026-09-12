@@ -57,6 +57,9 @@ export function TaskBoard({
       // Set only when the card changed column, so the reschedule and the
       // placement land as one write.
       dueAt?: string;
+      // Set when the card left Completed: it has to be reopened before it can
+      // be placed among open cards, and the two must not race.
+      reopen?: boolean;
     }
   ) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
@@ -147,9 +150,11 @@ export function TaskBoard({
       return;
     }
 
-    // Leaving Completed for a dated column means reopening it, which the
-    // completion toggle already does; the placement below carries the date.
-    if (from === 'COMPLETED') onCompleteTask(task);
+    // Leaving Completed for a dated column means reopening it as well. That
+    // rides along with the placement rather than going out as its own request:
+    // sent separately the two raced, and a placement that arrived first was
+    // refused for putting a completed card among open ones.
+    const reopen = from === 'COMPLETED';
 
     // A reorder and a move between columns are the same act — put the card where
     // it was dropped — and differ only in whether a due date rides along.
@@ -180,7 +185,7 @@ export function TaskBoard({
     const dueAt = dueDateForColumn(to, now);
     if (!dueAt) return restoreArrangement();
 
-    onReorder(task, { previousId, nextId, boardOrder, dueAt: dueAt.toISOString() });
+    onReorder(task, { previousId, nextId, boardOrder, dueAt: dueAt.toISOString(), reopen });
   };
 
   return (
