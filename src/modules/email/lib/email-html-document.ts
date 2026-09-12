@@ -136,23 +136,40 @@ pre { overflow-x: auto; }
 [style*="position: fixed"], [style*="position:fixed"],
 [style*="position: absolute"], [style*="position:absolute"] { position: relative !important; }
 
+/* An outline, not a filled chip. A solid grey pill reads as a piece of the
+   message — it has more visual weight than the sentence it sits under — and it
+   matches nothing else in the app, where a low-emphasis control is a hairline
+   border over the page. Same border colour as the quoted block below, so the
+   toggle and the history it opens are visibly one thing. It stays quiet until
+   the pointer is on it. */
 [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}] {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  height: 20px;
-  margin: 4px 0;
-  padding: 0 8px;
-  border: 0;
+  gap: 3px;
+  height: 18px;
+  margin: 6px 0;
+  padding: 0 7px;
+  border: 1px solid #e4e4e7;
   border-radius: 999px;
-  background: #e4e4e7;
-  color: #52525b;
+  background: transparent;
+  color: #a1a1aa;
   cursor: pointer;
   line-height: 0;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
-[${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]:hover { background: #d4d4d8; }
+[${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]:hover {
+  border-color: #d4d4d8;
+  background: #fafafa;
+  color: #52525b;
+}
 [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]:focus-visible { outline: 2px solid ${EMAIL_LINK_COLOR}; outline-offset: 2px; }
-[data-elli-quote-dot] { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+[data-elli-quote-dot] { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+@media (prefers-reduced-motion: reduce) {
+  [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}] { transition: none; }
+}
 
 /* The quoted history reads as reference material: one rule down the side, and
    none of the indent that a blockquote-inside-blockquote chain compounds on
