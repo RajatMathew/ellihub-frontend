@@ -61,20 +61,25 @@ export const tasksApi = {
    * server's due-date order pushed it off the page, so `+1 day` looked like it
    * had deleted the task.
    *
-   * The server caps a page at 100, so this walks the pages. MAX_PAGES is a
+   * The server caps a page at 100, so this fetches the pages. MAX_PAGES is a
    * runaway guard rather than a product limit — if a tenant ever reaches it the
    * board is showing thousands of cards and wants filtering, not more requests.
    */
   async listAll(filters: TaskFilters = {}): Promise<TaskPaginatedResponse> {
-    const pages: TaskPaginatedResponse[] = [];
+    const first = await this.list({ ...filters, page: 1, size: LIST_PAGE_SIZE });
 
-    for (let page = 1; page <= LIST_MAX_PAGES; page += 1) {
-      const result = await this.list({ ...filters, page, size: LIST_PAGE_SIZE });
-      pages.push(result);
-      if (!result.pagination.hasNextPage) break;
-    }
+    // The first page says how many there are, so the rest go out together
+    // rather than one after another. Up to the cap, the board is painted in
+    // two round trips however many tasks there are. Past it, `mergeTaskPages`
+    // reports the truncation rather than hiding it.
+    const remaining = Math.min(first.pagination.totalPages, LIST_MAX_PAGES) - 1;
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, remaining) }, (_, index) =>
+        this.list({ ...filters, page: index + 2, size: LIST_PAGE_SIZE })
+      )
+    );
 
-    return mergeTaskPages(pages);
+    return mergeTaskPages([first, ...rest]);
   },
 
   async getById(id: string): Promise<Task> {
