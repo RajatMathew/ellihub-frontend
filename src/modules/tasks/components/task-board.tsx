@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   Kanban,
@@ -103,8 +103,14 @@ export function TaskBoard({
    * time Overdue refuses the drop — and refusing only means "do not save", so
    * the card stayed in Due Today looking moved. Same for a drag released over
    * nothing, or cancelled with Escape.
+   *
+   * Memoised on the arrangement it restores to. It is handed to the kanban,
+   * which keys its own drag handlers off it, so a fresh function every render
+   * rebuilt those handlers every render for no change. (A no-op restore does
+   * not re-render on its own: React bails out of a setState that hands back the
+   * reference already held.)
    */
-  const restoreArrangement = () => setColumns(groupedIds);
+  const restoreArrangement = useCallback(() => setColumns(groupedIds), [groupedIds]);
 
   // Ids back to the cards they name, dropping any the server has since removed.
   const cardsIn = (columnId: TaskColumnId) =>
