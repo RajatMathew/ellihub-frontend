@@ -5,7 +5,12 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
-import { emailApi, type EmailDraftResult } from '@/modules/email/api';
+import {
+  emailApi,
+  type ConnectedEmailListItem,
+  type ConnectedEmailThreadMessage,
+  type EmailDraftResult,
+} from '@/modules/email/api';
 import { EmailCalendarView } from '@/modules/email/components/calendar/email-calendar-view';
 import { EmailAccountNicknameDialog } from '@/modules/email/components/email-account-nickname-dialog';
 import {
@@ -63,13 +68,14 @@ import {
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
+import {
+  buildInstantDraftSnapshot,
+  toComposeDraftFields,
+} from '@/modules/email/lib/email-draft-compose';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
-import {
-  emailDraftBodyToEditorHtml,
-  richTextToEmailHtml,
-} from '@/modules/email/lib/email-rich-text';
+import { richTextToEmailHtml } from '@/modules/email/lib/email-rich-text';
 import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
@@ -222,6 +228,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const refreshMessagesMutation = useRefreshEmailMessagesMutation();
   const disconnectAccountMutation = useDisconnectEmailAccountMutation();
   const openDraftMutation = useOpenEmailDraftMutation();
+  /** Filled in below with the real handler; see `onRetryDraftHydration`. */
+  const hydrateDraftRef = useRef<(messageId: string) => void>(() => {});
   const saveDraftMutation = useSaveEmailDraftMutation();
   const sendDraftMutation = useSendEmailDraftMutation();
   const deleteDraftMutation = useDeleteEmailDraftMutation();
@@ -422,6 +430,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   // Compose lives on the page rather than inside its shell so the page can ask
   // it to close — and save what was typed — before navigating somewhere else.
   const compose = useEmailCompose({
+    // Retrying a failed draft load needs the composer, and the composer needs
+    // this option — so the handler is reached through a ref it fills in below.
+    onRetryDraftHydration: (messageId) => hydrateDraftRef.current(messageId),
     isSending: sendDraftMutation.isPending,
     onSaveDraft: connectedAccount
       ? async (payload, draft, saveOptions) => {
@@ -962,7 +973,13 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     setEmailListVisible(true);
   }, []);
 
-  const { openNew: openComposeSurface, openDraft: openComposeDraft } = compose;
+  const {
+    openNew: openComposeSurface,
+    openPendingDraft: openComposePendingDraft,
+    isDraftOpenFor: isComposeDraftOpenFor,
+    hydrateDraft: hydrateComposeDraft,
+    failDraftHydration: failComposeDraftHydration,
+  } = compose;
   // The composer takes over the reading pane, so on a narrow screen the page has
   // to switch to that pane or compose would open off-screen behind the list.
   const openComposeTo = useCallback(
@@ -975,12 +992,79 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   // Zero-arg on purpose: it is wired straight to a button's onClick, which would
   // otherwise hand the click event over as the recipient.
   const openNewCompose = useCallback(() => openComposeTo(), [openComposeTo]);
-  const openDraftInCompose = useCallback(
-    (draft: EditableComposeDraft) => {
-      openComposeDraft(draft);
-      setMobilePane('reading');
+  /**
+   * `GET /drafts/:id` always goes out to the provider, so waiting for it left
+   * the click looking dead (elli-ui#925). The composer opens now, from whatever
+   * the query cache already holds for that message — the hydrated copy a hover
+   * prefetch warmed, the conversation it belongs to, or at minimum the list
+   * row's subject — and the response is merged in when it lands.
+   */
+  const hydrateDraftFromServer = useCallback(
+    (messageId: string) => {
+      if (!connectedAccount) return;
+      openDraftMutation.mutate(
+        { accountId: connectedAccount.id, messageId },
+        {
+          onSuccess: (result) => {
+            if (!result.message) {
+              // The provider answered without the draft. `failDraftHydration`
+              // keeps the composer read-only rather than letting a save invent
+              // a second draft; the toast says why.
+              toast.error('This draft could not be loaded.');
+              failComposeDraftHydration(messageId);
+              return;
+            }
+            hydrateComposeDraft(messageId, toEditableComposeDraft(result, result.message));
+          },
+          // The mutation's own `onError` raises the toast.
+          onError: () => failComposeDraftHydration(messageId),
+        }
+      );
     },
-    [openComposeDraft]
+    [connectedAccount, failComposeDraftHydration, hydrateComposeDraft, openDraftMutation]
+  );
+  useEffect(() => {
+    hydrateDraftRef.current = hydrateDraftFromServer;
+  }, [hydrateDraftFromServer]);
+
+  const openDraftFromList = useCallback(
+    (messageId: string) => {
+      if (!connectedAccount) return;
+      // Re-clicking the draft that is already open must not reset the composer
+      // over whatever has been typed into it.
+      if (isComposeDraftOpenFor(messageId)) {
+        setMobilePane('reading');
+        return;
+      }
+      const row = folderEmails.find((email) => email.id === messageId);
+      const cachedMessageId = row?.latestMessageId ?? messageId;
+      const cachedMessage = queryClient.getQueryData<ConnectedEmailListItem>(
+        emailKeys.message(connectedAccount.id, cachedMessageId)
+      );
+      const cachedConversation = row?.threadId
+        ? queryClient.getQueryData<ConnectedEmailThreadMessage[]>(
+            emailKeys.conversation(connectedAccount.id, row.threadId)
+          )
+        : undefined;
+      const conversationMessage = cachedConversation?.find(
+        (message) => message.id === cachedMessageId || message.providerId === row?.providerId
+      );
+      // Richest source first; each field is taken from the first source that has
+      // it. No request is added — these are cache reads only.
+      const snapshot = buildInstantDraftSnapshot([cachedMessage, conversationMessage, row]);
+
+      openComposePendingDraft({ messageId, ...snapshot.fields, attachments: snapshot.attachments });
+      setMobilePane('reading');
+      hydrateDraftFromServer(messageId);
+    },
+    [
+      connectedAccount,
+      folderEmails,
+      hydrateDraftFromServer,
+      isComposeDraftOpenFor,
+      openComposePendingDraft,
+      queryClient,
+    ]
   );
 
   const setWorkspaceView = useCallback(
@@ -1456,15 +1540,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   onSelectEmail={(emailId) => {
                     requestSelectEmail(() => {
                       if (connectedAccount && selectedFolderKey === 'drafts') {
-                        openDraftMutation.mutate(
-                          { accountId: connectedAccount.id, messageId: emailId },
-                          {
-                            onSuccess: (result) => {
-                              if (!result.message) return;
-                              openDraftInCompose(toEditableComposeDraft(result));
-                            },
-                          }
-                        );
+                        // Opens now from the cache and hydrates when the
+                        // provider answers (elli-ui#925).
+                        openDraftFromList(emailId);
                         return;
                       }
                       selectEmail(emailId);
@@ -1818,26 +1896,17 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   );
 }
 
-function toEditableComposeDraft(result: EmailDraftResult): EditableComposeDraft {
-  const message = result.message!;
+/** The message is passed separately because only the caller has narrowed it. */
+function toEditableComposeDraft(
+  result: EmailDraftResult,
+  message: NonNullable<EmailDraftResult['message']>
+): EditableComposeDraft {
   return {
     draftId: result.draftId,
     messageId: result.messageId,
-    to: formatEmailAddresses(message.to),
-    cc: formatEmailAddresses(message.cc),
-    bcc: formatEmailAddresses(message.bcc),
-    subject: message.subject === '(No subject)' ? '' : message.subject,
-    body: emailDraftBodyToEditorHtml(message.body),
+    ...toComposeDraftFields(message),
     attachments: message.attachments ?? [],
   };
-}
-
-function formatEmailAddresses(addresses?: Array<{ address: string; name?: string }>) {
-  return (addresses ?? [])
-    .map((recipient) =>
-      recipient.name ? `${recipient.name} <${recipient.address}>` : recipient.address
-    )
-    .join(', ');
 }
 
 function isConnectedWellKnownFolderKey(folder: string): folder is EmailFolderKey {

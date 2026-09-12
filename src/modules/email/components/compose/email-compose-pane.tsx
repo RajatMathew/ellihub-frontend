@@ -28,18 +28,29 @@ interface EmailComposePaneProps {
 export function EmailComposePane({ compose, mailboxAddress, accountId }: EmailComposePaneProps) {
   const headingId = useId();
   const paneRef = useRef<HTMLElement>(null);
-  const focusFieldId = compose.form.to.trim() ? compose.fieldIds.body : compose.fieldIds.to;
+  // Read inside the open effect, never as a dependency: a draft opened from the
+  // cache fills its recipients when hydration lands, and keying focus off the
+  // form would move the caret out of whatever the user was already typing
+  // (elli-ui#925).
+  const focusTargetRef = useRef(compose.fieldIds.to);
+  useEffect(() => {
+    focusTargetRef.current =
+      compose.isEditingDraft || compose.form.to.trim()
+        ? compose.fieldIds.body
+        : compose.fieldIds.to;
+  });
 
   // The composer replaced the reading pane, so focus has to follow it there —
   // a pane has no focus trap to do that for us. An empty To takes focus first,
   // matching where the user would start typing; a reopened draft goes to the body.
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      const field = paneRef.current?.ownerDocument.getElementById(focusFieldId);
+      const field = paneRef.current?.ownerDocument.getElementById(focusTargetRef.current);
       field?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [focusFieldId]);
+    // One shot per open: `openToken` changes only when the composer is opened.
+  }, [compose.openToken]);
 
   return (
     // The wrapper only positions; it lets clicks through so the reading pane and
