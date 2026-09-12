@@ -52,7 +52,9 @@ export function EmailComposeActions({
  * `role="alert"` once a save fails, so a screen reader hears the failure.
  */
 export function EmailComposeStatus({ compose }: { compose: EmailComposeController }) {
-  const hasError = compose.saveStatus === 'error';
+  // A draft that could not be loaded is the same kind of failure as a save that
+  // did not land: it is announced, and Retry is the way out of it.
+  const hasError = compose.saveStatus === 'error' || compose.hasDraftHydrationError;
 
   return (
     <div className="flex min-w-0 shrink items-center gap-2">

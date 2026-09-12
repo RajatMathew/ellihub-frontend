@@ -123,8 +123,13 @@ export function EmailComposeFields({
           id={fieldIds.body}
           value={form.body}
           label="Email body"
-          placeholder="Write your message..."
-          disabled={isBusy}
+          // A draft opened from the cache can be on screen before its body has
+          // arrived. Saying so beats an empty "Write your message…" that reads
+          // like the draft lost its contents (elli-ui#925).
+          placeholder={
+            compose.isDraftBodyPending ? 'Loading this draft’s message…' : 'Write your message...'
+          }
+          disabled={isBusy || compose.isDraftBodyPending}
           onChange={compose.setBody}
           onFilesSelected={(files) => {
             if (!isPreparingAttachments) compose.handleAttachmentSelection(files);
