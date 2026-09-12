@@ -213,16 +213,22 @@ export const useRefreshEmailMessagesMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: { accountId: string; daysWithin?: number }) => {
-      let result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
-      let steps = 0;
-      while (result.hasMore && steps < 1000) {
-        steps += 1;
-        await new Promise((resolve) => window.setTimeout(resolve, 750));
-        result = await emailApi.syncAccount(payload.accountId, payload.daysWithin);
-      }
-      return result;
-    },
+    /**
+     * One sync, never a loop.
+     *
+     * A sync call advances the account by a fixed page budget, so finishing a
+     * backfill takes many of them. This drove that from the browser — up to a
+     * thousand sequential `POST /sync`, one every 750ms, twelve minutes of
+     * continuous provider traffic per mailbox opened, and nothing cancelled it
+     * when the user navigated away.
+     *
+     * It was also redundant. `drive-backfilling-email-accounts` steps every
+     * account still mid-backfill every two minutes, server-side, and resumes
+     * exactly where the last step stopped; the realtime socket announces what
+     * lands. Asking once is enough — the rest arrives on its own.
+     */
+    mutationFn: (payload: { accountId: string; daysWithin?: number }) =>
+      emailApi.syncAccount(payload.accountId, payload.daysWithin),
     onSuccess: (result, payload) => {
       void Promise.allSettled([
         queryClient.invalidateQueries({
@@ -239,7 +245,11 @@ export const useRefreshEmailMessagesMutation = () => {
         }),
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
-      if (result.hasMore) toast.info('Email sync is still in progress. Refresh to continue.');
+      // The server keeps stepping this account on its own, so there is nothing
+      // for the reader to do — say so rather than asking them to refresh.
+      if (result.hasMore) {
+        toast.info('Still catching up on this mailbox. New messages will appear as they arrive.');
+      }
     },
     onError: (error) => {
       if (isEmailReconnectRequiredError(error)) return;
