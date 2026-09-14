@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { shiftTaskDueDateInList } from '../src/modules/tasks/lib/task-cache';
+import { placeTaskInList, shiftTaskDueDateInList } from '../src/modules/tasks/lib/task-cache';
 import type { Task, TaskPaginatedResponse } from '../src/modules/tasks/schemas/task.schema';
 
 function task(overrides: Partial<Task> = {}): Task {
@@ -84,5 +84,62 @@ describe('the optimistic due-date shift', () => {
     const before = page([task()]);
 
     expect(shiftTaskDueDateInList(before, 'task-999', 1)).toBe(before);
+  });
+});
+
+// elli-ui#791. The server clears boardOrder on a due-date change, so the card
+// lands in its new column by priority and then by age. The optimistic write has
+// to do the same, or the card sits in its hand-placed slot for a moment and
+// then jumps when the response arrives.
+describe('a shift gives up the hand-placed position', () => {
+  test('the +1 day shift clears boardOrder', () => {
+    const cached = page([task({ id: 'task-1', boardOrder: 1_700_000_000_000 })]);
+
+    const next = shiftTaskDueDateInList(cached, 'task-1', 1);
+
+    expect(next.data[0].boardOrder).toBeNull();
+  });
+
+  test('a task nobody shifted is left alone', () => {
+    const cached = page([task({ id: 'other', boardOrder: 1_700_000_000_000 })]);
+
+    expect(shiftTaskDueDateInList(cached, 'task-1', 1)).toBe(cached);
+  });
+});
+
+describe('showing a drop before the server answers', () => {
+  test('the dropped card takes the position it was given', () => {
+    const cached = page([task({ id: 'task-1' })]);
+
+    expect(placeTaskInList(cached, 'task-1', 1500).data[0].boardOrder).toBe(1500);
+  });
+
+  test('a page without that task comes back untouched, by reference', () => {
+    const cached = page([task({ id: 'other' })]);
+
+    expect(placeTaskInList(cached, 'task-1', 1500)).toBe(cached);
+  });
+});
+
+// A card dragged into another column is rescheduled and placed in one write, so
+// the optimistic update has to do both. Doing them separately would land the
+// card by age in its new column and then move it when the response arrived.
+describe('showing a card dropped into another column', () => {
+  test('the new due date and the position are written together', () => {
+    const cached = page([task({ id: 'task-1', dueAt: '2026-09-15T00:00:00.000Z' })]);
+
+    const next = placeTaskInList(cached, 'task-1', 1500, '2026-09-16T00:00:00.000Z');
+
+    expect(next.data[0].dueAt).toBe('2026-09-16T00:00:00.000Z');
+    expect(next.data[0].boardOrder).toBe(1500);
+  });
+
+  test('a reorder within a column leaves the due date alone', () => {
+    const cached = page([task({ id: 'task-1', dueAt: '2026-09-15T00:00:00.000Z' })]);
+
+    const next = placeTaskInList(cached, 'task-1', 1500);
+
+    expect(next.data[0].dueAt).toBe('2026-09-15T00:00:00.000Z');
+    expect(next.data[0].boardOrder).toBe(1500);
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   Kanban,
@@ -8,14 +8,19 @@ import {
   KanbanOverlay,
   type KanbanMoveEvent,
 } from '@/app/components/ui/kanban';
+import { TaskBoardCardSlot } from '@/modules/tasks/components/task-board-card-slot';
 import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
 import {
   boardArrangementSignature,
   canMoveTask,
   columnForTask,
+  dropBoardOrder,
+  dropMovesTask,
+  dropNeighbours,
   dueDateForColumn,
   groupTasksByColumn,
+  resolveDropIndex,
   TASK_COLUMN_LABELS,
   TASK_COLUMNS,
   type TaskColumnId,
@@ -31,7 +36,7 @@ export function TaskBoard({
   onOpenTask,
   onCompleteTask,
   onShiftDueDate,
-  onReschedule,
+  onReorder,
   onReassign,
   onPriorityChange,
   onCourtChange,
@@ -43,7 +48,20 @@ export function TaskBoard({
   onOpenTask: (task: Task) => void;
   onCompleteTask: (task: Task) => void;
   onShiftDueDate: (task: Task, days: number) => void;
-  onReschedule: (task: Task, dueAt: Date) => void;
+  onReorder: (
+    task: Task,
+    placement: {
+      previousId: string | null;
+      nextId: string | null;
+      boardOrder: number | null;
+      // Set only when the card changed column, so the reschedule and the
+      // placement land as one write.
+      dueAt?: string;
+      // Set when the card left Completed: it has to be reopened before it can
+      // be placed among open cards, and the two must not race.
+      reopen?: boolean;
+    }
+  ) => void;
   onReassign: (task: Task, assigneeId: string | null) => void;
   onPriorityChange: (task: Task, priority: TaskPriority) => void;
   onCourtChange: (task: Task, court: TaskCourt) => void;
@@ -79,6 +97,24 @@ export function TaskBoard({
     setColumns(groupedIds);
   }
 
+  /**
+   * Put the arrangement back the way the server has it.
+   *
+   * The hover reflow moves a card between columns as you pass over them, and
+   * nothing undoes that on its own. A drag from Pending to Overdue crosses Due
+   * Today, which is a legal target, so the card is already sitting there by the
+   * time Overdue refuses the drop — and refusing only means "do not save", so
+   * the card stayed in Due Today looking moved. Same for a drag released over
+   * nothing, or cancelled with Escape.
+   *
+   * Memoised on the arrangement it restores to. It is handed to the kanban,
+   * which keys its own drag handlers off it, so a fresh function every render
+   * rebuilt those handlers every render for no change. (A no-op restore does
+   * not re-render on its own: React bails out of a setState that hands back the
+   * reference already held.)
+   */
+  const restoreArrangement = useCallback(() => setColumns(groupedIds), [groupedIds]);
+
   // Ids back to the cards they name, dropping any the server has since removed.
   const cardsIn = (columnId: TaskColumnId) =>
     columns[columnId].map((id) => byId.get(id)).filter((task): task is Task => Boolean(task));
@@ -88,9 +124,9 @@ export function TaskBoard({
    * primitive stops reordering on its own and commits nothing. So a rejected
    * move is simply one we decline to apply, and the card springs back.
    */
-  const handleMove = ({ overContainer, event }: KanbanMoveEvent) => {
+  const handleMove = ({ overContainer, overIndex, event }: KanbanMoveEvent) => {
     const task = byId.get(String(event.active.id));
-    if (!task) return;
+    if (!task) return restoreArrangement();
 
     // Where the card came from has to be read from the server data, not from
     // the board's current arrangement: the hover reflow has already moved it
@@ -98,25 +134,58 @@ export function TaskBoard({
     // and nothing would ever be saved.
     const from = columnForTask(task, now);
     const to = overContainer as TaskColumnId;
-    if (from === to) return;
 
     const { allowed, reason } = canMoveTask(from, to);
     if (!allowed) {
       if (reason) toast.error(reason);
+      restoreArrangement();
       return;
     }
 
+    // Completing is a state change rather than a placement: the card lands in
+    // Completed by priority and then age, so there is nothing to save about
+    // where it was dropped.
     if (to === 'COMPLETED') {
       onCompleteTask(task);
       return;
     }
 
-    // Leaving Completed for a dated column means reopening it, which the
-    // completion toggle already does; the new due date follows separately.
-    if (from === 'COMPLETED') onCompleteTask(task);
+    // Leaving Completed for a dated column means reopening it as well. That
+    // rides along with the placement rather than going out as its own request:
+    // sent separately the two raced, and a placement that arrived first was
+    // refused for putting a completed card among open ones.
+    const reopen = from === 'COMPLETED';
 
+    // A reorder and a move between columns are the same act — put the card where
+    // it was dropped — and differ only in whether a due date rides along.
+    // `overIndex` describes the column as the board is rendering it, which
+    // already holds the dragged card because the hover reflow put it there, so
+    // an index and an insertion point are the same number. The aim is clamped to
+    // the card's own priority block, so a drop that would outrank a P1 lands at
+    // the top of the P3s instead.
+    const column = cardsIn(to);
+    const index = resolveDropIndex(column, task.id, overIndex);
+    const { previousId, nextId } = dropNeighbours(column, task.id, index);
+    const boardOrder = dropBoardOrder(column, task.id, index);
+
+    if (from === to) {
+      if (!dropMovesTask(column, task.id, index)) return restoreArrangement();
+
+      // Nothing either side means the card is alone in its priority block, and
+      // there is no position to save.
+      if (!previousId && !nextId) return restoreArrangement();
+
+      onReorder(task, { previousId, nextId, boardOrder });
+      return;
+    }
+
+    // The new due date goes with the placement in one write. Sent separately,
+    // the card would land in its new column by age and then visibly jump to
+    // where it was dropped.
     const dueAt = dueDateForColumn(to, now);
-    if (dueAt) onReschedule(task, dueAt);
+    if (!dueAt) return restoreArrangement();
+
+    onReorder(task, { previousId, nextId, boardOrder, dueAt: dueAt.toISOString(), reopen });
   };
 
   return (
@@ -132,6 +201,9 @@ export function TaskBoard({
       canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
       getItemValue={(id: string) => id}
       onMove={handleMove}
+      // A refused drop, a release over nothing, or Escape: the hover reflow has
+      // already moved the card and only this puts it back.
+      onDragDiscarded={restoreArrangement}
       accessibility={{
         announcements: {
           onDragStart: ({ active }) => `Picked up ${byId.get(String(active.id))?.title ?? 'task'}.`,
@@ -169,28 +241,30 @@ export function TaskBoard({
             now={now}
           >
             {cardsIn(columnId).map((task) => (
-              <KanbanItem key={task.id} value={task.id}>
-                {/* KanbanItem keeps the drag listeners in context rather than
+              <TaskBoardCardSlot key={task.id}>
+                <KanbanItem value={task.id}>
+                  {/* KanbanItem keeps the drag listeners in context rather than
                     spreading them, so a card only becomes draggable once it
                     contains a handle. The whole card is the handle; the sensor's
                     10px activation distance leaves the buttons inside clickable. */}
-                <KanbanItemHandle asChild>
-                  <div>
-                    <TaskCard
-                      task={task}
-                      now={now}
-                      isBusy={busyTaskId === task.id}
-                      justLanded={justLandedTaskId === task.id}
-                      onOpen={onOpenTask}
-                      onComplete={onCompleteTask}
-                      onShiftDueDate={onShiftDueDate}
-                      onReassign={(assigneeId) => onReassign(task, assigneeId)}
-                      onPriorityChange={(priority) => onPriorityChange(task, priority)}
-                      onCourtChange={(court) => onCourtChange(task, court)}
-                    />
-                  </div>
-                </KanbanItemHandle>
-              </KanbanItem>
+                  <KanbanItemHandle asChild>
+                    <div>
+                      <TaskCard
+                        task={task}
+                        now={now}
+                        isBusy={busyTaskId === task.id}
+                        justLanded={justLandedTaskId === task.id}
+                        onOpen={onOpenTask}
+                        onComplete={onCompleteTask}
+                        onShiftDueDate={onShiftDueDate}
+                        onReassign={(assigneeId) => onReassign(task, assigneeId)}
+                        onPriorityChange={(priority) => onPriorityChange(task, priority)}
+                        onCourtChange={(court) => onCourtChange(task, court)}
+                      />
+                    </div>
+                  </KanbanItemHandle>
+                </KanbanItem>
+              </TaskBoardCardSlot>
             ))}
           </TaskBoardColumn>
         ))}

@@ -274,9 +274,7 @@ test.describe('multi-vendor filter', () => {
       .toBeNull();
     // Polled, not read once: the URL changes before the refetch it triggers has
     // landed. "No filter", not "match nothing" — the param is absent, not empty.
-    await expect
-      .poll(() => recorded.vendorIdParams.at(-1), { timeout: ROUTE_TIMEOUT })
-      .toBeNull();
+    await expect.poll(() => recorded.vendorIdParams.at(-1), { timeout: ROUTE_TIMEOUT }).toBeNull();
   });
 
   test('deselecting the last vendor clears the filter', async ({ page }) => {
@@ -287,8 +285,6 @@ test.describe('multi-vendor filter', () => {
     await page.getByRole('option', { name: /Acme Steel/ }).click();
     await page.keyboard.press('Escape');
 
-    await expect
-      .poll(() => recorded.vendorIdParams.at(-1), { timeout: ROUTE_TIMEOUT })
-      .toBeNull();
+    await expect.poll(() => recorded.vendorIdParams.at(-1), { timeout: ROUTE_TIMEOUT }).toBeNull();
   });
 });

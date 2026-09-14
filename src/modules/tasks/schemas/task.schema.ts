@@ -47,6 +47,9 @@ export const taskSchema = z.object({
   assignee: taskAssigneeSchema.nullish(),
   entityLinks: z.array(taskEntityLinkSchema).default([]),
   emailReferences: z.array(taskEmailReferenceSchema).default([]),
+  // Where someone dragged this card to within its priority block. Null means
+  // nobody has, and the board falls back to creation time — see taskOrderKey.
+  boardOrder: z.number().nullish(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -101,6 +104,9 @@ export type TaskEmailReference = z.infer<typeof taskEmailReferenceSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type TaskPaginatedResponse = z.infer<typeof taskPaginatedResponseSchema>;
 export type TaskFormData = z.infer<typeof taskFormSchema>;
+
+/** The filters a task list accepts, without the paging the board does not use. */
+export type TaskFilters = Omit<ListTasksParams, 'page' | 'size'>;
 
 export type ListTasksParams = {
   page: number;

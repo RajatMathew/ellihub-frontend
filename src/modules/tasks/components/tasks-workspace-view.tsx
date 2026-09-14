@@ -7,16 +7,17 @@ import { cn } from '@/app/lib/utils';
 import { TaskBoard } from '@/modules/tasks/components/task-board';
 import { TaskFilterBar, type TaskAssigneeFilter } from '@/modules/tasks/components/task-filter-bar';
 import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
-import { TASKS_DEFAULT_PAGE_SIZE } from '@/modules/tasks/constants/tasks.constants';
 import {
+  useAllTasksQuery,
   useCreateTaskMutation,
   useDeleteTaskMutation,
+  useReorderTaskMutation,
   useSetTaskCompletedMutation,
   useShiftTaskDueDateMutation,
-  useTasksQuery,
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
 import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
+import { changedTaskFields } from '@/modules/tasks/lib/task-edit';
 import type { CreateTaskInput, Task } from '@/modules/tasks/schemas/task.schema';
 import { Plus } from 'lucide-react';
 
@@ -33,11 +34,15 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const [editing, setEditing] = useState<Task | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>(null);
 
-  const tasksQuery = useTasksQuery({ page: 1, size: TASKS_DEFAULT_PAGE_SIZE });
+  // Every task, not a page of them: the board groups into columns and orders
+  // within them client-side, so anything it has not fetched is simply missing
+  // from the board rather than on a later page.
+  const tasksQuery = useAllTasksQuery();
   const createTask = useCreateTaskMutation();
   const updateTask = useUpdateTaskMutation();
   const setCompleted = useSetTaskCompletedMutation();
   const shiftDueDate = useShiftTaskDueDateMutation();
+  const reorderTask = useReorderTaskMutation();
   const deleteTask = useDeleteTaskMutation();
   const { justLandedId, markLanded } = useJustLandedTask();
 
@@ -68,7 +73,11 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
 
   const handleSubmit = async (payload: CreateTaskInput) => {
     if (editing) {
-      await updateTask.mutateAsync({ ...payload, id: editing.id });
+      // Only what changed. The update is partial — an absent field is left
+      // alone — and the dialog rebuilds the due date on every save, so sending
+      // the whole form told the server the date had moved when nobody had
+      // touched it, and a title-only edit cost the card its hand-placed spot.
+      await updateTask.mutateAsync({ ...changedTaskFields(editing, payload), id: editing.id });
     } else {
       await createTask.mutateAsync(payload);
     }
@@ -110,7 +119,12 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         <div className="flex items-center gap-3">
           {!tasksQuery.isLoading && !tasksQuery.isError ? (
             <span className="text-sm text-muted-foreground">
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+              {/* A board past the fetch cap says so, rather than passing a
+                  subset off as everything. hasNextPage is only ever true here
+                  when the page walk stopped short. */}
+              {tasksQuery.data?.pagination.hasNextPage
+                ? `showing ${tasks.length} of ${tasksQuery.data.pagination.totalItems} tasks`
+                : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
             </span>
           ) : null}
           <Button type="button" variant="primary" onClick={openCreate}>
@@ -163,13 +177,19 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             markLanded(task.id);
             shiftDueDate.mutate({ id: task.id, days });
           }}
-          onReschedule={(task, dueAt) =>
-            updateTask.mutate({ id: task.id, dueAt: dueAt.toISOString(), dueHasTime: false })
-          }
+          // Dragging a card to a spot. The placement is already clamped to the
+          // card's priority block by the board, and the server refuses it again
+          // - see PATCH /task/reorder. A card leaving Completed gets the same
+          // landing ring a reopened one does: it has moved columns.
+          onReorder={(task, placement) => {
+            if (placement.reopen) markLanded(task.id);
+            reorderTask.mutate({ id: task.id, ...placement });
+          }}
           onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
           // Priority and court are ordinary fields, so changing them from the
-          // card is the same PUT the dialog sends - no new endpoint, and the
-          // board regroups on its own because neither decides a column.
+          // card is the same PUT the dialog sends - no new endpoint. Neither
+          // decides a column, though a priority change does drop the card's
+          // hand-placed position, so it re-enters its new block by age.
           onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
           onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
         />

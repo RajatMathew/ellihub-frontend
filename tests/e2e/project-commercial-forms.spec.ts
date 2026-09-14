@@ -313,7 +313,9 @@ async function mockCommercialFormsApi(page: Page, handlers: MockHandlers = {}) {
     }
 
     if (method === 'GET' && path === '/api/v1/vendor') {
-      await route.fulfill({ json: { data: [vendor], pagination: { ...pagination, itemsPerPage: 1000 } } });
+      await route.fulfill({
+        json: { data: [vendor], pagination: { ...pagination, itemsPerPage: 1000 } },
+      });
       return;
     }
 
@@ -350,7 +352,9 @@ async function mockCommercialFormsApi(page: Page, handlers: MockHandlers = {}) {
     if (method === 'GET' && path === '/api/v1/rfq') {
       await route.fulfill({
         json: {
-          data: [{ ...makeRFQDetail(), status: { id: 'AWARDED', name: 'AWARDED', label: 'Awarded' } }],
+          data: [
+            { ...makeRFQDetail(), status: { id: 'AWARDED', name: 'AWARDED', label: 'Awarded' } },
+          ],
           pagination,
         },
       });
@@ -516,11 +520,17 @@ test.describe('project commercial create and update forms', () => {
 
     await expect(page.getByTestId('po-vendor-select')).toContainText(vendor.name);
     await expect(page.getByTestId('po-trade-category-select')).toContainText(tradeCategory.label);
-    await expect(page.getByTestId('po-description-input')).toHaveValue('Existing structural steel package');
+    await expect(page.getByTestId('po-description-input')).toHaveValue(
+      'Existing structural steel package'
+    );
     await expect(page.getByTestId('po-expected-date-input')).toHaveValue('2026-08-15');
     await expect(page.getByTestId('po-payment-terms-select')).toContainText('Net 45');
-    await expect(page.getByTestId('lineItems-0-description-input')).toHaveValue('Existing steel beams');
-    await expect(page.getByTestId('lineItems-0-cost-code-select')).toContainText('01-100 - General Requirements');
+    await expect(page.getByTestId('lineItems-0-description-input')).toHaveValue(
+      'Existing steel beams'
+    );
+    await expect(page.getByTestId('lineItems-0-cost-code-select')).toContainText(
+      '01-100 - General Requirements'
+    );
     await expect(page.getByTestId('lineItems-0-unit-select')).toContainText(unit.label);
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
@@ -661,7 +671,9 @@ test.describe('project commercial create and update forms', () => {
     await expect(page.getByTestId('sco-date-input')).toHaveValue('2026-09-01');
     await expect(page.getByTestId('sco-change-type-select')).toContainText(scoChangeType.label);
     await expect(page.getByTestId('sco-title-input')).toHaveValue('Existing owner-directed change');
-    await expect(page.getByTestId('sco-description-input')).toHaveValue('Existing change description');
+    await expect(page.getByTestId('sco-description-input')).toHaveValue(
+      'Existing change description'
+    );
     await expect(page.getByTestId('lineItems-0-description-input')).toHaveValue(
       'Existing added bracing'
     );
