@@ -117,15 +117,63 @@ export function getAttachmentTransportErrorMessage(error: unknown): string | nul
   return null;
 }
 
+/** The shape `getNewAttachments` needs off an already-uploaded attachment. */
+export type AttachedFileDescriptor = { name: string; sizeBytes?: number };
+
+/**
+ * Whether `file` is one the composer is already carrying.
+ *
+ * Three ways it can be, and all three have to be checked (elli-ui#945):
+ *
+ * - It is still in the pending tray — an exact `fileKey` match.
+ * - It was uploaded earlier in this composer session, so it has left the
+ *   pending tray for `existingAttachments`. `preparedKeys` holds the `fileKey`
+ *   of everything the server has taken, which is an exact match again.
+ * - The composer was opened on a saved draft, so the attachment came back from
+ *   the provider and there is no `fileKey` to compare. Name AND size together
+ *   are the most identity the wire format carries; a file matching both is the
+ *   same file for any purpose the user cares about, while a same-named file of
+ *   a different size is a genuinely different attachment and still goes up.
+ */
+function isAlreadyAttached(
+  file: File,
+  pendingKeys: ReadonlySet<string>,
+  preparedKeys: ReadonlySet<string>,
+  existing: readonly AttachedFileDescriptor[]
+): boolean {
+  const key = fileKey(file);
+  if (pendingKeys.has(key) || preparedKeys.has(key)) return true;
+  return existing.some(
+    (attachment) => attachment.name === file.name && attachment.sizeBytes === file.size
+  );
+}
+
 export function getNewAttachments(
   files: FileList | null,
   current: File[],
   uploadedBytes: number,
-  setError: (error: string | null) => void
+  setError: (error: string | null) => void,
+  /** `fileKey`s the server has already accepted for this composer. */
+  preparedKeys: ReadonlySet<string> = new Set(),
+  /** Attachments already on the draft, pending ones excluded. */
+  existing: readonly AttachedFileDescriptor[] = []
 ): File[] {
   if (!files?.length) return [];
-  const existing = new Set(current.map(fileKey));
-  const incoming = Array.from(files).filter((file) => !existing.has(fileKey(file)));
+  const pendingKeys = new Set(current.map(fileKey));
+
+  // Re-picking a file the composer already holds used to sail straight through
+  // this filter, because it only ever looked at the pending tray — and a file
+  // leaves the pending tray the moment its upload finishes. Selecting it again
+  // then either uploaded the same bytes a second time and put the file on the
+  // message twice, or, when the key was already prepared, added a tray row that
+  // could never upload and never cleared: a phantom attachment that still
+  // counted against the 25 MB budget. Both are elli-ui#945.
+  const duplicates: File[] = [];
+  const incoming = Array.from(files).filter((file) => {
+    if (!isAlreadyAttached(file, pendingKeys, preparedKeys, existing)) return true;
+    duplicates.push(file);
+    return false;
+  });
 
   // Accept files in the order they were picked while they fit the message
   // budget; everything that would push the total past the limit stays out.
@@ -141,16 +189,28 @@ export function getNewAttachments(
     }
   }
 
+  const messages: string[] = [];
+  if (duplicates.length > 0) {
+    const names = uniqueNames(duplicates).join(', ');
+    messages.push(
+      `${names} ${duplicates.length === 1 ? 'is' : 'are'} already attached, so ` +
+        `${duplicates.length === 1 ? 'it was' : 'they were'} not added again.`
+    );
+  }
   if (rejected.length > 0) {
     const remaining = Math.max(0, MAX_TOTAL_ATTACHMENT_BYTES - usedBytes);
     const names = rejected.map((file) => `${file.name} (${formatFileSize(file.size)})`).join(', ');
-    setError(
+    messages.push(
       `${names} ${rejected.length === 1 ? 'was' : 'were'} not attached — emails are limited to ` +
         `${formatFileSize(MAX_TOTAL_ATTACHMENT_BYTES)} of attachments in total and ` +
         `${formatFileSize(remaining)} remains. Remove an attachment or send it in a separate email.`
     );
-  } else {
-    setError(null);
   }
+
+  setError(messages.length > 0 ? messages.join(' ') : null);
   return accepted;
+}
+
+function uniqueNames(files: readonly File[]): string[] {
+  return [...new Set(files.map((file) => file.name))];
 }

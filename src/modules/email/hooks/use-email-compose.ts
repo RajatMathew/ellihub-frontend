@@ -470,6 +470,29 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
     return gate.wait();
   }, []);
 
+  /**
+   * Drops every pending row the server has already taken.
+   *
+   * The tray used to be cleared only when a save answered with an attachment
+   * list, so a response that did not echo one left its files sitting in the
+   * tray for good: their keys are in `preparedKeysRef`, so nothing will ever
+   * upload them again, and nothing but this clears them. They stayed on screen
+   * as attachments counted against the 25 MB budget that could never be sent
+   * (elli-ui#945). The keys are what the server accepted, so pruning by them is
+   * right whatever the response body looked like.
+   *
+   * Touches only refs and a state setter, so it is stable and both the upload
+   * path and `saveDraft` can share it.
+   */
+  const dropUploadedPendingAttachments = useCallback(() => {
+    const remaining = attachmentsRef.current.filter(
+      (file) => !preparedKeysRef.current.has(fileKey(file))
+    );
+    if (remaining.length === attachmentsRef.current.length) return;
+    attachmentsRef.current = remaining;
+    setAttachments(remaining);
+  }, []);
+
   const saveDraft = useCallback(async () => {
     if (!hasContent || !onSaveDraft) return draftRef.current;
     const identity = await waitForDraftIdentity();
@@ -511,11 +534,10 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
       const nextDraft = { draftId: result.draftId, messageId: result.messageId };
       draftRef.current = nextDraft;
       lastPersistedFormRef.current = currentForm;
-      if (result.attachments) {
-        setExistingAttachments(result.attachments);
-        attachmentsRef.current = [];
-        setAttachments([]);
-      }
+      if (result.attachments) setExistingAttachments(result.attachments);
+      // Keyed on what the server took, not on whether it echoed a list back —
+      // see dropUploadedPendingAttachments.
+      dropUploadedPendingAttachments();
       lastSavedSignatureRef.current = signature;
       setSaveStatus('idle');
       return nextDraft;
@@ -523,7 +545,7 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
       setSaveStatus('error');
       throw error;
     }
-  }, [hasContent, onSaveDraft, signature, waitForDraftIdentity]);
+  }, [dropUploadedPendingAttachments, hasContent, onSaveDraft, signature, waitForDraftIdentity]);
 
   /**
    * Closes the composer, saving whatever was typed first. Resolves `false` when
@@ -678,12 +700,10 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
       // provider hydration came back empty from uploading them all over again.
       for (const key of batchKeys) preparedKeysRef.current.add(key);
       draftRef.current = { draftId: result.draftId, messageId: result.messageId };
-      if (result.attachments) {
-        setExistingAttachments(result.attachments);
-        replacePendingAttachments(
-          attachmentsRef.current.filter((file) => !batchKeys.has(fileKey(file)))
-        );
-      }
+      if (result.attachments) setExistingAttachments(result.attachments);
+      // Outside the `if`: the bytes are on the server either way, so the tray
+      // rows have to go either way.
+      dropUploadedPendingAttachments();
     } catch (error: unknown) {
       // A cancelled upload is the user's own doing — `cancelAttachmentPreparation`
       // has already put the composer back to idle.
@@ -766,7 +786,11 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
       files,
       attachmentsRef.current,
       uploadedBytes,
-      setAttachmentError
+      setAttachmentError,
+      // A file already uploaded has left the pending tray, so the pending list
+      // alone cannot tell it apart from a new one — see getNewAttachments.
+      preparedKeysRef.current,
+      existingAttachmentsRef.current
     );
     if (!addedFiles.length) return;
 
