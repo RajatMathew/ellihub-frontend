@@ -2,6 +2,7 @@ import { useCallback, useId, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
@@ -30,6 +31,12 @@ interface EmailThreadMessageCardProps {
   accountId?: string;
   inlineImageBaseUrl?: string | null;
   singleMessage?: boolean;
+  /**
+   * The real body is still on its way, so what is on `message` is the list
+   * row's plain-text preview rather than the message. Renders a placeholder
+   * instead of it — see `getThreadMessages` (elli-ui#942).
+   */
+  isBodyPending?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
   replyMode?: EmailComposerMode;
@@ -55,6 +62,7 @@ export function EmailThreadMessageCard({
   accountId,
   inlineImageBaseUrl,
   singleMessage = false,
+  isBodyPending = false,
   latest,
   replyOpen,
   replyMode = 'reply',
@@ -243,12 +251,26 @@ export function EmailThreadMessageCard({
           width (padding on top of a fixed-width email design was clipping
           content at the right edge). Non-body children add their own px-4. */}
       <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
-        {hasBodyContent && (
-          <EmailMessageBody
-            body={message.body}
-            attachments={attachments}
-            inlineImageBaseUrl={inlineImageBaseUrl}
-          />
+        {isBodyPending ? (
+          /* The preview is plain text — a flattened excerpt that still carries
+             the quoted chain's `-----Original Message-----` rules. Rendered as
+             a body it showed as a row of dashes for the split second before
+             the real HTML arrived (elli-ui#942). Lines of the right shape say
+             "loading" without pretending to be the message. */
+          <div className="space-y-2 px-4" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading this message</span>
+            <Skeleton className="h-3.5 w-[85%]" />
+            <Skeleton className="h-3.5 w-[92%]" />
+            <Skeleton className="h-3.5 w-[60%]" />
+          </div>
+        ) : (
+          hasBodyContent && (
+            <EmailMessageBody
+              body={message.body}
+              attachments={attachments}
+              inlineImageBaseUrl={inlineImageBaseUrl}
+            />
+          )
         )}
 
         {visibleAttachments.length > 0 && (

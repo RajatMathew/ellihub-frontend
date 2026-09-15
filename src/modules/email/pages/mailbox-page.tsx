@@ -76,6 +76,7 @@ import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors'
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { richTextToEmailHtml } from '@/modules/email/lib/email-rich-text';
+import { isThreadBodyPending } from '@/modules/email/lib/email-thread-body-pending';
 import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { TasksWorkspaceView } from '@/modules/tasks/components/tasks-workspace-view';
@@ -814,6 +815,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
         !hasCachedMessages &&
         !refreshMessagesMutation.isPending)
     : false;
+  // Clicking a row shows the reading pane immediately, but the bodies arrive
+  // with the conversation. Until they do, all the pane has is the list row's
+  // plain-text preview — see EmailReadingPane's `isBodyLoading` (elli-ui#942).
+  const isThreadBodyLoading = isThreadBodyPending({
+    hasSelection: Boolean(selectedEmail),
+    hasConversation: Boolean(conversationQuery.data?.length),
+    hasMessageDetail: Boolean(messageDetailQuery.data),
+    isConversationPending: conversationQuery.isPending,
+    isMessageDetailPending: messageDetailQuery.isPending,
+  });
   const isReadingLoading =
     (isMailboxLoading || (deepLinkLookupEnabled && deepLinkQuery.isPending)) && !selectedEmail;
   const isReadingError =
@@ -1650,6 +1661,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                 mailboxAddress={address}
                 inlineImageBaseUrl={connectedAccount?.inlineImageBaseUrl}
                 isLoading={isReadingLoading}
+                isBodyLoading={isThreadBodyLoading}
                 isError={isReadingError}
                 onPrevious={
                   previousEmail ? () => selectEmail(previousEmail.id, { replace: true }) : undefined
