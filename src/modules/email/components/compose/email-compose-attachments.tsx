@@ -5,6 +5,7 @@ import { Progress } from '@/app/components/ui/progress';
 import { cn } from '@/app/lib/utils';
 import type { EmailComposeController } from '@/modules/email/hooks/use-email-compose';
 import {
+  fileKey,
   formatFileSize,
   getAttachmentStatusLabel,
   MAX_TOTAL_ATTACHMENT_BYTES,
@@ -122,7 +123,11 @@ export function EmailComposeAttachments({ compose }: { compose: EmailComposeCont
             ))}
             {attachments.map((file) => (
               <li
-                key={`${file.name}-${file.lastModified}`}
+                // The same identity the dedupe uses. Name and timestamp alone
+                // collide for two files of different sizes saved in the same
+                // millisecond, and React then reuses one row's DOM for the
+                // other — the wrong name against the wrong progress bar.
+                key={fileKey(file)}
                 className="relative flex min-w-0 items-center gap-2 overflow-hidden rounded-md border border-border bg-background px-2.5 py-2"
               >
                 <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
