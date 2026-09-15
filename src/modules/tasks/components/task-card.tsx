@@ -159,7 +159,13 @@ export function TaskCard({
           ) : null}
         </span>
 
-        <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
+        {/* Provenance and ownership share the corner, as the design draws it:
+            the envelope opens the emails the task was raised from, the chip
+            says whose it is. */}
+        <div className="flex items-center gap-1">
+          <TaskCardEmailSources references={task.emailReferences} />
+          <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
+        </div>
       </div>
 
       <TaskPriorityMeter
@@ -235,8 +241,6 @@ export function TaskCard({
           ) : null}
         </div>
       ) : null}
-
-      <TaskCardEmailSources references={task.emailReferences} />
     </div>
   );
 }
