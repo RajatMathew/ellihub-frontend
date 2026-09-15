@@ -96,6 +96,12 @@ export interface UseEmailComposeOptions {
       signal?: AbortSignal;
       /** Bytes sent so far, so the tray can show a real percentage. */
       onProgress?: (loaded: number, total?: number) => void;
+      /**
+       * Only files are being added, so the draft's fields do not need saving
+       * again. The upload path sends `lastPersistedFormRef`, which is what the
+       * server already holds, so writing it back was a wasted round trip.
+       */
+      attachOnly?: boolean;
     }
   ) => Promise<ComposeDraftSaveResult>;
   onSendDraft?: (draft: ComposeDraftIdentity) => Promise<void>;
@@ -692,6 +698,7 @@ export function useEmailCompose(options: UseEmailComposeOptions) {
         {
           signal,
           onProgress: (loaded, total) => setAttachmentProgress(getUploadPercent(loaded, total)),
+          attachOnly: true,
         }
       );
       if (signal.aborted) return;
