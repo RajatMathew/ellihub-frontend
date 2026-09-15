@@ -1,6 +1,7 @@
 import api from '@/app/api';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import type { EmailProvider } from '@/modules/email/constants/email-providers';
+import { getDraftSaveTarget } from '@/modules/email/lib/email-draft-save-target';
 import { dedupeEmailAccounts } from '@/modules/email/utils/email-account-identity';
 import type { AxiosProgressEvent } from 'axios';
 import { z } from 'zod';
@@ -337,6 +338,11 @@ export type EmailDraftMessagePayload = {
    * uplink takes — an indeterminate "Preparing…" for that long reads as a hang.
    */
   onUploadProgress?: (event: AxiosProgressEvent) => void;
+  /**
+   * This save is only adding files, so the draft's fields do not need writing
+   * back. Routes to the attach endpoint — see `saveDraft`.
+   */
+  attachOnly?: boolean;
 };
 
 /**
@@ -586,12 +592,18 @@ export const emailApi = {
     return emailDraftResultSchema.parse(unwrapData(res.data));
   },
 
+  /**
+   * `attachOnly` sends the save to the endpoint that skips the field write —
+   * see `getDraftSaveTarget` for why, and why the body is the same either way.
+   */
   async saveDraft(payload: EmailDraftMessagePayload): Promise<EmailDraftResult> {
-    const { accountId, draftId, signal, onUploadProgress, ...draft } = payload;
+    const { accountId, draftId, signal, onUploadProgress, attachOnly, ...draft } = payload;
     const config = { timeout: DRAFT_SAVE_TIMEOUT_MS, signal, onUploadProgress };
-    const res = draftId
-      ? await api.put(`${BASE}/accounts/${accountId}/drafts/${draftId}`, draft, config)
-      : await api.post(`${BASE}/accounts/${accountId}/drafts`, draft, config);
+    const target = getDraftSaveTarget({ accountId, draftId, attachOnly });
+    const res =
+      target.method === 'PUT'
+        ? await api.put(target.path, draft, config)
+        : await api.post(target.path, draft, config);
     return emailDraftResultSchema.parse(unwrapData(res.data));
   },
 

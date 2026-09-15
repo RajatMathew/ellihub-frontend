@@ -452,6 +452,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             bcc: parseEmailAddresses(payload.bcc),
             attachments: payload.attachments,
             removedAttachmentIds: payload.removedAttachmentIds,
+            attachOnly: saveOptions?.attachOnly,
           });
           return {
             draftId: result.draftId,
