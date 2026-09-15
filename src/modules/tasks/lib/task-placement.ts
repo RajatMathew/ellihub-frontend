@@ -1,4 +1,4 @@
-import type { Task } from '../schemas/task.schema';
+import type { Task, TaskReorderResult } from '../schemas/task.schema';
 
 /** The two calls a placement can need, handed in so this stays testable. */
 export interface PlacementApi {
@@ -8,7 +8,7 @@ export interface PlacementApi {
     previousId: string | null,
     nextId: string | null,
     dueAt?: string
-  ): Promise<Task>;
+  ): Promise<TaskReorderResult>;
 }
 
 export interface PlacementRequest {
@@ -34,7 +34,10 @@ export interface PlacementRequest {
  * Relative imports on purpose: exercised by a bun test, and bun does not
  * resolve the `@/` alias.
  */
-export async function placeTask(api: PlacementApi, request: PlacementRequest): Promise<Task> {
+export async function placeTask(
+  api: PlacementApi,
+  request: PlacementRequest
+): Promise<TaskReorderResult> {
   const { id, previousId, nextId, dueAt, reopen } = request;
 
   if (reopen) await api.setCompleted(id, false);

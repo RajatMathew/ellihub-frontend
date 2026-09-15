@@ -19,7 +19,6 @@ import {
   dropMovesTask,
   dropNeighbours,
   dueDateForColumn,
-  groupTasksByColumn,
   resolveDropIndex,
   TASK_COLUMN_LABELS,
   TASK_COLUMNS,
@@ -29,8 +28,8 @@ import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task
 import { toast } from 'sonner';
 
 export function TaskBoard({
-  tasks,
-  now: nowProp,
+  columns: served,
+  now,
   busyTaskId,
   justLandedTaskId,
   onOpenTask,
@@ -41,8 +40,9 @@ export function TaskBoard({
   onPriorityChange,
   onCourtChange,
 }: {
-  tasks: Task[];
-  now?: Date;
+  /** The board as the cache holds it: the server's columns, patched by every write. */
+  columns: Record<TaskColumnId, Task[]>;
+  now: Date;
   busyTaskId?: string | null;
   justLandedTaskId?: string | null;
   onOpenTask: (task: Task) => void;
@@ -66,23 +66,36 @@ export function TaskBoard({
   onPriorityChange: (task: Task, priority: TaskPriority) => void;
   onCourtChange: (task: Task, court: TaskCourt) => void;
 }) {
-  // `new Date()` as a default parameter is a fresh object on every render, which
-  // would make every memo below recompute and the state adjustment loop forever.
-  const now = useMemo(() => nowProp ?? new Date(), [nowProp]);
-
-  const byId = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  // Every card, and which column the server (or the last write) put it in.
+  // The column is read from here rather than re-derived from the due date:
+  // the cache is the one place that knows where a card is, and asking it
+  // keeps the board and its drag rules on the same answer.
+  const { byId, homeOf, tasks } = useMemo(() => {
+    const byId = new Map<string, Task>();
+    const homeOf = new Map<string, TaskColumnId>();
+    const tasks: Task[] = [];
+    for (const columnId of TASK_COLUMNS) {
+      for (const task of served[columnId]) {
+        byId.set(task.id, task);
+        homeOf.set(task.id, columnId);
+        tasks.push(task);
+      }
+    }
+    return { byId, homeOf, tasks };
+  }, [served]);
 
   // The arrangement is held locally so cards can slide apart under a dragged
   // card. It stores *ids*, not tasks: a card's content is looked up from the
   // server data at render, so an edit to a title or an assignee shows up without
   // the mirror having to notice it. Only the arrangement is ever stale, and the
   // signature below covers everything the arrangement depends on.
-  const groupedIds = useMemo(() => {
-    const grouped = groupTasksByColumn(tasks, now);
-    return Object.fromEntries(
-      TASK_COLUMNS.map((id) => [id, grouped[id].map((task) => task.id)])
-    ) as Record<TaskColumnId, string[]>;
-  }, [tasks, now]);
+  const groupedIds = useMemo(
+    () =>
+      Object.fromEntries(
+        TASK_COLUMNS.map((id) => [id, served[id].map((task) => task.id)])
+      ) as Record<TaskColumnId, string[]>,
+    [served]
+  );
 
   // Adjusting during render rather than in an effect is React's own pattern for
   // state that follows a prop, and avoids a second paint. Keyed on the content
@@ -128,11 +141,11 @@ export function TaskBoard({
     const task = byId.get(String(event.active.id));
     if (!task) return restoreArrangement();
 
-    // Where the card came from has to be read from the server data, not from
-    // the board's current arrangement: the hover reflow has already moved it
-    // into the target, so asking the board would report that it started there
-    // and nothing would ever be saved.
-    const from = columnForTask(task, now);
+    // Where the card came from has to be read from the cache, not from the
+    // board's current arrangement: the hover reflow has already moved it into
+    // the target, so asking the board would report that it started there and
+    // nothing would ever be saved.
+    const from = homeOf.get(task.id) ?? columnForTask(task, now);
     const to = overContainer as TaskColumnId;
 
     const { allowed, reason } = canMoveTask(from, to);
@@ -238,6 +251,7 @@ export function TaskBoard({
             columnId={columnId}
             tasks={cardsIn(columnId)}
             byId={byId}
+            homeOf={homeOf}
             now={now}
           >
             {cardsIn(columnId).map((task) => (

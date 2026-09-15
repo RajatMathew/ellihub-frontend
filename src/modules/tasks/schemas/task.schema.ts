@@ -67,6 +67,43 @@ export const taskPaginatedResponseSchema = z.object({
   pagination: taskPaginationSchema,
 });
 
+/**
+ * The board as the server serves it: five columns, each grouped, ordered and
+ * capped, with the true count so a cut-short column can say so. `today` is the
+ * caller's local date the columns were cut on; `people` is everyone holding a
+ * task, filter or no filter, for the pills.
+ */
+export const taskColumnIdSchema = z.enum([
+  'OVERDUE',
+  'DUE_TODAY',
+  'TOMORROW',
+  'PENDING',
+  'COMPLETED',
+]);
+
+export const taskBoardColumnSchema = z.object({
+  tasks: z.array(taskSchema),
+  total: z.number(),
+});
+
+export const taskBoardSchema = z.object({
+  today: z.string(),
+  columns: z.object({
+    OVERDUE: taskBoardColumnSchema,
+    DUE_TODAY: taskBoardColumnSchema,
+    TOMORROW: taskBoardColumnSchema,
+    PENDING: taskBoardColumnSchema,
+    COMPLETED: taskBoardColumnSchema,
+  }),
+  people: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+
+/** What a reorder answers with: the moved card, and any others re-spaced with it. */
+export const taskReorderResultSchema = z.object({
+  task: taskSchema,
+  touched: z.array(taskSchema),
+});
+
 // What the create/edit dialog binds to. Kept separate from the API payload:
 // the form holds the date and time as the two native inputs produce them
 // ("2026-09-15" and "14:30"), and the mapper turns them into the single ISO
@@ -103,6 +140,22 @@ export type TaskEntityLink = z.infer<typeof taskEntityLinkSchema>;
 export type TaskEmailReference = z.infer<typeof taskEmailReferenceSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type TaskPaginatedResponse = z.infer<typeof taskPaginatedResponseSchema>;
+export type TaskColumnId = z.infer<typeof taskColumnIdSchema>;
+export type TaskBoardColumn = z.infer<typeof taskBoardColumnSchema>;
+export type TaskBoard = z.infer<typeof taskBoardSchema>;
+export type TaskReorderResult = z.infer<typeof taskReorderResultSchema>;
+
+/**
+ * What the board asks for. `tz` and `today` are the browser's: the server cuts
+ * the columns on the caller's day, and the day is part of the key so a board
+ * left open overnight fetches afresh rather than showing yesterday's columns.
+ */
+export type TaskBoardParams = {
+  tz: string;
+  today: string;
+  assigneeId?: string;
+  limit?: number;
+};
 export type TaskFormData = z.infer<typeof taskFormSchema>;
 
 /** The filters a task list accepts, without the paging the board does not use. */

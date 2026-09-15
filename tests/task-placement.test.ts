@@ -4,6 +4,7 @@ import { placeTask, type PlacementApi } from '../src/modules/tasks/lib/task-plac
 import type { Task } from '../src/modules/tasks/schemas/task.schema';
 
 const task = { id: 'card' } as Task;
+const placed = { task, touched: [] };
 
 /** A fake API that records the order of calls and can be told to fail. */
 function fakeApi(failures: { complete?: boolean; reorder?: boolean } = {}) {
@@ -17,7 +18,7 @@ function fakeApi(failures: { complete?: boolean; reorder?: boolean } = {}) {
     },
     reorder: () => {
       calls.push('place');
-      return failures.reorder ? Promise.reject(new Error('place refused')) : Promise.resolve(task);
+      return failures.reorder ? Promise.reject(new Error('place refused')) : Promise.resolve(placed);
     },
   };
   return { api, calls };
