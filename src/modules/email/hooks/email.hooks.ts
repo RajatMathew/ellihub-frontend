@@ -231,7 +231,13 @@ export const useRefreshEmailMessagesMutation = () => {
      */
     mutationFn: (payload: { accountId: string; daysWithin?: number }) =>
       emailApi.syncAccount(payload.accountId, payload.daysWithin),
-    onSuccess: (result, payload) => {
+    // A backfill still in progress is not news. The server keeps stepping the
+    // account on its own and the socket announces what lands, so there was
+    // never anything for the reader to do about it — and because the sync fires
+    // on opening a mailbox, the notice greeted them every time they went to
+    // read their mail. The list already says it is catching up through
+    // `freshness`; a toast over the top of that is just in the way.
+    onSuccess: (_result, payload) => {
       void Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: emailKeys.messagesRoot(payload.accountId),
@@ -247,11 +253,6 @@ export const useRefreshEmailMessagesMutation = () => {
         }),
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
-      // The server keeps stepping this account on its own, so there is nothing
-      // for the reader to do — say so rather than asking them to refresh.
-      if (result.hasMore) {
-        toast.info('Still catching up on this mailbox. New messages will appear as they arrive.');
-      }
     },
     onError: (error) => {
       if (isEmailReconnectRequiredError(error)) return;
