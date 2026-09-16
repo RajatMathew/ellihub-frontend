@@ -433,3 +433,73 @@ describe('quoted plain text', () => {
     });
   });
 });
+
+/**
+ * The dash-wrapped separator, with and without the word "message" (#942).
+ *
+ * `------------------ Original ------------------` is a real Outlook variant —
+ * twelve of four thousand cached bodies use it. The boundary pattern required
+ * "original message", so the line itself never matched: the history below it
+ * was collapsed by some other marker and the separator stayed behind, a row of
+ * dashes hanging under the reply introducing nothing. That is the "dashed ----
+ * quoted text" the issue is named for.
+ */
+describe('a separator drawn with dashes', () => {
+  test('collapses at "Original" without the word "message"', () => {
+    const doc = parse(`
+      <div>Approved, go ahead.</div>
+      <div>------------------ Original ------------------</div>
+      <div>From: someone-cofount@example.com<br>Sent: Monday<br>Subject: Re: shop drawings</div>
+      <div>The earlier message body.</div>
+    `);
+
+    markQuotedEmailContent(doc);
+
+    expect(visibleText(doc)).toBe('Approved, go ahead.');
+    expect(visibleText(doc)).not.toContain('---');
+    expect(quotedText(doc)).toContain('The earlier message body.');
+  });
+
+  test('still collapses the spelled-out form', () => {
+    const doc = parse(`
+      <div>Approved, go ahead.</div>
+      <div>-----Original Message-----</div>
+      <div>From: someone-cofount@example.com<br>Sent: Monday<br>Subject: Re: shop drawings</div>
+      <div>The earlier message body.</div>
+    `);
+
+    markQuotedEmailContent(doc);
+
+    expect(visibleText(doc)).toBe('Approved, go ahead.');
+    expect(quotedText(doc)).toContain('The earlier message body.');
+  });
+
+  test('takes the separator into the quote, not just the text under it', () => {
+    // The separator introduces the history, so it belongs with it. Leaving it
+    // visible is the whole defect.
+    const doc = parse(`
+      <div>Approved, go ahead.</div>
+      <div>------------------ Forwarded ------------------</div>
+      <div>From: someone-cofount@example.com<br>Sent: Monday<br>Subject: Re: shop drawings</div>
+      <div>The earlier message body.</div>
+    `);
+
+    markQuotedEmailContent(doc);
+
+    expect(quotedText(doc)).toContain('Forwarded');
+    expect(visibleText(doc)).toBe('Approved, go ahead.');
+  });
+
+  test('leaves the word alone when it has no rules around it', () => {
+    // "Original" in prose is not a separator; only the dashes make it one.
+    const doc = parse(`
+      <div>Please send the original drawings when you can.</div>
+      <div>Thanks.</div>
+    `);
+
+    markQuotedEmailContent(doc);
+
+    expect(visibleText(doc)).toContain('original drawings');
+    expect(quotedText(doc)).toBe('');
+  });
+});

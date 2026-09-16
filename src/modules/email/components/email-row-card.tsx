@@ -12,6 +12,7 @@ import {
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useShowEmailAvatars } from '@/modules/email/hooks/use-email-avatar-visibility';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
 import {
   getMeetingResponseLabel,
   MEETING_RESPONSE_ICONS,
@@ -185,7 +186,10 @@ export function EmailRowCard({
   // empty body, so the row would otherwise be a subject over a blank line with
   // nothing saying who accepted (zubblehq/elli-ui#876). Say it where the
   // preview would have been, in the wording the thread strip uses.
-  const meetingResponse = email.preview.trim() ? undefined : email.meetingResponse;
+  // Stripped of the horizontal rules the provider's plain-text flattening
+  // leaves behind, which the mailbox row was drawing as trailing underscores.
+  const preview = cleanEmailPreview(email.preview);
+  const meetingResponse = preview ? undefined : email.meetingResponse;
   const MeetingResponseIcon = meetingResponse
     ? MEETING_RESPONSE_ICONS[meetingResponse.status]
     : null;
@@ -323,9 +327,9 @@ export function EmailRowCard({
                 <span className="truncate">{getMeetingResponseLabel(meetingResponse)}</span>
               </span>
             ) : highlightQuery ? (
-              highlightText(email.preview, highlightQuery)
+              highlightText(preview, highlightQuery)
             ) : (
-              email.preview
+              preview
             )}
           </span>
 

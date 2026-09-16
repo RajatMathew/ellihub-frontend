@@ -70,8 +70,14 @@ const QUOTE_BOUNDARY_SELECTORS = [
 
 /** Separator lines clients write instead of any element marker. */
 const BOUNDARY_TEXT_PATTERNS = [
-  /^-{2,}\s*original message\s*-{2,}$/i,
-  /^-{2,}\s*forwarded message\s*-{2,}$/i,
+  // `message` is optional: a real Outlook variant in the corpus writes the
+  // separator as `------------------ Original ------------------`, and
+  // requiring the second word left that line sitting under the reply with the
+  // history it introduces collapsed away beneath it (elli-ui#942). Dashes on
+  // both sides of the word are what make it unambiguous — "original" in prose
+  // has no rules around it.
+  /^-{2,}\s*original(?:\s+message)?\s*-{2,}$/i,
+  /^-{2,}\s*forwarded(?:\s+message)?\s*-{2,}$/i,
   /^-{2,}\s*ursprüngliche nachricht\s*-{2,}$/i,
   /^-{2,}\s*mensaje original\s*-{2,}$/i,
   /^-{2,}\s*message transféré\s*-{2,}$/i,

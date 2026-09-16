@@ -60,6 +60,12 @@ interface EmailReadingPaneProps {
   mailboxAddress: string;
   inlineImageBaseUrl?: string | null;
   isLoading?: boolean;
+  /**
+   * The thread's real bodies are still loading, so `email` carries only the
+   * list row. Every message it stands in for renders a placeholder rather than
+   * the plain-text preview (elli-ui#942).
+   */
+  isBodyLoading?: boolean;
   isError?: boolean;
   onRetry?: () => void;
   folders?: ConnectedEmailFolder[];
@@ -114,6 +120,7 @@ export function EmailReadingPane({
   mailboxAddress,
   inlineImageBaseUrl,
   isLoading = false,
+  isBodyLoading = false,
   isError = false,
   onRetry,
   tags,
@@ -294,6 +301,10 @@ export function EmailReadingPane({
   }
 
   const baseMessages = getThreadMessages(email, mailboxAddress);
+  // True only while the stand-in built from the list row is on screen: once the
+  // conversation resolves, `threadMessages` carries real bodies.
+  const isShowingPreviewStandIn =
+    isBodyLoading && !email.threadMessages?.length && !email.body?.length;
   const actionMessageId = email.latestMessageId ?? email.id;
   const visiblePendingReplies = pendingReplies
     .filter((reply) => reply.emailId === email.id)
@@ -473,6 +484,7 @@ export function EmailReadingPane({
                 message={message}
                 inlineImageBaseUrl={inlineImageBaseUrl}
                 singleMessage={messages.length === 1}
+                isBodyPending={isShowingPreviewStandIn}
                 latest={index === messages.length - 1}
                 accountId={accountId}
                 onComposeTo={onComposeTo}
@@ -715,6 +727,10 @@ function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailT
       sentAt: email.receivedAt,
       meetingResponse: email.meetingResponse,
       meetingEvent: email.meetingEvent,
+      // The preview is a plain-text excerpt of the whole thread, quoted chain
+      // included. It stands in only so the card has something to measure; when
+      // `isBodyPending` is set the card draws a placeholder instead of
+      // rendering it (elli-ui#942).
       body: email.body?.length ? email.body : [email.preview],
       attachments: email.attachments ?? [],
       keywords: email.keywords ?? [],
