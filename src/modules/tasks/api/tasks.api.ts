@@ -1,25 +1,22 @@
 import api from '@/app/api';
-import { mergeTaskPages } from '@/modules/tasks/lib/task-pages';
 import {
+  taskBatchResponseSchema,
+  taskBoardSchema,
   taskPaginatedResponseSchema,
+  taskReorderResultSchema,
   taskSchema,
   type CreateTaskInput,
   type ListTasksParams,
   type Task,
-  type TaskFilters,
+  type TaskBatchResponse,
+  type TaskBoard,
+  type TaskBoardParams,
   type TaskPaginatedResponse,
+  type TaskReorderResult,
   type UpdateTaskInput,
 } from '@/modules/tasks/schemas/task.schema';
 
 const BASE = '/task';
-
-// The server caps a page at 100 (paginationMiddleware's maxSize), so asking for
-// more in one request gets silently trimmed rather than refused.
-const LIST_PAGE_SIZE = 100;
-
-// A guard against looping forever if pagination ever misreports itself, not a
-// ceiling anyone should be hitting.
-const LIST_MAX_PAGES = 20;
 
 // The API nests list filters under filter[...]; flatten them here so callers
 // pass a plain params object.
@@ -53,33 +50,20 @@ export const tasksApi = {
   },
 
   /**
-   * Every task the board needs, however many pages that takes.
-   *
-   * The board groups by due date and orders within a column client-side, so a
-   * single page was never enough: it sorted whichever rows arrived and the rest
-   * were simply not on the board. Worse, an edit that moved a card later in the
-   * server's due-date order pushed it off the page, so `+1 day` looked like it
-   * had deleted the task.
-   *
-   * The server caps a page at 100, so this fetches the pages. MAX_PAGES is a
-   * runaway guard rather than a product limit — if a tenant ever reaches it the
-   * board is showing thousands of cards and wants filtering, not more requests.
+   * The board, as the server draws it: five columns already grouped, ordered
+   * and capped, plus everyone who holds a task. One request, however many
+   * tasks there are - the client used to walk the paginated list to the end
+   * and group it itself.
    */
-  async listAll(filters: TaskFilters = {}): Promise<TaskPaginatedResponse> {
-    const first = await this.list({ ...filters, page: 1, size: LIST_PAGE_SIZE });
-
-    // The first page says how many there are, so the rest go out together
-    // rather than one after another. Up to the cap, the board is painted in
-    // two round trips however many tasks there are. Past it, `mergeTaskPages`
-    // reports the truncation rather than hiding it.
-    const remaining = Math.min(first.pagination.totalPages, LIST_MAX_PAGES) - 1;
-    const rest = await Promise.all(
-      Array.from({ length: Math.max(0, remaining) }, (_, index) =>
-        this.list({ ...filters, page: index + 2, size: LIST_PAGE_SIZE })
-      )
-    );
-
-    return mergeTaskPages([first, ...rest]);
+  async board(params: TaskBoardParams): Promise<TaskBoard> {
+    const res = await api.get(`${BASE}/board`, {
+      params: {
+        tz: params.tz,
+        ...(params.assigneeId && { assigneeId: params.assigneeId }),
+        ...(params.limit && { limit: params.limit }),
+      },
+    });
+    return taskBoardSchema.parse(res.data?.data ?? res.data);
   },
 
   async getById(id: string): Promise<Task> {
@@ -121,7 +105,7 @@ export const tasksApi = {
     previousId: string | null,
     nextId: string | null,
     dueAt?: string
-  ): Promise<Task> {
+  ): Promise<TaskReorderResult> {
     const res = await api.patch(`${BASE}/reorder`, {
       id,
       previousId,
@@ -130,7 +114,38 @@ export const tasksApi = {
       // as its own update so the card cannot land by age and then jump.
       ...(dueAt !== undefined && { dueAt, dueHasTime: false }),
     });
-    return taskSchema.parse(res.data?.data ?? res.data);
+    // `data` is the moved card; `touched` rides beside it and lists any other
+    // cards a re-space renumbered, so the board can patch them in too.
+    return taskReorderResultSchema.parse({
+      task: res.data?.data,
+      touched: res.data?.touched ?? [],
+    });
+  },
+
+  /**
+   * Several writes in one request, applied in order - the outbox's flush.
+   * `keepalive` is for the flush on the way out of the page: the browser
+   * lets a keepalive request finish after the tab has gone, which axios
+   * cannot ask for, so that one goes through fetch.
+   */
+  async batch(
+    ops: Record<string, unknown>[],
+    { keepalive = false }: { keepalive?: boolean } = {}
+  ): Promise<TaskBatchResponse> {
+    if (keepalive) {
+      const res = await fetch(`${api.defaults.baseURL}${BASE}/batch`, {
+        method: 'PATCH',
+        credentials: 'include',
+        keepalive: true,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ops }),
+      });
+      if (!res.ok) throw new Error(`Batch failed: ${res.status}`);
+      const body: unknown = await res.json();
+      return taskBatchResponseSchema.parse((body as { data?: unknown }).data ?? body);
+    }
+    const res = await api.patch(`${BASE}/batch`, { ops });
+    return taskBatchResponseSchema.parse(res.data?.data ?? res.data);
   },
 
   async restore(id: string): Promise<Task> {

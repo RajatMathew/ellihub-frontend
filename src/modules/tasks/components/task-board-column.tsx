@@ -31,12 +31,15 @@ export function TaskBoardColumn({
   columnId,
   tasks,
   byId,
+  homeOf,
   now,
   children,
 }: {
   columnId: TaskColumnId;
   tasks: Task[];
   byId: Map<string, Task>;
+  /** Which column each card is filed under - the cache's answer, not the date's. */
+  homeOf: Map<string, TaskColumnId>;
   now: Date;
   children: ReactNode;
 }) {
@@ -59,9 +62,13 @@ export function TaskBoardColumn({
     (String(over.id) === columnId || tasks.some((task) => task.id === String(over.id)))
   );
 
+  const draggedFrom = draggedTask
+    ? (homeOf.get(draggedTask.id) ?? columnForTask(draggedTask, now))
+    : null;
+
   const verdict =
-    draggedTask && isHovered
-      ? canMoveTask(columnForTask(draggedTask, now), columnId)
+    draggedFrom && isHovered
+      ? canMoveTask(draggedFrom, columnId)
       : { allowed: true as const, reason: undefined };
 
   const isForbidden = isHovered && !verdict.allowed;
@@ -81,7 +88,7 @@ export function TaskBoardColumn({
       : dropSlotFor(tasks, draggedTask, over?.id, byId, {
           // Landing back on its own slot is only a no-op when the card is not
           // also changing column.
-          sameColumn: columnForTask(draggedTask, now) === columnId,
+          sameColumn: draggedFrom === columnId,
         });
   })();
 

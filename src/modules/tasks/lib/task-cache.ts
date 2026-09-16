@@ -1,138 +1,133 @@
-import type { Task, TaskPaginatedResponse } from '@/modules/tasks/schemas/task.schema';
+import type { Task, TaskBoard, TaskColumnId } from '../schemas/task.schema';
+import { columnForTask, compareForBoard, TASK_COLUMNS } from './task-board';
 
 /**
- * Apply a due-date shift to a cached page of tasks.
+ * Edits to the board held in the query cache.
  *
- * The board groups by due date, so writing the new date into the cache is what
- * moves the card — the point being that it happens on the click rather than a
- * round trip later. The server's answer replaces this when it arrives.
+ * The board is not refetched after every action any more. Each write returns
+ * the task it changed, and that is put straight into the cached board; the
+ * same helpers apply the change *before* the request goes out, so a card moves
+ * on the click rather than a round trip later. Every helper returns the board
+ * unchanged, by reference, when nothing moved - the board memoises on the
+ * columns, and a fresh object for no change would re-render every card.
  *
- * Returns the page unchanged, by reference, when nothing moved: the board
- * memoises on the array, so a fresh one would re-render every card on an
- * unrelated task's shift.
+ * A task's column is worked out here the way the server works it out: by
+ * status, then by due date against `now`. The server's cut and this one can
+ * only disagree across midnight, and the board refetches when the day turns.
+ *
+ * Relative imports on purpose: exercised by bun tests, and bun does not
+ * resolve the `@/` alias.
  */
-export function shiftTaskDueDateInList(
-  page: TaskPaginatedResponse,
-  id: string,
-  days: number
-): TaskPaginatedResponse {
-  let changed = false;
 
-  const data = page.data.map((task): Task => {
-    // No date means no column to move between, and inventing one would put the
-    // task somewhere the server never agreed to.
-    if (task.id !== id || !task.dueAt) return task;
+/** Which column holds the task, or null if the board does not have it. */
+export function columnOf(board: TaskBoard, id: string): TaskColumnId | null {
+  for (const column of TASK_COLUMNS) {
+    if (board.columns[column].tasks.some((task) => task.id === id)) return column;
+  }
+  return null;
+}
 
-    const dueAt = new Date(task.dueAt);
-    dueAt.setDate(dueAt.getDate() + days);
-    changed = true;
-    // The card is landing in another column, where its hand-placed position in
-    // the old one means nothing. The server clears it on the same edit; doing it
-    // here too is what stops the card settling in one slot and then jumping to
-    // another when the response arrives.
-    return { ...task, dueAt: dueAt.toISOString(), boardOrder: null };
-  });
-
-  return changed ? { ...page, data } : page;
+/** The task as the board holds it, or undefined. */
+export function findInBoard(board: TaskBoard, id: string): Task | undefined {
+  for (const column of TASK_COLUMNS) {
+    const task = board.columns[column].tasks.find((task) => task.id === id);
+    if (task) return task;
+  }
+  return undefined;
 }
 
 /**
- * Drop a task from a cached page.
+ * Put a task on the board where it now belongs.
  *
- * The card has to leave the board on the click, not a round trip later — the
- * Undo toast that follows only makes sense once the thing it undoes has visibly
- * happened. The delete is soft on the server, so this is the only place the task
- * actually disappears from; a failure puts the page back.
- *
- * Same by-reference contract as the shift above: an untouched page is returned
- * as it came in, because the board memoises on the array.
+ * Handles every case one helper can: a new task (the column gains it), a
+ * changed one (it is re-sorted in place), and one whose status or date moved
+ * it (the old column loses it, the new one gains it). Totals follow the cards,
+ * so a capped column stays honest about what it holds.
  */
-export function removeTaskFromList(page: TaskPaginatedResponse, id: string): TaskPaginatedResponse {
-  const data = page.data.filter((task) => task.id !== id);
-  if (data.length === page.data.length) return page;
+export function upsertTaskInBoard(board: TaskBoard, task: Task, now: Date): TaskBoard {
+  const from = columnOf(board, task.id);
+  const to = columnForTask(task, now);
 
-  return {
-    ...page,
-    data,
-    // The header counts tasks off this number, so leaving it alone would show a
-    // count one higher than the cards under it until the refetch lands.
-    pagination: {
-      ...page.pagination,
-      totalItems: Math.max(0, page.pagination.totalItems - 1),
-    },
-  };
+  if (from === to) {
+    const column = board.columns[to];
+    const index = column.tasks.findIndex((held) => held.id === task.id);
+    const tasks = column.tasks.slice();
+    tasks.splice(index, 1);
+    insertSorted(tasks, task);
+
+    // Same content in the same slot is no change at all.
+    const before = column.tasks[index];
+    if (before === task && tasks[index] === task) return board;
+
+    return withColumn(board, to, { tasks, total: column.total });
+  }
+
+  let next = board;
+  if (from) {
+    const column = next.columns[from];
+    next = withColumn(next, from, {
+      tasks: column.tasks.filter((held) => held.id !== task.id),
+      total: Math.max(0, column.total - 1),
+    });
+  }
+
+  const column = next.columns[to];
+  const tasks = column.tasks.slice();
+  insertSorted(tasks, task);
+  return withColumn(next, to, { tasks, total: column.total + 1 });
+}
+
+/** Take a task off the board, wherever it is. */
+export function removeTaskFromBoard(board: TaskBoard, id: string): TaskBoard {
+  const from = columnOf(board, id);
+  if (!from) return board;
+
+  const column = board.columns[from];
+  return withColumn(board, from, {
+    tasks: column.tasks.filter((task) => task.id !== id),
+    total: Math.max(0, column.total - 1),
+  });
 }
 
 /**
- * Write a hand-placed position into a cached page, and the new due date with it
- * when the card was dragged in from another column.
+ * Change some fields of a task the board holds, and re-place it.
  *
- * The board sorts on `boardOrder`, so this is what moves the card on release —
- * the drag itself does not reorder anything. The value is the one the server
- * will settle on (see dropBoardOrder), so the response replaces it with itself
- * rather than moving the card a second time.
- *
- * The two go together deliberately. Applied separately the card would land in
- * its new column by age and then move again when the response arrived, which is
- * the jump this whole path exists to avoid.
- *
- * Same by-reference contract as the helpers above: a page that does not hold
- * the task comes back exactly as it came in, because the board memoises on the
- * array.
+ * The optimistic path: the request has not gone out yet, so only what the
+ * caller knows is written. A task the board does not hold is left alone -
+ * there is nothing to show the change on.
  */
-export function placeTaskInList(
-  page: TaskPaginatedResponse,
+export function patchTaskInBoard(
+  board: TaskBoard,
   id: string,
-  boardOrder: number | null,
-  dueAt?: string
-): TaskPaginatedResponse {
-  let changed = false;
+  patch: Partial<Task>,
+  now: Date
+): TaskBoard {
+  const held = findInBoard(board, id);
+  if (!held) return board;
 
-  const data = page.data.map((task): Task => {
-    if (task.id !== id) return task;
-    changed = true;
-    return { ...task, boardOrder, ...(dueAt !== undefined && { dueAt }) };
-  });
+  const changed = (Object.keys(patch) as (keyof Task)[]).some(
+    (key) => !Object.is(held[key], patch[key])
+  );
+  if (!changed) return board;
 
-  return changed ? { ...page, data } : page;
+  return upsertTaskInBoard(board, { ...held, ...patch }, now);
 }
 
-/**
- * Flip a task's completion in a cached page.
- *
- * COMPLETED is the one column the board reads off the status rather than the
- * due date, so writing the status here is what moves the card. It happens on
- * the click for the same reason the shift above does: the card has to start
- * leaving while the tick is still under the cursor, or the motion arrives
- * seconds later attached to nothing the user did. See elli-ui#862.
- *
- * `completedAt` is the server's to stamp — it decides the real time and this
- * only needs a truthy value for anything reading "is it done". The refetch
- * replaces it either way.
- *
- * Same by-reference contract as the helpers above: an untouched page comes back
- * as it went in, because the board memoises on the array.
- */
-export function setTaskCompletedInList(
-  page: TaskPaginatedResponse,
-  id: string,
-  completed: boolean
-): TaskPaginatedResponse {
-  let changed = false;
+/** Every task on the board, column order then board order. */
+export function boardTasks(board: TaskBoard): Task[] {
+  return TASK_COLUMNS.flatMap((column) => board.columns[column].tasks);
+}
 
-  const data = page.data.map((task): Task => {
-    if (task.id !== id) return task;
+function insertSorted(tasks: Task[], task: Task) {
+  let index = 0;
+  while (index < tasks.length && compareForBoard(tasks[index], task) < 0) index += 1;
+  tasks.splice(index, 0, task);
+}
 
-    const status = completed ? 'COMPLETED' : 'OPEN';
-    if (task.status === status) return task;
-
-    changed = true;
-    return {
-      ...task,
-      status,
-      completedAt: completed ? new Date().toISOString() : null,
-    };
-  });
-
-  return changed ? { ...page, data } : page;
+function withColumn(
+  board: TaskBoard,
+  column: TaskColumnId,
+  value: TaskBoard['columns'][TaskColumnId]
+): TaskBoard {
+  return { ...board, columns: { ...board.columns, [column]: value } };
 }

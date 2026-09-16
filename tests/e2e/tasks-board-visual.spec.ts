@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { groupTasksByColumn, TASK_COLUMNS } from '../../src/modules/tasks/lib/task-board';
+
 /**
  * A visual check of the board with real-looking data.
  *
@@ -144,19 +146,29 @@ async function setupMockApi(page: Page) {
       return;
     }
 
-    if (method === 'GET' && path === '/api/v1/task') {
+    // The board arrives grouped: the spec groups the fixtures the way the
+    // server would, against the browser's day, honouring the assignee filter.
+    if (method === 'GET' && path === '/api/v1/task/board') {
+      const url = new URL(request.url());
+      const assigneeId = url.searchParams.get('assigneeId');
+      const visible = assigneeId ? TASKS.filter((t) => t.assigneeId === assigneeId) : TASKS;
+      const grouped = groupTasksByColumn(visible, new Date());
+      const columns = Object.fromEntries(
+        TASK_COLUMNS.map((id) => [id, { tasks: grouped[id], total: grouped[id].length }])
+      );
+      const people = [
+        ...new Map(
+          TASKS.filter((t) => t.assigneeId && t.assignee).map((t) => [
+            t.assigneeId as string,
+            { id: t.assigneeId as string, name: t.assignee!.name },
+          ])
+        ).values(),
+      ];
       await route.fulfill({
         json: {
           success: true,
           message: 'OK',
-          data: TASKS,
-          pagination: {
-            currentPage: 1,
-            totalPages: 1,
-            totalItems: TASKS.length,
-            hasNextPage: false,
-            hasPreviousPage: false,
-          },
+          data: { today: new Date().toISOString().slice(0, 10), columns, people },
         },
       });
       return;
@@ -167,6 +179,28 @@ async function setupMockApi(page: Page) {
       updates.push(body);
       const original = TASKS.find((item) => item.id === body.id) ?? TASKS[0];
       await route.fulfill({ json: { success: true, data: { ...original, ...body } } });
+      return;
+    }
+
+    // Card actions arrive batched. Each op is recorded as a write and answered
+    // as applied, with the fixture patched by the op's fields.
+    if (method === 'PATCH' && path === '/api/v1/task/batch') {
+      const { ops } = request.postDataJSON() as {
+        ops: { opId: string; type: string; id: string; dueAt?: string | null }[];
+      };
+      const results = ops.map((op) => {
+        updates.push(op);
+        const original = TASKS.find((item) => item.id === op.id) ?? TASKS[0];
+        const { opId, type, ...fields } = op;
+        return {
+          opId,
+          ok: true,
+          type,
+          task: type === 'delete' ? null : { ...original, ...fields },
+          touched: [],
+        };
+      });
+      await route.fulfill({ json: { success: true, data: { results } } });
       return;
     }
 

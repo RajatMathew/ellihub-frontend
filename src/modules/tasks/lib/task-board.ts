@@ -1,4 +1,4 @@
-import type { Task } from '@/modules/tasks/schemas/task.schema';
+import type { Task, TaskColumnId } from '@/modules/tasks/schemas/task.schema';
 import { endOfWeek, format, isBefore, isSameDay, startOfDay } from 'date-fns';
 
 export const TASK_COLUMNS = [
@@ -12,9 +12,9 @@ export const TASK_COLUMNS = [
   'TOMORROW',
   'PENDING',
   'COMPLETED',
-] as const;
+] as const satisfies readonly TaskColumnId[];
 
-export type TaskColumnId = (typeof TASK_COLUMNS)[number];
+export type { TaskColumnId };
 
 export const TASK_COLUMN_LABELS: Record<TaskColumnId, string> = {
   // NO_DATE: 'No due date',
@@ -128,7 +128,7 @@ export function taskOrderKey(task: Task): number {
  * is the one column whose dates genuinely differ, and it follows the same rule
  * anyway: one ordering for the whole board is what makes it predictable.
  */
-function compareForBoard(a: Task, b: Task): number {
+export function compareForBoard(a: Task, b: Task): number {
   if (a.priority !== b.priority) return a.priority.localeCompare(b.priority);
 
   const byOrder = taskOrderKey(a) - taskOrderKey(b);
