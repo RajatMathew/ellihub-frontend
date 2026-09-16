@@ -43,7 +43,7 @@ export function AppRouting() {
 
   return (
     <>
-      <div className="flex h-dvh w-full grow flex-col overflow-hidden bg-background pt-(--header-height-mobile) lg:h-auto lg:border-e lg:border-b lg:border-border min-w-0 max-w-full lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:in-data-[sidebar-open=false]:border-s lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) in-data-[chrome-hidden=true]:border-0 in-data-[chrome-hidden=true]:pt-0 transition-all duration-300">
+      <div className="flex h-dvh w-full grow flex-col overflow-hidden bg-background pt-(--header-height-mobile) lg:h-auto lg:border-e lg:border-b lg:border-border min-w-0 max-w-full lg:max-w-[calc(100vw-var(--sidebar-width))] lg:in-data-[sidebar-open=false]:max-w-[calc(100vw-var(--sidebar-collapsed-width))] lg:in-data-[sidebar-open=false]:border-s lg:mb-(--page-margin) lg:me-(--page-margin) lg:pt-0 lg:mt-[calc(var(--header-height)+var(--page-margin))] lg:ms-(--sidebar-width) lg:in-data-[sidebar-open=false]:ms-(--sidebar-collapsed-width) transition-all duration-300">
         <main
           className="min-h-0 w-full grow min-w-0 max-w-full overflow-x-clip overflow-y-auto bg-background lg:h-auto lg:min-h-[calc(100vh-(var(--header-height)))] lg:max-h-[calc(100vh-(var(--header-height)))]"
           role="main"

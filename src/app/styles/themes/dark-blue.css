@@ -99,38 +99,45 @@
   --border: #1e293b;
 
   /** Mailbox surfaces (elli-ui#921)
-      The mail workspace is full-bleed and draws its own paper/ink ramp: the
-      list sits on `paper`, the reading pane one shade cooler on `pane`, and
-      cards on `card`. Three layers, so the eye can tell the columns apart
-      without a border doing all the work. **/
-  --mail-paper: #0c1220;
-  --mail-pane: #0a0f1a;
-  --mail-card: #0f1624;
-  --mail-line: #1e293b;
-  --mail-hair: #17212f;
-  --mail-pane-line: #24344b;
-  --mail-ink: #f1f5f9;
-  --mail-mid: #94a3b8;
-  --mail-muted: #64748b;
-  --mail-row-hover: #141d2e;
-  --mail-row-edge: #24344b;
-  --mail-chip: #162033;
-  --mail-chip-hover: #1c283d;
-  --mail-chip-count: #223048;
-  --mail-search: #131c2c;
-  --mail-search-clear: #223048;
-  --mail-unread: #7dd3fc;
+      Almost all of these point at a token the rest of the app already uses, so
+      the mailbox reads as part of ElliHub rather than a second product wearing
+      its colours. Only the four the app has no equivalent for are real values:
+      the reading pane's half-step off the page background, the unread blue,
+      the scrollbar thumb, and the AI gradient. **/
+  --mail-paper: var(--background);
+  --mail-card: var(--card);
+  --mail-line: var(--border);
+  --mail-hair: var(--rule-strong);
+  --mail-pane-line: var(--card-border);
+  --mail-ink: var(--foreground);
+  --mail-mid: var(--muted-foreground);
+  /* A half-step lighter than `mid`, so a row's participants and its preview
+     are two tones rather than one — the same split the design draws. */
+  --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
+  --mail-row-hover: var(--surface-hover);
+  --mail-row-edge: var(--card-border);
+  --mail-chip: var(--muted);
+  --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
+  --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
+  --mail-search: var(--muted);
+  --mail-search-clear: var(--card-border);
   --mail-accent: var(--primary);
   --mail-accent-hover: var(--primary-hover);
   --mail-accent-foreground: var(--primary-foreground);
-  --mail-accent-soft: var(--primary-soft);
+  --mail-accent-soft: var(--accent);
   --mail-accent-edge: var(--primary-alpha);
+  --mail-project-pill: var(--primary);
+  --mail-project-pill-hover: var(--primary-hover);
+  /* The reading pane sits a half-step off the page so the two columns read as
+     two surfaces without a heavier border between them. */
+  --mail-pane: #0d1422;
+  /* An unread subject is the one place in the mailbox that earns its own
+     colour; `primary` is already spent on the controls around it. */
+  --mail-unread: #7dd3fc;
+  --mail-scrollbar-thumb: #2b3a52;
   --mail-ai-from: #2f57b4;
   --mail-ai-mid: #4570cf;
   --mail-ai-to: #6a93e2;
-  --mail-project-pill: #1d2b42;
-  --mail-project-pill-hover: #25364f;
-  --mail-scrollbar-thumb: #2b3a52;
   --input-border: #334155;
   --ring: #60a5fa;
   --radius: 0.5rem;

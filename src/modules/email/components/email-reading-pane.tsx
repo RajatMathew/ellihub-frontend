@@ -477,16 +477,19 @@ export function EmailReadingPane({
         }
       >
         {/*
-          Below 1400px this is a plain block and the three pieces stack in
+          A CONTAINER query, not a viewport one: the pane sits inside the app
+          shell next to the nav sidebar and the conversation list, so how much
+          room it has is nothing like how wide the window is. Below ~1200px of
+          its own width this is a plain block and the three pieces stack in
           source order — subject, details, then the thread. Above it there is
-          room to put the details card beside the messages instead of on top of
+          room to put the details card beside the messages rather than on top of
           them, so scanning who owns a thread no longer means scrolling past
           every message first. The card shares a grid row with the thread body
           rather than the head, which is what lines its top edge up with the
           reply strip instead of the subject.
         */}
-        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] min-[1400px]:grid min-[1400px]:max-w-[1520px] min-[1400px]:grid-cols-[minmax(0,1fr)_450px] min-[1400px]:grid-rows-[auto_1fr] min-[1400px]:gap-x-9">
-          <div className="min-w-0 min-[1400px]:col-start-1 min-[1400px]:row-start-1">
+        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[1200px]:grid @min-[1200px]:max-w-[1520px] @min-[1200px]:grid-cols-[minmax(0,1fr)_min(34%,440px)] @min-[1200px]:grid-rows-[auto_1fr] @min-[1200px]:gap-x-8">
+          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-1">
             <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -505,12 +508,12 @@ export function EmailReadingPane({
           </div>
 
           {detailsPanel && (
-            <div className="mt-4 mb-5 min-w-0 min-[1400px]:col-start-2 min-[1400px]:row-start-2 min-[1400px]:mb-0 min-[1400px]:mt-0 min-[1400px]:sticky min-[1400px]:top-0">
+            <div className="mb-5 mt-4 min-w-0 @min-[1200px]:sticky @min-[1200px]:top-0 @min-[1200px]:col-start-2 @min-[1200px]:row-start-2 @min-[1200px]:mb-0 @min-[1200px]:mt-0">
               {detailsPanel}
             </div>
           )}
 
-          <div className="min-w-0 min-[1400px]:col-start-1 min-[1400px]:row-start-2 min-[1400px]:mt-5">
+          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-2 @min-[1200px]:mt-5">
             {composerMessage ? (
               <div className="mb-3">
                 <EmailReplyComposer

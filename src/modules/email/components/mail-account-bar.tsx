@@ -45,14 +45,13 @@ interface MailAccountBarProps {
 }
 
 /**
- * The mailbox's own top bar: which mailbox you are in, which of its three
- * views you are looking at, and the way back out to the rest of the app.
+ * The mailbox's own top bar: which mailbox you are in and which of its three
+ * views you are looking at.
  *
- * The mail page runs full-bleed (`useFullBleedLayout`), so the app header and
- * nav sidebar are not on screen — everything they carried for mail has to be
- * reachable from here. The mailbox switcher replaces the sidebar's Email
- * section, Common and Personal groups intact, and the app link replaces the
- * breadcrumb trail.
+ * It sits inside the app shell, under the header and beside the nav sidebar,
+ * so it carries no navigation of its own beyond the mailbox — the sidebar's
+ * Email section is still the way between mailboxes, and this dropdown is the
+ * shorter way to the same place when the reader is already here.
  */
 export function MailAccountBar({
   account,
@@ -77,15 +76,6 @@ export function MailAccountBar({
 
   return (
     <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-mail-line bg-mail-card px-4 py-2.5 sm:px-[18px]">
-      <Link
-        to="/app/projects"
-        className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-mid hover:bg-mail-paper hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
-        aria-label="Back to ElliHub"
-        title="Back to ElliHub"
-      >
-        <AppGlyph />
-      </Link>
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -228,26 +218,5 @@ function MailboxMenuItem({
         {isActive && <Check aria-hidden="true" className="size-4 shrink-0 text-mail-accent" />}
       </Link>
     </DropdownMenuItem>
-  );
-}
-
-/** The app mark, drawn small enough to read as a "back out of mail" control. */
-function AppGlyph() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-[18px]"
-    >
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
-      <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
-    </svg>
   );
 }

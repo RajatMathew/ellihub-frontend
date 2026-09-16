@@ -34,7 +34,7 @@ export function Header({
 
   return (
     <>
-      <header className="fixed start-0 end-0 top-0 z-10 flex in-data-[chrome-hidden=true]:hidden h-(--header-height-mobile) min-w-0 shrink-0 items-stretch overflow-hidden border-b border-page-header-border bg-page-header pe-(--removed-body-scroll-bar-size,0px) backdrop-blur-sm transition-[left,right] duration-300 lg:top-(--page-margin) lg:start-(--sidebar-width) lg:end-(--page-margin) lg:h-(--header-height) lg:border-t lg:border-e lg:in-data-[help-open=true]:end-(--help-panel-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width) lg:in-data-[sidebar-open=false]:border-s">
+      <header className="fixed start-0 end-0 top-0 z-10 flex h-(--header-height-mobile) min-w-0 shrink-0 items-stretch overflow-hidden border-b border-page-header-border bg-page-header pe-(--removed-body-scroll-bar-size,0px) backdrop-blur-sm transition-[left,right] duration-300 lg:top-(--page-margin) lg:start-(--sidebar-width) lg:end-(--page-margin) lg:h-(--header-height) lg:border-t lg:border-e lg:in-data-[help-open=true]:end-(--help-panel-width) lg:in-data-[sidebar-open=false]:start-(--sidebar-collapsed-width) lg:in-data-[sidebar-open=false]:border-s">
         <div className="container-fluid flex min-w-0 max-w-full grow items-stretch justify-between gap-2.5">
           {isMobile && <HeaderMenu menuConfig={menuConfig} />}
           <HeaderHamburger>{!isMobile && breadcrumbs && <HeaderBreadcrumbs />}</HeaderHamburger>
@@ -86,7 +86,7 @@ export function Header({
       {!isMobile && (
         <aside
           data-slot="app-sidebar"
-          className="fixed bottom-(--page-margin) start-0 top-(--page-margin) z-20 flex in-data-[chrome-hidden=true]:hidden min-w-0 max-w-full shrink-0 items-stretch overflow-hidden w-(--sidebar-width) transition-all duration-300 in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)"
+          className="fixed bottom-(--page-margin) start-0 top-(--page-margin) z-20 flex min-w-0 max-w-full shrink-0 items-stretch overflow-hidden w-(--sidebar-width) transition-all duration-300 in-data-[sidebar-open=false]:w-(--sidebar-collapsed-width)"
         >
           <Suspense fallback={null}>
             <Sidebar menuConfig={menuConfig} mode={sidebarMode} />

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import type { EmailAiSuggestionState } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { Check, ChevronDown, Sparkles, X } from 'lucide-react';
@@ -50,8 +49,11 @@ export function MailDetailsPanel({
   collapsed,
   onToggleCollapsed,
 }: MailDetailsPanelProps) {
-  if (ai.stage === 'thinking') return <MailDetailsPanelSkeleton />;
-
+  // The card never waits on the AI. Everything in it — the assignee, the court,
+  // what is linked — is already known the moment the thread opens, and a
+  // shimmering skeleton over known data for the length of a round trip is a
+  // stall the reader can see on every single mail they open. The banner slides
+  // in on top if and when a suggestion arrives.
   const showBanner = ai.stage === 'pending' && Boolean(ai.suggestion);
 
   return (
@@ -62,7 +64,7 @@ export function MailDetailsPanel({
       )}
     >
       {showBanner && ai.suggestion && (
-        <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 py-3">
+        <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 py-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
           <AiGlyph />
           <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-mail-accent-foreground">
             {ai.suggestion.rationale ?? 'AI Suggestion'}
@@ -197,50 +199,5 @@ function AiGlyph() {
         strokeWidth={0.5}
       />
     </span>
-  );
-}
-
-/**
- * Mirrors the real card's own structure — toolbar, switch, assignee, court,
- * linked rows — in percentage widths, so it fills whatever width the panel
- * actually has rather than being sized for one layout.
- */
-function MailDetailsPanelSkeleton() {
-  return (
-    <div
-      className="overflow-hidden rounded-xl border border-mail-pane-line bg-mail-card"
-      role="status"
-      aria-label="Reviewing this email"
-    >
-      <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 py-3">
-        <AiGlyph />
-        <span className="text-[12.5px] text-mail-accent-foreground motion-safe:animate-pulse">
-          Reviewing this email…
-        </span>
-      </div>
-      <div className="flex items-center justify-between gap-2 bg-mail-paper px-4 py-2.5">
-        <Skeleton className="h-3 w-2/5" />
-        <Skeleton className="size-[18px] rounded-md" />
-      </div>
-      <div className="space-y-3 px-[13px] py-3">
-        <div className="flex gap-2">
-          <Skeleton className="h-6 w-1/3 rounded-lg" />
-          <Skeleton className="h-6 w-1/5 rounded-lg" />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="size-[22px] rounded-full" />
-          <Skeleton className="h-2.5 w-[30%]" />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="size-[18px] rounded-md" />
-          <Skeleton className="h-2.5 w-1/4" />
-        </div>
-        <Skeleton className="h-2.5 w-1/3" />
-        <div className="flex gap-2">
-          <Skeleton className="h-6 w-[38%] rounded-md" />
-          <Skeleton className="h-6 w-1/4 rounded-md" />
-        </div>
-      </div>
-    </div>
   );
 }

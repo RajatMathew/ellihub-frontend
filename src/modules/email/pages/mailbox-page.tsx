@@ -3,7 +3,6 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
-import { useFullBleedLayout } from '@/app/hooks/use-full-bleed-layout';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import {
@@ -169,11 +168,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState<{ count: number } | null>(null);
   const [emptyFolderConfirm, setEmptyFolderConfirm] = useState<{ folderId: string } | null>(null);
   const [bulkOperation, setBulkOperation] = useState<EmailBulkOperationState | null>(null);
-  // The mailbox is a full application, drawn edge to edge with its own account
-  // bar and its own navigation — the app header and nav sidebar would be a
-  // second, competing set of chrome on top of it (elli-ui#921). The way back to
-  // the rest of the app is the first control in `MailAccountBar`.
-  useFullBleedLayout();
   const accountsQuery = useEmailAccountsQuery();
   const isConnectedRoute = Boolean(accountSlug);
   const connectedAccount = accountSlug
@@ -1115,6 +1109,56 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
    */
   const requestSelectEmail = useCallback((run: () => void) => run(), []);
 
+  /**
+   * The list's per-row callbacks, hoisted out of the JSX.
+   *
+   * `EmailListRow` is memoized, and an arrow written inline in the props below
+   * is a new identity on every render of this page — which is every keystroke
+   * in search. Declared here they change only when what they close over does,
+   * so a keystroke re-renders the rows whose highlight moved and nothing else.
+   */
+  const handleSelectEmail = useCallback(
+    (emailId: string) => {
+      requestSelectEmail(() => {
+        if (connectedAccount && selectedFolderKey === 'drafts') {
+          // Opens now from the cache and hydrates when the provider answers
+          // (elli-ui#925).
+          openDraftFromList(emailId);
+          return;
+        }
+        selectEmail(emailId);
+      });
+    },
+    [connectedAccount, openDraftFromList, requestSelectEmail, selectEmail, selectedFolderKey]
+  );
+  const handleArchiveEmail = useCallback(
+    (email: EmailListItem) => requestArchive(email.latestMessageId ?? email.id),
+    [requestArchive]
+  );
+  const handleDeleteEmail = useCallback(
+    (email: EmailListItem) => {
+      if (!connectedAccount) return;
+      deleteMessageMutation.mutate({
+        accountId: connectedAccount.id,
+        messageId: email.latestMessageId ?? email.id,
+        targetFolderId: deletedFolderId,
+      });
+    },
+    [connectedAccount, deleteMessageMutation, deletedFolderId]
+  );
+  const handleToggleFlagEmail = useCallback(
+    (email: EmailListItem) => {
+      if (!connectedAccount) return;
+      toggleFlagMutation.mutate({
+        accountId: connectedAccount.id,
+        messageId: email.latestMessageId ?? email.id,
+        conversationKey: email.conversationKey ?? email.threadId ?? undefined,
+        flagged: !email.flagged,
+      });
+    },
+    [connectedAccount, toggleFlagMutation]
+  );
+
   useEffect(() => {
     if (!isConnected || workspaceView !== 'mail') return;
 
@@ -1412,7 +1456,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   if (isReconnectRequired && connectedAccount) {
     return (
       <>
-        <div className="mail-workspace flex h-dvh min-w-0 flex-col overflow-hidden bg-mail-paper">
+        <div className="mail-workspace flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-mail-paper lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
           <MailAccountBar
             account={connectedAccount}
             mailboxAddress={
@@ -1463,7 +1507,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   }
 
   return (
-    <div className="mail-workspace relative flex h-dvh min-w-0 flex-col overflow-hidden bg-mail-paper">
+    <div className="mail-workspace relative flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-mail-paper lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
       <MailAccountBar
         account={connectedAccount ?? undefined}
         mailboxAddress={
@@ -1555,17 +1599,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoading={isMailboxLoading}
                   isError={isMailboxError}
                   selectedEmailId={selectedEmailId}
-                  onSelectEmail={(emailId) => {
-                    requestSelectEmail(() => {
-                      if (connectedAccount && selectedFolderKey === 'drafts') {
-                        // Opens now from the cache and hydrates when the
-                        // provider answers (elli-ui#925).
-                        openDraftFromList(emailId);
-                        return;
-                      }
-                      selectEmail(emailId);
-                    });
-                  }}
+                  onSelectEmail={handleSelectEmail}
                   onRetry={() => {
                     if (connectedAccount) {
                       refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
@@ -1582,34 +1616,17 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
                   }
                   search={messageSearch}
+                  // The settled term, not the one mid-typing — see the prop.
+                  highlightQuery={debouncedMessageSearch}
                   onSearchChange={setMessageSearch}
                   onPrefetchEmail={prefetchEmail}
                   onArchiveEmail={
-                    connectedAccount && !isArchiveFolder
-                      ? (email) => requestArchive(email.latestMessageId ?? email.id)
-                      : undefined
+                    connectedAccount && !isArchiveFolder ? handleArchiveEmail : undefined
                   }
                   onDeleteEmail={
-                    connectedAccount && !isDeletedFolder
-                      ? (email) =>
-                          deleteMessageMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId: email.latestMessageId ?? email.id,
-                            targetFolderId: deletedFolderId,
-                          })
-                      : undefined
+                    connectedAccount && !isDeletedFolder ? handleDeleteEmail : undefined
                   }
-                  onToggleFlagEmail={
-                    connectedAccount
-                      ? (email) =>
-                          toggleFlagMutation.mutate({
-                            accountId: connectedAccount.id,
-                            messageId: email.latestMessageId ?? email.id,
-                            conversationKey: email.conversationKey ?? email.threadId ?? undefined,
-                            flagged: !email.flagged,
-                          })
-                      : undefined
-                  }
+                  onToggleFlagEmail={connectedAccount ? handleToggleFlagEmail : undefined}
                   checkedIds={checkedMessageIds}
                   onToggleChecked={connectedAccount ? toggleChecked : undefined}
                   onToggleCheckedAll={

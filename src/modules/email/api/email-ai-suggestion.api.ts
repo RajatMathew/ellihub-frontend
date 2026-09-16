@@ -47,8 +47,15 @@ export const emailAiSuggestionSchema = z.object({
 export type EmailAiSuggestion = z.infer<typeof emailAiSuggestionSchema>;
 export type EmailAiSuggestionReference = z.infer<typeof emailAiSuggestionReferenceSchema>;
 
-/** How long the stand-in takes to "think". Roughly what a real call would cost. */
-const FAKE_SUGGESTION_DELAY_MS = 450;
+/**
+ * How long the stand-in takes to "think" — roughly what a real call would cost.
+ *
+ * Nothing on screen waits for it: the details card renders its real data at
+ * once and the banner arrives on top when this resolves. The delay is here so
+ * the panel is exercised against a suggestion that lands late, which is what
+ * the real endpoint will do.
+ */
+const FAKE_SUGGESTION_DELAY_MS = 300;
 
 export const emailAiSuggestionApi = {
   async getThreadSuggestion(params: {

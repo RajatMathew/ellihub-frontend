@@ -25,6 +25,13 @@ interface EmailListPaneProps {
   groupByMonth?: boolean;
   search?: string;
   /**
+   * The term rows draw a highlight for. Defaults to `search`, but callers whose
+   * search is debounced should pass the settled term: the highlight is the only
+   * thing in a row that depends on it, and re-rendering every visible row on
+   * every keystroke to move a `<mark>` is what made typing here feel heavy.
+   */
+  highlightQuery?: string;
+  /**
    * When true, automatically fetch further pages while the current page(s)
    * produced zero visible emails but more are available server-side. This
    * covers client-side "Show messages" filters (e.g. "with attachments"):
@@ -79,6 +86,7 @@ export function EmailListPane({
   loadMoreError = false,
   groupByMonth = false,
   search: controlledSearch,
+  highlightQuery,
   autoFetchWhileEmpty = false,
   onSelectEmail,
   onLoadMore,
@@ -332,7 +340,7 @@ export function EmailListPane({
               scrollElement={scrollContainer}
               selectedEmailId={selectedEmailId}
               groupByMonth={groupByMonth}
-              highlightQuery={search}
+              highlightQuery={highlightQuery ?? search}
               onSelectEmail={onSelectEmail}
               onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}

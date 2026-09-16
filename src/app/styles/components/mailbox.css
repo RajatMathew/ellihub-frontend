@@ -5,15 +5,22 @@
    --mail-* tokens defined per theme in styles/themes/. */
 
 /* How wide the conversation list is. A measurement rather than a token, so it
-   lives with the layout it belongs to and narrows on a smaller desktop where
-   the reading pane needs the room more than the list does. */
+   lives with the layout it belongs to. It steps down twice: the mailbox shares
+   the window with the app's nav sidebar, so past a certain point every pixel
+   the list keeps is one the thread is read in. */
 .mail-workspace {
-  --mail-list-width: 404px;
+  --mail-list-width: 336px;
 }
 
-@media (max-width: 1080px) {
+@media (min-width: 1280px) {
   .mail-workspace {
-    --mail-list-width: 348px;
+    --mail-list-width: 372px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .mail-workspace {
+    --mail-list-width: 404px;
   }
 }
 

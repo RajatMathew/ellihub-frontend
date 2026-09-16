@@ -5,12 +5,16 @@ import {
   type EmailAiSuggestion,
 } from '@/modules/email/api/email-ai-suggestion.api';
 import { emailKeys } from '@/modules/email/hooks/email.hooks';
+import {
+  deriveEmailAiSuggestionStage,
+  type EmailAiSuggestionStage,
+} from '@/modules/email/lib/email-ai-suggestion-stage';
 import { useQuery } from '@tanstack/react-query';
 
 /** The suggestion for a thread never changes once made, so it is held for the session. */
 const AI_SUGGESTION_GC_TIME_MS = 15 * 60 * 1000;
 
-export type EmailAiSuggestionStage = 'idle' | 'thinking' | 'pending' | 'resolved';
+export type { EmailAiSuggestionStage };
 
 export type EmailAiSuggestionState = {
   stage: EmailAiSuggestionStage;
@@ -76,15 +80,11 @@ export function useEmailAiSuggestion({
     });
   }, [conversationKey]);
 
-  const stage: EmailAiSuggestionStage = !enabled
-    ? 'idle'
-    : conversationKey && resolvedKeys.has(conversationKey)
-      ? 'resolved'
-      : query.isPending
-        ? 'thinking'
-        : query.data
-          ? 'pending'
-          : 'idle';
+  const stage = deriveEmailAiSuggestionStage({
+    enabled,
+    isResolved: Boolean(conversationKey && resolvedKeys.has(conversationKey)),
+    hasSuggestion: Boolean(query.data),
+  });
 
   return { stage, suggestion: query.data ?? null, resolve };
 }

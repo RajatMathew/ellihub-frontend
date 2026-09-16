@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 
 import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
@@ -23,6 +23,69 @@ interface VirtualizedEmailListProps {
   onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   bulkSelectActive?: boolean;
 }
+
+type EmailListRowProps = {
+  email: EmailListItem;
+  accountId?: string;
+  selected: boolean;
+  isChecked: boolean;
+  bulkSelectActive: boolean;
+  highlightQuery?: string;
+  onSelectEmail?: (emailId: string) => void;
+  onPrefetchEmail?: (email: EmailListItem) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
+};
+
+/**
+ * One row, re-rendered only when something about *that* row changed.
+ *
+ * The per-row arrow functions are created in here rather than at the call
+ * site, which is the whole point: created outside, every one of them is a new
+ * identity on every parent render and `memo` can never hit. Typing a character
+ * into search re-rendered all fifty rows — 70-226ms of synchronous work per
+ * keystroke, measured — because the list, the rows and the reading pane all
+ * sit under the same page state. With this boundary a keystroke re-renders the
+ * rows whose highlight actually changed and leaves the rest alone.
+ *
+ * The callbacks it takes are stable (`useCallback` in `mailbox-page`), so the
+ * default shallow comparison is enough — no custom comparator to go stale.
+ */
+const EmailListRow = memo(function EmailListRow({
+  email,
+  accountId,
+  selected,
+  isChecked,
+  bulkSelectActive,
+  highlightQuery,
+  onSelectEmail,
+  onPrefetchEmail,
+  onArchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onToggleChecked,
+}: EmailListRowProps) {
+  return (
+    <EmailRowCard
+      accountId={accountId}
+      email={email}
+      selected={selected}
+      highlightQuery={highlightQuery}
+      onSelect={() => onSelectEmail?.(email.id)}
+      onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
+      onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
+      onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+      onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
+      isChecked={isChecked}
+      onCheckedChange={
+        onToggleChecked ? (next, options) => onToggleChecked(email, next, options) : undefined
+      }
+      bulkSelectActive={bulkSelectActive}
+    />
+  );
+});
 
 const ESTIMATED_EMAIL_ROW_HEIGHT = 154;
 const ESTIMATED_MONTH_HEADER_HEIGHT = 33;
@@ -128,23 +191,19 @@ function VirtualizedFlatEmailList({
             className="absolute left-0 top-0 w-full"
             style={{ transform: `translateY(${virtualRow.start}px)` }}
           >
-            <EmailRowCard
+            <EmailListRow
               accountId={accountId}
               email={email}
               selected={email.id === selectedEmailId}
               highlightQuery={highlightQuery}
-              onSelect={() => onSelectEmail?.(email.id)}
-              onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
-              onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
-              onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
-              onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
               isChecked={checkedIds?.has(email.id) ?? false}
-              onCheckedChange={
-                onToggleChecked
-                  ? (next, options) => onToggleChecked(email, next, options)
-                  : undefined
-              }
               bulkSelectActive={bulkSelectActive}
+              onSelectEmail={onSelectEmail}
+              onPrefetchEmail={onPrefetchEmail}
+              onArchiveEmail={onArchiveEmail}
+              onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
+              onToggleChecked={onToggleChecked}
             />
           </div>
         );
@@ -317,23 +376,19 @@ function MonthGroupSection({
           <div role="list" aria-label={`${group.label} emails`}>
             {group.emails.map((email) => (
               <div key={email.id} role="listitem">
-                <EmailRowCard
+                <EmailListRow
                   accountId={accountId}
                   email={email}
                   selected={email.id === selectedEmailId}
                   highlightQuery={highlightQuery}
-                  onSelect={() => onSelectEmail?.(email.id)}
-                  onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
-                  onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
-                  onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
-                  onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
                   isChecked={checkedIds?.has(email.id) ?? false}
-                  onCheckedChange={
-                    onToggleChecked
-                      ? (next, options) => onToggleChecked(email, next, options)
-                      : undefined
-                  }
                   bulkSelectActive={bulkSelectActive}
+                  onSelectEmail={onSelectEmail}
+                  onPrefetchEmail={onPrefetchEmail}
+                  onArchiveEmail={onArchiveEmail}
+                  onDeleteEmail={onDeleteEmail}
+                  onToggleFlagEmail={onToggleFlagEmail}
+                  onToggleChecked={onToggleChecked}
                 />
               </div>
             ))}
