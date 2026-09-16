@@ -11,12 +11,12 @@ import {
 } from '@/modules/email/components/email-reference-marker-storage';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useShowEmailAvatars } from '@/modules/email/hooks/use-email-avatar-visibility';
-import { formatEmailDate } from '@/modules/email/lib/email-date';
-import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
+import { formatEmailListDate } from '@/modules/email/lib/email-date';
 import {
   getMeetingResponseLabel,
   MEETING_RESPONSE_ICONS,
 } from '@/modules/email/lib/email-meeting-response';
+import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
@@ -161,6 +161,17 @@ interface EmailRowCardProps {
   bulkSelectActive?: boolean;
 }
 
+/**
+ * One conversation in the list.
+ *
+ * Redrawn for elli-ui#921: the row sits directly on the mail paper with no
+ * border of its own, and only the open conversation lifts onto a white card.
+ * A list of forty bordered boxes reads as forty things to deal with; a list of
+ * forty lines with one card in it reads as a list with your place kept in it.
+ *
+ * Four fixed lines — participants, subject, one line of preview, a footer —
+ * so every row is the same height and the column scans as a column.
+ */
 export function EmailRowCard({
   email,
   accountId,
@@ -204,6 +215,15 @@ export function EmailRowCard({
   const MeetingResponseIcon = meetingResponse
     ? MEETING_RESPONSE_ICONS[meetingResponse.status]
     : null;
+  const threadCount = email.threadMessageCount ?? 0;
+  const hasFooter = Boolean(
+    email.attachmentCount ||
+    email.flagged ||
+    isOtherClassified ||
+    primaryProject ||
+    email.classification?.assignedTo ||
+    email.classification
+  );
 
   useEffect(() => {
     if (!isSelected) return;
@@ -214,20 +234,20 @@ export function EmailRowCard({
   return (
     <article
       ref={cardRef}
-      className={cn(
-        'group relative mx-1 mt-1.5 overflow-hidden rounded-md border bg-background',
-        'motion-safe:transition-[border-color,box-shadow,background-color] motion-safe:duration-100',
-        isSelected
-          ? 'border-info/60 bg-info-soft shadow-sm ring-1 ring-info/25'
-          : 'border-border hover:border-foreground/25 hover:shadow-xs',
-        isChecked && !isSelected && 'border-info/50 bg-info-soft/50 ring-1 ring-info/20',
-        // Unread rows carry a solid accent bar on the leading edge.
-        email.unread && 'border-s-4 border-s-primary'
-      )}
+      aria-selected={isSelected}
+      className="group relative mx-3 mb-1 overflow-hidden rounded-[10px]"
     >
       <button
         type="button"
-        className="flex w-full cursor-pointer gap-2.5 px-3 py-2.5 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className={cn(
+          'flex w-full cursor-pointer gap-[11px] rounded-[10px] px-2.5 py-[13px] text-left',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+          'motion-safe:transition-[background-color,box-shadow] motion-safe:duration-100',
+          isSelected
+            ? 'bg-mail-card shadow-[0_0_0_1px_var(--mail-row-edge),0_2px_8px_rgba(26,28,31,0.07)]'
+            : 'bg-mail-paper hover:bg-mail-row-hover',
+          isChecked && !isSelected && 'bg-mail-accent-soft'
+        )}
         aria-current={isSelected ? 'true' : undefined}
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
           email.attachmentCount
@@ -251,6 +271,9 @@ export function EmailRowCard({
             email={email.senderEmail}
             accountId={accountId}
             className={cn(
+              'mt-px size-9 text-xs',
+              // Read conversations sit back a step, so the column has rhythm.
+              !email.unread && 'saturate-50 brightness-[1.03]',
               'motion-safe:transition-opacity motion-safe:duration-100',
               showCheckbox && 'opacity-0'
             )}
@@ -283,51 +306,41 @@ export function EmailRowCard({
         )}
 
         <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 items-center gap-1.5">
+          <span className="mb-0.5 flex min-w-0 items-center gap-1.5">
             <span
               className={cn(
-                'min-w-0 truncate text-sm text-foreground',
-                email.unread ? 'font-semibold' : 'font-medium'
+                'min-w-0 truncate text-[12.5px]',
+                email.unread ? 'font-semibold text-mail-ink' : 'font-medium text-mail-mid'
               )}
             >
               {email.senderName}
             </span>
-            {email.threadMessageCount && email.threadMessageCount > 1 && (
+            {threadCount > 1 && (
               <span
-                className="shrink-0 text-xs text-muted-foreground"
-                title={`${email.threadMessageCount} messages in this thread`}
+                className="shrink-0 text-[11.5px] tabular-nums text-mail-muted"
+                title={`${threadCount} messages in this thread`}
               >
-                ({email.threadMessageCount})
+                ({threadCount})
               </span>
             )}
-            <span className="ms-auto flex shrink-0 items-center gap-1.5">
-              <span
-                className={cn(
-                  'whitespace-nowrap text-[11px] leading-none',
-                  email.unread ? 'font-semibold text-foreground' : 'text-muted-foreground'
-                )}
-                title={email.receivedAt}
-              >
-                {formatEmailDate(email.receivedAt)}
-              </span>
+            <span
+              className="ms-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-mail-muted"
+              title={email.receivedAt}
+            >
+              {formatEmailListDate(email.receivedAt)}
             </span>
           </span>
 
           <span
             className={cn(
-              'mt-0.5 block truncate pe-20 text-sm text-foreground',
-              email.unread ? 'font-semibold' : 'font-medium'
+              'block truncate text-sm leading-[1.35] tracking-[-0.008em]',
+              email.unread ? 'font-bold text-mail-unread' : 'font-medium text-mail-ink'
             )}
           >
             {highlightQuery ? highlightText(email.subject, highlightQuery) : email.subject}
           </span>
 
-          <span
-            className={cn(
-              'mt-0.5 line-clamp-1 text-sm leading-5',
-              email.unread ? 'text-foreground/80' : 'text-muted-foreground'
-            )}
-          >
+          <span className="mt-0.5 block truncate text-[12.5px] leading-[1.45] text-mail-muted">
             {meetingResponse && MeetingResponseIcon ? (
               <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 align-bottom">
                 <MeetingResponseIcon
@@ -344,65 +357,34 @@ export function EmailRowCard({
             )}
           </span>
 
-          <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 pe-12">
-            {isOtherClassified && (
-              <span className="rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
-                Other
-              </span>
-            )}
-            {email.classification?.assignedTo && (
-              <EmailAssigneeAvatar
-                accountId={accountId}
-                assignee={email.classification.assignedTo}
-              />
-            )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 text-xs font-semibold',
-                isOpenEmailThreadState(threadState)
-                  ? 'text-destructive'
-                  : 'text-success-soft-foreground'
-              )}
-            >
-              <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-              {EMAIL_THREAD_STATE_LABELS[threadState]}
-            </span>
-            {email.flagged && (
-              <Flag
-                aria-label="Flagged"
-                className="size-3.5 shrink-0 fill-destructive text-destructive"
-                strokeWidth={1.8}
-              />
-            )}
-          </span>
-
-          {primaryProject && (
-            <span className="mt-1.5 flex min-w-0 items-center gap-1.5 pe-12">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="inline-flex max-w-48 items-center rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold uppercase tabular-nums text-foreground/80"
-                    aria-label={`Project ${primaryProject.label}`}
-                  >
-                    <span className="truncate">{primaryProject.label}</span>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent
-                  variant="light"
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  collisionPadding={12}
-                  className="z-60 max-w-64 whitespace-normal break-words text-left font-medium"
+          {hasFooter && (
+            <span className="mt-[9px] flex min-w-0 items-center gap-[7px]">
+              {email.classification && (
+                <span
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold',
+                    isOpenEmailThreadState(threadState)
+                      ? 'text-destructive'
+                      : 'text-success-soft-foreground'
+                  )}
                 >
-                  {primaryProject.label}
-                </TooltipContent>
-              </Tooltip>
-              {extraProjectCount > 0 && (
+                  <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                  {EMAIL_THREAD_STATE_LABELS[threadState]}
+                </span>
+              )}
+              {isOtherClassified && (
+                <span className="shrink-0 rounded-sm bg-mail-chip px-1.5 py-0.5 text-[10.5px] font-semibold text-mail-mid">
+                  Other
+                </span>
+              )}
+              {primaryProject && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="shrink-0 cursor-default rounded-sm border border-border bg-muted/40 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-muted-foreground">
-                      +{extraProjectCount}
+                    <span
+                      className="inline-flex min-w-0 max-w-40 items-center rounded-sm bg-mail-chip px-1.5 py-0.5 font-mono text-[10.5px] font-semibold uppercase tabular-nums text-mail-mid"
+                      aria-label={`Project ${primaryProject.label}`}
+                    >
+                      <span className="truncate">{primaryProject.label}</span>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent
@@ -411,48 +393,55 @@ export function EmailRowCard({
                     align="start"
                     sideOffset={6}
                     collisionPadding={12}
-                    className="z-60 max-w-64 p-1.5"
+                    className="z-60 max-w-64 whitespace-normal break-words text-left font-medium"
                   >
-                    <span className="flex flex-col gap-1">
-                      {projectReferences.slice(1).map((reference) => (
-                        <span
-                          key={reference.entityId ?? reference.label}
-                          className="block whitespace-normal break-words rounded-sm border border-border bg-muted/40 px-1.5 py-1 text-left font-mono text-[0.6875rem] font-semibold uppercase tabular-nums text-foreground/80"
-                        >
-                          {reference.label}
-                        </span>
-                      ))}
-                    </span>
+                    {projectReferences.map((reference) => reference.label).join(', ')}
                   </TooltipContent>
                 </Tooltip>
+              )}
+              {extraProjectCount > 0 && (
+                <span className="shrink-0 text-[10.5px] font-semibold text-mail-muted">
+                  +{extraProjectCount}
+                </span>
+              )}
+              {email.flagged && (
+                <Flag
+                  aria-label="Flagged"
+                  className="size-3 shrink-0 fill-destructive text-destructive"
+                  strokeWidth={1.8}
+                />
+              )}
+              {email.classification?.assignedTo && (
+                <EmailAssigneeAvatar
+                  accountId={accountId}
+                  assignee={email.classification.assignedTo}
+                  className="ms-auto size-4"
+                />
+              )}
+              {Boolean(email.attachmentCount) && (
+                <span
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-[3px] text-[11px] tabular-nums text-mail-muted',
+                    !email.classification?.assignedTo && 'ms-auto'
+                  )}
+                >
+                  <Paperclip className="size-[11px]" strokeWidth={1.7} />
+                  {email.attachmentCount}
+                </span>
               )}
             </span>
           )}
         </span>
-
-        {/* Bottom-right corner, matching the button's own px-3/py-2.5 inset.
-            Absolute against the relative <article>, but rendered INSIDE the
-            button so the corner stays part of the row's click target
-            (zubblehq/elli-ui#858). */}
-        {Boolean(email.attachmentCount) && (
-          <span
-            aria-hidden="true"
-            className="absolute bottom-2.5 right-3 inline-flex items-center gap-1 text-xs text-muted-foreground"
-          >
-            <Paperclip className="size-3" strokeWidth={1.8} />
-            {email.attachmentCount}
-          </span>
-        )}
       </button>
 
       {isCheckable && showAvatars && (
         <span
           className={cn(
-            'absolute left-3 top-2.5 z-10 flex size-8 cursor-pointer items-center justify-center rounded-full',
+            'absolute left-2.5 top-[13px] z-10 flex size-9 cursor-pointer items-center justify-center rounded-full',
             'motion-safe:transition-opacity motion-safe:duration-100',
             showCheckbox
               ? 'opacity-100'
-              : 'bg-background opacity-0 hover:opacity-100 focus-within:opacity-100'
+              : 'bg-mail-paper opacity-0 hover:opacity-100 focus-within:opacity-100'
           )}
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => {
@@ -477,7 +466,7 @@ export function EmailRowCard({
       )}
 
       {hasQuickActions && (
-        <div className="absolute right-3 top-8 z-10 flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5 shadow-xs opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 rounded-lg border border-mail-line bg-mail-card p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
           {onToggleFlag && (
             <QuickAction
               label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
@@ -532,10 +521,10 @@ function QuickAction({
     <button
       type="button"
       className={cn(
-        'flex size-7 cursor-pointer items-center justify-center rounded-sm text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px motion-safe:transition-colors motion-safe:duration-100',
+        'flex size-7 cursor-pointer items-center justify-center rounded-md text-mail-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px motion-safe:transition-colors motion-safe:duration-100',
         tone === 'destructive'
           ? 'hover:bg-destructive/10 hover:text-destructive'
-          : 'hover:bg-info-soft hover:text-info'
+          : 'hover:bg-mail-accent-soft hover:text-mail-accent'
       )}
       aria-label={label}
       aria-pressed={pressed}

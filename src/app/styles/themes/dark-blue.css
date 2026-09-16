@@ -97,6 +97,40 @@
 
   /** Borders, inputs, and elevation **/
   --border: #1e293b;
+
+  /** Mailbox surfaces (elli-ui#921)
+      The mail workspace is full-bleed and draws its own paper/ink ramp: the
+      list sits on `paper`, the reading pane one shade cooler on `pane`, and
+      cards on `card`. Three layers, so the eye can tell the columns apart
+      without a border doing all the work. **/
+  --mail-paper: #0c1220;
+  --mail-pane: #0a0f1a;
+  --mail-card: #0f1624;
+  --mail-line: #1e293b;
+  --mail-hair: #17212f;
+  --mail-pane-line: #24344b;
+  --mail-ink: #f1f5f9;
+  --mail-mid: #94a3b8;
+  --mail-muted: #64748b;
+  --mail-row-hover: #141d2e;
+  --mail-row-edge: #24344b;
+  --mail-chip: #162033;
+  --mail-chip-hover: #1c283d;
+  --mail-chip-count: #223048;
+  --mail-search: #131c2c;
+  --mail-search-clear: #223048;
+  --mail-unread: #7dd3fc;
+  --mail-accent: var(--primary);
+  --mail-accent-hover: var(--primary-hover);
+  --mail-accent-foreground: var(--primary-foreground);
+  --mail-accent-soft: var(--primary-soft);
+  --mail-accent-edge: var(--primary-alpha);
+  --mail-ai-from: #2f57b4;
+  --mail-ai-mid: #4570cf;
+  --mail-ai-to: #6a93e2;
+  --mail-project-pill: #1d2b42;
+  --mail-project-pill-hover: #25364f;
+  --mail-scrollbar-thumb: #2b3a52;
   --input-border: #334155;
   --ring: #60a5fa;
   --radius: 0.5rem;

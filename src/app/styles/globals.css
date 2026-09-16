@@ -119,6 +119,37 @@
   --color-label-lighter: var(--label-lighter);
   --color-separator: var(--separator);
 
+  /** Mailbox surfaces (elli-ui#921)
+      The mail workspace is a full-bleed surface with its own paper/ink ramp,
+      drawn one step warmer than the app's generic card/background pair so the
+      list, the reading pane and the details card read as three layers rather
+      than one flat sheet. Every theme defines the whole set. **/
+  --color-mail-paper: var(--mail-paper);
+  --color-mail-pane: var(--mail-pane);
+  --color-mail-card: var(--mail-card);
+  --color-mail-line: var(--mail-line);
+  --color-mail-hair: var(--mail-hair);
+  --color-mail-pane-line: var(--mail-pane-line);
+  --color-mail-ink: var(--mail-ink);
+  --color-mail-mid: var(--mail-mid);
+  --color-mail-muted: var(--mail-muted);
+  --color-mail-row-hover: var(--mail-row-hover);
+  --color-mail-row-edge: var(--mail-row-edge);
+  --color-mail-chip: var(--mail-chip);
+  --color-mail-chip-hover: var(--mail-chip-hover);
+  --color-mail-chip-count: var(--mail-chip-count);
+  --color-mail-search: var(--mail-search);
+  --color-mail-search-clear: var(--mail-search-clear);
+  --color-mail-unread: var(--mail-unread);
+  --color-mail-accent: var(--mail-accent);
+  --color-mail-accent-hover: var(--mail-accent-hover);
+  --color-mail-accent-foreground: var(--mail-accent-foreground);
+  --color-mail-accent-soft: var(--mail-accent-soft);
+  --color-mail-accent-edge: var(--mail-accent-edge);
+  --color-mail-ai-from: var(--mail-ai-from);
+  --color-mail-ai-mid: var(--mail-ai-mid);
+  --color-mail-ai-to: var(--mail-ai-to);
+
   /** Base Styles **/
   --color-border: var(--border);
   --color-input: var(--input-border);
@@ -533,4 +564,5 @@ body,
 }
 
 /* Metronic Configs */
+@import './components/mailbox.css';
 @import './config.metronic.css';

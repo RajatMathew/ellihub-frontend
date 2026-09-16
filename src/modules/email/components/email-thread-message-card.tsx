@@ -21,7 +21,7 @@ import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
-import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
 import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
@@ -138,10 +138,10 @@ export function EmailThreadMessageCard({
 
   if (!isExpanded) {
     return (
-      <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <article className="overflow-hidden rounded-xl border border-mail-pane-line bg-mail-card">
         <button
           type="button"
-          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
           aria-expanded="false"
           aria-controls={contentId}
           aria-label={`Expand message from ${message.senderName}`}
@@ -168,7 +168,7 @@ export function EmailThreadMessageCard({
                     className="whitespace-nowrap text-xs text-muted-foreground"
                     dateTime={message.sentAt}
                   >
-                    {formatEmailDate(message.sentAt)}
+                    {formatEmailMessageDate(message.sentAt)}
                   </time>
                 )}
               </div>
@@ -187,12 +187,12 @@ export function EmailThreadMessageCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-      <div className="relative flex items-start gap-3 border-b border-border px-4 py-3">
+    <article className="overflow-hidden rounded-xl border border-mail-pane-line bg-mail-card">
+      <div className="relative flex items-start gap-3 border-b border-mail-pane-line px-4 py-3">
         {canCollapse && (
           <button
             type="button"
-            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
             aria-expanded="true"
             aria-controls={contentId}
             aria-label={`Collapse message from ${message.senderName}`}
@@ -247,7 +247,7 @@ export function EmailThreadMessageCard({
               {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
               {showTimestamp && (
                 <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
-                  {formatEmailDate(message.sentAt)}
+                  {formatEmailMessageDate(message.sentAt)}
                 </time>
               )}
               <MessageIconAction
@@ -329,7 +329,7 @@ export function EmailThreadMessageCard({
         )}
 
         {latest && !replyOpen && (
-          <div className="flex flex-wrap gap-2 border-t border-border px-4 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-mail-pane-line px-4 pt-4">
             <Button
               type="button"
               variant="outline"

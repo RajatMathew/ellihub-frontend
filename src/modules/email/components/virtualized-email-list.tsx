@@ -4,7 +4,7 @@ import { cn } from '@/app/lib/utils';
 import { EmailRowCard, type EmailListItem } from '@/modules/email/components/email-row-card';
 import { groupEmailsByMonth, type EmailMonthGroup } from '@/modules/email/lib/email-month-groups';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface VirtualizedEmailListProps {
   emails: EmailListItem[];
@@ -276,31 +276,39 @@ function MonthGroupSection({
 
   return (
     <section>
-      <h2 className="m-0 bg-muted/40">
+      {/*
+        Sticky, and sitting on the mail paper rather than in a band of its own:
+        several of these share `position: sticky`, so the browser already slides
+        the next one up over the last as the list scrolls. The count is a bare
+        number — "Today 9" over nine rows needs no unit (elli-ui#921).
+      */}
+      <h2 className="m-0">
         <button
           id={triggerId}
           type="button"
           className={cn(
-            'flex min-h-8 w-full cursor-pointer items-center gap-2 border-b border-border px-3 text-left',
-            'font-sans text-[13px] font-semibold text-foreground hover:bg-accent/60',
-            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-            'motion-safe:transition-colors motion-safe:duration-150'
+            'mail-group-header sticky top-0 z-20 flex w-full cursor-pointer items-center gap-2 bg-mail-paper px-4 pb-[7px] pt-2 text-left',
+            'text-xs font-semibold tracking-[0.01em] text-mail-mid',
+            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
           )}
           aria-expanded={!collapsed}
           aria-controls={contentId}
           onClick={onToggle}
         >
-          <ChevronRight
+          <ChevronDown
             aria-hidden="true"
             className={cn(
-              'size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-150',
-              !collapsed && 'rotate-90'
+              'size-3.5 shrink-0 text-mail-muted opacity-60 motion-safe:transition-transform motion-safe:duration-150',
+              collapsed && '-rotate-90'
             )}
-            strokeWidth={1.8}
+            strokeWidth={2}
           />
           <span className="min-w-0 flex-1 truncate">{group.label}</span>
-          <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
-            {emailCountLabel}
+          <span
+            className="shrink-0 text-[11px] font-normal tabular-nums text-mail-muted"
+            aria-label={emailCountLabel}
+          >
+            {group.emails.length}
           </span>
         </button>
       </h2>

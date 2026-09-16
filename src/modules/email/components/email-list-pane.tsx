@@ -214,7 +214,7 @@ export function EmailListPane({
 
   return (
     <section
-      className="relative flex h-full min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background lg:w-96"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden border-e border-mail-line bg-mail-paper"
       aria-label={`${folderLabel} email list`}
     >
       <div className="sr-only" aria-live="polite">
@@ -222,7 +222,7 @@ export function EmailListPane({
       </div>
 
       {isBulkActive && onToggleChecked && (
-        <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/30 px-2 py-2">
+        <div className="flex min-w-0 items-center gap-2 border-b border-mail-line bg-mail-chip px-3 py-2">
           <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
             <Checkbox
               checked={allInViewChecked}
@@ -285,7 +285,19 @@ export function EmailListPane({
 
       <div className="relative min-h-0 flex-1">
         <EmailListScrollbar scrollElement={scrollContainer} />
-        <div ref={setScrollContainer} className="kt-scrollable-y-auto scrollbar-hover h-full">
+        {/*
+          The list fades out into the paper at the bottom rather than stopping
+          at a hard edge, so a part-scrolled column reads as "there is more"
+          without a scrollbar having to say it.
+        */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-14 bg-linear-to-t from-mail-paper to-transparent"
+        />
+        <div
+          ref={setScrollContainer}
+          className="mail-rows kt-scrollable-y-auto scrollbar-hover h-full pb-8 pt-0.5"
+        >
           {isLoading && <EmailListSkeleton />}
 
           {!isLoading && isError && <EmailListErrorState onRetry={onRetry} />}
@@ -335,7 +347,7 @@ export function EmailListPane({
           {!isLoading && !isError && filteredEmails.length > 0 && hasNextPage && (
             <div
               ref={loadMoreSentinelRef}
-              className="flex min-h-16 items-center justify-center border-t border-border px-4 py-3"
+              className="flex min-h-16 items-center justify-center px-4 py-3"
               aria-live="polite"
             >
               {loadMoreError ? (
@@ -389,20 +401,17 @@ function getEmailCountLabel({
 
 function EmailListSkeleton() {
   return (
-    <div className="space-y-2 p-3" aria-label="Loading emails">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="rounded-md border border-border bg-background px-3 py-3">
-          <div className="flex gap-3">
-            <Skeleton className="size-8 rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-3 w-16" />
-              </div>
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-3/4" />
+    <div className="px-3 pt-2" aria-label="Loading emails">
+      {Array.from({ length: 7 }).map((_, index) => (
+        <div key={index} className="mb-1 flex gap-[11px] rounded-[10px] px-2.5 py-[13px]">
+          <Skeleton className="size-9 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-10" />
             </div>
+            <Skeleton className="h-3.5 w-48" />
+            <Skeleton className="h-3 w-full" />
           </div>
         </div>
       ))}
@@ -421,11 +430,11 @@ function EmailListEmptyState({
 }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center px-6 py-10 text-center">
-      <Inbox aria-hidden="true" className="size-9 text-muted-foreground" strokeWidth={1.8} />
-      <p className="mt-4 text-sm font-semibold text-foreground">
+      <Inbox aria-hidden="true" className="size-9 text-mail-muted" strokeWidth={1.8} />
+      <p className="mt-4 font-serif text-lg text-mail-ink">
         {hasSearch ? 'No emails found' : `${folderLabel} is empty`}
       </p>
-      <p className="mt-1 max-w-56 text-sm leading-6 text-muted-foreground">
+      <p className="mt-1 max-w-56 text-[13px] leading-6 text-mail-muted">
         {hasSearch
           ? 'Try another sender, subject, or project keyword.'
           : 'Messages for this folder will appear here.'}
@@ -448,9 +457,9 @@ function EmailListEmptyState({
 function EmailListErrorState({ onRetry }: { onRetry?: () => void }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center px-6 py-10 text-center">
-      <RefreshCcw aria-hidden="true" className="size-9 text-muted-foreground" strokeWidth={1.8} />
-      <p className="mt-4 text-sm font-semibold text-foreground">Could not load emails</p>
-      <p className="mt-1 max-w-56 text-sm leading-6 text-muted-foreground">
+      <RefreshCcw aria-hidden="true" className="size-9 text-mail-muted" strokeWidth={1.8} />
+      <p className="mt-4 font-serif text-lg text-mail-ink">Could not load emails</p>
+      <p className="mt-1 max-w-56 text-[13px] leading-6 text-mail-muted">
         This mailbox did not respond. Try again in a moment.
       </p>
       <Button type="button" variant="secondary" size="sm" className="mt-4" onClick={onRetry}>

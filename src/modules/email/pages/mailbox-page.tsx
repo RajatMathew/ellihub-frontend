@@ -3,6 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { useFullBleedLayout } from '@/app/hooks/use-full-bleed-layout';
 import { cn } from '@/app/lib/utils';
 import type { EmailAgentLayout } from '@/mock/email-agent-panel';
 import {
@@ -18,14 +19,14 @@ import {
   type EmailBulkOperationState,
 } from '@/modules/email/components/email-bulk-progress-panel';
 import { EmailListPane } from '@/modules/email/components/email-list-pane';
-import { EmailMailToolbar } from '@/modules/email/components/email-mail-toolbar';
 import { EmailReadingPane } from '@/modules/email/components/email-reading-pane';
 import { EmailReconnectRequiredState } from '@/modules/email/components/email-reconnect-required-state';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import {
-  EmailWorkspaceHeader,
+  MailAccountBar,
   type EmailWorkspaceView,
-} from '@/modules/email/components/email-workspace-header';
+} from '@/modules/email/components/mail-account-bar';
+import { MailListChrome } from '@/modules/email/components/mail-list-chrome';
 import { EMAIL_FOLDERS, type EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   emailKeys,
@@ -168,6 +169,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState<{ count: number } | null>(null);
   const [emptyFolderConfirm, setEmptyFolderConfirm] = useState<{ folderId: string } | null>(null);
   const [bulkOperation, setBulkOperation] = useState<EmailBulkOperationState | null>(null);
+  // The mailbox is a full application, drawn edge to edge with its own account
+  // bar and its own navigation — the app header and nav sidebar would be a
+  // second, competing set of chrome on top of it (elli-ui#921). The way back to
+  // the rest of the app is the first control in `MailAccountBar`.
+  useFullBleedLayout();
   const accountsQuery = useEmailAccountsQuery();
   const isConnectedRoute = Boolean(accountSlug);
   const connectedAccount = accountSlug
@@ -1406,16 +1412,16 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   if (isReconnectRequired && connectedAccount) {
     return (
       <>
-        <div className="flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-muted lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
-          <EmailWorkspaceHeader
-            mailboxAddress={address}
-            mailboxLabel={
+        <div className="mail-workspace flex h-dvh min-w-0 flex-col overflow-hidden bg-mail-paper">
+          <MailAccountBar
+            account={connectedAccount}
+            mailboxAddress={
               isSharedMailbox && connectedAccount.displayName
                 ? connectedAccount.displayName
-                : undefined
+                : address
             }
+            accounts={accountsQuery.data ?? []}
             activeView={workspaceView}
-            isDisconnectingAccount={disconnectAccountMutation.isPending}
             onViewChange={setWorkspaceView}
             onEditNickname={isSharedMailbox ? openNicknameDialog : undefined}
             onDisconnectAccount={isSharedMailbox ? undefined : () => setDisconnectConfirmOpen(true)}
@@ -1457,16 +1463,14 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-var(--header-height-mobile))] min-w-0 flex-col overflow-hidden bg-muted lg:h-[calc(100dvh-var(--header-height)-var(--page-margin)*2)]">
-      <EmailWorkspaceHeader
-        mailboxAddress={address}
-        mailboxLabel={
-          isSharedMailbox && connectedAccount?.displayName
-            ? connectedAccount.displayName
-            : undefined
+    <div className="mail-workspace relative flex h-dvh min-w-0 flex-col overflow-hidden bg-mail-paper">
+      <MailAccountBar
+        account={connectedAccount ?? undefined}
+        mailboxAddress={
+          isSharedMailbox && connectedAccount?.displayName ? connectedAccount.displayName : address
         }
+        accounts={accountsQuery.data ?? []}
         activeView={workspaceView}
-        isDisconnectingAccount={disconnectAccountMutation.isPending}
         onViewChange={setWorkspaceView}
         onEditNickname={isSharedMailbox ? openNicknameDialog : undefined}
         onDisconnectAccount={
@@ -1484,62 +1488,64 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
           )}
           style={{ paddingRight: agentLayout.pushesContent ? agentLayout.width : 0 }}
         >
-          <EmailMailToolbar
-            selectedFolder={selectedFolder}
-            folders={foldersQuery.data}
-            filter={mailFilter}
-            statusFilter={mailStatusFilter}
-            search={messageSearch}
-            projects={referenceProjectsQuery.data}
-            categoryTags={availableOtherCategoryTags}
-            selectedProjectId={activeProjectId}
-            selectedCategoryTagId={selectedCategoryTagId}
-            isRefreshing={showEmailSyncIndicator}
-            isCreatingFolder={createFolderMutation.isPending}
-            onSelectFolder={(nextFolder) => {
-              // One navigation: the new folder and its reset filters together.
-              navigateToFolder(nextFolder, { resetFilters: true });
-              setMobilePane('list');
-            }}
-            onFilterChange={(filter) => setMailboxUrlState({ filter })}
-            onStatusFilterChange={(statusFilter) => setMailboxUrlState({ statusFilter })}
-            onProjectChange={changeProjectFilter}
-            onCategoryTagChange={(categoryTagId) => setMailboxUrlState({ categoryTagId })}
-            onSearchChange={setMessageSearch}
-            onRefresh={() => {
-              if (connectedAccount) {
-                refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
-              }
-            }}
-            onCompose={openNewCompose}
-            onCreateFolder={
-              connectedAccount
-                ? (name) =>
-                    createFolderMutation.mutate(
-                      { accountId: connectedAccount.id, name },
-                      {
-                        onSuccess: (created) =>
-                          navigateToFolder(created.id, { resetFilters: true }),
-                      }
-                    )
-                : undefined
-            }
-            onEmptyFolder={
-              connectedAccount && isDeletedFolder && deletedFolderId && checkedMessageIds.size === 0
-                ? () => setEmptyFolderConfirm({ folderId: deletedFolderId })
-                : undefined
-            }
-            emptyFolderDisabled={isBulkOperationRunning || folderEmails.length === 0}
-          />
-
-          <div className="flex min-h-0 flex-1 gap-1.5 bg-muted p-1.5 lg:gap-1.5 lg:p-1.5">
+          <div className="flex min-h-0 flex-1">
             {showEmailList && (
               <div
                 className={cn(
-                  'h-full min-h-0 w-full shrink-0 lg:block lg:w-auto',
-                  mobilePane === 'reading' && 'hidden'
+                  'flex h-full min-h-0 w-full shrink-0 flex-col bg-mail-paper lg:w-(--mail-list-width)',
+                  mobilePane === 'reading' && 'hidden lg:flex'
                 )}
               >
+                <MailListChrome
+                  selectedFolder={selectedFolder}
+                  folders={foldersQuery.data}
+                  filter={mailFilter}
+                  statusFilter={mailStatusFilter}
+                  search={messageSearch}
+                  projects={referenceProjectsQuery.data}
+                  categoryTags={availableOtherCategoryTags}
+                  selectedProjectId={activeProjectId}
+                  selectedCategoryTagId={selectedCategoryTagId}
+                  isRefreshing={showEmailSyncIndicator}
+                  onSelectFolder={(nextFolder) => {
+                    // One navigation: the new folder and its reset filters together.
+                    navigateToFolder(nextFolder, { resetFilters: true });
+                    setMobilePane('list');
+                  }}
+                  onFilterChange={(filter) => setMailboxUrlState({ filter })}
+                  onStatusFilterChange={(statusFilter) => setMailboxUrlState({ statusFilter })}
+                  onProjectChange={changeProjectFilter}
+                  onCategoryTagChange={(categoryTagId) => setMailboxUrlState({ categoryTagId })}
+                  onSearchChange={setMessageSearch}
+                  onRefresh={() => {
+                    if (connectedAccount) {
+                      refreshMessagesMutation.mutate({ accountId: connectedAccount.id });
+                    }
+                  }}
+                  onCompose={openNewCompose}
+                  onCreateFolder={
+                    connectedAccount
+                      ? (name) =>
+                          createFolderMutation.mutate(
+                            { accountId: connectedAccount.id, name },
+                            {
+                              onSuccess: (created) =>
+                                navigateToFolder(created.id, { resetFilters: true }),
+                            }
+                          )
+                      : undefined
+                  }
+                  onEmptyFolder={
+                    connectedAccount &&
+                    isDeletedFolder &&
+                    deletedFolderId &&
+                    checkedMessageIds.size === 0
+                      ? () => setEmptyFolderConfirm({ folderId: deletedFolderId })
+                      : undefined
+                  }
+                  emptyFolderDisabled={isBulkOperationRunning || folderEmails.length === 0}
+                />
+
                 <EmailListPane
                   accountId={connectedAccount?.id}
                   mailbox={connectedAccount?.id ?? 'connected'}
@@ -1645,7 +1651,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
 
             <div
               className={cn(
-                'relative min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-background',
+                'relative min-w-0 flex-1 overflow-hidden bg-mail-pane',
                 mobilePane === 'list' ? 'hidden lg:flex' : 'flex'
               )}
             >
