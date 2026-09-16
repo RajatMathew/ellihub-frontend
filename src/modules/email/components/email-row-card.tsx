@@ -98,6 +98,17 @@ export type EmailThreadMessage = {
   meetingEvent?: EmailMeetingEvent;
   deliveryStatus?: 'sending' | 'failed' | 'sent';
   body: string[];
+  /**
+   * The server left this message's body out because the conversation was too
+   * large to send whole; the card fetches it when the reader expands it. Set
+   * only on the outliers — see `conversation-bodies.ts` in elli-core.
+   */
+  bodyPending?: boolean;
+  /**
+   * The provider's own snippet, sent in place of a deferred body so the
+   * collapsed card still has a line to show.
+   */
+  preview?: string;
   attachments?: EmailAttachment[];
 };
 
