@@ -1,5 +1,6 @@
 import api from '@/app/api';
 import {
+  taskAssigneeOptionSchema,
   taskBatchResponseSchema,
   taskBoardSchema,
   taskPaginatedResponseSchema,
@@ -8,6 +9,7 @@ import {
   type CreateTaskInput,
   type ListTasksParams,
   type Task,
+  type TaskAssigneeOption,
   type TaskBatchResponse,
   type TaskBoard,
   type TaskBoardParams,
@@ -15,6 +17,7 @@ import {
   type TaskReorderResult,
   type UpdateTaskInput,
 } from '@/modules/tasks/schemas/task.schema';
+import { z } from 'zod';
 
 const BASE = '/task';
 
@@ -64,6 +67,16 @@ export const tasksApi = {
       },
     });
     return taskBoardSchema.parse(res.data?.data ?? res.data);
+  },
+
+  /**
+   * Who a task can be handed to. The picker's own list: it used to borrow the
+   * HR employee list, which only admins may read, so everyone else was told
+   * nobody worked here. This is gated on task:read, which every role has.
+   */
+  async assignees(): Promise<TaskAssigneeOption[]> {
+    const res = await api.get(`${BASE}/assignees`);
+    return z.array(taskAssigneeOptionSchema).parse(res.data?.data ?? res.data);
   },
 
   async getById(id: string): Promise<Task> {

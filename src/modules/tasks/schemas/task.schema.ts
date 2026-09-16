@@ -98,6 +98,14 @@ export const taskBoardSchema = z.object({
   people: z.array(z.object({ id: z.string(), name: z.string() })),
 });
 
+/** Someone a task can be handed to: an employee with a login. */
+export const taskAssigneeOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  status: z.enum(['ACTIVE', 'ON_LEAVE']),
+});
+
 /** One op's outcome in a batch reply. `task` is null for a delete. */
 export const taskBatchResultSchema = z.discriminatedUnion('ok', [
   z.object({
@@ -166,6 +174,7 @@ export type TaskBoardColumn = z.infer<typeof taskBoardColumnSchema>;
 export type TaskBoard = z.infer<typeof taskBoardSchema>;
 export type TaskReorderResult = z.infer<typeof taskReorderResultSchema>;
 export type TaskBatchResult = z.infer<typeof taskBatchResultSchema>;
+export type TaskAssigneeOption = z.infer<typeof taskAssigneeOptionSchema>;
 export type TaskBatchResponse = z.infer<typeof taskBatchResponseSchema>;
 
 /**

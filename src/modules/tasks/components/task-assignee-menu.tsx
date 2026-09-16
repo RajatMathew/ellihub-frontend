@@ -8,8 +8,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { useEmployeePickerOptions } from '@/modules/hr/hooks/use-employee-picker-options';
 import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
+import { useTaskAssigneeOptions } from '@/modules/tasks/hooks/use-task-assignee-options';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
 import { ChevronDown } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export function TaskAssigneeMenu({
   const [open, setOpen] = useState(false);
   // Employees load only once the menu is opened — a board of 30 cards should not
   // fire 30 employee queries on render.
-  const picker = useEmployeePickerOptions({ search: '', enabled: open });
+  const picker = useTaskAssigneeOptions({ enabled: open });
 
   const name = task.assignee?.name ?? null;
 
@@ -84,8 +84,6 @@ export function TaskAssigneeMenu({
           picker.options.map((option) => (
             <DropdownMenuItem
               key={option.value}
-              // Employees without a login cannot hold a task; the API refuses them.
-              disabled={option.badge === 'Unlinked'}
               onSelect={() => onReassign(option.value)}
               className="sm:py-1 sm:text-xs"
             >
