@@ -71,6 +71,8 @@ export const emailKeys = {
     ] as const,
   message: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message', accountId, messageId] as const,
+  messageBody: (accountId?: string, messageId?: string | null) =>
+    [...emailKeys.all, 'message-body', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
   conversation: (accountId?: string, threadId?: string | null) =>
     [...emailKeys.conversationRoot(accountId), threadId] as const,
@@ -229,7 +231,13 @@ export const useRefreshEmailMessagesMutation = () => {
      */
     mutationFn: (payload: { accountId: string; daysWithin?: number }) =>
       emailApi.syncAccount(payload.accountId, payload.daysWithin),
-    onSuccess: (result, payload) => {
+    // A backfill still in progress is not news. The server keeps stepping the
+    // account on its own and the socket announces what lands, so there was
+    // never anything for the reader to do about it — and because the sync fires
+    // on opening a mailbox, the notice greeted them every time they went to
+    // read their mail. The list already says it is catching up through
+    // `freshness`; a toast over the top of that is just in the way.
+    onSuccess: (_result, payload) => {
       void Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: emailKeys.messagesRoot(payload.accountId),
@@ -245,11 +253,6 @@ export const useRefreshEmailMessagesMutation = () => {
         }),
         queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
       ]);
-      // The server keeps stepping this account on its own, so there is nothing
-      // for the reader to do — say so rather than asking them to refresh.
-      if (result.hasMore) {
-        toast.info('Still catching up on this mailbox. New messages will appear as they arrive.');
-      }
     },
     onError: (error) => {
       if (isEmailReconnectRequiredError(error)) return;
@@ -290,6 +293,32 @@ export const useEmailMessageQuery = (
     retry: shouldRetryEmailRequest,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+  });
+
+/**
+ * The body of a message a large conversation deferred, fetched when the reader
+ * expands it.
+ *
+ * `enabled` is the expand: a collapsed card asks for nothing, which is the whole
+ * point — the thread this exists for is 76 messages and was 9.3MB sent whole.
+ * The body of a message that has already been delivered never changes, so it is
+ * held for the session rather than revalidated.
+ */
+export const useEmailMessageBodyQuery = (
+  accountId: string | undefined,
+  messageId: string | undefined,
+  enabled: boolean
+) =>
+  useQuery({
+    queryKey: emailKeys.messageBody(accountId, messageId),
+    queryFn: () => emailApi.getMessageBody(accountId!, messageId!),
+    enabled: enabled && Boolean(accountId && messageId),
+    staleTime: Infinity,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
 type EmailThreadClassificationSnapshot = {

@@ -2,6 +2,7 @@ import { useCallback, useId, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
@@ -17,19 +18,32 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
+import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
-import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
+import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import { ChevronUp, Copy, FolderPlus, Forward, Mail, Reply, Search } from 'lucide-react';
 import { toast } from 'sonner';
+
+/** Stable identities for the two "nothing here" cases, so renders that change
+ *  neither do not invalidate everything derived from them. */
+const NO_ATTACHMENTS: EmailAttachment[] = [];
+const EMPTY_BODY: string[] = [];
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
   accountId?: string;
   inlineImageBaseUrl?: string | null;
   singleMessage?: boolean;
+  /**
+   * The real body is still on its way, so what is on `message` is the list
+   * row's plain-text preview rather than the message. Renders a placeholder
+   * instead of it — see `getThreadMessages` (elli-ui#942).
+   */
+  isBodyPending?: boolean;
   latest?: boolean;
   replyOpen?: boolean;
   replyMode?: EmailComposerMode;
@@ -55,6 +69,7 @@ export function EmailThreadMessageCard({
   accountId,
   inlineImageBaseUrl,
   singleMessage = false,
+  isBodyPending = false,
   latest,
   replyOpen,
   replyMode = 'reply',
@@ -74,17 +89,33 @@ export function EmailThreadMessageCard({
   // newest message in the thread", so every conversation opens with exactly one
   // message readable — matching single-message threads, which are always open.
   const [manuallyExpanded, setManuallyExpanded] = useState<boolean | null>(null);
-  const attachments = message.attachments ?? [];
-  const visibleAttachments = attachments.filter(
-    (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
-  );
+  // A shared constant rather than a fresh `[]`, so a message with no
+  // attachments keeps the same identity across renders. `EmailHtmlBody` already
+  // defends itself against the churn by keying on attachment content, so this is
+  // not load-bearing — it just stops the derivations below being recomputed for
+  // nothing.
+  const attachments = message.attachments ?? NO_ATTACHMENTS;
   // Attachments must not lock a thread card open: every message in a
   // conversation remains collapsible unless it is the only message displayed.
   const isAlwaysExpanded = singleMessage;
   const isExpanded =
     isAlwaysExpanded || Boolean(replyOpen) || (manuallyExpanded ?? Boolean(latest));
   const canCollapse = !isAlwaysExpanded && !replyOpen;
-  const hasBodyContent = hasVisibleEmailBodyContent(message.body);
+  // A conversation too large to send whole leaves the older messages' bodies
+  // behind; this is the fetch for the one the reader just opened. Collapsed
+  // cards ask for nothing, which is what keeps a 76-message thread at 0.57MB
+  // instead of 9.3MB.
+  const deferredBody = useEmailMessageBodyQuery(
+    accountId,
+    message.id,
+    isExpanded && message.bodyPending === true
+  );
+  const body = message.bodyPending ? (deferredBody.data ?? EMPTY_BODY) : message.body;
+  const isDeferredBodyPending = message.bodyPending === true && !deferredBody.data;
+  const visibleAttachments = attachments.filter(
+    (attachment) => !isReferencedInlineEmailAttachment(attachment, body)
+  );
+  const hasBodyContent = hasVisibleEmailBodyContent(body);
   const isSingleAttachmentOnly =
     visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   // Elli's own tags and the mailbox's own categories are different things, so
@@ -107,10 +138,10 @@ export function EmailThreadMessageCard({
 
   if (!isExpanded) {
     return (
-      <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <article className="overflow-hidden rounded-xl border border-mail-pane-line bg-mail-card">
         <button
           type="button"
-          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
           aria-expanded="false"
           aria-controls={contentId}
           aria-label={`Expand message from ${message.senderName}`}
@@ -137,13 +168,13 @@ export function EmailThreadMessageCard({
                     className="whitespace-nowrap text-xs text-muted-foreground"
                     dateTime={message.sentAt}
                   >
-                    {formatEmailDate(message.sentAt)}
+                    {formatEmailMessageDate(message.sentAt)}
                   </time>
                 )}
               </div>
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
-              {getMessagePreview(message.body)}
+              {getMessagePreview(body, message.preview)}
             </p>
           </div>
         </button>
@@ -156,12 +187,12 @@ export function EmailThreadMessageCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-      <div className="relative flex items-start gap-3 border-b border-border px-4 py-3">
+    <article className="overflow-hidden rounded-xl border border-mail-pane-line bg-mail-card">
+      <div className="relative flex items-start gap-3 border-b border-mail-pane-line px-4 py-3">
         {canCollapse && (
           <button
             type="button"
-            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-muted/35 active:bg-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
             aria-expanded="true"
             aria-controls={contentId}
             aria-label={`Collapse message from ${message.senderName}`}
@@ -216,7 +247,7 @@ export function EmailThreadMessageCard({
               {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
               {showTimestamp && (
                 <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
-                  {formatEmailDate(message.sentAt)}
+                  {formatEmailMessageDate(message.sentAt)}
                 </time>
               )}
               <MessageIconAction
@@ -243,12 +274,26 @@ export function EmailThreadMessageCard({
           width (padding on top of a fixed-width email design was clipping
           content at the right edge). Non-body children add their own px-4. */}
       <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
-        {hasBodyContent && (
-          <EmailMessageBody
-            body={message.body}
-            attachments={attachments}
-            inlineImageBaseUrl={inlineImageBaseUrl}
-          />
+        {isBodyPending || isDeferredBodyPending ? (
+          /* The preview is plain text — a flattened excerpt that still carries
+             the quoted chain's `-----Original Message-----` rules. Rendered as
+             a body it showed as a row of dashes for the split second before
+             the real HTML arrived (elli-ui#942). Lines of the right shape say
+             "loading" without pretending to be the message. */
+          <div className="space-y-2 px-4" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading this message</span>
+            <Skeleton className="h-3.5 w-[85%]" />
+            <Skeleton className="h-3.5 w-[92%]" />
+            <Skeleton className="h-3.5 w-[60%]" />
+          </div>
+        ) : (
+          hasBodyContent && (
+            <EmailMessageBody
+              body={body}
+              attachments={attachments}
+              inlineImageBaseUrl={inlineImageBaseUrl}
+            />
+          )
         )}
 
         {visibleAttachments.length > 0 && (
@@ -284,7 +329,7 @@ export function EmailThreadMessageCard({
         )}
 
         {latest && !replyOpen && (
-          <div className="flex flex-wrap gap-2 border-t border-border px-4 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-mail-pane-line px-4 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -438,24 +483,6 @@ function MessageIconAction({
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
   );
-}
-
-function getMessagePreview(body: string[]) {
-  const preview = body
-    .join(' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;|&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return preview || 'No message content';
 }
 
 function EmailAttachmentChip({

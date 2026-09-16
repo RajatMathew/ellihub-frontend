@@ -8,17 +8,17 @@ import { TaskBoard } from '@/modules/tasks/components/task-board';
 import { TaskFilterBar, type TaskAssigneeFilter } from '@/modules/tasks/components/task-filter-bar';
 import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
 import {
-  useAllTasksQuery,
   useCreateTaskMutation,
-  useDeleteTaskMutation,
-  useReorderTaskMutation,
-  useSetTaskCompletedMutation,
-  useShiftTaskDueDateMutation,
+  useTaskBoardQuery,
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
+import { useBoardClock } from '@/modules/tasks/hooks/use-board-clock';
 import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
+import { useTaskOutbox } from '@/modules/tasks/hooks/use-task-outbox';
+import { TASK_COLUMNS } from '@/modules/tasks/lib/task-board';
 import { changedTaskFields } from '@/modules/tasks/lib/task-edit';
-import type { CreateTaskInput, Task } from '@/modules/tasks/schemas/task.schema';
+import { applyOps } from '@/modules/tasks/lib/task-ops';
+import type { CreateTaskInput, Task, TaskColumnId } from '@/modules/tasks/schemas/task.schema';
 import { Plus } from 'lucide-react';
 
 /**
@@ -34,24 +34,29 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const [editing, setEditing] = useState<Task | null>(null);
   const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>(null);
 
-  // Every task, not a page of them: the board groups into columns and orders
-  // within them client-side, so anything it has not fetched is simply missing
-  // from the board rather than on a later page.
-  const tasksQuery = useAllTasksQuery();
+  // The board comes grouped and ordered from the server, cut on this
+  // browser's day. The clock is part of the request, so a board left open
+  // overnight fetches afresh once the date turns rather than showing
+  // yesterday's columns.
+  const clock = useBoardClock();
+  const boardQuery = useTaskBoardQuery({
+    tz: clock.tz,
+    today: clock.today,
+    ...(assigneeFilter && { assigneeId: assigneeFilter }),
+  });
   const createTask = useCreateTaskMutation();
   const updateTask = useUpdateTaskMutation();
-  const setCompleted = useSetTaskCompletedMutation();
-  const shiftDueDate = useShiftTaskDueDateMutation();
-  const reorderTask = useReorderTaskMutation();
-  const deleteTask = useDeleteTaskMutation();
+  // Every action on a card goes through here: it shows at once and is sent
+  // in a batch. The dialog's create and edit stay direct - the dialog closes
+  // over the wait, and there is nothing on the board to update early.
+  const { pending, dispatch } = useTaskOutbox();
   const { justLandedId, markLanded } = useJustLandedTask();
 
-  const busyTaskId =
-    setCompleted.isPending || shiftDueDate.isPending || updateTask.isPending
-      ? (((setCompleted.variables?.id ?? shiftDueDate.variables?.id ?? updateTask.variables?.id) as
-          | string
-          | undefined) ?? null)
-      : null;
+  // Only the dialog's save still waits on the server; card actions are
+  // recorded and drawn in the same frame, so no card is ever "busy".
+  const busyTaskId = updateTask.isPending
+    ? ((updateTask.variables?.id as string | undefined) ?? null)
+    : null;
 
   const openCreate = () => {
     setEditing(null);
@@ -68,7 +73,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   // the one thing that makes the delete reversible.
   const handleDelete = (task: Task) => {
     setDialogOpen(false);
-    deleteTask.mutate({ id: task.id, title: task.title });
+    dispatch({ type: 'delete', id: task.id, title: task.title });
   };
 
   const handleSubmit = async (payload: CreateTaskInput) => {
@@ -84,18 +89,29 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     setDialogOpen(false);
   };
 
-  // Both of these have to be memoised: `?? []` and `.filter()` each return a
-  // fresh array every render, and the board keys its local arrangement off this
-  // reference.
-  const allTasks = useMemo(() => tasksQuery.data?.data ?? [], [tasksQuery.data]);
-  // The pills filter the board in place. Filtering here rather than refetching
-  // keeps the pill list stable — it is derived from every task, not the visible
-  // ones, so choosing a person cannot make the other pills disappear.
-  const tasks = useMemo(
-    () =>
-      assigneeFilter ? allTasks.filter((task) => task.assigneeId === assigneeFilter) : allTasks,
-    [allTasks, assigneeFilter]
+  // What the person sees: the server's board with what they have done on
+  // top. The server's rows are never edited; a confirmed op is dropped once
+  // its row is written in, a refused one is just dropped.
+  const board = useMemo(
+    () => (boardQuery.data ? applyOps(boardQuery.data, pending, clock.now) : undefined),
+    [boardQuery.data, pending, clock.now]
   );
+
+  // Memoised because the board keys its local arrangement off this reference.
+  const columns = useMemo(
+    () =>
+      Object.fromEntries(TASK_COLUMNS.map((id) => [id, board?.columns[id].tasks ?? []])) as Record<
+        TaskColumnId,
+        Task[]
+      >,
+    [board]
+  );
+
+  // Every column reports what it holds and what there is; the two differ only
+  // when a column was cut at the server's cap.
+  const shown = TASK_COLUMNS.reduce((sum, id) => sum + columns[id].length, 0);
+  const total = TASK_COLUMNS.reduce((sum, id) => sum + (board?.columns[id].total ?? 0), 0);
+  const people = board?.people ?? [];
 
   return (
     <div
@@ -117,14 +133,13 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {!tasksQuery.isLoading && !tasksQuery.isError ? (
+          {board ? (
             <span className="text-sm text-muted-foreground">
-              {/* A board past the fetch cap says so, rather than passing a
-                  subset off as everything. hasNextPage is only ever true here
-                  when the page walk stopped short. */}
-              {tasksQuery.data?.pagination.hasNextPage
-                ? `showing ${tasks.length} of ${tasksQuery.data.pagination.totalItems} tasks`
-                : `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`}
+              {/* A board cut at the server's cap says so, rather than passing
+                  a subset off as everything. */}
+              {shown < total
+                ? `showing ${shown} of ${total} tasks`
+                : `${total} ${total === 1 ? 'task' : 'tasks'}`}
             </span>
           ) : null}
           <Button type="button" variant="primary" onClick={openCreate}>
@@ -134,11 +149,15 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         </div>
       </header>
 
-      {!tasksQuery.isLoading && !tasksQuery.isError ? (
-        <TaskFilterBar tasks={allTasks} value={assigneeFilter} onChange={setAssigneeFilter} />
+      {board ? (
+        <TaskFilterBar people={people} value={assigneeFilter} onChange={setAssigneeFilter} />
       ) : null}
 
-      {tasksQuery.isLoading ? (
+      {/* isPending, not isLoading: isLoading is isPending && isFetching, so a
+          query that has no data and is not fetching - paused offline, say -
+          matched neither the skeleton nor the error branch and fell through
+          to "No tasks yet" with nothing loaded. No data is no data. */}
+      {boardQuery.isPending ? (
         <div
           className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5"
           role="status"
@@ -148,9 +167,9 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             <Skeleton key={index} className="h-48 rounded-lg" />
           ))}
         </div>
-      ) : tasksQuery.isError ? (
-        <QueryErrorState title="Failed to load tasks" onRetry={() => void tasksQuery.refetch()} />
-      ) : tasks.length === 0 ? (
+      ) : boardQuery.isError ? (
+        <QueryErrorState title="Failed to load tasks" onRetry={() => void boardQuery.refetch()} />
+      ) : total === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-background py-16 text-center">
           <p className="text-sm font-medium text-foreground">No tasks yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -163,7 +182,8 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         </div>
       ) : (
         <TaskBoard
-          tasks={tasks}
+          columns={columns}
+          now={clock.now}
           busyTaskId={busyTaskId}
           justLandedTaskId={justLandedId}
           onOpenTask={openEdit}
@@ -171,27 +191,51 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             // The same landing ring +1 day gets: the card has moved columns, so
             // say where it went rather than leaving it to be found.
             markLanded(task.id);
-            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' });
+            dispatch({
+              type: 'complete',
+              id: task.id,
+              completed: task.status !== 'COMPLETED',
+              completedAt: new Date().toISOString(),
+            });
           }}
           onShiftDueDate={(task, days) => {
             markLanded(task.id);
-            shiftDueDate.mutate({ id: task.id, days });
+            dispatch({ type: 'shiftDueDate', id: task.id, days });
           }}
           // Dragging a card to a spot. The placement is already clamped to the
           // card's priority block by the board, and the server refuses it again
-          // - see PATCH /task/reorder. A card leaving Completed gets the same
-          // landing ring a reopened one does: it has moved columns.
-          onReorder={(task, placement) => {
-            if (placement.reopen) markLanded(task.id);
-            reorderTask.mutate({ id: task.id, ...placement });
+          // - see PATCH /task/reorder. A card leaving Completed is reopened
+          // first: two ops, in that order, and the batch keeps the order.
+          onReorder={(task, { reopen, ...placement }) => {
+            if (reopen) {
+              markLanded(task.id);
+              dispatch({
+                type: 'complete',
+                id: task.id,
+                completed: false,
+                completedAt: new Date().toISOString(),
+              });
+            }
+            dispatch({ type: 'reorder', id: task.id, ...placement });
           }}
-          onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
-          // Priority and court are ordinary fields, so changing them from the
-          // card is the same PUT the dialog sends - no new endpoint. Neither
-          // decides a column, though a priority change does drop the card's
-          // hand-placed position, so it re-enters its new block by age.
-          onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
-          onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
+          onReassign={(task, assigneeId) =>
+            dispatch({
+              type: 'update',
+              id: task.id,
+              fields: { assigneeId },
+              // The id alone cannot draw a name; the board's people list can.
+              assignee: assigneeId ? (people.find((p) => p.id === assigneeId) ?? null) : null,
+            })
+          }
+          // Priority and court are ordinary fields; the op carries just the
+          // one that changed. A priority change drops the card's hand-placed
+          // position, so it re-enters its new block by age.
+          onPriorityChange={(task, priority) =>
+            dispatch({ type: 'update', id: task.id, fields: { priority } })
+          }
+          onCourtChange={(task, court) =>
+            dispatch({ type: 'update', id: task.id, fields: { court } })
+          }
         />
       )}
 

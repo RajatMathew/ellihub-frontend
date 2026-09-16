@@ -158,6 +158,16 @@ const MAX_INLINED_IMAGE_BYTES = 512 * 1024;
 const MAX_INLINED_TOTAL_BYTES = 4 * 1024 * 1024;
 
 /**
+ * How many inline images to pull at once.
+ *
+ * Each one is a provider round trip — measured at 355-466ms apiece against
+ * `procurement@ellicorp.com` — so fetching them one after another made a
+ * six-image signature take 2.35s to finish appearing. Four at a time brings
+ * that to roughly the cost of the slowest one.
+ */
+const INLINE_IMAGE_CONCURRENCY = 4;
+
+/**
  * One in-flight fetch per URL, shared across every caller and kept for the
  * session.
  *
@@ -168,13 +178,30 @@ const MAX_INLINED_TOTAL_BYTES = 4 * 1024 * 1024;
  */
 const inlineImageCache = new Map<string, Promise<string | null>>();
 
-async function fetchInlineImage(url: string, signal?: AbortSignal): Promise<string | null> {
+/**
+ * Deliberately takes no `AbortSignal`.
+ *
+ * This cache outlives whichever effect happened to ask first, so binding its
+ * entries to that effect's lifetime is what broke inline images: under
+ * StrictMode the first mount starts a fetch, the cleanup aborts it, the
+ * `catch` below turns that into `null`, and the `null` is then cached for the
+ * whole session — so the remount finds a poisoned entry and gives up. Because
+ * the fetches ran in sequence, exactly one was in flight when the abort landed,
+ * and it was always the first: the first inline image of every HTML message
+ * rendered permanently broken. Verified by toggling StrictMode alone — 4 of 5
+ * images with it on, 5 of 5 with it off.
+ *
+ * Letting the request finish is also the better outcome: it populates the cache
+ * the remount is about to read. Callers that genuinely have navigated away stop
+ * *applying* results, which is what their signal is for.
+ */
+async function fetchInlineImage(url: string): Promise<string | null> {
   const cached = inlineImageCache.get(url);
   if (cached) return cached;
 
   const request = (async () => {
     try {
-      const response = await fetch(url, { credentials: 'include', signal });
+      const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) return null;
 
       const blob = await response.blob();
@@ -196,6 +223,14 @@ async function fetchInlineImage(url: string, signal?: AbortSignal): Promise<stri
   })();
 
   inlineImageCache.set(url, request);
+  // Only a success is worth remembering. A miss cached forever is
+  // indistinguishable from an image that does not exist, and the reader has no
+  // way to ask again short of reloading the tab.
+  void request.then((dataUrl) => {
+    if (dataUrl === null && inlineImageCache.get(url) === request) {
+      inlineImageCache.delete(url);
+    }
+  });
   return request;
 }
 
@@ -226,18 +261,33 @@ export async function loadInlineEmailImageData(
     byUrl.set(url, [...(byUrl.get(url) ?? []), key]);
   }
 
-  // Sequential, so the running total is a real budget rather than sixteen
-  // concurrent downloads each checking a counter none of them has updated yet.
+  // A few at a time rather than one after another. The budget was the reason
+  // this ran in sequence, and it still holds: the counter is read and charged
+  // together *after* the await, so workers cannot all pass one stale check.
+  // Bounded concurrency can overshoot by at most the images already in flight —
+  // three, each capped at MAX_INLINED_IMAGE_BYTES — which is worth 2s of a
+  // signature not appearing.
+  const entries = [...byUrl];
+  let nextIndex = 0;
   let inlinedBytes = 0;
-  for (const [url, keys] of byUrl) {
-    if (signal?.aborted || inlinedBytes >= MAX_INLINED_TOTAL_BYTES) break;
 
-    const dataUrl = await fetchInlineImage(url, signal);
-    if (!dataUrl) continue;
+  const drain = async () => {
+    while (!signal?.aborted && inlinedBytes < MAX_INLINED_TOTAL_BYTES) {
+      const entry = entries[nextIndex++];
+      if (!entry) return;
 
-    inlinedBytes += dataUrl.length;
-    for (const key of keys) resolved.set(key, dataUrl);
-  }
+      const [url, keys] = entry;
+      const dataUrl = await fetchInlineImage(url);
+      if (!dataUrl || inlinedBytes >= MAX_INLINED_TOTAL_BYTES) continue;
+
+      inlinedBytes += dataUrl.length;
+      for (const key of keys) resolved.set(key, dataUrl);
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(INLINE_IMAGE_CONCURRENCY, entries.length) }, drain)
+  );
 
   return resolved;
 }

@@ -1,29 +1,26 @@
 import { Button } from '@/app/components/ui/button';
 import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
-import type { Task } from '@/modules/tasks/schemas/task.schema';
+import type { TaskBoard } from '@/modules/tasks/schemas/task.schema';
 
 export type TaskAssigneeFilter = string | null;
 
 /**
  * The board's people filter: Everyone, then one pill per person who actually
- * holds a task. Derived from the tasks on screen rather than from the employee
- * directory, so it never offers a filter that would empty the board.
+ * holds a task. The list comes with the board, worked out server-side from
+ * every task rather than the ones on screen - so it never offers a filter
+ * that would empty the board, and choosing a person does not make the other
+ * pills disappear now that the filter itself is applied by the server.
  */
 export function TaskFilterBar({
-  tasks,
+  people,
   value,
   onChange,
 }: {
-  tasks: Task[];
+  people: TaskBoard['people'];
   value: TaskAssigneeFilter;
   onChange: (next: TaskAssigneeFilter) => void;
 }) {
-  const people = new Map<string, string>();
-  for (const task of tasks) {
-    if (task.assigneeId && task.assignee?.name) people.set(task.assigneeId, task.assignee.name);
-  }
-
-  if (people.size === 0) return null;
+  if (people.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by assignee">
@@ -42,7 +39,7 @@ export function TaskFilterBar({
         Everyone
       </Button>
 
-      {[...people].map(([id, name]) => {
+      {people.map(({ id, name }) => {
         const active = value === id;
         return (
           <Button

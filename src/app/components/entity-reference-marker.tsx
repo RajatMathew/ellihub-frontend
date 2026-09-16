@@ -1,8 +1,5 @@
 import { useMemo, useState } from 'react';
 
-import { Button } from '@/app/components/ui/button';
-import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
-import { Popover, PopoverTrigger } from '@/app/components/ui/popover';
 import {
   CategorySegmentedControl,
   ReferenceGroups,
@@ -17,6 +14,9 @@ import {
   type EntityReferenceApi,
   type EntityReferenceCategory,
 } from '@/app/components/entity-reference-marker-storage';
+import { Button } from '@/app/components/ui/button';
+import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
+import { Popover, PopoverTrigger } from '@/app/components/ui/popover';
 import { AtSign } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -196,7 +196,16 @@ export function useEntityReferenceMarker({
     </Popover>
   );
 
-  const chips = (
+  /**
+   * The Project/Other switch on its own, and the tagged rows on their own.
+   *
+   * `chips` below stacks the two, which is what every caller wanted until the
+   * mailbox redesign (elli-ui#921) put the switch at the top of its details
+   * card and the linked rows further down, under the assignee and the court.
+   * Both are returned so a caller can place them independently without
+   * reaching past this hook to the parts.
+   */
+  const categoryControl = (
     <>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <CategorySegmentedControl
@@ -206,11 +215,9 @@ export function useEntityReferenceMarker({
         />
         {!isProjectMode && otherModeExtra}
       </div>
-      {isProjectMode && references.length > 0 && (
-        <div className="mt-2 min-w-0">
-          <ReferenceGroups references={references} isSaving={isSaving} onRemove={removeReference} />
-        </div>
-      )}
+      {/* Rendered with the switch, not with `chips`: a caller that places the
+          switch on its own must still get the "this will delete your project
+          references" confirmation that switching to Other triggers. */}
       <ConfirmDialog
         open={pendingOtherSwitch}
         onOpenChange={setPendingOtherSwitch}
@@ -226,9 +233,23 @@ export function useEntityReferenceMarker({
     </>
   );
 
+  const referenceList =
+    isProjectMode && references.length > 0 ? (
+      <ReferenceGroups references={references} isSaving={isSaving} onRemove={removeReference} />
+    ) : null;
+
+  const chips = (
+    <>
+      {categoryControl}
+      {referenceList && <div className="mt-2 min-w-0">{referenceList}</div>}
+    </>
+  );
+
   return {
     trigger,
     chips,
+    categoryControl,
+    referenceList,
     isProjectMode,
     isOtherSelected,
     hasReferences: references.length > 0,
