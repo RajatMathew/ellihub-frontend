@@ -1,5 +1,6 @@
 import api from '@/app/api';
 import {
+  taskBatchResponseSchema,
   taskBoardSchema,
   taskPaginatedResponseSchema,
   taskReorderResultSchema,
@@ -7,6 +8,7 @@ import {
   type CreateTaskInput,
   type ListTasksParams,
   type Task,
+  type TaskBatchResponse,
   type TaskBoard,
   type TaskBoardParams,
   type TaskPaginatedResponse,
@@ -118,6 +120,32 @@ export const tasksApi = {
       task: res.data?.data,
       touched: res.data?.touched ?? [],
     });
+  },
+
+  /**
+   * Several writes in one request, applied in order - the outbox's flush.
+   * `keepalive` is for the flush on the way out of the page: the browser
+   * lets a keepalive request finish after the tab has gone, which axios
+   * cannot ask for, so that one goes through fetch.
+   */
+  async batch(
+    ops: Record<string, unknown>[],
+    { keepalive = false }: { keepalive?: boolean } = {}
+  ): Promise<TaskBatchResponse> {
+    if (keepalive) {
+      const res = await fetch(`${api.defaults.baseURL}${BASE}/batch`, {
+        method: 'PATCH',
+        credentials: 'include',
+        keepalive: true,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ops }),
+      });
+      if (!res.ok) throw new Error(`Batch failed: ${res.status}`);
+      const body: unknown = await res.json();
+      return taskBatchResponseSchema.parse((body as { data?: unknown }).data ?? body);
+    }
+    const res = await api.patch(`${BASE}/batch`, { ops });
+    return taskBatchResponseSchema.parse(res.data?.data ?? res.data);
   },
 
   async restore(id: string): Promise<Task> {

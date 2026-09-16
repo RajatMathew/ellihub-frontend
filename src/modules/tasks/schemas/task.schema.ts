@@ -98,6 +98,27 @@ export const taskBoardSchema = z.object({
   people: z.array(z.object({ id: z.string(), name: z.string() })),
 });
 
+/** One op's outcome in a batch reply. `task` is null for a delete. */
+export const taskBatchResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    opId: z.string(),
+    ok: z.literal(true),
+    type: z.string(),
+    task: taskSchema.nullable(),
+    touched: z.array(taskSchema),
+  }),
+  z.object({
+    opId: z.string(),
+    ok: z.literal(false),
+    type: z.string(),
+    error: z.object({ message: z.string(), status: z.number() }),
+  }),
+]);
+
+export const taskBatchResponseSchema = z.object({
+  results: z.array(taskBatchResultSchema),
+});
+
 /** What a reorder answers with: the moved card, and any others re-spaced with it. */
 export const taskReorderResultSchema = z.object({
   task: taskSchema,
@@ -144,6 +165,8 @@ export type TaskColumnId = z.infer<typeof taskColumnIdSchema>;
 export type TaskBoardColumn = z.infer<typeof taskBoardColumnSchema>;
 export type TaskBoard = z.infer<typeof taskBoardSchema>;
 export type TaskReorderResult = z.infer<typeof taskReorderResultSchema>;
+export type TaskBatchResult = z.infer<typeof taskBatchResultSchema>;
+export type TaskBatchResponse = z.infer<typeof taskBatchResponseSchema>;
 
 /**
  * What the board asks for. `tz` and `today` are the browser's: the server cuts

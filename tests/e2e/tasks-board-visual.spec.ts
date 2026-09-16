@@ -182,6 +182,28 @@ async function setupMockApi(page: Page) {
       return;
     }
 
+    // Card actions arrive batched. Each op is recorded as a write and answered
+    // as applied, with the fixture patched by the op's fields.
+    if (method === 'PATCH' && path === '/api/v1/task/batch') {
+      const { ops } = request.postDataJSON() as {
+        ops: { opId: string; type: string; id: string; dueAt?: string | null }[];
+      };
+      const results = ops.map((op) => {
+        updates.push(op);
+        const original = TASKS.find((item) => item.id === op.id) ?? TASKS[0];
+        const { opId, type, ...fields } = op;
+        return {
+          opId,
+          ok: true,
+          type,
+          task: type === 'delete' ? null : { ...original, ...fields },
+          touched: [],
+        };
+      });
+      await route.fulfill({ json: { success: true, data: { results } } });
+      return;
+    }
+
     await route.fulfill({ json: { data: [] } });
   });
 

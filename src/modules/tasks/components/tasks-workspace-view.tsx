@@ -9,17 +9,15 @@ import { TaskFilterBar, type TaskAssigneeFilter } from '@/modules/tasks/componen
 import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
 import {
   useCreateTaskMutation,
-  useDeleteTaskMutation,
-  useReorderTaskMutation,
-  useSetTaskCompletedMutation,
-  useShiftTaskDueDateMutation,
   useTaskBoardQuery,
   useUpdateTaskMutation,
 } from '@/modules/tasks/hooks/tasks.hooks';
 import { useBoardClock } from '@/modules/tasks/hooks/use-board-clock';
 import { useJustLandedTask } from '@/modules/tasks/hooks/use-just-landed-task';
+import { useTaskOutbox } from '@/modules/tasks/hooks/use-task-outbox';
 import { TASK_COLUMNS } from '@/modules/tasks/lib/task-board';
 import { changedTaskFields } from '@/modules/tasks/lib/task-edit';
+import { applyOps } from '@/modules/tasks/lib/task-ops';
 import type { CreateTaskInput, Task, TaskColumnId } from '@/modules/tasks/schemas/task.schema';
 import { Plus } from 'lucide-react';
 
@@ -48,18 +46,17 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   });
   const createTask = useCreateTaskMutation();
   const updateTask = useUpdateTaskMutation();
-  const setCompleted = useSetTaskCompletedMutation();
-  const shiftDueDate = useShiftTaskDueDateMutation();
-  const reorderTask = useReorderTaskMutation();
-  const deleteTask = useDeleteTaskMutation();
+  // Every action on a card goes through here: it shows at once and is sent
+  // in a batch. The dialog's create and edit stay direct - the dialog closes
+  // over the wait, and there is nothing on the board to update early.
+  const { pending, dispatch } = useTaskOutbox();
   const { justLandedId, markLanded } = useJustLandedTask();
 
-  const busyTaskId =
-    setCompleted.isPending || shiftDueDate.isPending || updateTask.isPending
-      ? (((setCompleted.variables?.id ?? shiftDueDate.variables?.id ?? updateTask.variables?.id) as
-          | string
-          | undefined) ?? null)
-      : null;
+  // Only the dialog's save still waits on the server; card actions are
+  // recorded and drawn in the same frame, so no card is ever "busy".
+  const busyTaskId = updateTask.isPending
+    ? ((updateTask.variables?.id as string | undefined) ?? null)
+    : null;
 
   const openCreate = () => {
     setEditing(null);
@@ -76,7 +73,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   // the one thing that makes the delete reversible.
   const handleDelete = (task: Task) => {
     setDialogOpen(false);
-    deleteTask.mutate({ id: task.id, title: task.title });
+    dispatch({ type: 'delete', id: task.id, title: task.title });
   };
 
   const handleSubmit = async (payload: CreateTaskInput) => {
@@ -92,7 +89,13 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     setDialogOpen(false);
   };
 
-  const board = boardQuery.data;
+  // What the person sees: the server's board with what they have done on
+  // top. The server's rows are never edited; a confirmed op is dropped once
+  // its row is written in, a refused one is just dropped.
+  const board = useMemo(
+    () => (boardQuery.data ? applyOps(boardQuery.data, pending, clock.now) : undefined),
+    [boardQuery.data, pending, clock.now]
+  );
 
   // Memoised because the board keys its local arrangement off this reference.
   const columns = useMemo(
@@ -188,27 +191,51 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
             // The same landing ring +1 day gets: the card has moved columns, so
             // say where it went rather than leaving it to be found.
             markLanded(task.id);
-            setCompleted.mutate({ id: task.id, completed: task.status !== 'COMPLETED' });
+            dispatch({
+              type: 'complete',
+              id: task.id,
+              completed: task.status !== 'COMPLETED',
+              completedAt: new Date().toISOString(),
+            });
           }}
           onShiftDueDate={(task, days) => {
             markLanded(task.id);
-            shiftDueDate.mutate({ id: task.id, days });
+            dispatch({ type: 'shiftDueDate', id: task.id, days });
           }}
           // Dragging a card to a spot. The placement is already clamped to the
           // card's priority block by the board, and the server refuses it again
-          // - see PATCH /task/reorder. A card leaving Completed gets the same
-          // landing ring a reopened one does: it has moved columns.
-          onReorder={(task, placement) => {
-            if (placement.reopen) markLanded(task.id);
-            reorderTask.mutate({ id: task.id, ...placement });
+          // - see PATCH /task/reorder. A card leaving Completed is reopened
+          // first: two ops, in that order, and the batch keeps the order.
+          onReorder={(task, { reopen, ...placement }) => {
+            if (reopen) {
+              markLanded(task.id);
+              dispatch({
+                type: 'complete',
+                id: task.id,
+                completed: false,
+                completedAt: new Date().toISOString(),
+              });
+            }
+            dispatch({ type: 'reorder', id: task.id, ...placement });
           }}
-          onReassign={(task, assigneeId) => updateTask.mutate({ id: task.id, assigneeId })}
-          // Priority and court are ordinary fields, so changing them from the
-          // card is the same PUT the dialog sends - no new endpoint. Neither
-          // decides a column, though a priority change does drop the card's
-          // hand-placed position, so it re-enters its new block by age.
-          onPriorityChange={(task, priority) => updateTask.mutate({ id: task.id, priority })}
-          onCourtChange={(task, court) => updateTask.mutate({ id: task.id, court })}
+          onReassign={(task, assigneeId) =>
+            dispatch({
+              type: 'update',
+              id: task.id,
+              fields: { assigneeId },
+              // The id alone cannot draw a name; the board's people list can.
+              assignee: assigneeId ? (people.find((p) => p.id === assigneeId) ?? null) : null,
+            })
+          }
+          // Priority and court are ordinary fields; the op carries just the
+          // one that changed. A priority change drops the card's hand-placed
+          // position, so it re-enters its new block by age.
+          onPriorityChange={(task, priority) =>
+            dispatch({ type: 'update', id: task.id, fields: { priority } })
+          }
+          onCourtChange={(task, court) =>
+            dispatch({ type: 'update', id: task.id, fields: { court } })
+          }
         />
       )}
 
