@@ -235,7 +235,46 @@ async function fetchInlineImage(url: string): Promise<string | null> {
 }
 
 /**
- * Fetches inline images and returns them as `data:` URIs.
+ * How many inline images the whole page has in flight at once.
+ *
+ * Page-wide rather than per message, and that is the point. Each of these is a
+ * live call through to the mail provider, and a thread with several messages
+ * open used to multiply this limit by the number of them — enough of a burst to
+ * trip the provider's rate limit, at which point every image waits out a
+ * retry-after and the reader watches empty boxes for a minute.
+ */
+const inFlightInlineImages = { count: 0 };
+const inlineImageWaiters: Array<() => void> = [];
+
+async function acquireInlineImageSlot(): Promise<void> {
+  if (inFlightInlineImages.count < INLINE_IMAGE_CONCURRENCY) {
+    inFlightInlineImages.count += 1;
+    return;
+  }
+  // The slot is handed over already charged — see `releaseInlineImageSlot`.
+  await new Promise<void>((resolve) => inlineImageWaiters.push(resolve));
+}
+
+/**
+ * Hands the slot straight to the next waiter rather than giving it back.
+ *
+ * Decrementing here and letting the waiter charge itself again leaves the
+ * counter below the true figure for the microtask in between — long enough for
+ * the worker that just released to walk round its own loop, see room, and take
+ * a slot the waiter had already been promised. Five requests in flight against
+ * a cap of four, which the test below caught.
+ */
+function releaseInlineImageSlot(): void {
+  const next = inlineImageWaiters.shift();
+  if (next) {
+    next();
+    return;
+  }
+  inFlightInlineImages.count -= 1;
+}
+
+/**
+ * Fetches inline images, handing each one to `onImage` as it arrives.
  *
  * The message renders inside a sandboxed frame with no `allow-same-origin`, so
  * its document has a null origin — and a null-origin document sends no cookies.
@@ -246,13 +285,19 @@ async function fetchInlineImage(url: string): Promise<string | null> {
  * Fetching here, in the parent, is what makes them load: the request is a
  * normal same-site one with credentials, and the bytes travel into the frame as
  * data rather than as a URL it would have to authenticate for itself.
+ *
+ * One at a time, rather than a map returned at the end. Waiting for the whole
+ * set meant the slowest image decided when the first one appeared — on a
+ * rate-limited account, a signature block that stayed blank for a minute and
+ * then filled in all at once. The caller now gets each image the moment it is
+ * ready and puts it straight into the frame.
  */
 export async function loadInlineEmailImageData(
   sources: ReadonlyMap<string, string>,
+  onImage: (contentId: string, dataUrl: string) => void,
   signal?: AbortSignal
-): Promise<Map<string, string>> {
-  const resolved = new Map<string, string>();
-  if (sources.size === 0) return resolved;
+): Promise<void> {
+  if (sources.size === 0) return;
 
   // One fetch per distinct URL — a content id and a filename often point at the
   // same attachment.
@@ -261,12 +306,9 @@ export async function loadInlineEmailImageData(
     byUrl.set(url, [...(byUrl.get(url) ?? []), key]);
   }
 
-  // A few at a time rather than one after another. The budget was the reason
-  // this ran in sequence, and it still holds: the counter is read and charged
-  // together *after* the await, so workers cannot all pass one stale check.
-  // Bounded concurrency can overshoot by at most the images already in flight —
-  // three, each capped at MAX_INLINED_IMAGE_BYTES — which is worth 2s of a
-  // signature not appearing.
+  // The budget is read and charged together *after* the await, so workers
+  // cannot all pass one stale check. Bounded concurrency can overshoot by at
+  // most the images already in flight, each capped at MAX_INLINED_IMAGE_BYTES.
   const entries = [...byUrl];
   let nextIndex = 0;
   let inlinedBytes = 0;
@@ -277,17 +319,25 @@ export async function loadInlineEmailImageData(
       if (!entry) return;
 
       const [url, keys] = entry;
-      const dataUrl = await fetchInlineImage(url);
+      await acquireInlineImageSlot();
+      let dataUrl: string | null = null;
+      try {
+        dataUrl = await fetchInlineImage(url);
+      } finally {
+        releaseInlineImageSlot();
+      }
       if (!dataUrl || inlinedBytes >= MAX_INLINED_TOTAL_BYTES) continue;
+      // Checked again here and not only in the loop condition: the reader may
+      // have moved on during the await, and delivering into a frame that is no
+      // longer on screen is work nobody asked for.
+      if (signal?.aborted) return;
 
       inlinedBytes += dataUrl.length;
-      for (const key of keys) resolved.set(key, dataUrl);
+      for (const key of keys) onImage(key, dataUrl);
     }
   };
 
   await Promise.all(
     Array.from({ length: Math.min(INLINE_IMAGE_CONCURRENCY, entries.length) }, drain)
   );
-
-  return resolved;
 }
