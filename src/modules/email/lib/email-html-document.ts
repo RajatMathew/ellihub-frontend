@@ -28,6 +28,18 @@ import DOMPurify from 'dompurify';
 export const EMAIL_QUOTED_CONTENT_ATTRIBUTE = 'data-elli-quoted-content';
 export const EMAIL_QUOTE_TOGGLE_ATTRIBUTE = 'data-elli-quote-toggle';
 export const EMAIL_IFRAME_HEIGHT_MESSAGE = '__elliEmailHeight';
+/**
+ * Marks a message carrying one resolved inline image into the frame.
+ *
+ * Inline images used to arrive by rebuilding the whole `srcdoc` once every one
+ * of them had been fetched — so a signature block showed nothing at all until
+ * its slowest image landed, and reassigning `srcdoc` reloaded the frame and
+ * threw away the reader's scroll position with it. They are posted in one at a
+ * time now, and the frame drops each into the `img` already standing in for it.
+ */
+export const EMAIL_IFRAME_INLINE_IMAGE_MESSAGE = '__elliEmailInlineImage';
+/** Sent by the frame once it is listening, so the parent knows when to post. */
+export const EMAIL_IFRAME_READY_MESSAGE = '__elliEmailReady';
 
 const EMAIL_LINK_COLOR = '#2563eb';
 
@@ -85,11 +97,42 @@ const FRAME_SCRIPT = `
     });
   }
 
+  // Inline images, posted in by the parent as each one is fetched. The frame
+  // has a null origin and sends no cookies, so it cannot fetch an authenticated
+  // attachment itself — the bytes have to arrive as data.
+  window.addEventListener('message', function (event) {
+    if (event.source !== parent) return;
+    var data = event.data;
+    if (!data || data.${EMAIL_IFRAME_INLINE_IMAGE_MESSAGE} !== true) return;
+    if (typeof data.cid !== 'string' || typeof data.dataUrl !== 'string') return;
+    // Only ever a data: image. Anything else would be a URL this frame would
+    // have to authenticate for, which is the thing that does not work here.
+    if (data.dataUrl.slice(0, 11) !== 'data:image/') return;
+
+    // Compared rather than built into a selector: a content id is sender-
+    // controlled and can hold quotes and backslashes, and escaping those into
+    // an attribute selector inside a template literal inside a script string is
+    // three layers of escaping to get wrong. A scan has none.
+    var candidates = document.querySelectorAll('[data-inline-cid]');
+    var applied = 0;
+    for (var i = 0; i < candidates.length; i++) {
+      var element = candidates[i];
+      if (element.getAttribute('data-inline-cid') !== data.cid) continue;
+      if (element.tagName === 'SOURCE') element.setAttribute('srcset', data.dataUrl);
+      else element.setAttribute('src', data.dataUrl);
+      element.removeAttribute('data-missing-inline-image');
+      applied++;
+    }
+    if (applied) report();
+  });
+
   report();
   // Images and late layout change the height after first paint; re-measure
   // rather than guessing a settling delay.
   if (window.ResizeObserver) new ResizeObserver(report).observe(document.body);
   window.addEventListener('load', report);
+  // Last, so the parent only starts posting once the listener above is live.
+  parent.postMessage({ ${EMAIL_IFRAME_READY_MESSAGE}: true }, '*');
 })();
 `;
 
