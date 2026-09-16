@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { groupTasksByColumn, TASK_COLUMNS } from '../../src/modules/tasks/lib/task-board';
+
 /**
  * Proves the two things a real mailbox gives you, without needing one.
  *
@@ -268,6 +270,22 @@ async function setupMockApi(page: Page) {
         },
       ].filter((m) => m.subject.toLowerCase().includes(term) || term === 'a');
       await route.fulfill({ json: { success: true, data: all } });
+      return;
+    }
+
+    // The board arrives grouped, the way tasks-board-visual.spec.ts serves it.
+    if (method === 'GET' && path === '/api/v1/task/board') {
+      const grouped = groupTasksByColumn(MULTI_REFERENCE_TASKS, new Date());
+      const columns = Object.fromEntries(
+        TASK_COLUMNS.map((id) => [id, { tasks: grouped[id], total: grouped[id].length }])
+      );
+      await route.fulfill({
+        json: {
+          success: true,
+          message: 'OK',
+          data: { today: new Date().toISOString().slice(0, 10), columns, people: [] },
+        },
+      });
       return;
     }
 
