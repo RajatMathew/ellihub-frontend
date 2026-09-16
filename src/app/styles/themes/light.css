@@ -97,6 +97,47 @@
 
   /** Borders, inputs, and elevation **/
   --border: oklch(94% 0.004 286.32);
+
+  /** Mailbox surfaces (elli-ui#921)
+      Almost all of these point at a token the rest of the app already uses, so
+      the mailbox reads as part of ElliHub rather than a second product wearing
+      its colours. Only the four the app has no equivalent for are real values:
+      the reading pane's half-step off the page background, the unread blue,
+      the scrollbar thumb, and the AI gradient. **/
+  --mail-paper: var(--background);
+  --mail-card: var(--card);
+  --mail-line: var(--border);
+  --mail-hair: var(--rule-strong);
+  --mail-pane-line: var(--card-border);
+  --mail-ink: var(--foreground);
+  --mail-mid: var(--muted-foreground);
+  /* A half-step lighter than `mid`, so a row's participants and its preview
+     are two tones rather than one — the same split the design draws. */
+  --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
+  --mail-row-hover: var(--surface-hover);
+  --mail-row-edge: var(--card-border);
+  --mail-chip: var(--muted);
+  --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
+  --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
+  --mail-search: var(--muted);
+  --mail-search-clear: var(--card-border);
+  --mail-accent: var(--primary);
+  --mail-accent-hover: var(--primary-hover);
+  --mail-accent-foreground: var(--primary-foreground);
+  --mail-accent-soft: var(--accent);
+  --mail-accent-edge: var(--primary-alpha);
+  --mail-project-pill: var(--primary);
+  --mail-project-pill-hover: var(--primary-hover);
+  /* The reading pane sits a half-step off the page so the two columns read as
+     two surfaces without a heavier border between them. */
+  --mail-pane: #fbfbfc;
+  /* An unread subject is the one place in the mailbox that earns its own
+     colour; `primary` is already spent on the controls around it. */
+  --mail-unread: #075985;
+  --mail-scrollbar-thumb: #d4d4d8;
+  --mail-ai-from: #3e6fe0;
+  --mail-ai-mid: #5c8aee;
+  --mail-ai-to: #82aef5;
   --input-border: var(--color-zinc-300);
   --ring: var(--color-zinc-400);
   --radius: 0.5rem;

@@ -8,7 +8,7 @@ import {
   type Ref,
 } from 'react';
 
-import { Button } from '@/app/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import type {
   ConnectedEmailFolder,
   ConnectedEmailTag,
@@ -29,14 +29,21 @@ import {
   type EmailReferenceMarkerState,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
-import type { EmailReplyDraft } from '@/modules/email/components/email-reply-composer';
+import {
+  EmailReplyComposer,
+  type EmailReplyDraft,
+} from '@/modules/email/components/email-reply-composer';
 import type {
   EmailAttachment,
   EmailListItem,
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
+import { MailDetailsPanel } from '@/modules/email/components/mail-details-panel';
+import { MailReadingToolbar } from '@/modules/email/components/mail-reading-toolbar';
+import { MailReplyStrip } from '@/modules/email/components/mail-reply-strip';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
+import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
   isReplyableEmailMessage,
@@ -51,7 +58,7 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
 import { AddTaskPopover } from '@/modules/tasks/components/add-task-popover';
-import { ArrowLeft, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react';
+import { Info, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EmailReadingPaneProps {
@@ -164,6 +171,13 @@ export function EmailReadingPane({
     total: number | null;
   } | null>(null);
   const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
+  // The details card starts open; collapsing it is a per-reader preference for
+  // the session, not something worth persisting.
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
+  // Which conversation has been scrolled past its subject, rather than a bare
+  // boolean: switching conversations then clears it by itself, with no effect
+  // resetting state the render could have derived.
+  const [scrolledThreadId, setScrolledThreadId] = useState<string | null>(null);
   const loadEmailAttachment = useCallback(
     (
       messageId: string,
@@ -272,6 +286,16 @@ export function EmailReadingPane({
     onChange: saveReferenceMarkerState,
   });
 
+  // Only a thread nobody has filed yet gets a guess — see the hook.
+  const aiSuggestion = useEmailAiSuggestion({
+    accountId,
+    conversationKey,
+    eligible:
+      !referenceMarkerState.assignedTo &&
+      referenceMarkerState.references.length === 0 &&
+      referenceMarkerState.status === 'open',
+  });
+
   useEffect(() => {
     attachmentBlobCacheRef.current.clear();
   }, [accountId, email?.id]);
@@ -325,47 +349,107 @@ export function EmailReadingPane({
       ).length ?? 0),
     0
   );
+  const sendReply = (messageId: string, draft: EmailReplyDraft) => {
+    const mode = replyTarget?.mode ?? 'reply';
+    const send = mode === 'forward' ? onForward : onReply;
+    if (!send) return;
+    const targetMessage = messages.find((message) => message.id === messageId);
+    const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
+    const optimisticMessage: EmailThreadMessage = {
+      id: optimisticId,
+      senderName: mailboxAddress,
+      senderEmail: mailboxAddress,
+      recipientName:
+        mode === 'forward' ? draft.to : (targetMessage?.senderName ?? email.senderName),
+      recipientEmail:
+        mode === 'forward' ? draft.to : (targetMessage?.senderEmail ?? email.senderEmail),
+      sentAt: 'Sending...',
+      body: [draft.body],
+      deliveryStatus: 'sending',
+    };
+
+    setPendingReplies((current) => [
+      ...current,
+      { emailId: email.id, plainBody: draft.body, message: optimisticMessage },
+    ]);
+    setReplyTarget(null);
+    Promise.resolve(send(messageId, draft))
+      .then((sentMessage) => {
+        setPendingReplies((current) =>
+          markPendingReplySent(current, optimisticId, sentMessage ? sentMessage : null)
+        );
+      })
+      .catch(() => {
+        setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
+      });
+  };
+
+  const composerMessage = replyMessageId
+    ? (messages.find((message) => message.id === replyMessageId) ?? null)
+    : null;
+
+  const detailsPanel = accountId ? (
+    <MailDetailsPanel
+      categoryControl={referenceMarker.categoryControl}
+      referenceList={referenceMarker.referenceList}
+      referenceTrigger={referenceMarker.trigger}
+      otherTagPanel={referenceMarker.otherTagPanel}
+      isOtherSelected={referenceMarker.isOtherSelected}
+      assignee={
+        <EmailAssigneePicker
+          accountId={accountId}
+          assignee={referenceMarkerState.assignedTo ?? null}
+          disabled={saveClassificationMutation.isPending}
+          onChange={(assignee) => {
+            aiSuggestion.resolve();
+            saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee });
+          }}
+        />
+      }
+      court={
+        <EmailThreadStatusMarker
+          state={referenceMarkerState.status}
+          isSaving={saveClassificationMutation.isPending}
+          onChange={(status) => {
+            aiSuggestion.resolve();
+            saveThreadState(status);
+          }}
+        />
+      }
+      addTask={
+        (email.providerId ?? email.id) ? (
+          <AddTaskPopover
+            email={{
+              accountId,
+              providerId: email.providerId ?? email.id,
+              conversationKey: email.conversationKey,
+              threadId: email.threadId,
+              subject: email.subject,
+              fromEmail: email.senderEmail,
+            }}
+          />
+        ) : null
+      }
+      ai={aiSuggestion}
+      collapsed={detailsCollapsed}
+      onToggleCollapsed={() => setDetailsCollapsed((collapsed) => !collapsed)}
+    />
+  ) : null;
+
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background" aria-label="Email">
-      <div className="group flex min-h-12 shrink-0 items-center gap-1.5 bg-background px-3">
-        {onBack && (
-          <Button
-            type="button"
-            variant="ghost"
-            mode="icon"
-            size="icon"
-            className="size-10 lg:hidden"
-            aria-label="Back to email list"
-            onClick={onBack}
-          >
-            <ArrowLeft aria-hidden="true" className="size-4" />
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          mode="icon"
-          size="icon"
-          className="size-10 sm:size-9"
-          disabled={!onPrevious}
-          aria-label="Previous email"
-          onClick={onPrevious}
-        >
-          <ChevronLeft aria-hidden="true" className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          mode="icon"
-          size="icon"
-          className="size-10 sm:size-9"
-          disabled={!onNext}
-          aria-label="Next email"
-          onClick={onNext}
-        >
-          <ChevronRight aria-hidden="true" className="size-4" />
-        </Button>
-        <div className="ml-auto flex items-center gap-2">
+    <section
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-mail-pane"
+      aria-label="Email"
+    >
+      <MailReadingToolbar
+        subject={email.subject}
+        scrolled={scrolledThreadId === email.id}
+        onBack={onBack}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        onOpenAgent={onOpenAgent}
+        agentTriggerRef={agentTriggerRef}
+        shortcuts={
           <EmailReadingPaneShortcuts
             mailboxActionKey={isUnarchiveAction ? 'u' : 'a'}
             mailboxActionLabel={isUnarchiveAction ? 'unarchive' : 'archive'}
@@ -383,33 +467,30 @@ export function EmailReadingPane({
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
           />
-          {onOpenAgent && (
-            <Button
-              type="button"
-              ref={agentTriggerRef}
-              variant="outline"
-              mode="icon"
-              size="icon"
-              className="size-10 bg-background p-1.5 sm:size-9"
-              aria-label="Open or close Elliot Agent"
-              title="Open or close Elliot Agent (E)"
-              onClick={onOpenAgent}
-            >
-              <img
-                src="/favicon/apple-touch-icon.png"
-                alt=""
-                aria-hidden="true"
-                className="size-7 rounded-sm object-contain sm:size-6"
-              />
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
-      <div className="kt-scrollable-y-auto min-h-0 flex-1 px-4 py-5 sm:px-6">
-        <div className="mx-auto max-w-4xl">
-          <header className="mb-5 border-b border-border pb-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <div
+        className="mail-pane-scroll kt-scrollable-y-auto min-h-0 flex-1 pt-[54px]"
+        onScroll={(event) =>
+          setScrolledThreadId(event.currentTarget.scrollTop > 28 ? email.id : null)
+        }
+      >
+        {/*
+          A CONTAINER query, not a viewport one: the pane sits inside the app
+          shell next to the nav sidebar and the conversation list, so how much
+          room it has is nothing like how wide the window is. Below ~1200px of
+          its own width this is a plain block and the three pieces stack in
+          source order — subject, details, then the thread. Above it there is
+          room to put the details card beside the messages rather than on top of
+          them, so scanning who owns a thread no longer means scrolling past
+          every message first. The card shares a grid row with the thread body
+          rather than the head, which is what lines its top edge up with the
+          reply strip instead of the subject.
+        */}
+        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[1200px]:grid @min-[1200px]:max-w-[1520px] @min-[1200px]:grid-cols-[minmax(0,1fr)_min(34%,440px)] @min-[1200px]:grid-rows-[auto_1fr] @min-[1200px]:gap-x-8">
+          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-1">
+            <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
               </span>
@@ -419,147 +500,103 @@ export function EmailReadingPane({
                   {totalAttachments}
                 </span>
               )}
-              {email.category && (
-                <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
-                  {email.category}
-                </span>
-              )}
-            </div>
-            <h1 className="mt-3 min-w-0 text-xl font-semibold leading-tight tracking-tight text-foreground">
+              {email.category && <span className="text-mail-mid">{email.category}</span>}
+            </p>
+            <h1 className="min-w-0 font-serif text-[29px] font-normal leading-[1.22] tracking-[-0.014em] text-mail-ink [overflow-wrap:anywhere]">
               {email.subject}
             </h1>
-            <div className="mt-2.5 flex flex-wrap items-center justify-end gap-1.5">
-              <EmailAssigneePicker
-                accountId={accountId}
-                assignee={referenceMarkerState.assignedTo ?? null}
-                disabled={saveClassificationMutation.isPending}
-                onChange={(assignee) =>
-                  saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee })
-                }
-              />
-              <EmailThreadStatusMarker
-                state={referenceMarkerState.status}
-                isSaving={saveClassificationMutation.isPending}
-                onChange={saveThreadState}
-              />
-              {accountId && referenceMarker.trigger}
-              {accountId && (email.providerId ?? email.id) ? (
-                <AddTaskPopover
-                  email={{
-                    accountId,
-                    providerId: email.providerId ?? email.id,
-                    conversationKey: email.conversationKey,
-                    threadId: email.threadId,
-                    subject: email.subject,
-                    fromEmail: email.senderEmail,
-                  }}
-                />
-              ) : null}
-            </div>
-            {accountId && (
-              <section className="mt-3 min-w-0" aria-label="References">
-                {referenceMarker.chips}
-                {referenceMarker.otherTagPanel}
-              </section>
-            )}
-          </header>
-
-          <div className="space-y-4">
-            {meetingMessage?.meetingEvent && (
-              <EmailMeetingEventCard
-                key={meetingMessage.meetingEvent.id}
-                event={meetingMessage.meetingEvent}
-                messageId={meetingMessage.id}
-                isResponding={isRespondingToMeeting}
-                isUpdating={isUpdatingMeeting}
-                isCancelling={isCancellingMeeting}
-                onRespond={onRespondToMeeting}
-                onUpdate={onUpdateMeeting}
-                onCancel={onCancelMeeting}
-              />
-            )}
-            {messages.map((message, index) => (
-              <EmailThreadMessageCard
-                key={message.id}
-                message={message}
-                inlineImageBaseUrl={inlineImageBaseUrl}
-                singleMessage={messages.length === 1}
-                isBodyPending={isShowingPreviewStandIn}
-                latest={index === messages.length - 1}
-                accountId={accountId}
-                onComposeTo={onComposeTo}
-                onSearchSender={onSearchSender}
-                replyOpen={replyMessageId === message.id}
-                replyMode={replyTarget?.mode}
-                isSendingReply={isSendingReply}
-                onReply={(messageId) =>
-                  setReplyTarget({ emailId: email.id, messageId, mode: 'reply' })
-                }
-                onForward={
-                  onForward
-                    ? (messageId) =>
-                        setReplyTarget({ emailId: email.id, messageId, mode: 'forward' })
-                    : undefined
-                }
-                onSendReply={(messageId, draft) => {
-                  const mode = replyTarget?.mode ?? 'reply';
-                  const send = mode === 'forward' ? onForward : onReply;
-                  if (!send) return;
-                  const targetMessage = messages.find((message) => message.id === messageId);
-                  const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
-                  const optimisticMessage: EmailThreadMessage = {
-                    id: optimisticId,
-                    senderName: mailboxAddress,
-                    senderEmail: mailboxAddress,
-                    recipientName:
-                      mode === 'forward'
-                        ? draft.to
-                        : (targetMessage?.senderName ?? email.senderName),
-                    recipientEmail:
-                      mode === 'forward'
-                        ? draft.to
-                        : (targetMessage?.senderEmail ?? email.senderEmail),
-                    sentAt: 'Sending...',
-                    body: [draft.body],
-                    deliveryStatus: 'sending',
-                  };
-
-                  setPendingReplies((current) => [
-                    ...current,
-                    {
-                      emailId: email.id,
-                      plainBody: draft.body,
-                      message: optimisticMessage,
-                    },
-                  ]);
-                  setReplyTarget(null);
-                  Promise.resolve(send(messageId, draft))
-                    .then((sentMessage) => {
-                      setPendingReplies((current) =>
-                        markPendingReplySent(
-                          current,
-                          optimisticId,
-                          sentMessage ? sentMessage : null
-                        )
-                      );
-                    })
-                    .catch(() => {
-                      setPendingReplies((current) => markPendingReplyFailed(current, optimisticId));
-                    });
-                }}
-                onCancelReply={() => setReplyTarget(null)}
-                onOpenAttachment={
-                  accountId
-                    ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
-                    : undefined
-                }
-                onLoadAttachment={accountId ? loadEmailAttachment : undefined}
-                saveToFilesRootFolderId={savedRootFolderId}
-                saveToFilesRootLabel={savedRootLabel}
-              />
-            ))}
           </div>
-        </div>
+
+          {detailsPanel && (
+            <div className="mb-5 mt-4 min-w-0 @min-[1200px]:sticky @min-[1200px]:top-0 @min-[1200px]:col-start-2 @min-[1200px]:row-start-2 @min-[1200px]:mb-0 @min-[1200px]:mt-0">
+              {detailsPanel}
+            </div>
+          )}
+
+          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-2 @min-[1200px]:mt-5">
+            {composerMessage ? (
+              <div className="mb-3">
+                <EmailReplyComposer
+                  key={`${composerMessage.id}:${replyTarget?.mode ?? 'reply'}`}
+                  message={composerMessage}
+                  mode={replyTarget?.mode}
+                  isSending={isSendingReply}
+                  onSend={(draft) => sendReply(composerMessage.id, draft)}
+                  onCancel={() => setReplyTarget(null)}
+                />
+              </div>
+            ) : (
+              latestReplyableMessage &&
+              onReply && (
+                <MailReplyStrip
+                  message={latestReplyableMessage}
+                  canForward={Boolean(onForward)}
+                  onReply={(messageId) =>
+                    setReplyTarget({ emailId: email.id, messageId, mode: 'reply' })
+                  }
+                  onForward={(messageId) =>
+                    setReplyTarget({ emailId: email.id, messageId, mode: 'forward' })
+                  }
+                />
+              )
+            )}
+
+            {meetingMessage?.meetingEvent && (
+              <div className="mb-3">
+                <EmailMeetingEventCard
+                  key={meetingMessage.meetingEvent.id}
+                  event={meetingMessage.meetingEvent}
+                  messageId={meetingMessage.id}
+                  isResponding={isRespondingToMeeting}
+                  isUpdating={isUpdatingMeeting}
+                  isCancelling={isCancellingMeeting}
+                  onRespond={onRespondToMeeting}
+                  onUpdate={onUpdateMeeting}
+                  onCancel={onCancelMeeting}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {messages.map((message, index) => (
+                <EmailThreadMessageCard
+                  key={message.id}
+                  message={message}
+                  inlineImageBaseUrl={inlineImageBaseUrl}
+                  singleMessage={messages.length === 1}
+                  isBodyPending={isShowingPreviewStandIn}
+                  latest={index === messages.length - 1}
+                  accountId={accountId}
+                  onComposeTo={onComposeTo}
+                  onSearchSender={onSearchSender}
+                  // Every reply opens in the one composer above the thread, so
+                  // a card never grows a second one of its own.
+                  replyOpen={false}
+                  isSendingReply={isSendingReply}
+                  onReply={(messageId) =>
+                    setReplyTarget({ emailId: email.id, messageId, mode: 'reply' })
+                  }
+                  onForward={
+                    onForward
+                      ? (messageId) =>
+                          setReplyTarget({ emailId: email.id, messageId, mode: 'forward' })
+                      : undefined
+                  }
+                  onSendReply={sendReply}
+                  onCancelReply={() => setReplyTarget(null)}
+                  onOpenAttachment={
+                    accountId
+                      ? (attachment) => setPreviewAttachment({ messageId: message.id, attachment })
+                      : undefined
+                  }
+                  onLoadAttachment={accountId ? loadEmailAttachment : undefined}
+                  saveToFilesRootFolderId={savedRootFolderId}
+                  saveToFilesRootLabel={savedRootLabel}
+                />
+              ))}
+            </div>
+          </div>
+        </article>
       </div>
 
       <FilePreviewDialog
@@ -660,44 +697,44 @@ function EmailReadingPaneShortcuts({
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, []);
 
+  const shortcuts: Array<[string, string]> = [
+    ['↑↓', 'navigate'],
+    ['R', 'reply'],
+    [mailboxActionKey.toUpperCase(), mailboxActionLabel],
+    ...(onDelete ? ([['D', 'delete']] as Array<[string, string]>) : []),
+    ...(agentActionKey
+      ? ([[agentActionKey.toUpperCase(), 'Elliot']] as Array<[string, string]>)
+      : []),
+  ];
+
+  // An icon with the list behind it, rather than the list itself. The strip of
+  // kbd chips it replaced was six words wide and sat between the subject and
+  // the agent button, which is a lot of toolbar to spend on something a reader
+  // needs once (elli-ui#921).
   return (
-    <span
-      className="hidden items-center gap-1.5 whitespace-nowrap font-mono text-xs text-muted-foreground opacity-0 motion-safe:transition-opacity motion-safe:duration-150 group-hover:opacity-100 group-focus-within:opacity-100 lg:flex"
-      aria-label="Keyboard shortcuts"
-    >
-      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
-        ↑↓
-      </kbd>
-      <span>navigate</span>
-      <span aria-hidden="true">·</span>
-      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
-        R
-      </kbd>
-      <span>reply</span>
-      <span aria-hidden="true">·</span>
-      <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
-        {mailboxActionKey.toUpperCase()}
-      </kbd>
-      <span>{mailboxActionLabel}</span>
-      {onDelete ? (
-        <>
-          <span aria-hidden="true">·</span>
-          <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
-            D
-          </kbd>
-          <span>delete</span>
-        </>
-      ) : null}
-      {agentActionKey ? (
-        <>
-          <span aria-hidden="true">·</span>
-          <kbd className="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-foreground">
-            {agentActionKey.toUpperCase()}
-          </kbd>
-          <span>Elliot</span>
-        </>
-      ) : null}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-lg text-mail-muted hover:bg-mail-card hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+          aria-label="Keyboard shortcuts"
+        >
+          <Info aria-hidden="true" className="size-4" strokeWidth={1.6} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="end" sideOffset={8} className="p-2">
+        <span className="flex flex-col gap-1.5">
+          {shortcuts.map(([key, label]) => (
+            <span key={label} className="flex items-center gap-2 text-xs">
+              <kbd className="min-w-7 rounded-sm border border-mail-pane-line bg-mail-card px-1.5 py-0.5 text-center font-mono text-[10.5px] text-mail-mid">
+                {key}
+              </kbd>
+              <span>{label}</span>
+            </span>
+          ))}
+        </span>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

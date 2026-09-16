@@ -1,8 +1,5 @@
-import type {
-  EmailListFilter,
-  EmailStatusFilter,
-} from '@/modules/email/components/email-mail-toolbar';
-import type { EmailWorkspaceView } from '@/modules/email/components/email-workspace-header';
+import type { EmailWorkspaceView } from '@/modules/email/components/mail-account-bar';
+import type { EmailListFilter, EmailStatusFilter } from '@/modules/email/constants/email-filters';
 
 /**
  * The single source of truth for how the mailbox's view/filter state is encoded
