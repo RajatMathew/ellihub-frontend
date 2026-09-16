@@ -243,7 +243,24 @@ const emailThreadMessageSchema = z.object({
   meetingResponse: emailMeetingResponseSchema.optional(),
   meetingEvent: emailMeetingEventSchema.optional(),
   body: z.array(z.string()),
+  /**
+   * The server left this message's body out because the conversation was too
+   * large to send whole — the card fetches it when the reader expands it. Only
+   * ever set on the outliers: 2.5MB and 9.3MB threads, against a 296kB p95.
+   * See `elli-core/src/modules/email/internal/conversation-bodies.ts`.
+   */
+  bodyPending: z.boolean().optional(),
+  /**
+   * The provider's own snippet, sent in place of a deferred body so the
+   * collapsed card still has a line to show.
+   */
+  preview: z.string().optional(),
   attachments: z.array(emailAttachmentSchema).optional(),
+});
+
+const emailMessageBodySchema = z.object({
+  id: z.string(),
+  body: z.array(z.string()),
 });
 
 const emailReplyResponseSchema = z.object({
@@ -652,6 +669,15 @@ export const emailApi = {
       { params: conversationKey ? { conversationKey } : undefined }
     );
     return z.array(emailThreadMessageSchema).parse(unwrapData(res.data, 'messages'));
+  },
+
+  /**
+   * The body of one message a large conversation deferred. Served from the
+   * server's own cache, so this is a local read, not a provider round trip.
+   */
+  async getMessageBody(accountId: string, messageId: string): Promise<string[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/messages/${messageId}/body`);
+    return emailMessageBodySchema.parse(unwrapData(res.data)).body;
   },
 
   async sendMessage(payload: SendConnectedEmailPayload): Promise<void> {

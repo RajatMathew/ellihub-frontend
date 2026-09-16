@@ -18,13 +18,20 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
+import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailDate } from '@/modules/email/lib/email-date';
+import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import { ChevronUp, Copy, FolderPlus, Forward, Mail, Reply, Search } from 'lucide-react';
 import { toast } from 'sonner';
+
+/** Stable identities for the two "nothing here" cases, so renders that change
+ *  neither do not invalidate everything derived from them. */
+const NO_ATTACHMENTS: EmailAttachment[] = [];
+const EMPTY_BODY: string[] = [];
 
 interface EmailThreadMessageCardProps {
   message: EmailThreadMessage;
@@ -82,17 +89,33 @@ export function EmailThreadMessageCard({
   // newest message in the thread", so every conversation opens with exactly one
   // message readable — matching single-message threads, which are always open.
   const [manuallyExpanded, setManuallyExpanded] = useState<boolean | null>(null);
-  const attachments = message.attachments ?? [];
-  const visibleAttachments = attachments.filter(
-    (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
-  );
+  // A shared constant rather than a fresh `[]`, so a message with no
+  // attachments keeps the same identity across renders. `EmailHtmlBody` already
+  // defends itself against the churn by keying on attachment content, so this is
+  // not load-bearing — it just stops the derivations below being recomputed for
+  // nothing.
+  const attachments = message.attachments ?? NO_ATTACHMENTS;
   // Attachments must not lock a thread card open: every message in a
   // conversation remains collapsible unless it is the only message displayed.
   const isAlwaysExpanded = singleMessage;
   const isExpanded =
     isAlwaysExpanded || Boolean(replyOpen) || (manuallyExpanded ?? Boolean(latest));
   const canCollapse = !isAlwaysExpanded && !replyOpen;
-  const hasBodyContent = hasVisibleEmailBodyContent(message.body);
+  // A conversation too large to send whole leaves the older messages' bodies
+  // behind; this is the fetch for the one the reader just opened. Collapsed
+  // cards ask for nothing, which is what keeps a 76-message thread at 0.57MB
+  // instead of 9.3MB.
+  const deferredBody = useEmailMessageBodyQuery(
+    accountId,
+    message.id,
+    isExpanded && message.bodyPending === true
+  );
+  const body = message.bodyPending ? (deferredBody.data ?? EMPTY_BODY) : message.body;
+  const isDeferredBodyPending = message.bodyPending === true && !deferredBody.data;
+  const visibleAttachments = attachments.filter(
+    (attachment) => !isReferencedInlineEmailAttachment(attachment, body)
+  );
+  const hasBodyContent = hasVisibleEmailBodyContent(body);
   const isSingleAttachmentOnly =
     visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
   // Elli's own tags and the mailbox's own categories are different things, so
@@ -151,7 +174,7 @@ export function EmailThreadMessageCard({
               </div>
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
-              {getMessagePreview(message.body)}
+              {getMessagePreview(body, message.preview)}
             </p>
           </div>
         </button>
@@ -251,7 +274,7 @@ export function EmailThreadMessageCard({
           width (padding on top of a fixed-width email design was clipping
           content at the right edge). Non-body children add their own px-4. */}
       <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
-        {isBodyPending ? (
+        {isBodyPending || isDeferredBodyPending ? (
           /* The preview is plain text — a flattened excerpt that still carries
              the quoted chain's `-----Original Message-----` rules. Rendered as
              a body it showed as a row of dashes for the split second before
@@ -266,7 +289,7 @@ export function EmailThreadMessageCard({
         ) : (
           hasBodyContent && (
             <EmailMessageBody
-              body={message.body}
+              body={body}
               attachments={attachments}
               inlineImageBaseUrl={inlineImageBaseUrl}
             />
@@ -460,24 +483,6 @@ function MessageIconAction({
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
   );
-}
-
-function getMessagePreview(body: string[]) {
-  const preview = body
-    .join(' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;|&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return preview || 'No message content';
 }
 
 function EmailAttachmentChip({
