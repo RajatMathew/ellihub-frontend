@@ -104,7 +104,7 @@ export function TaskCardEmailSources({ references }: { references: TaskEmailRefe
           onPointerDown={(event) => event.stopPropagation()}
           aria-label={label}
           title={label}
-          className="size-7 bg-muted/60 text-muted-foreground hover:text-foreground"
+          className="size-7 text-muted-foreground hover:text-foreground"
         >
           <Mail aria-hidden="true" />
         </Button>

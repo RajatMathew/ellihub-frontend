@@ -48,8 +48,10 @@ export function TaskAssigneeAvatar({
           'font-semibold uppercase',
           size === 'sm' ? 'text-[0.625rem]' : 'text-xs',
           // Unassigned has no name to colour from, and should not look like a
-          // person either, so it keeps the theme's own grey.
-          !name && 'bg-muted text-muted-foreground'
+          // person either: an empty slot is a fine dashed ring in the theme's
+          // grey, not a filled chip, so it reads as a place rather than a person.
+          !name &&
+            'border border-dashed border-muted-foreground/50 bg-background text-muted-foreground'
         )}
         // Exact Outlook avatar colours — see outlook-avatar.ts. Inline because
         // they are Microsoft's values, deliberately not design-system tokens.

@@ -6,6 +6,7 @@ import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/lib/utils';
 import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
 import { TaskCardEmailSources } from '@/modules/tasks/components/task-card-email-sources';
+import { TaskCompletionRing } from '@/modules/tasks/components/task-completion-ring';
 import { TaskCourtToggle } from '@/modules/tasks/components/task-court-toggle';
 import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
 import {
@@ -134,14 +135,29 @@ export function TaskCard({
               // The beat, as the ticket draws it: the ring stays dashed and goes
               // green over a pale fill, so it reads as "being ticked" rather than
               // as the settled done state, which is a solid fill and a tick.
+              // While open the border is transparent: TaskCompletionRing below
+              // draws the dashes in its place.
               isCompleting &&
-                'border-dashed border-success text-transparent data-[state=checked]:border-success data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
+                'border-transparent text-transparent data-[state=checked]:border-transparent data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
                   (prefersReducedMotion() ? '' : ' animate-task-completing'),
-              !isDone &&
-                !isCompleting &&
-                'border-dashed border-muted-foreground/40 hover:border-success'
+              !isDone && !isCompleting && 'border-transparent'
             )}
           />
+
+          {/* Seven dashes, not CSS's dozen. A sibling rather than a child so the
+              checkbox's own svg sizing cannot shrink it; it follows the peer for
+              hover and focus the way the ghost tick below does, and scales with
+              the beat by wearing the same animation. */}
+          {!isDone ? (
+            <TaskCompletionRing
+              className={cn(
+                'transition-colors',
+                isCompleting
+                  ? 'text-success' + (prefersReducedMotion() ? '' : ' animate-task-completing')
+                  : 'text-muted-foreground/40 peer-hover:text-success peer-focus-visible:text-success'
+              )}
+            />
+          ) : null}
 
           {/* A ghost of the tick, shown while the circle is pointed at or
               tabbed to. An empty dashed ring does not say what it does; the mark
