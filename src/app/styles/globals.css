@@ -195,8 +195,9 @@
 
   /* The completion beat. Ticking a task used to be the card vanishing, which
      reads as "gone" rather than "done", so the circle fills and swells for a
-     moment first and the card leaves after it. See elli-ui#829. */
-  --animate-task-completing: task-completing 200ms ease-out;
+     moment first and the card leaves after it. See elli-ui#829. Its length is
+     TASK_COMPLETION_BEAT_MS in tasks.constants.ts; keep the two equal. */
+  --animate-task-completing: task-completing 100ms ease-out;
 
   @keyframes task-completing {
     from {
