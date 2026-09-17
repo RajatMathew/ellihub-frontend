@@ -88,7 +88,7 @@ export function EmailAssigneePicker({
             <button
               type="button"
               className={cn(
-                'inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-[12.5px] font-medium',
+                'inline-flex min-h-7 cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[12px] font-medium',
                 'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
                 'motion-safe:transition-colors motion-safe:duration-100',
                 // The open trigger takes a dark edge so it reads as the thing
@@ -105,14 +105,14 @@ export function EmailAssigneePicker({
                   <EmailAssigneeAvatar
                     accountId={accountId}
                     assignee={assignee}
-                    className="size-5 text-[9px]"
+                    className="size-4 text-[8px]"
                   />
                   <span className="max-w-28 truncate">{assignee.name.split(' ')[0]}</span>
-                  <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-mail-muted" />
+                  <ChevronDown aria-hidden="true" className="size-3 shrink-0 text-mail-muted" />
                 </>
               ) : (
                 <>
-                  <UserPlus aria-hidden="true" className="size-3.5" />
+                  <UserPlus aria-hidden="true" className="size-3" />
                   Assign
                 </>
               )}

@@ -225,7 +225,7 @@ export function EmailThreadStatusMarker({
         <button
           type="button"
           className={cn(
-            'inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12.5px] font-medium',
+            'inline-flex min-h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-[12px] font-medium',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
             'motion-safe:transition-colors motion-safe:duration-100',
             isOpen
@@ -236,12 +236,12 @@ export function EmailThreadStatusMarker({
           disabled={isSaving}
         >
           {isOpen ? (
-            <CircleDotDashed aria-hidden="true" className="size-3.5" />
+            <CircleDotDashed aria-hidden="true" className="size-3" />
           ) : (
-            <CheckCircle2 aria-hidden="true" className="size-3.5" />
+            <CheckCircle2 aria-hidden="true" className="size-3" />
           )}
           {EMAIL_THREAD_STATE_LABELS[state]}
-          <ChevronDown aria-hidden="true" className="size-3 opacity-60" />
+          <ChevronDown aria-hidden="true" className="size-2.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={6} className="w-48 rounded-xl p-1.5">

@@ -63,6 +63,10 @@ export function useEmailReferenceMarker({
 
   const marker = useEntityReferenceMarker({
     renderTrigger,
+    // Other clears the assignee, the court and the thread's tasks as well as
+    // the linked records, so the thread always gets asked — not only when it
+    // happens to have something linked.
+    confirmOtherSwitch: true,
     scopeId: accountId,
     references: state.references,
     onChange: (references) => onChange({ ...state, references }),

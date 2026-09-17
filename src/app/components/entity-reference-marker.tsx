@@ -42,6 +42,14 @@ export type UseEntityReferenceMarkerConfig = {
    * the heaviest thing in a panel that is otherwise all text (elli-ui#921).
    */
   renderTrigger?: (state: { disabled: boolean }) => React.ReactNode;
+  /**
+   * Confirm the Project → Other switch even when nothing is linked yet.
+   *
+   * By default the confirmation only appears when there are references to
+   * lose. The mailbox clears the assignee, the court and the thread's tasks
+   * along with them — none of which this hook can see — so it asks every time.
+   */
+  confirmOtherSwitch?: boolean;
 };
 
 /**
@@ -61,6 +69,7 @@ export function useEntityReferenceMarker({
   isSaving,
   otherModeExtra,
   renderTrigger,
+  confirmOtherSwitch = false,
 }: UseEntityReferenceMarkerConfig) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<EntityReferenceFilterType>('all');
@@ -150,7 +159,7 @@ export function useEntityReferenceMarker({
     if (mode === 'other') {
       // Switching away from Project discards every project/RFQ/PO/etc
       // reference — confirm first when there's actually something to lose.
-      if (references.length > 0) {
+      if (references.length > 0 || confirmOtherSwitch) {
         setPendingOtherSwitch(true);
         return;
       }
@@ -233,8 +242,8 @@ export function useEntityReferenceMarker({
         open={pendingOtherSwitch}
         onOpenChange={setPendingOtherSwitch}
         title="Switch to Other?"
-        description="Are you sure you want to switch? Your project references will be deleted."
-        confirmLabel="Switch"
+        description="Are you sure? Your linked items, assignee, court, tasks etc will be cleared."
+        confirmLabel="Switch and clear"
         variant="destructive"
         onConfirm={() => {
           switchToOther();

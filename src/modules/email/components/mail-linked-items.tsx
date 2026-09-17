@@ -46,12 +46,12 @@ export function MailLinkedItems({
   return (
     <div className="divide-y divide-mail-hair">
       {groups.map((group) => (
-        <div key={group.type} className="flex min-w-0 items-start gap-3 py-2.5">
-          <span className="flex w-[68px] shrink-0 items-center gap-1.5 pt-1 text-[10.5px] font-bold tracking-[0.03em] text-mail-mid">
+        <div key={group.type} className="flex min-w-0 items-start gap-3 py-3">
+          <span className="flex w-[68px] shrink-0 items-center gap-1.5 pt-1.5 text-[10.5px] font-bold tracking-[0.03em] text-mail-mid">
             <span aria-hidden="true" className={cn('size-1.5 rounded-full', group.dot)} />
             {group.label}
           </span>
-          <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             {group.references.map((reference) => (
               <LinkedItemChip
                 key={getReferenceIdentity(reference)}
@@ -91,7 +91,7 @@ function LinkedItemChip({
     <HoverCard openDelay={200} closeDelay={80}>
       <HoverCardTrigger asChild>
         <span className="group/linked -mx-1.5 flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-mail-paper">
-          <span className="min-w-0 truncate text-xs text-mail-mid">
+          <span className="min-w-0 truncate text-[13px] text-mail-mid">
             <span className="font-bold text-mail-ink">{code}</span>
             {name && (
               <>

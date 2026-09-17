@@ -56,7 +56,7 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
       <PopoverContent
         align="end"
         collisionPadding={16}
-        className="w-[19rem] overflow-hidden rounded-xl border-mail-line p-0"
+        className="w-[21.5rem] overflow-hidden rounded-xl border-mail-line p-0"
       >
         {/* Keyed by open so each visit starts clean without a reset effect. */}
         {open ? <AddTaskForm key="open" email={email} onDone={() => setOpen(false)} /> : null}
@@ -124,12 +124,12 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         value={text}
         placeholder="What needs doing?"
         autoFocus
-        rows={2}
-        className="w-full resize-none border-0 bg-transparent px-3.5 pb-2 pt-3.5 text-[13.5px] leading-snug text-mail-ink outline-hidden placeholder:text-mail-muted"
+        rows={3}
+        className="w-full resize-none border-0 bg-transparent px-4 pb-2.5 pt-4 text-[14px] leading-relaxed text-mail-ink outline-hidden placeholder:text-mail-muted"
         onChange={(event) => setText(event.target.value)}
       />
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3 pb-2.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
         {PRIORITIES.map((level) => (
           <button
             key={level}
@@ -137,7 +137,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
             aria-pressed={priority === level}
             aria-label={`Priority ${level}`}
             className={cn(
-              'flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold',
+              'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
               PRIORITY_TEXT[level],
               priority === level ? 'bg-mail-chip-count' : 'hover:bg-mail-chip'
@@ -149,7 +149,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           </button>
         ))}
 
-        <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-mail-hair" />
+        <span aria-hidden="true" className="mx-1 h-5 w-px bg-mail-hair" />
 
         <label className="sr-only" htmlFor="mail-add-task-due">
           Due date
@@ -159,19 +159,19 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           type="date"
           value={dueDate}
           className={cn(
-            'cursor-pointer rounded-md px-2 py-1 text-[11.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+            'cursor-pointer rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
             dueDate ? 'bg-mail-chip-count text-mail-ink' : 'text-mail-muted hover:bg-mail-chip'
           )}
           onChange={(event) => setDueDate(event.target.value)}
         />
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3 py-2">
-        <span className="me-auto text-[11px] text-mail-muted">&#8984; + Enter</span>
+      <div className="flex items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3.5 py-2.5">
+        <span className="me-auto text-[11.5px] text-mail-muted">&#8984; + Enter</span>
         <button
           type="submit"
           disabled={!canAdd}
-          className="cursor-pointer rounded-md bg-mail-accent px-3 py-1.5 text-[12.5px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-40"
+          className="cursor-pointer rounded-md bg-mail-accent px-3.5 py-2 text-[13px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-40"
         >
           {createTask.isPending ? 'Adding…' : 'Add task'}
         </button>
