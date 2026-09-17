@@ -92,7 +92,12 @@ export function EmailReplyComposer({
     <form
       className={cn(
         'flex min-w-0 flex-col overflow-hidden bg-mail-card',
-        isFullScreen ? 'fixed inset-0 z-50 rounded-none' : 'rounded-xl border border-mail-pane-line'
+        // Absolute, not fixed: full screen means the reading pane, not the
+        // window. Covering the whole app hid the list and the nav for the sake
+        // of a wider text box, which is not what anyone meant by it.
+        isFullScreen
+          ? 'absolute inset-0 z-30 rounded-none border-0'
+          : 'rounded-xl border border-mail-pane-line'
       )}
       aria-label={
         isForward ? `Forward message from ${message.senderName}` : `Reply to ${recipientLabel}`

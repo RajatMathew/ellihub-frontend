@@ -14,7 +14,7 @@ import { cn } from '@/app/lib/utils';
 import type { EmailThreadAssigneeInfo } from '@/modules/email/components/email-reference-marker-storage';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailThreadAssigneesQuery } from '@/modules/email/hooks';
-import { Check, Loader2, UserPlus, UserX } from 'lucide-react';
+import { Check, ChevronDown, Loader2, UserPlus, UserX } from 'lucide-react';
 
 export function EmailAssigneeAvatar({
   assignee,
@@ -88,8 +88,14 @@ export function EmailAssigneePicker({
             <button
               type="button"
               className={cn(
-                'inline-flex min-h-7 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-muted/30 px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
-                assignee && 'text-foreground'
+                'inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1 text-[12.5px] font-medium',
+                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
+                'motion-safe:transition-colors motion-safe:duration-100',
+                // The open trigger takes a dark edge so it reads as the thing
+                // the list below belongs to, rather than floating loose.
+                open
+                  ? 'border-mail-ink bg-mail-card text-mail-ink'
+                  : 'border-mail-pane-line bg-mail-card text-mail-mid hover:border-mail-row-edge hover:text-mail-ink'
               )}
               aria-label={assignee ? `Assigned to ${assignee.name}` : 'Assign this email'}
               disabled={disabled}
@@ -99,13 +105,14 @@ export function EmailAssigneePicker({
                   <EmailAssigneeAvatar
                     accountId={accountId}
                     assignee={assignee}
-                    className="size-4 text-[8px]"
+                    className="size-5 text-[9px]"
                   />
-                  <span className="max-w-28 truncate">{assignee.name}</span>
+                  <span className="max-w-28 truncate">{assignee.name.split(' ')[0]}</span>
+                  <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-mail-muted" />
                 </>
               ) : (
                 <>
-                  <UserPlus aria-hidden="true" className="size-3" />
+                  <UserPlus aria-hidden="true" className="size-3.5" />
                   Assign
                 </>
               )}
@@ -116,7 +123,12 @@ export function EmailAssigneePicker({
           {assignee ? `Assigned to ${assignee.name}` : 'Assign this email to a teammate'}
         </TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" side="bottom" sideOffset={8} className="w-56 p-1">
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={6}
+        className="w-72 rounded-xl border-mail-line p-1"
+      >
         <Command>
           <CommandInput placeholder="Search teammates" />
           <CommandList className="max-h-64">
@@ -147,26 +159,30 @@ export function EmailAssigneePicker({
                 Unassign
               </CommandItem>
             )}
+            {/* A face and a name. The address underneath doubled every row's
+                height for something nobody picks a colleague by — it is still
+                what the search matches on. */}
             {(assigneesQuery.data ?? []).map((user) => (
               <CommandItem
                 key={user.id}
                 value={`${user.name} ${user.email}`}
-                className="min-h-8 gap-2"
+                className="min-h-11 gap-3 rounded-lg px-2.5"
                 onSelect={() => {
                   // Picking the current assignee again toggles them off.
                   onChange(assignee?.id === user.id ? null : user);
                   setOpen(false);
                 }}
               >
-                <EmailAssigneeAvatar accountId={accountId} assignee={user} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-medium">{user.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {user.email}
-                  </span>
+                <EmailAssigneeAvatar
+                  accountId={accountId}
+                  assignee={user}
+                  className="size-8 text-[11px]"
+                />
+                <span className="min-w-0 flex-1 truncate text-[13.5px] text-mail-ink">
+                  {user.name}
                 </span>
                 {assignee?.id === user.id && (
-                  <Check aria-hidden="true" className="size-4 shrink-0 text-primary" />
+                  <Check aria-hidden="true" className="size-4 shrink-0 text-mail-ink" />
                 )}
               </CommandItem>
             ))}

@@ -56,7 +56,7 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
       <PopoverContent
         align="end"
         collisionPadding={16}
-        className="w-80 rounded-xl border-mail-pane-line p-3.5"
+        className="w-[19rem] overflow-hidden rounded-xl border-mail-line p-0"
       >
         {/* Keyed by open so each visit starts clean without a reset effect. */}
         {open ? <AddTaskForm key="open" email={email} onDone={() => setOpen(false)} /> : null}
@@ -102,7 +102,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
 
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -113,63 +113,65 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         void submit();
       }}
     >
+      {/* No box around the text: the popover itself is the field, the way a
+          comment composer is. A bordered textarea, a bordered date input and
+          three bordered chips made four nested rectangles inside 19rem. */}
       <label className="sr-only" htmlFor="mail-add-task-text">
         Task
       </label>
       <textarea
         id="mail-add-task-text"
         value={text}
-        placeholder="Describe the task…"
+        placeholder="What needs doing?"
         autoFocus
-        rows={3}
-        className="w-full resize-none rounded-[9px] border border-mail-accent-edge bg-mail-card px-3 py-2.5 text-[13px] text-mail-ink outline-hidden placeholder:text-mail-muted focus:border-mail-accent"
+        rows={2}
+        className="w-full resize-none border-0 bg-transparent px-3.5 pb-2 pt-3.5 text-[13.5px] leading-snug text-mail-ink outline-hidden placeholder:text-mail-muted"
         onChange={(event) => setText(event.target.value)}
       />
 
-      <fieldset className="min-w-0">
-        <legend className="mb-1.5 text-[12.5px] text-mail-mid">Priority</legend>
-        <div className="flex gap-1.5">
-          {PRIORITIES.map((level) => (
-            <button
-              key={level}
-              type="button"
-              aria-pressed={priority === level}
-              className={cn(
-                'flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold',
-                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
-                PRIORITY_TEXT[level],
-                priority === level
-                  ? 'border-mail-accent-edge bg-mail-accent-soft'
-                  : 'border-mail-pane-line bg-mail-card hover:border-mail-row-edge'
-              )}
-              onClick={() => setPriority(level)}
-            >
-              <PriorityBars level={level} />
-              {level}
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3 pb-2.5">
+        {PRIORITIES.map((level) => (
+          <button
+            key={level}
+            type="button"
+            aria-pressed={priority === level}
+            aria-label={`Priority ${level}`}
+            className={cn(
+              'flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              PRIORITY_TEXT[level],
+              priority === level ? 'bg-mail-chip-count' : 'hover:bg-mail-chip'
+            )}
+            onClick={() => setPriority(level)}
+          >
+            <PriorityBars level={level} />
+            {level}
+          </button>
+        ))}
 
-      <div className="min-w-0">
-        <label className="mb-1.5 block text-[12.5px] text-mail-mid" htmlFor="mail-add-task-due">
+        <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-mail-hair" />
+
+        <label className="sr-only" htmlFor="mail-add-task-due">
           Due date
         </label>
         <input
           id="mail-add-task-due"
           type="date"
           value={dueDate}
-          className="w-full rounded-[9px] border border-mail-line bg-mail-paper px-2.5 py-2 text-[12.5px] text-mail-ink outline-hidden focus:border-mail-accent-edge focus:bg-mail-card"
+          className={cn(
+            'cursor-pointer rounded-md px-2 py-1 text-[11.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+            dueDate ? 'bg-mail-chip-count text-mail-ink' : 'text-mail-muted hover:bg-mail-chip'
+          )}
           onChange={(event) => setDueDate(event.target.value)}
         />
       </div>
 
-      <div className="flex items-center justify-end gap-2">
-        <span className="me-auto text-[11px] text-mail-muted">⌘/Ctrl + Enter to add</span>
+      <div className="flex items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3 py-2">
+        <span className="me-auto text-[11px] text-mail-muted">&#8984; + Enter</span>
         <button
           type="submit"
           disabled={!canAdd}
-          className="cursor-pointer rounded-lg bg-mail-accent px-3.5 py-2 text-[12.5px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-45"
+          className="cursor-pointer rounded-md bg-mail-accent px-3 py-1.5 text-[12.5px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-40"
         >
           {createTask.isPending ? 'Adding…' : 'Add task'}
         </button>

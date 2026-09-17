@@ -40,9 +40,11 @@ import type {
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
 import { MailAddTaskPopover } from '@/modules/email/components/mail-add-task-popover';
 import { MailDetailsPanel } from '@/modules/email/components/mail-details-panel';
+import { MailLinkedItems } from '@/modules/email/components/mail-linked-items';
 import { MailReadingToolbar } from '@/modules/email/components/mail-reading-toolbar';
 import { MailReplyStrip } from '@/modules/email/components/mail-reply-strip';
 import { MailShortcutsMenu } from '@/modules/email/components/mail-shortcuts-menu';
+import { MailThreadActions } from '@/modules/email/components/mail-thread-actions';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
@@ -285,7 +287,6 @@ export function EmailReadingPane({
   const referenceMarker = useEmailReferenceMarker({
     accountId: accountId ?? '',
     state: referenceMarkerState,
-    messageId: referenceActionMessageId,
     tags,
     appliedTags: email?.tags,
     isUpdatingTags,
@@ -297,6 +298,17 @@ export function EmailReadingPane({
       : undefined,
     onCreateTag: onCreateTag ? (name) => onCreateTag(name, referenceActionMessageId) : undefined,
     onChange: saveReferenceMarkerState,
+    // A text link, not a bordered button: beside a section heading in a 288px
+    // panel the button was the heaviest thing on screen (elli-ui#921).
+    renderTrigger: ({ disabled }) => (
+      <button
+        type="button"
+        disabled={disabled}
+        className="cursor-pointer text-[13px] font-medium text-link hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-50"
+      >
+        + Add item
+      </button>
+    ),
   });
 
   // Only a thread nobody has filed yet gets a guess — see the hook.
@@ -404,10 +416,19 @@ export function EmailReadingPane({
   const detailsPanel = accountId ? (
     <MailDetailsPanel
       categoryControl={referenceMarker.categoryControl}
-      referenceList={referenceMarker.referenceList}
+      referenceList={
+        referenceMarker.isProjectMode && referenceMarker.references.length > 0 ? (
+          <MailLinkedItems
+            references={referenceMarker.references}
+            isSaving={saveClassificationMutation.isPending}
+            onRemove={referenceMarker.removeReference}
+          />
+        ) : null
+      }
       referenceTrigger={referenceMarker.trigger}
-      otherTagPanel={referenceMarker.otherTagPanel}
+      tagsSection={referenceMarker.tagsSection}
       isOtherSelected={referenceMarker.isOtherSelected}
+      actions={<MailThreadActions conversationKey={conversationKey} />}
       assignee={
         <EmailAssigneePicker
           accountId={accountId}

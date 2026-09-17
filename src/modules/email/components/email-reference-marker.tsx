@@ -1,21 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useEntityReferenceMarker } from '@/app/components/entity-reference-marker';
 import type { EntityReferenceApi } from '@/app/components/entity-reference-marker-storage';
-import { Button } from '@/app/components/ui/button';
 import { emailApi } from '@/modules/email/api';
 import type { ConnectedEmailTag } from '@/modules/email/api';
-import {
-  OtherTagPanel,
-  OtherTagSummary,
-} from '@/modules/email/components/email-reference-marker-parts';
 import type { EmailReferenceMarkerState } from '@/modules/email/components/email-reference-marker-storage';
-import { Plus } from 'lucide-react';
+import { MailThreadTags } from '@/modules/email/components/mail-thread-tags';
 
 type EmailReferenceMarkerProps = {
   accountId: string;
   state: EmailReferenceMarkerState;
-  messageId?: string;
   tags?: ConnectedEmailTag[];
   /** Elli tags applied to this message. Provider categories are not offered here. */
   appliedTags?: string[];
@@ -25,6 +19,8 @@ type EmailReferenceMarkerProps = {
   onToggleTag?: (tag: ConnectedEmailTag, enabled: boolean) => void;
   onCreateTag?: (name: string) => void;
   onChange: (state: EmailReferenceMarkerState) => void;
+  /** Passed straight through — see `useEntityReferenceMarker`. */
+  renderTrigger?: (state: { disabled: boolean }) => React.ReactNode;
 };
 
 const EMAIL_REFERENCE_API: EntityReferenceApi = {
@@ -51,7 +47,6 @@ const EMAIL_REFERENCE_API: EntityReferenceApi = {
 export function useEmailReferenceMarker({
   accountId,
   state,
-  messageId,
   tags = [],
   appliedTags = [],
   isUpdatingTags = false,
@@ -60,64 +55,20 @@ export function useEmailReferenceMarker({
   onToggleTag,
   onCreateTag,
   onChange,
+  renderTrigger,
 }: EmailReferenceMarkerProps) {
-  const [newTagName, setNewTagName] = useState('');
-  const [closedOtherPanelKey, setClosedOtherPanelKey] = useState<string | null>(null);
-
   // Only Elli's own tags are offered here. Outlook/Gmail categories are
   // read-only and belong to the mailbox owner — see zubblehq/elli-ui#652.
   const customTags = useMemo(() => tags.filter((tag) => tag.source === 'custom'), [tags]);
-  const appliedSet = useMemo(
-    () => new Set(appliedTags.map((name) => name.toLowerCase())),
-    [appliedTags]
-  );
-  const selectedOtherTags = useMemo(
-    () => customTags.filter((tag) => appliedSet.has(tag.name.toLowerCase())),
-    [appliedSet, customTags]
-  );
 
   const marker = useEntityReferenceMarker({
+    renderTrigger,
     scopeId: accountId,
     references: state.references,
     onChange: (references) => onChange({ ...state, references }),
     api: EMAIL_REFERENCE_API,
     isSaving,
-    otherModeExtra: (
-      <>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 shrink-0 rounded-md border border-dashed border-border bg-background text-muted-foreground hover:text-foreground"
-          disabled={isSaving}
-          aria-label="Add tag category"
-          onClick={() => setClosedOtherPanelKey(null)}
-        >
-          <Plus aria-hidden="true" className="size-3.5" />
-        </Button>
-        {selectedOtherTags.length > 0 && (
-          <OtherTagSummary
-            tags={selectedOtherTags}
-            disabled={isUpdatingTags || isSaving}
-            onRemove={onToggleTag ? (tag) => onToggleTag(tag, false) : undefined}
-          />
-        )}
-      </>
-    ),
   });
-
-  const showOtherTagPanel =
-    marker.isOtherSelected &&
-    selectedOtherTags.length === 0 &&
-    closedOtherPanelKey !== state.conversationKey;
-
-  const submitNewTag = () => {
-    const name = newTagName.replace(/\s+/g, ' ').trim();
-    if (!name || !onCreateTag) return;
-    onCreateTag(name);
-    setNewTagName('');
-    setClosedOtherPanelKey(state.conversationKey);
-  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -133,31 +84,23 @@ export function useEmailReferenceMarker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const otherTagPanel =
-    showOtherTagPanel && !marker.isProjectMode ? (
-      <OtherTagPanel
-        tags={customTags}
-        appliedSet={appliedSet}
-        messageId={messageId}
-        newTagName={newTagName}
-        isUpdatingTags={isUpdatingTags}
-        isCreatingTag={isCreatingTag}
-        onNewTagNameChange={setNewTagName}
-        onSubmitNewTag={submitNewTag}
-        onToggleTag={
-          onToggleTag
-            ? (tag, enabled) => {
-                onToggleTag(tag, enabled);
-                setClosedOtherPanelKey(state.conversationKey);
-              }
-            : undefined
-        }
-        onCreateTag={onCreateTag}
-        onDismiss={() => setClosedOtherPanelKey(state.conversationKey)}
-      />
-    ) : null;
+  /**
+   * The "Other" side of the panel: the tags a thread that is not project work
+   * can carry. Three presets are always offered, whatever the mailbox has
+   * collected, so the row reads the same on a thread with no tags as on one
+   * with ten — and a `+` opens the rest (elli-ui#921).
+   */
+  const tagsSection = (
+    <MailThreadTags
+      tags={customTags}
+      appliedNames={appliedTags}
+      disabled={isUpdatingTags || isCreatingTag || isSaving}
+      onToggle={onToggleTag}
+      onCreate={onCreateTag}
+    />
+  );
 
-  return { ...marker, otherTagPanel };
+  return { ...marker, tagsSection };
 }
 
 function isEditableKeyTarget(target: EventTarget | null) {

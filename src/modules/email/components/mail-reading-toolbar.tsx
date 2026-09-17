@@ -64,7 +64,7 @@ export function MailReadingToolbar({
       <div className="relative h-8 min-w-0 flex-1 overflow-hidden">
         <span
           className={cn(
-            'absolute inset-x-0 top-0 flex h-8 min-w-0 items-center truncate text-[13px] font-semibold text-mail-ink',
+            'absolute inset-x-0 top-0 flex h-8 min-w-0 items-center truncate text-[15px] font-semibold tracking-[-0.01em] text-mail-ink',
             'motion-safe:transition-[opacity,transform] motion-safe:duration-200',
             scrolled ? 'translate-y-0 opacity-100' : 'translate-y-2.5 opacity-0'
           )}
