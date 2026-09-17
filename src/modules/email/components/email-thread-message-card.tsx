@@ -62,6 +62,12 @@ interface EmailThreadMessageCardProps {
    */
   saveToFilesRootFolderId?: string;
   saveToFilesRootLabel?: string;
+  /**
+   * Expand or collapse every message at once (the `E` shortcut). `null` leaves
+   * each card on its own choice; a boolean overrides every card that has not
+   * been touched since the shortcut was pressed.
+   */
+  expandAll?: boolean | null;
 }
 
 export function EmailThreadMessageCard({
@@ -84,11 +90,17 @@ export function EmailThreadMessageCard({
   onLoadAttachment,
   saveToFilesRootFolderId,
   saveToFilesRootLabel,
+  expandAll = null,
 }: EmailThreadMessageCardProps) {
   // null = no manual choice yet; the default is then "expanded when this is the
   // newest message in the thread", so every conversation opens with exactly one
   // message readable — matching single-message threads, which are always open.
   const [manuallyExpanded, setManuallyExpanded] = useState<boolean | null>(null);
+  // Every press of `E` is a new instruction, so it clears whatever this card
+  // decided last time. Derived from the incoming value rather than stored,
+  // which is what lets a card be reopened by hand straight afterwards.
+  const [expandAllHandled, setExpandAllHandled] = useState<boolean | null>(null);
+  const expandAllApplies = expandAll !== null && expandAll !== expandAllHandled;
   // A shared constant rather than a fresh `[]`, so a message with no
   // attachments keeps the same identity across renders. `EmailHtmlBody` already
   // defends itself against the churn by keying on attachment content, so this is
@@ -99,7 +111,9 @@ export function EmailThreadMessageCard({
   // conversation remains collapsible unless it is the only message displayed.
   const isAlwaysExpanded = singleMessage;
   const isExpanded =
-    isAlwaysExpanded || Boolean(replyOpen) || (manuallyExpanded ?? Boolean(latest));
+    isAlwaysExpanded ||
+    Boolean(replyOpen) ||
+    (expandAllApplies ? expandAll === true : (manuallyExpanded ?? Boolean(latest)));
   const canCollapse = !isAlwaysExpanded && !replyOpen;
   // A conversation too large to send whole leaves the older messages' bodies
   // behind; this is the fetch for the one the reader just opened. Collapsed
@@ -145,7 +159,10 @@ export function EmailThreadMessageCard({
           aria-expanded="false"
           aria-controls={contentId}
           aria-label={`Expand message from ${message.senderName}`}
-          onClick={() => setManuallyExpanded(true)}
+          onClick={() => {
+            setExpandAllHandled(expandAll);
+            setManuallyExpanded(true);
+          }}
         >
           <SenderAvatar
             name={message.senderName}
@@ -196,7 +213,10 @@ export function EmailThreadMessageCard({
             aria-expanded="true"
             aria-controls={contentId}
             aria-label={`Collapse message from ${message.senderName}`}
-            onClick={() => setManuallyExpanded(false)}
+            onClick={() => {
+              setExpandAllHandled(expandAll);
+              setManuallyExpanded(false);
+            }}
           />
         )}
 

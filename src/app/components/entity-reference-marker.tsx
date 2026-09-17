@@ -36,6 +36,20 @@ export type UseEntityReferenceMarkerConfig = {
    * project/RFQ/etc tagging without this component knowing tags exist.
    */
   otherModeExtra?: React.ReactNode;
+  /**
+   * Replaces the default "Add reference" button. The mailbox renders a plain
+   * text link instead — a bordered button beside a section heading reads as
+   * the heaviest thing in a panel that is otherwise all text (elli-ui#921).
+   */
+  renderTrigger?: (state: { disabled: boolean }) => React.ReactNode;
+  /**
+   * Confirm the Project → Other switch even when nothing is linked yet.
+   *
+   * By default the confirmation only appears when there are references to
+   * lose. The mailbox clears the assignee, the court and the thread's tasks
+   * along with them — none of which this hook can see — so it asks every time.
+   */
+  confirmOtherSwitch?: boolean;
 };
 
 /**
@@ -54,6 +68,8 @@ export function useEntityReferenceMarker({
   categories = ENTITY_REFERENCE_CATEGORIES,
   isSaving,
   otherModeExtra,
+  renderTrigger,
+  confirmOtherSwitch = false,
 }: UseEntityReferenceMarkerConfig) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<EntityReferenceFilterType>('all');
@@ -143,7 +159,7 @@ export function useEntityReferenceMarker({
     if (mode === 'other') {
       // Switching away from Project discards every project/RFQ/PO/etc
       // reference — confirm first when there's actually something to lose.
-      if (references.length > 0) {
+      if (references.length > 0 || confirmOtherSwitch) {
         setPendingOtherSwitch(true);
         return;
       }
@@ -169,16 +185,20 @@ export function useEntityReferenceMarker({
       }}
     >
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-h-8 shrink-0 gap-1.5 rounded-md bg-background px-3 text-xs"
-          disabled={isSaving || isOtherSelected}
-        >
-          <AtSign aria-hidden="true" className="size-3.5 text-primary" />
-          Add reference
-        </Button>
+        {renderTrigger ? (
+          renderTrigger({ disabled: Boolean(isSaving) || isOtherSelected })
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-8 shrink-0 gap-1.5 rounded-md bg-background px-3 text-xs"
+            disabled={isSaving || isOtherSelected}
+          >
+            <AtSign aria-hidden="true" className="size-3.5 text-primary" />
+            Add reference
+          </Button>
+        )}
       </PopoverTrigger>
       <ReferencePickerPopover
         scopeId={scopeId}
@@ -222,8 +242,8 @@ export function useEntityReferenceMarker({
         open={pendingOtherSwitch}
         onOpenChange={setPendingOtherSwitch}
         title="Switch to Other?"
-        description="Are you sure you want to switch? Your project references will be deleted."
-        confirmLabel="Switch"
+        description="Are you sure? Your linked items, assignee, court, tasks etc will be cleared."
+        confirmLabel="Switch and clear"
         variant="destructive"
         onConfirm={() => {
           switchToOther();
@@ -250,10 +270,12 @@ export function useEntityReferenceMarker({
     chips,
     categoryControl,
     referenceList,
+    /** The normalized rows, for a caller that draws its own list. */
+    references,
+    removeReference,
     isProjectMode,
     isOtherSelected,
     hasReferences: references.length > 0,
-    references,
     /** Lets a caller open the picker programmatically (e.g. a "@" keyboard shortcut). */
     open,
     setOpen,

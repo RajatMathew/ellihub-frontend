@@ -222,7 +222,7 @@ export function EmailListPane({
 
   return (
     <section
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden border-e border-mail-line bg-mail-paper"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-mail-paper"
       aria-label={`${folderLabel} email list`}
     >
       <div className="sr-only" aria-live="polite">

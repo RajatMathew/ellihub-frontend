@@ -1,13 +1,10 @@
 import { useEffect, useId, useRef } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import {
-  EmailComposeActions,
-  EmailComposeStatus,
-} from '@/modules/email/components/compose/email-compose-actions';
+import { EmailComposeStatus } from '@/modules/email/components/compose/email-compose-actions';
 import { EmailComposeFields } from '@/modules/email/components/compose/email-compose-fields';
 import type { EmailComposeController } from '@/modules/email/hooks/use-email-compose';
-import { X } from 'lucide-react';
+import { Minimize2, X } from 'lucide-react';
 
 interface EmailComposePaneProps {
   compose: EmailComposeController;
@@ -69,29 +66,46 @@ export function EmailComposePane({ compose, mailboxAddress, accountId }: EmailCo
         }}
       >
         <form className="flex min-h-0 flex-1 flex-col" {...compose.formProps}>
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-            <EmailComposeActions compose={compose} />
-            <div className="ml-auto flex min-w-0 items-center gap-2">
+          {/*
+            Title on the left, the two chrome controls on the right, and nothing
+            else. Send used to sit up here beside Discard, which put the button
+            you want and the button you fear a few pixels apart and left the
+            title fighting them for the row. Sending is now the one emphatic
+            thing in the footer, and closing is a ✕ at the far corner
+            (elli-ui#921).
+          */}
+          <div className="flex min-w-0 shrink-0 items-center gap-3 border-b border-mail-pane-line px-4 py-3">
+            <h2 id={headingId} className="text-[15px] font-semibold text-mail-ink">
+              {compose.title}
+            </h2>
+            <p className="hidden min-w-0 truncate text-xs text-mail-muted lg:block">
+              From {mailboxAddress}
+            </p>
+            <div className="ms-auto flex shrink-0 items-center gap-1.5">
               <EmailComposeStatus compose={compose} />
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Close compose"
-                title="Close compose"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
                 disabled={compose.isBusy}
                 onClick={() => void compose.requestClose()}
+              >
+                <Minimize2 aria-hidden="true" className="size-3.5" />
+                <span className="hidden sm:inline">Collapse</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Discard and close"
+                title="Discard and close"
+                disabled={compose.isBusy}
+                onClick={() => void compose.discard()}
               >
                 <X aria-hidden="true" className="size-4" />
               </Button>
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-border px-5 py-2.5">
-            <h2 id={headingId} className="text-sm font-medium text-foreground">
-              {compose.title}
-            </h2>
-            <p className="min-w-0 truncate text-xs text-muted-foreground">From {mailboxAddress}</p>
           </div>
 
           <EmailComposeFields compose={compose} accountId={accountId} />

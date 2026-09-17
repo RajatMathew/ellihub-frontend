@@ -5,6 +5,7 @@ import {
   useState,
   type ClipboardEvent,
   type DragEvent,
+  type ReactNode,
 } from 'react';
 
 import { cn } from '@/app/lib/utils';
@@ -34,9 +35,24 @@ interface EmailRichTextEditorProps {
   className?: string;
   /** Applied to the editable region itself — the composers size it differently. */
   editorClassName?: string;
+  /**
+   * The writing surface's padding. It lands on the editable region **and** on
+   * the placeholder, which is absolutely positioned over it: put the padding in
+   * `editorClassName` instead and the placeholder starts flush against the edge
+   * while the caret starts one indent in.
+   */
+  contentClassName?: string;
   onChange: (html: string) => void;
   /** Files pasted or dropped onto the body become attachments, not body content. */
   onFilesSelected?: (files: FileList) => void;
+  /**
+   * Rendered on the toolbar's own row, pushed to the far end. Send and the
+   * "where this lands" hint sit here rather than in a third bar of their own —
+   * the design gives the composer one footer, not two.
+   */
+  toolbarTrailing?: ReactNode;
+  /** Wraps the toolbar row; the composers give it their own background. */
+  toolbarClassName?: string;
 }
 
 const TOGGLABLE_COMMANDS: readonly EmailRichTextCommand[] = [
@@ -76,8 +92,11 @@ export function EmailRichTextEditor({
   disabled = false,
   className,
   editorClassName,
+  contentClassName,
   onChange,
   onFilesSelected,
+  toolbarTrailing,
+  toolbarClassName,
 }: EmailRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   // What React last received from this editor. Anything else in `value` is an
@@ -192,7 +211,12 @@ export function EmailRichTextEditor({
           however long the message gets (elli-ui#807). */}
       <div className="relative min-h-0 flex-1 overflow-y-auto">
         {isEmptyEmailHtml(value) && (
-          <p className="pointer-events-none absolute inset-x-0 top-0 text-sm leading-6 text-muted-foreground/70">
+          <p
+            className={cn(
+              'pointer-events-none absolute inset-x-0 top-0 truncate text-sm leading-6 text-muted-foreground/70',
+              contentClassName
+            )}
+          >
             {placeholder}
           </p>
         )}
@@ -210,6 +234,7 @@ export function EmailRichTextEditor({
             'min-h-full w-full min-w-0 overflow-x-auto text-sm leading-6 text-foreground outline-none',
             'focus-visible:outline-none',
             PASTED_CONTENT_CLASSES,
+            contentClassName,
             editorClassName
           )}
           onInput={emitChange}
@@ -220,12 +245,17 @@ export function EmailRichTextEditor({
           onMouseUp={refreshActiveCommands}
         />
       </div>
-      <EmailRichTextToolbar
-        className="shrink-0"
-        activeCommands={activeCommands}
-        disabled={disabled}
-        onCommand={runCommand}
-      />
+      <div className={cn('flex min-w-0 shrink-0 flex-nowrap items-center gap-2', toolbarClassName)}>
+        <EmailRichTextToolbar
+          className="shrink-0 flex-nowrap"
+          activeCommands={activeCommands}
+          disabled={disabled}
+          onCommand={runCommand}
+        />
+        {toolbarTrailing && (
+          <div className="ms-auto flex min-w-0 items-center gap-3">{toolbarTrailing}</div>
+        )}
+      </div>
     </div>
   );
 }

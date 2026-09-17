@@ -7,13 +7,15 @@ import { Check, ChevronDown, Sparkles, X } from 'lucide-react';
 interface MailDetailsPanelProps {
   /** Project/Other switch. */
   categoryControl: ReactNode;
-  /** The tagged reference rows, or null while Other is selected. */
+  /** The linked records, drawn by `MailLinkedItems`. */
   referenceList: ReactNode;
-  /** The "+ Add reference" button and its picker. */
+  /** The "+ Add item" link and its picker. */
   referenceTrigger: ReactNode;
-  /** Provider-tag panel, rendered in place of the linked rows while Other is on. */
-  otherTagPanel: ReactNode;
+  /** The tag row, rendered in place of everything else while Other is on. */
+  tagsSection: ReactNode;
   isOtherSelected: boolean;
+  /** What this thread made someone do. */
+  actions: ReactNode;
   assignee: ReactNode;
   court: ReactNode;
   addTask: ReactNode;
@@ -40,8 +42,9 @@ export function MailDetailsPanel({
   categoryControl,
   referenceList,
   referenceTrigger,
-  otherTagPanel,
+  tagsSection,
   isOtherSelected,
+  actions,
   assignee,
   court,
   addTask,
@@ -102,11 +105,11 @@ export function MailDetailsPanel({
       </div>
 
       {!collapsed && (
-        <div className="px-[13px] pb-3 pt-2">
-          <div className="pb-2">{categoryControl}</div>
+        <div className="px-4 pb-4 pt-2.5">
+          <div className="pb-2.5">{categoryControl}</div>
 
           {isOtherSelected ? (
-            otherTagPanel && <div className="pt-1">{otherTagPanel}</div>
+            tagsSection
           ) : (
             <>
               <DetailRow label="Assignee">{assignee}</DetailRow>
@@ -127,6 +130,8 @@ export function MailDetailsPanel({
               <p className="pb-1 text-[12.5px] text-mail-muted">
                 Tasks raised here appear on the board.
               </p>
+
+              {actions}
             </>
           )}
         </div>
@@ -137,7 +142,7 @@ export function MailDetailsPanel({
 
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 border-t border-mail-hair py-2 first:border-t-0">
+    <div className="flex items-center gap-2.5 border-t border-mail-hair py-2.5 first:border-t-0">
       <span className="w-[68px] shrink-0 text-[10.5px] font-bold tracking-[0.03em] text-mail-mid">
         {label.toUpperCase()}
       </span>
@@ -158,11 +163,11 @@ function SectionHeader({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-2.5 pb-2',
-        bordered ? 'mt-1 border-t border-mail-hair pt-3.5' : 'pt-2.5'
+        'flex items-center justify-between gap-2.5 pb-2.5',
+        bordered ? 'mt-1.5 border-t border-mail-hair pt-4' : 'pt-3.5'
       )}
     >
-      <span className="text-xs font-semibold text-mail-ink">{title}</span>
+      <span className="text-[13px] font-semibold text-mail-ink">{title}</span>
       {action}
     </div>
   );

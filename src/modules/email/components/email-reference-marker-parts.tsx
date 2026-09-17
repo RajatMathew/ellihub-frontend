@@ -13,57 +13,23 @@ import { CommandCheck } from '@/app/components/ui/command';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
 import type { ConnectedEmailTag } from '@/modules/email/api';
-import { useEmailReferenceMarker } from '@/modules/email/components/email-reference-marker';
 import {
   EMAIL_THREAD_STATE_LABELS,
   isOpenEmailThreadState,
-  type EmailReferenceMarkerState,
   type EmailThreadState,
 } from '@/modules/email/components/email-reference-marker-storage';
 import { CheckCircle2, ChevronDown, CircleDotDashed, Plus, Tag, X } from 'lucide-react';
-
-type EmailReferenceMarkerProps = {
-  accountId: string;
-  state: EmailReferenceMarkerState;
-  messageId?: string;
-  tags?: ConnectedEmailTag[];
-  keywords?: string[];
-  isUpdatingTags?: boolean;
-  isCreatingTag?: boolean;
-  isSaving?: boolean;
-  onToggleTag?: (tag: ConnectedEmailTag, enabled: boolean) => void;
-  onCreateTag?: (name: string) => void;
-  onChange: (state: EmailReferenceMarkerState) => void;
-};
 
 type EmailThreadStatusMarkerProps = {
   state: EmailThreadState;
   isSaving?: boolean;
   onChange: (state: EmailThreadState) => void;
 };
-
-/**
- * Chips + Project/Other toggle + (when relevant) the provider-tags panel,
- * for its own section below the subject. Render `useEmailReferenceMarker`'s
- * `trigger` separately, in the thread's action-button row.
- */
-export function EmailReferenceMarker(props: EmailReferenceMarkerProps) {
-  const { chips, otherTagPanel } = useEmailReferenceMarker(props);
-
-  return (
-    <section className="mt-3 min-w-0" aria-label="References">
-      {chips}
-      {otherTagPanel}
-    </section>
-  );
-}
 
 export function OtherTagSummary({
   tags,
@@ -217,6 +183,35 @@ export function OtherTagPanel({
   );
 }
 
+const THREAD_STATES: EmailThreadState[] = ['open', 'open_our_court', 'open_their_court', 'closed'];
+
+/**
+ * Spelled out in the menu, short on the pill.
+ *
+ * On a pill beside a row of other pills, "Our court" is unambiguous — it is
+ * next to the thread it describes. Read down a list of four, "Our court" and
+ * "Their court" do not say that they are both still open, which is the thing
+ * that separates them from Closed.
+ */
+const COURT_MENU_LABELS: Record<EmailThreadState, string> = {
+  open: 'Open',
+  open_our_court: 'Open, our court',
+  open_their_court: 'Open, their court',
+  closed: 'Closed',
+};
+
+/**
+ * Whose court the thread is in.
+ *
+ * One pill and a plain list of the four states, rather than the split control
+ * this used to be — a dropdown for the three open states glued to a separate
+ * Closed button. That shape asked the reader to notice that closing was a
+ * different kind of action from the others, which it is not: they are four
+ * values of one field (elli-ui#921).
+ *
+ * The pill carries the state's own colour, because it is the one thing in the
+ * card you want to read from across the room.
+ */
 export function EmailThreadStatusMarker({
   state,
   isSaving,
@@ -225,53 +220,54 @@ export function EmailThreadStatusMarker({
   const isOpen = isOpenEmailThreadState(state);
 
   return (
-    <div className="shrink-0">
-      <div className="inline-flex rounded-full border border-border bg-muted/30 p-0.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
-                isOpen && 'bg-destructive/10 text-destructive shadow-xs'
-              )}
-              aria-pressed={isOpen}
-              disabled={isSaving}
-            >
-              <CircleDotDashed aria-hidden="true" className="size-3" />
-              {isOpen ? EMAIL_THREAD_STATE_LABELS[state] : 'Open'}
-              <ChevronDown aria-hidden="true" className="size-2.5 opacity-70" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-40 p-1">
-            <DropdownMenuRadioGroup
-              value={isOpen ? state : ''}
-              onValueChange={(value) => onChange(value as EmailThreadState)}
-            >
-              {/* Same labels the pill/trigger use (EMAIL_THREAD_STATE_LABELS) —
-                  a single source of truth so the two never drift apart. */}
-              <DropdownMenuRadioItem value="open" className="min-h-8 text-xs">
-                {EMAIL_THREAD_STATE_LABELS.open}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="open_our_court" className="min-h-8 text-xs">
-                {EMAIL_THREAD_STATE_LABELS.open_our_court}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="open_their_court" className="min-h-8 text-xs">
-                {EMAIL_THREAD_STATE_LABELS.open_their_court}
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ThreadStateButton
-          active={state === 'closed'}
-          state="closed"
-          label="Closed"
-          icon={CheckCircle2}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex min-h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-[12px] font-medium',
+            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
+            'motion-safe:transition-colors motion-safe:duration-100',
+            isOpen
+              ? 'bg-destructive-soft text-destructive-soft-foreground hover:bg-destructive/15'
+              : 'bg-success-soft text-success-soft-foreground hover:bg-success/15'
+          )}
+          aria-label={`Court: ${EMAIL_THREAD_STATE_LABELS[state]}. Change`}
           disabled={isSaving}
-          onClick={() => onChange('closed')}
-        />
-      </div>
-    </div>
+        >
+          {isOpen ? (
+            <CircleDotDashed aria-hidden="true" className="size-3" />
+          ) : (
+            <CheckCircle2 aria-hidden="true" className="size-3" />
+          )}
+          {EMAIL_THREAD_STATE_LABELS[state]}
+          <ChevronDown aria-hidden="true" className="size-2.5 opacity-60" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" sideOffset={6} className="w-48 rounded-xl p-1.5">
+        {/* A dot rather than a tick: four values of one field, one of which is
+            currently true. Labels come from EMAIL_THREAD_STATE_LABELS so the
+            pill and the list can never drift. */}
+        {THREAD_STATES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:bg-accent"
+            aria-current={state === value}
+            onClick={() => onChange(value)}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                'size-2 shrink-0 rounded-full',
+                state === value ? 'bg-foreground' : 'bg-transparent'
+              )}
+            />
+            {COURT_MENU_LABELS[value]}
+          </button>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -294,40 +290,5 @@ export function EmailThreadStatusPill({ state }: { state: EmailThreadState }) {
       />
       {EMAIL_THREAD_STATE_LABELS[state]}
     </span>
-  );
-}
-
-function ThreadStateButton({
-  active,
-  state,
-  icon: Icon,
-  label,
-  disabled,
-  onClick,
-}: {
-  active: boolean;
-  state: EmailThreadState;
-  icon: typeof CircleDotDashed;
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'inline-flex min-h-7 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
-        active &&
-          (state === 'open'
-            ? 'bg-destructive/10 text-destructive shadow-xs'
-            : 'bg-success-soft text-success-soft-foreground shadow-xs')
-      )}
-      aria-pressed={active}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Icon aria-hidden="true" className="size-3" />
-      {label}
-    </button>
   );
 }
