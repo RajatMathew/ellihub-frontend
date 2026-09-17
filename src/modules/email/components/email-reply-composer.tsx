@@ -121,9 +121,9 @@ export function EmailReplyComposer({
         void submit();
       }}
     >
-      <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-mail-pane-line px-4 py-3">
+      <header className="flex min-w-0 shrink-0 items-center gap-2.5 border-b border-mail-pane-line px-4 py-2.5">
         {isFullScreen ? (
-          <h2 className="text-[15px] font-semibold text-mail-ink">
+          <h2 className="text-[13.5px] font-semibold text-mail-ink">
             {isForward ? 'Forward' : 'Reply'}
           </h2>
         ) : (
@@ -132,9 +132,9 @@ export function EmailReplyComposer({
               name={recipientLabel}
               email={isForward ? undefined : message.senderEmail}
               accountId={accountId}
-              className="size-9 text-xs"
+              className="size-6 text-[10px]"
             />
-            <p className="min-w-0 truncate text-[15px] text-mail-mid">
+            <p className="min-w-0 truncate text-[13px] text-mail-mid">
               {isForward ? 'Forward to' : 'To'}{' '}
               <span className="font-semibold text-mail-ink">{recipientLabel}</span>
             </p>
@@ -210,7 +210,7 @@ export function EmailReplyComposer({
             </>
           )}
           {subject && (
-            <div className="flex min-w-0 items-center gap-3 py-2.5">
+            <div className="flex min-w-0 max-w-4xl items-center gap-3 py-2.5">
               <span className="w-16 shrink-0 text-[12.5px] text-mail-muted">Subject</span>
               <p className="min-w-0 truncate text-[13.5px] text-mail-ink">{subject}</p>
             </div>
@@ -231,7 +231,8 @@ export function EmailReplyComposer({
               : 'Write your reply...'
         }
         disabled={isSending}
-        editorClassName={cn('px-4 py-3.5', isFullScreen ? 'min-h-full' : 'min-h-36')}
+        contentClassName={isFullScreen ? 'w-full max-w-4xl px-4 py-4' : 'px-4 py-3'}
+        editorClassName={isFullScreen ? 'min-h-full' : 'min-h-32'}
         toolbarClassName="border-t border-mail-pane-line bg-mail-pane px-2.5 py-2"
         toolbarTrailing={
           <>
@@ -251,10 +252,10 @@ export function EmailReplyComposer({
             <button
               type="submit"
               disabled={!canSend}
-              className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg bg-mail-accent px-3.5 py-2 text-[13px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-45"
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-mail-accent px-3 py-1.5 text-[12.5px] font-semibold text-mail-accent-foreground hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-45"
             >
               {isSending ? 'Sending…' : 'Send'}
-              <Send aria-hidden="true" className="size-3.5" />
+              <Send aria-hidden="true" className="size-3" />
             </button>
           </>
         }
@@ -281,7 +282,7 @@ function ComposerChromeButton({
     <button
       type="button"
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] text-mail-mid',
+        'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[12.5px] text-mail-mid',
         'hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
         bordered && 'border border-mail-pane-line hover:border-mail-row-edge'
       )}
@@ -289,7 +290,7 @@ function ComposerChromeButton({
       title={label}
       onClick={onClick}
     >
-      <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
+      <Icon aria-hidden="true" className="size-3.5" strokeWidth={1.9} />
       {!iconOnly && <span className="hidden sm:inline">{label}</span>}
     </button>
   );
@@ -319,7 +320,11 @@ function ComposerAddressRow({
   const errorId = `${id}-error`;
   return (
     <div className="py-2.5">
-      <div className="flex min-w-0 items-center gap-3">
+      {/* The fields are capped and left-aligned with the header and the toolbar.
+          Unbounded, To ran the pane's full width with Cc / Bcc stranded at the
+          far edge. The divider above stays full width, so the block still reads
+          as one bar rather than a column floating in it. */}
+      <div className="flex min-w-0 max-w-4xl items-center gap-3">
         <label htmlFor={id} className="w-16 shrink-0 text-[12.5px] text-mail-muted">
           {label}
           {required && <span className="text-destructive"> *</span>}
@@ -341,7 +346,7 @@ function ComposerAddressRow({
         {children}
       </div>
       {error && (
-        <p id={errorId} className="ps-[76px] pt-1 text-xs text-destructive" role="alert">
+        <p id={errorId} className="max-w-4xl ps-[76px] pt-1 text-xs text-destructive" role="alert">
           {error}
         </p>
       )}

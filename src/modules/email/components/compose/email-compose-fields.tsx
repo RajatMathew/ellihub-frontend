@@ -132,7 +132,8 @@ export function EmailComposeFields({
             compose.isDraftBodyPending ? 'Loading this draft’s message…' : 'Write your message...'
           }
           disabled={isBusy || compose.isDraftBodyPending}
-          editorClassName="min-h-full px-5 py-4"
+          contentClassName="px-5 py-4"
+          editorClassName="min-h-full"
           toolbarClassName="border-t border-mail-pane-line bg-mail-pane px-2.5 py-2"
           // One footer: how the message is formatted, and the one button that
           // sends it. Nothing else competes for the corner.
