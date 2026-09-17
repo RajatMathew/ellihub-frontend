@@ -1,3 +1,4 @@
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -10,8 +11,6 @@ import type {
 } from '@/modules/directory/schemas/contact.schema';
 import { CircleUserRound, Mail, Phone } from 'lucide-react';
 import { Controller, useController, type Control, type FormState } from 'react-hook-form';
-
-import { ContactFormFieldLabel, contactInvalidControlClassName } from './contact-form-field';
 
 interface ContactInfoFormSectionProps {
   control: Control<ContactFormValues>;
@@ -50,9 +49,9 @@ export function ContactInfoFormSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <ContactFormFieldLabel required>Full Name</ContactFormFieldLabel>
+                <FormFieldLabel required>Full Name</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <CircleUserRound className="size-4" />
                   <Input
@@ -76,7 +75,7 @@ export function ContactInfoFormSection({
 
               return (
                 <Field data-invalid={isInvalid}>
-                  <ContactFormFieldLabel>Professional Role</ContactFormFieldLabel>
+                  <FormFieldLabel>Professional Role</FormFieldLabel>
                   <SearchableSelect
                     options={roleOptions}
                     value={field.value ?? ''}
@@ -95,7 +94,7 @@ export function ContactInfoFormSection({
                     searchPlaceholder="Search or type role..."
                     emptyMessage="No contact roles found."
                     disabled={isLoadingRoles}
-                    className={isInvalid ? contactInvalidControlClassName : undefined}
+                    className={isInvalid ? formInvalidControlClassName : undefined}
                     testId="contact-role-select"
                   />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -116,8 +115,8 @@ export function ContactInfoFormSection({
               const isInvalid = fieldState.invalid || Boolean(formState.errors.email);
               return (
                 <Field data-invalid={isInvalid}>
-                  <ContactFormFieldLabel>Email Address</ContactFormFieldLabel>
-                  <InputWrapper className={isInvalid ? contactInvalidControlClassName : undefined}>
+                  <FormFieldLabel>Email Address</FormFieldLabel>
+                  <InputWrapper className={isInvalid ? formInvalidControlClassName : undefined}>
                     <Mail className="size-4" />
                     <Input
                       type="email"
@@ -148,9 +147,9 @@ export function ContactInfoFormSection({
               const phoneValue = field.value?.number ?? '';
               return (
                 <Field data-invalid={fieldState.invalid}>
-                  <ContactFormFieldLabel>Direct Phone</ContactFormFieldLabel>
+                  <FormFieldLabel>Direct Phone</FormFieldLabel>
                   <InputWrapper
-                    className={fieldState.invalid ? contactInvalidControlClassName : undefined}
+                    className={fieldState.invalid ? formInvalidControlClassName : undefined}
                   >
                     <Phone className="size-4" />
                     <Input
@@ -178,7 +177,7 @@ export function ContactInfoFormSection({
           control={control}
           render={({ field }) => (
             <Field>
-              <ContactFormFieldLabel>Tags</ContactFormFieldLabel>
+              <FormFieldLabel>Tags</FormFieldLabel>
               <TagInput
                 value={field.value ?? []}
                 onChange={field.onChange}

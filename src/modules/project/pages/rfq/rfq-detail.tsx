@@ -38,7 +38,7 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useFilePreviewQuery } from '@/modules/files/hooks/files.hooks';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { createFileUploadPayload } from '@/modules/files/uploads/use-managed-file-uploads';
 import { EmailComposePreviewDialog } from '@/modules/mail/components/email-compose-preview-dialog';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';

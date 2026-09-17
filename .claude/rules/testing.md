@@ -65,6 +65,8 @@ State exactly what you ran and what it said. If you could not exercise something
 gesture, a provider round-trip, a staging-only failure — write that down rather than implying
 coverage you do not have. A confident "verified" on an unverified path is worse than no claim.
 
-Known state: `tests/email-account-identity.test.ts` has one pre-existing failure. It is not yours;
-do not fold a fix for it into an unrelated change, and do not let it stop you from reporting your
-own results accurately.
+Known state: the unit suite is green. It was not for a long time — `email-account-identity` failed
+because the test still asserted the identity format from before shared mailboxes got a scope
+prefix, and the failure was carried in the docs as expected rather than fixed. If you find a test
+failing on `dev`, read it before you route around it: a stale assertion and a real regression look
+identical from the run output.

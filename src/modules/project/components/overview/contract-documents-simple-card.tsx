@@ -15,7 +15,7 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ContractAttachment } from '@/modules/project/schemas/contract-attachment.schema';
 import { EllipsisVertical, FileText, Pin, PinOff, Star, Upload } from 'lucide-react';

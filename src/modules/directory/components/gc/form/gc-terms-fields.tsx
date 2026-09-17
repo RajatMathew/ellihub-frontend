@@ -1,3 +1,4 @@
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { InputWrapper } from '@/app/components/ui/input';
 import { NumberInput } from '@/app/components/ui/number-input';
@@ -12,8 +13,6 @@ import { PAYMENT_TERMS_OPTIONS } from '@/modules/directory/constants/shared.cons
 import type { GCFormValues } from '@/modules/directory/schemas/gc.schema';
 import { Controller, type Control } from 'react-hook-form';
 
-import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
-
 interface GCTermsFieldsProps {
   control: Control<GCFormValues>;
 }
@@ -26,7 +25,7 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <GCFormFieldLabel required>Payment Terms</GCFormFieldLabel>
+            <FormFieldLabel required>Payment Terms</FormFieldLabel>
             <Select
               key={field.value || 'empty-payment-terms'}
               value={field.value || ''}
@@ -34,7 +33,7 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
             >
               <SelectTrigger
                 aria-invalid={fieldState.invalid}
-                className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 data-testid="gc-payment-terms-select"
               >
                 <SelectValue placeholder="Select terms..." />
@@ -56,8 +55,8 @@ export function GCTermsFields({ control }: GCTermsFieldsProps) {
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <GCFormFieldLabel required>Retainage %</GCFormFieldLabel>
-            <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
+            <FormFieldLabel required>Retainage %</FormFieldLabel>
+            <InputWrapper className={fieldState.invalid ? formInvalidControlClassName : undefined}>
               <NumberInput
                 value={field.value}
                 onValueChange={field.onChange}

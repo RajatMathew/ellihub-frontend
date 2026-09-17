@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { FormFieldLabel } from '@/app/components/form-field-label';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field } from '@/app/components/ui/field';
@@ -11,7 +12,6 @@ import type { ContactAssociationsState } from '@/modules/directory/hooks/contact
 import { Plus } from 'lucide-react';
 
 import { ContactAssociationList } from './contact-association-list';
-import { ContactFormFieldLabel } from './contact-form-field';
 
 interface ContactAssociationSectionProps {
   associations: ContactAssociationsState;
@@ -86,7 +86,7 @@ export function ContactAssociationSection({
             />
 
             <Field>
-              <ContactFormFieldLabel>Vendor</ContactFormFieldLabel>
+              <FormFieldLabel>Vendor</FormFieldLabel>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <InfiniteSearchSelect
@@ -137,7 +137,7 @@ export function ContactAssociationSection({
             />
 
             <Field>
-              <ContactFormFieldLabel>GC</ContactFormFieldLabel>
+              <FormFieldLabel>GC</FormFieldLabel>
               <div className="min-w-0">
                 <InfiniteSearchSelect
                   options={gcOptions.filter(

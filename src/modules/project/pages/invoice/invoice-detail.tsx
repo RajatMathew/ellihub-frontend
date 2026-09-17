@@ -24,7 +24,7 @@ import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import {
   InfoRow,
   ProjectActivityPanel,

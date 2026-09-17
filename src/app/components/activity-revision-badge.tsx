@@ -20,9 +20,3 @@ export function ActivityRevisionBadge({ revision, className }: ActivityRevisionB
     </Badge>
   );
 }
-
-export function stripActivityRevisionSuffix(description: string, revision?: number | null) {
-  if (!revision) return description;
-
-  return description.replace(new RegExp(`\\s+-\\s+rev\\s+${revision}\\s*$`, 'i'), '').trim();
-}

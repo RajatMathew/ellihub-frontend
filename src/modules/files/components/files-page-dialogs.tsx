@@ -10,7 +10,7 @@ import {
   useRenameMutation,
 } from '@/modules/files/hooks/files.hooks';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { toast } from 'sonner';
 
 interface FilesPageDialogsProps {

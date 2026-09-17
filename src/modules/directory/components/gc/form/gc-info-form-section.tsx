@@ -1,3 +1,4 @@
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -16,7 +17,6 @@ import { Globe } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
 
 import { GCContactFields } from './gc-contact-fields';
-import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
 import { GCTermsFields } from './gc-terms-fields';
 
 interface GCInfoFormSectionProps {
@@ -41,9 +41,9 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <GCFormFieldLabel required>GC Name</GCFormFieldLabel>
+                <FormFieldLabel required>GC Name</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Input
                     {...field}
@@ -62,7 +62,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <GCFormFieldLabel required>GC Type</GCFormFieldLabel>
+                <FormFieldLabel required>GC Type</FormFieldLabel>
                 <SearchableSelect
                   options={gcTypeOptions}
                   value={field.value || null}
@@ -71,7 +71,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                   searchPlaceholder="Search types..."
                   emptyMessage="No types found."
                   disabled={gcTypeOptions.length === 0}
-                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                   testId="gc-type-select"
                 />
                 {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -86,9 +86,9 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <GCFormFieldLabel>Official Website</GCFormFieldLabel>
+                <FormFieldLabel>Official Website</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Globe className="size-4" />
                   <Input
@@ -108,13 +108,13 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <GCFormFieldLabel
+                <FormFieldLabel
                   required
                   info="Choose Inactive if the general contractor is currently out of operation or unavailable for new work."
                   infoLabel="Initial status information"
                 >
                   Initial Status
-                </GCFormFieldLabel>
+                </FormFieldLabel>
                 <Select
                   key={field.value || 'empty-status'}
                   value={field.value || ''}
@@ -122,7 +122,7 @@ export function GCInfoFormSection({ control, gcTypeOptions }: GCInfoFormSectionP
                 >
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? gcInvalidControlClassName : undefined}
+                    className={fieldState.invalid ? formInvalidControlClassName : undefined}
                     data-testid="gc-status-select"
                   >
                     <SelectValue placeholder="Select status..." />

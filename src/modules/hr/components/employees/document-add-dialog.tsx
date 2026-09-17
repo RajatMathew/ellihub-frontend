@@ -13,7 +13,7 @@ import { Field, FieldLabel } from '@/app/components/ui/field';
 import { FileDropZone } from '@/app/components/ui/file-drop-zone';
 import { Input } from '@/app/components/ui/input';
 import { useRootFolderQuery } from '@/modules/files/hooks/files.hooks';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { useAddEmployeeDocumentMutation } from '@/modules/hr/hooks/employees.hooks';
 
 interface DocumentAddDialogProps {

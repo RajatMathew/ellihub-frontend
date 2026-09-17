@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -7,8 +8,6 @@ import { Separator } from '@/app/components/ui/separator';
 import type { CreateEmployeeInput } from '@/modules/hr/schemas/employee.schema';
 import { Contact2, Phone } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
-
-import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
 type EmployeeEmergencyFieldName =
   | 'emergencyContactName'
@@ -72,10 +71,8 @@ function EmergencyField({
       control={control}
       render={({ field, fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
-          <EmployeeFormFieldLabel>{label}</EmployeeFormFieldLabel>
-          <InputWrapper
-            className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
-          >
+          <FormFieldLabel>{label}</FormFieldLabel>
+          <InputWrapper className={fieldState.invalid ? formInvalidControlClassName : undefined}>
             {icon}
             <Input {...field} value={String(field.value ?? '')} placeholder={placeholder} />
           </InputWrapper>
