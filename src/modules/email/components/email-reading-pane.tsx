@@ -8,7 +8,6 @@ import {
   type Ref,
 } from 'react';
 
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import type {
   ConnectedEmailFolder,
   ConnectedEmailTag,
@@ -39,9 +38,11 @@ import type {
   EmailThreadMessage,
 } from '@/modules/email/components/email-row-card';
 import { EmailThreadMessageCard } from '@/modules/email/components/email-thread-message-card';
+import { MailAddTaskPopover } from '@/modules/email/components/mail-add-task-popover';
 import { MailDetailsPanel } from '@/modules/email/components/mail-details-panel';
 import { MailReadingToolbar } from '@/modules/email/components/mail-reading-toolbar';
 import { MailReplyStrip } from '@/modules/email/components/mail-reply-strip';
+import { MailShortcutsMenu } from '@/modules/email/components/mail-shortcuts-menu';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
@@ -57,8 +58,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
-import { AddTaskPopover } from '@/modules/tasks/components/add-task-popover';
-import { Info, Paperclip } from 'lucide-react';
+import { Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EmailReadingPaneProps {
@@ -85,6 +85,8 @@ interface EmailReadingPaneProps {
   onCreateTag?: (name: string, messageId?: string) => void;
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  /** Flags or unflags the open conversation — the `F` shortcut. */
+  onToggleFlag?: (messageId: string) => void;
   onPermanentDelete?: (messageId: string) => Promise<void> | void;
   isPermanentlyDeleting?: boolean;
   onMarkUnread?: (messageId: string) => void;
@@ -138,6 +140,7 @@ export function EmailReadingPane({
   onCreateTag,
   onArchive,
   onDelete,
+  onToggleFlag,
   isSendingReply = false,
   onReply,
   onForward,
@@ -178,6 +181,16 @@ export function EmailReadingPane({
   // boolean: switching conversations then clears it by itself, with no effect
   // resetting state the render could have derived.
   const [scrolledThreadId, setScrolledThreadId] = useState<string | null>(null);
+  // `E` expands or collapses the whole thread at once; null means every card is
+  // on its own choice, which is where a freshly opened conversation starts.
+  const [expandAll, setExpandAll] = useState<boolean | null>(null);
+  const expandAllThreadRef = useRef<string | undefined>(undefined);
+  if (expandAllThreadRef.current !== email?.id) {
+    // Derived during render rather than in an effect: a new conversation opens
+    // with its own newest message, never inheriting the last thread's state.
+    expandAllThreadRef.current = email?.id;
+    if (expandAll !== null) setExpandAll(null);
+  }
   const loadEmailAttachment = useCallback(
     (
       messageId: string,
@@ -418,7 +431,7 @@ export function EmailReadingPane({
       }
       addTask={
         (email.providerId ?? email.id) ? (
-          <AddTaskPopover
+          <MailAddTaskPopover
             email={{
               accountId,
               providerId: email.providerId ?? email.id,
@@ -438,7 +451,10 @@ export function EmailReadingPane({
 
   return (
     <section
-      className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-mail-pane"
+      // `@container` is what makes the thread's `@min-[…]` rules below measure
+      // this pane rather than the window. Without it they never match and the
+      // details card is stacked above the messages at every width.
+      className="@container relative flex min-h-0 min-w-0 flex-1 flex-col bg-mail-pane"
       aria-label="Email"
     >
       <MailReadingToolbar
@@ -452,8 +468,6 @@ export function EmailReadingPane({
         shortcuts={
           <EmailReadingPaneShortcuts
             mailboxActionKey={isUnarchiveAction ? 'u' : 'a'}
-            mailboxActionLabel={isUnarchiveAction ? 'unarchive' : 'archive'}
-            agentActionKey={onOpenAgent ? 'e' : undefined}
             onReply={
               latestReplyableMessage && onReply
                 ? () =>
@@ -466,6 +480,12 @@ export function EmailReadingPane({
             }
             onArchive={onArchive ? () => onArchive(actionMessageId) : undefined}
             onDelete={onDelete ? () => onDelete(actionMessageId) : undefined}
+            onToggleFlag={onToggleFlag ? () => onToggleFlag(actionMessageId) : undefined}
+            onToggleExpandAll={
+              messages.length > 1
+                ? () => setExpandAll((current) => (current === true ? false : true))
+                : undefined
+            }
           />
         }
       />
@@ -479,17 +499,20 @@ export function EmailReadingPane({
         {/*
           A CONTAINER query, not a viewport one: the pane sits inside the app
           shell next to the nav sidebar and the conversation list, so how much
-          room it has is nothing like how wide the window is. Below ~1200px of
-          its own width this is a plain block and the three pieces stack in
-          source order — subject, details, then the thread. Above it there is
-          room to put the details card beside the messages rather than on top of
-          them, so scanning who owns a thread no longer means scrolling past
-          every message first. The card shares a grid row with the thread body
-          rather than the head, which is what lines its top edge up with the
-          reply strip instead of the subject.
+          room it has is nothing like how wide the window is.
+
+          The details card belongs beside the thread, not above it — that is
+          where the design puts it and where an AI suggestion has to be to be
+          read alongside the message it is about. The threshold is only there
+          for the widths where a second column genuinely does not fit: a phone,
+          or the reading pane on its own on a narrow laptop. Everywhere else
+          this is two columns, with the panel given at least 288px and never
+          more than a third. It shares a grid row with the thread body rather
+          than the head, which is what lines its top edge up with the reply
+          strip instead of the subject.
         */}
-        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[1200px]:grid @min-[1200px]:max-w-[1520px] @min-[1200px]:grid-cols-[minmax(0,1fr)_min(34%,440px)] @min-[1200px]:grid-rows-[auto_1fr] @min-[1200px]:gap-x-8">
-          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-1">
+        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[760px]:grid @min-[760px]:max-w-[1520px] @min-[760px]:grid-cols-[minmax(0,1fr)_minmax(288px,34%)] @min-[760px]:grid-rows-[auto_1fr] @min-[760px]:gap-x-7">
+          <div className="min-w-0 @min-[760px]:col-start-1 @min-[760px]:row-start-1">
             <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -508,18 +531,20 @@ export function EmailReadingPane({
           </div>
 
           {detailsPanel && (
-            <div className="mb-5 mt-4 min-w-0 @min-[1200px]:sticky @min-[1200px]:top-0 @min-[1200px]:col-start-2 @min-[1200px]:row-start-2 @min-[1200px]:mb-0 @min-[1200px]:mt-0">
+            <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-0">
               {detailsPanel}
             </div>
           )}
 
-          <div className="min-w-0 @min-[1200px]:col-start-1 @min-[1200px]:row-start-2 @min-[1200px]:mt-5">
+          <div className="min-w-0 @min-[760px]:col-start-1 @min-[760px]:row-start-2 @min-[760px]:mt-5">
             {composerMessage ? (
               <div className="mb-3">
                 <EmailReplyComposer
                   key={`${composerMessage.id}:${replyTarget?.mode ?? 'reply'}`}
                   message={composerMessage}
                   mode={replyTarget?.mode}
+                  subject={email.subject}
+                  accountId={accountId}
                   isSending={isSendingReply}
                   onSend={(draft) => sendReply(composerMessage.id, draft)}
                   onCancel={() => setReplyTarget(null)}
@@ -592,6 +617,7 @@ export function EmailReadingPane({
                   onLoadAttachment={accountId ? loadEmailAttachment : undefined}
                   saveToFilesRootFolderId={savedRootFolderId}
                   saveToFilesRootLabel={savedRootLabel}
+                  expandAll={expandAll}
                 />
               ))}
             </div>
@@ -635,36 +661,45 @@ export function EmailReadingPane({
 
 function EmailReadingPaneShortcuts({
   mailboxActionKey,
-  mailboxActionLabel,
-  agentActionKey,
   onReply,
   onArchive,
   onDelete,
+  onToggleFlag,
+  onToggleExpandAll,
 }: {
   mailboxActionKey: 'a' | 'u';
-  mailboxActionLabel: 'archive' | 'unarchive';
-  agentActionKey?: 'e';
   onReply?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
+  onToggleFlag?: () => void;
+  onToggleExpandAll?: () => void;
 }) {
-  const onReplyRef = useRef(onReply);
-  const onArchiveRef = useRef(onArchive);
-  const onDeleteRef = useRef(onDelete);
-  const mailboxActionKeyRef = useRef(mailboxActionKey);
+  // Every handler is read through a ref at key time rather than captured, so
+  // the listener is bound once and never restarts as the thread changes under
+  // it — a rebind mid-keypress used to drop the key.
+  const handlersRef = useRef({
+    mailboxActionKey,
+    onReply,
+    onArchive,
+    onDelete,
+    onToggleFlag,
+    onToggleExpandAll,
+  });
 
   useLayoutEffect(() => {
-    onReplyRef.current = onReply;
-    onArchiveRef.current = onArchive;
-    onDeleteRef.current = onDelete;
-    mailboxActionKeyRef.current = mailboxActionKey;
-  }, [mailboxActionKey, onArchive, onDelete, onReply]);
+    handlersRef.current = {
+      mailboxActionKey,
+      onReply,
+      onArchive,
+      onDelete,
+      onToggleFlag,
+      onToggleExpandAll,
+    };
+  }, [mailboxActionKey, onArchive, onDelete, onReply, onToggleExpandAll, onToggleFlag]);
 
   useLayoutEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
-        return;
-      }
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
 
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) {
@@ -678,64 +713,26 @@ function EmailReadingPaneShortcuts({
         return;
       }
 
+      const handlers = handlersRef.current;
       const key = event.key.toLowerCase();
-      if (key === 'r' && onReplyRef.current) {
+      const run = (action?: () => void) => {
+        if (!action) return;
         event.preventDefault();
-        onReplyRef.current();
-      }
-      if (key === mailboxActionKeyRef.current && onArchiveRef.current) {
-        event.preventDefault();
-        onArchiveRef.current();
-      }
-      if (key === 'd' && onDeleteRef.current) {
-        event.preventDefault();
-        onDeleteRef.current();
-      }
+        action();
+      };
+
+      if (key === 'r') run(handlers.onReply);
+      if (key === 'e') run(handlers.onToggleExpandAll);
+      if (key === 'f') run(handlers.onToggleFlag);
+      if (key === handlers.mailboxActionKey) run(handlers.onArchive);
+      if (key === 'd') run(handlers.onDelete);
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, []);
 
-  const shortcuts: Array<[string, string]> = [
-    ['↑↓', 'navigate'],
-    ['R', 'reply'],
-    [mailboxActionKey.toUpperCase(), mailboxActionLabel],
-    ...(onDelete ? ([['D', 'delete']] as Array<[string, string]>) : []),
-    ...(agentActionKey
-      ? ([[agentActionKey.toUpperCase(), 'Elliot']] as Array<[string, string]>)
-      : []),
-  ];
-
-  // An icon with the list behind it, rather than the list itself. The strip of
-  // kbd chips it replaced was six words wide and sat between the subject and
-  // the agent button, which is a lot of toolbar to spend on something a reader
-  // needs once (elli-ui#921).
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-lg text-mail-muted hover:bg-mail-card hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
-          aria-label="Keyboard shortcuts"
-        >
-          <Info aria-hidden="true" className="size-4" strokeWidth={1.6} />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" align="end" sideOffset={8} className="p-2">
-        <span className="flex flex-col gap-1.5">
-          {shortcuts.map(([key, label]) => (
-            <span key={label} className="flex items-center gap-2 text-xs">
-              <kbd className="min-w-7 rounded-sm border border-mail-pane-line bg-mail-card px-1.5 py-0.5 text-center font-mono text-[10.5px] text-mail-mid">
-                {key}
-              </kbd>
-              <span>{label}</span>
-            </span>
-          ))}
-        </span>
-      </TooltipContent>
-    </Tooltip>
-  );
+  return <MailShortcutsMenu />;
 }
 
 function getThreadMessages(email: EmailListItem, mailboxAddress: string): EmailThreadMessage[] {

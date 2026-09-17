@@ -88,7 +88,7 @@ export function MailReadingToolbar({
             'motion-safe:transition-[transform,box-shadow] motion-safe:duration-150 motion-safe:hover:-translate-y-px'
           )}
           aria-label="Open or close Elliot Agent"
-          title="Open or close Elliot Agent (E)"
+          title="Open or close Elliot Agent (Shift + E)"
           onClick={onOpenAgent}
         >
           <img

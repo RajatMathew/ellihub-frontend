@@ -76,6 +76,7 @@ import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors'
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { richTextToEmailHtml } from '@/modules/email/lib/email-rich-text';
+import { resolveMailShortcut } from '@/modules/email/lib/email-shortcut-keys';
 import { isThreadBodyPending } from '@/modules/email/lib/email-thread-body-pending';
 import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
@@ -1281,21 +1282,34 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       ) {
         return;
       }
-      // Arrow-key browsing would swap the message under an open composer without
-      // asking; the composer has to be closed (and saved) deliberately first.
-      if (composeOpen && event.key !== 'e' && event.key !== 'E') return;
+      const action = resolveMailShortcut(event);
+      if (!action) return;
 
-      if (event.key.toLowerCase() === 'e') {
+      // Browsing would swap the message under an open composer without asking;
+      // the composer has to be closed (and saved) deliberately first. Opening
+      // Elliot is the exception — it does not move you off the draft.
+      if (composeOpen && action !== 'toggleAgent') return;
+
+      if (action === 'toggleAgent') {
         event.preventDefault();
         setAgentOpen((open) => !open);
         return;
       }
 
-      if (event.key === 'ArrowUp' && previousEmail) {
+      if (action === 'jumpToSearch') {
+        const search = document.getElementById('mail-list-search');
+        if (!(search instanceof HTMLInputElement)) return;
+        event.preventDefault();
+        search.focus();
+        search.select();
+        return;
+      }
+
+      if (action === 'previousConversation' && previousEmail) {
         event.preventDefault();
         selectEmail(previousEmail.id, { replace: true });
       }
-      if (event.key === 'ArrowDown' && nextEmail) {
+      if (action === 'nextConversation' && nextEmail) {
         event.preventDefault();
         selectEmail(nextEmail.id, { replace: true });
       }
@@ -1776,6 +1790,18 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                         });
                         clearRouteSelection();
                       }
+                    : undefined
+                }
+                onToggleFlag={
+                  connectedAccount && selectedEmail
+                    ? (messageId) =>
+                        toggleFlagMutation.mutate({
+                          accountId: connectedAccount.id,
+                          messageId,
+                          conversationKey:
+                            selectedEmail.conversationKey ?? selectedEmail.threadId ?? undefined,
+                          flagged: !selectedEmail.flagged,
+                        })
                     : undefined
                 }
                 isPermanentlyDeleting={permanentlyDeleteMessageMutation.isPending}

@@ -1,9 +1,11 @@
+import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
 import { EmailComposeAddressField } from '@/modules/email/components/compose/email-compose-address-field';
 import { EmailComposeAttachments } from '@/modules/email/components/compose/email-compose-attachments';
 import { EmailRichTextEditor } from '@/modules/email/components/email-rich-text-editor';
 import type { EmailComposeController } from '@/modules/email/hooks/use-email-compose';
+import { Send } from 'lucide-react';
 
 /**
  * The composer itself: recipients, subject, body and attachments, plus the
@@ -50,7 +52,7 @@ export function EmailComposeFields({
         </div>
       )}
       {/* Recipients and subject stay put; only the body scrolls. */}
-      <div className="shrink-0 divide-y divide-border">
+      <div className="shrink-0 divide-y divide-mail-hair border-b border-mail-pane-line">
         <EmailComposeAddressField
           accountId={accountId}
           id={fieldIds.to}
@@ -117,9 +119,9 @@ export function EmailComposeFields({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
+      <div className="flex min-h-0 flex-1 flex-col">
         <EmailRichTextEditor
-          className="min-h-0 flex-1"
+          className="min-h-0 flex-1 gap-0"
           id={fieldIds.body}
           value={form.body}
           label="Email body"
@@ -130,6 +132,22 @@ export function EmailComposeFields({
             compose.isDraftBodyPending ? 'Loading this draft’s message…' : 'Write your message...'
           }
           disabled={isBusy || compose.isDraftBodyPending}
+          editorClassName="min-h-full px-5 py-4"
+          toolbarClassName="border-t border-mail-pane-line bg-mail-pane px-2.5 py-2"
+          // One footer: how the message is formatted, and the one button that
+          // sends it. Nothing else competes for the corner.
+          toolbarTrailing={
+            <Button
+              type="submit"
+              size="sm"
+              className="gap-2"
+              disabled={!compose.canSend || isBusy || isPreparingAttachments}
+              aria-busy={compose.isSubmitting || compose.isSending}
+            >
+              {compose.isSubmitting || compose.isSending ? 'Sending' : 'Send'}
+              <Send aria-hidden="true" className="size-3.5" />
+            </Button>
+          }
           onChange={compose.setBody}
           onFilesSelected={(files) => {
             if (!isPreparingAttachments) compose.handleAttachmentSelection(files);
@@ -137,7 +155,7 @@ export function EmailComposeFields({
         />
       </div>
 
-      <div className="shrink-0 border-t border-border">
+      <div className="shrink-0 border-t border-mail-pane-line">
         <EmailComposeAttachments compose={compose} />
       </div>
     </div>

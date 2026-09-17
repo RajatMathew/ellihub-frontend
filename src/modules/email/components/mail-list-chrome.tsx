@@ -175,7 +175,7 @@ export function MailListChrome({
 
   return (
     <>
-      <div className="flex min-w-0 items-center gap-1 px-3.5 pb-1.5 pt-2.5">
+      <div className="flex min-w-0 items-center gap-1 px-4 pb-2 pt-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -284,16 +284,18 @@ export function MailListChrome({
         )}
       </div>
 
-      <div className="relative mx-3.5 mb-2">
+      <div className="relative mx-4 mb-2.5">
         <label htmlFor="mail-list-search" className="sr-only">
           Search mail
         </label>
         <div
           className={cn(
-            'flex items-center gap-1.5 rounded-[10px] py-1.5 pe-2.5 ps-3 motion-safe:transition-[background-color,box-shadow] motion-safe:duration-100',
-            searchFocused
-              ? 'bg-mail-card shadow-[0_0_0_1px_var(--mail-accent-edge),0_0_0_4px_var(--mail-accent-soft)]'
-              : 'bg-mail-search'
+            // Focus lifts the field onto the card surface and nothing more. The
+            // ring it used to draw — a hairline plus a 4px halo — was the
+            // heaviest thing in the column, and it fired on every click into
+            // search.
+            'flex items-center gap-1.5 rounded-[10px] py-2 pe-2.5 ps-3 motion-safe:transition-colors motion-safe:duration-100',
+            searchFocused ? 'bg-mail-card' : 'bg-mail-search'
           )}
         >
           <Search
@@ -490,7 +492,7 @@ function MailFilterPills({
       ref={stripRef}
       data-fade={fade}
       className={cn(
-        'mail-pill-strip flex min-w-0 flex-nowrap gap-[7px] overflow-x-auto overflow-y-hidden px-3.5 pb-2',
+        'mail-pill-strip flex min-w-0 flex-nowrap gap-[7px] overflow-x-auto overflow-y-hidden px-4 pb-3',
         '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
       )}
     >

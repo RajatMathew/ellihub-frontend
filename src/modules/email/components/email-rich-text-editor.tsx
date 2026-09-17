@@ -5,6 +5,7 @@ import {
   useState,
   type ClipboardEvent,
   type DragEvent,
+  type ReactNode,
 } from 'react';
 
 import { cn } from '@/app/lib/utils';
@@ -37,6 +38,14 @@ interface EmailRichTextEditorProps {
   onChange: (html: string) => void;
   /** Files pasted or dropped onto the body become attachments, not body content. */
   onFilesSelected?: (files: FileList) => void;
+  /**
+   * Rendered on the toolbar's own row, pushed to the far end. Send and the
+   * "where this lands" hint sit here rather than in a third bar of their own —
+   * the design gives the composer one footer, not two.
+   */
+  toolbarTrailing?: ReactNode;
+  /** Wraps the toolbar row; the composers give it their own background. */
+  toolbarClassName?: string;
 }
 
 const TOGGLABLE_COMMANDS: readonly EmailRichTextCommand[] = [
@@ -78,6 +87,8 @@ export function EmailRichTextEditor({
   editorClassName,
   onChange,
   onFilesSelected,
+  toolbarTrailing,
+  toolbarClassName,
 }: EmailRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   // What React last received from this editor. Anything else in `value` is an
@@ -220,12 +231,17 @@ export function EmailRichTextEditor({
           onMouseUp={refreshActiveCommands}
         />
       </div>
-      <EmailRichTextToolbar
-        className="shrink-0"
-        activeCommands={activeCommands}
-        disabled={disabled}
-        onCommand={runCommand}
-      />
+      <div className={cn('flex min-w-0 shrink-0 flex-nowrap items-center gap-2', toolbarClassName)}>
+        <EmailRichTextToolbar
+          className="shrink-0 flex-nowrap"
+          activeCommands={activeCommands}
+          disabled={disabled}
+          onCommand={runCommand}
+        />
+        {toolbarTrailing && (
+          <div className="ms-auto flex min-w-0 items-center gap-3">{toolbarTrailing}</div>
+        )}
+      </div>
     </div>
   );
 }
