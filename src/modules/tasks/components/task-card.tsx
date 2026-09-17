@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
@@ -9,10 +7,7 @@ import { TaskCardEmailSources } from '@/modules/tasks/components/task-card-email
 import { TaskCompletionRing } from '@/modules/tasks/components/task-completion-ring';
 import { TaskCourtToggle } from '@/modules/tasks/components/task-court-toggle';
 import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
-import {
-  TASK_COMPLETION_BEAT_MS,
-  TASK_ENTITY_LABELS,
-} from '@/modules/tasks/constants/tasks.constants';
+import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
 import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { Check, Clock } from 'lucide-react';
@@ -70,32 +65,12 @@ export function TaskCard({
 }) {
   const due = dueLabel(task, now);
   const isDone = task.status === 'COMPLETED';
-  const [isCompleting, setIsCompleting] = useState(false);
 
-  /**
-   * Fill the circle, hold it, and only then save.
-   *
-   * The card leaves for Completed as soon as the save lands, so without the
-   * pause the click and the disappearance are the same event and nothing ever
-   * says "done". Holding first spends a fifth of a second saying it.
-   *
-   * Reopening gets no beat - the card is already where it is going.
-   */
-  const handleComplete = () => {
-    if (isDone) {
-      onComplete(task);
-      return;
-    }
-
-    setIsCompleting(true);
-    window.setTimeout(() => {
-      // Released as the save starts rather than held until it returns: if it
-      // fails the card stays put, and a circle still claiming success would be
-      // the one thing worse than no beat at all.
-      setIsCompleting(false);
-      onComplete(task);
-    }, TASK_COMPLETION_BEAT_MS);
-  };
+  // Saves on the click, both ways. The tick used to hold a filled circle for a
+  // beat before the card left (#829), from when leaving was a jump; now the
+  // card fades out where it sat and slides into Completed (#862), that motion
+  // already says "done", and the hold only read as the click waiting.
+  const handleComplete = () => onComplete(task);
 
   return (
     // `group` is what lets +1 day appear on hover: it is in the tree the whole
@@ -121,43 +96,21 @@ export function TaskCard({
             dashed ring where the primitive draws a square. */}
         <span className="relative inline-flex shrink-0">
           <Checkbox
-            checked={isDone || isCompleting}
+            checked={isDone}
             disabled={isBusy}
             onCheckedChange={handleComplete}
             // See TaskPriorityMeter: the whole card is a drag handle.
             onPointerDown={(event) => event.stopPropagation()}
             aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
-            data-completing={isCompleting || undefined}
             className={cn(
               'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
               isDone &&
                 'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground',
-              // The beat, as the ticket draws it: the ring stays dashed and goes
-              // green over a pale fill, so it reads as "being ticked" rather than
-              // as the settled done state, which is a solid fill and a tick.
               // While open the border is transparent: TaskCompletionRing below
               // draws the dashes in its place.
-              isCompleting &&
-                'border-transparent text-transparent data-[state=checked]:border-transparent data-[state=checked]:bg-success-soft data-[state=checked]:text-transparent' +
-                  (prefersReducedMotion() ? '' : ' animate-task-completing'),
-              !isDone && !isCompleting && 'border-transparent'
+              !isDone && 'border-transparent'
             )}
           />
-
-          {/* Seven dashes, not CSS's dozen. A sibling rather than a child so the
-              checkbox's own svg sizing cannot shrink it; it follows the peer for
-              hover and focus the way the ghost tick below does, and scales with
-              the beat by wearing the same animation. */}
-          {!isDone ? (
-            <TaskCompletionRing
-              className={cn(
-                'transition-colors',
-                isCompleting
-                  ? 'text-success' + (prefersReducedMotion() ? '' : ' animate-task-completing')
-                  : 'text-muted-foreground/40 peer-hover:text-success peer-focus-visible:text-success'
-              )}
-            />
-          ) : null}
 
           {/* A ghost of the tick, shown while the circle is pointed at or
               tabbed to. An empty dashed ring does not say what it does; the mark
@@ -167,11 +120,19 @@ export function TaskCard({
 
               Hidden from the accessibility tree: the checkbox itself already
               announces what pressing it does. */}
-          {!isDone && !isCompleting ? (
+          {!isDone ? (
             <Check
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 m-auto size-3.5 text-success opacity-0 transition-opacity peer-hover:opacity-50 peer-focus-visible:opacity-50"
             />
+          ) : null}
+
+          {/* Seven dashes, not CSS's dozen. A sibling rather than a child so the
+              checkbox's own svg sizing cannot shrink it; it follows the peer for
+              hover and focus the way the ghost tick above does. After the
+              ghost, which the beat spec finds as the checkbox's next sibling. */}
+          {!isDone ? (
+            <TaskCompletionRing className="text-muted-foreground/40 transition-colors peer-hover:text-success peer-focus-visible:text-success" />
           ) : null}
         </span>
 

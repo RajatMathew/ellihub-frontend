@@ -38,16 +38,6 @@ export const TASK_COURT_TONES: Record<TaskCourt, { dot: string; text: string; la
   THEIRS: { dot: 'bg-court-theirs', text: 'text-court-theirs', label: 'Their court' },
 };
 
-/**
- * How long the completion circle holds its fill before the card leaves.
- *
- * Long enough to register, short enough not to feel like lag. Started at 200ms,
- * about a blink; halved after that read as the tick waiting on something. The
- * swell in globals.css (`--animate-task-completing`) runs the same length.
- * See elli-ui#829.
- */
-export const TASK_COMPLETION_BEAT_MS = 100;
-
 export const TASK_ENTITY_LABELS: Record<TaskEntityType, string> = {
   project: 'Project',
   rfq: 'RFQ',
