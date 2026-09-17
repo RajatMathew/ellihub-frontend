@@ -12,6 +12,8 @@ import {
   buildEmailFrameDocument,
   EMAIL_FRAME_SANDBOX,
   EMAIL_IFRAME_HEIGHT_MESSAGE,
+  EMAIL_IFRAME_INLINE_IMAGE_MESSAGE,
+  EMAIL_IFRAME_READY_MESSAGE,
   sanitizeEmailHtml,
 } from '@/modules/email/lib/email-html-document';
 import {
@@ -191,21 +193,47 @@ function EmailHtmlBody({
   );
 
   // The body is prepared synchronously so text paints immediately; inline
-  // images are fetched afterwards and folded in, because the frame cannot
+  // images are fetched afterwards and posted in, because the frame cannot
   // authenticate for them itself (see `loadInlineEmailImageData`).
   const prepared = useMemo(
     () => prepareEmailBody(sourceHtml, inlineImageBaseUrl),
     [sourceHtml, inlineImageBaseUrl]
   );
-  const [frameDocument, setFrameDocument] = useState(() =>
-    buildEmailFrameDocument({ bodyHtml: prepared.html, apiOrigin: getApiOrigin() })
+  // Built once per body and never reassigned while images load. Reassigning
+  // `srcdoc` reloads the frame — it threw away the reader's scroll position and
+  // re-ran the sanitizer over the whole document for every image that arrived.
+  const frameDocument = useMemo(
+    () => buildEmailFrameDocument({ bodyHtml: prepared.html, apiOrigin: getApiOrigin() }),
+    [prepared.html]
   );
+
+  // Images that resolved before the frame said it was listening. The fetch and
+  // the frame's own load race, and on a warm cache the fetch wins.
+  const pendingImagesRef = useRef(new Map<string, string>());
+  const frameReadyRef = useRef(false);
+
+  const deliverInlineImage = useCallback((contentId: string, dataUrl: string) => {
+    if (!frameReadyRef.current) {
+      pendingImagesRef.current.set(contentId, dataUrl);
+      return;
+    }
+    frameRef.current?.contentWindow?.postMessage(
+      { [EMAIL_IFRAME_INLINE_IMAGE_MESSAGE]: true, cid: contentId, dataUrl },
+      // The frame has an opaque origin, so there is no origin to target. It is
+      // safe: `srcdoc` content is ours, and what travels is an image we fetched.
+      '*'
+    );
+  }, []);
+
+  useEffect(() => {
+    // A rebuilt document is a fresh frame, which has not reported ready yet and
+    // holds none of the images already delivered to the last one.
+    frameReadyRef.current = false;
+    pendingImagesRef.current = new Map();
+  }, [frameDocument]);
 
   useEffect(() => {
     const controller = new AbortController();
-    setFrameDocument(
-      buildEmailFrameDocument({ bodyHtml: prepared.html, apiOrigin: getApiOrigin() })
-    );
 
     // Only the images the reader can actually see. Everything behind the quote
     // toggle is deliberately left alone.
@@ -216,29 +244,33 @@ function EmailHtmlBody({
     );
     if (sources.size === 0) return () => controller.abort();
 
-    void (async () => {
-      const inlineImages = await loadInlineEmailImageData(sources, controller.signal);
-      if (controller.signal.aborted || inlineImages.size === 0) return;
-      setFrameDocument(
-        buildEmailFrameDocument({
-          bodyHtml: prepareEmailBody(sourceHtml, inlineImageBaseUrl, inlineImages).html,
-          apiOrigin: getApiOrigin(),
-        })
-      );
-    })();
+    void loadInlineEmailImageData(sources, deliverInlineImage, controller.signal);
 
     return () => controller.abort();
-  }, [prepared, stableAttachments, inlineImageBaseUrl, sourceHtml]);
+  }, [deliverInlineImage, prepared.visibleContentIds, stableAttachments]);
 
-  const handleMessage = useCallback((event: MessageEvent) => {
-    // Only this frame's own reports: the message channel is shared with every
-    // other message rendered on the page.
-    if (event.source !== frameRef.current?.contentWindow) return;
-    const data = event.data as Record<string, unknown> | null;
-    if (!data || typeof data !== 'object' || data[EMAIL_IFRAME_HEIGHT_MESSAGE] !== true) return;
-    const reported = data.height;
-    if (typeof reported === 'number' && reported > 0) setHeight(Math.ceil(reported));
-  }, []);
+  const handleMessage = useCallback(
+    (event: MessageEvent) => {
+      // Only this frame's own reports: the message channel is shared with every
+      // other message rendered on the page.
+      if (event.source !== frameRef.current?.contentWindow) return;
+      const data = event.data as Record<string, unknown> | null;
+      if (!data || typeof data !== 'object') return;
+
+      if (data[EMAIL_IFRAME_READY_MESSAGE] === true) {
+        frameReadyRef.current = true;
+        const pending = pendingImagesRef.current;
+        pendingImagesRef.current = new Map();
+        for (const [contentId, dataUrl] of pending) deliverInlineImage(contentId, dataUrl);
+        return;
+      }
+
+      if (data[EMAIL_IFRAME_HEIGHT_MESSAGE] !== true) return;
+      const reported = data.height;
+      if (typeof reported === 'number' && reported > 0) setHeight(Math.ceil(reported));
+    },
+    [deliverInlineImage]
+  );
 
   useEffect(() => {
     window.addEventListener('message', handleMessage);
