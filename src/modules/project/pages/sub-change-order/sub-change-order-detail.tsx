@@ -29,7 +29,7 @@ import {
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';

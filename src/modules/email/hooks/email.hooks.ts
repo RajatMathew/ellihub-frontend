@@ -11,6 +11,7 @@ import {
   type EmailMeetingResponseAction,
   type EmailMessagePage,
   type EmailReferenceProject,
+  type EmailThreadAssignee,
   type EmailThreadClassification,
   type ForwardConnectedEmailPayload,
   type ReplyConnectedEmailPayload,
@@ -30,6 +31,7 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -69,8 +71,9 @@ export const emailKeys = {
       flagged ?? null,
       hasAttachments ?? null,
     ] as const,
+  messageRoot: (accountId?: string) => [...emailKeys.all, 'message', accountId] as const,
   message: (accountId?: string, messageId?: string | null) =>
-    [...emailKeys.all, 'message', accountId, messageId] as const,
+    [...emailKeys.messageRoot(accountId), messageId] as const,
   messageBody: (accountId?: string, messageId?: string | null) =>
     [...emailKeys.all, 'message-body', accountId, messageId] as const,
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
@@ -324,7 +327,63 @@ export const useEmailMessageBodyQuery = (
 type EmailThreadClassificationSnapshot = {
   messages: Array<[QueryKey, EmailMessagePages | undefined]>;
   message: ConnectedEmailListItem | undefined;
+  /** What the thread was linked to before this save, as comparable keys. */
+  previousReferenceKeys: string;
 };
+
+/**
+ * What a set of references *is*, order-independent, for deciding whether a save
+ * actually moved them.
+ */
+function referenceIdentityKey(references: EmailThreadClassification['references']): string {
+  return references
+    .map((reference) => `${reference.type}:${reference.entityId ?? reference.label.toLowerCase()}`)
+    .sort()
+    .join('|');
+}
+
+/** The classification a conversation carries right now, from whatever list holds it. */
+function findCachedClassification(
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>,
+  conversationKey: string
+): EmailThreadClassification | null {
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      for (const message of page.records) {
+        if (message.conversationKey === conversationKey && message.classification) {
+          return message.classification;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The assignee to show while the save is in flight.
+ *
+ * The payload carries an id, but the panel renders a name and an avatar, so an
+ * optimistic classification built from the id alone blanks the assignee for the
+ * length of the round trip. Reuse the one already on screen when the id has not
+ * changed, and otherwise resolve it from the assignee list the picker itself
+ * reads — the only two places the name can come from without asking the server.
+ */
+function resolveOptimisticAssignee(
+  queryClient: QueryClient,
+  payload: SaveEmailThreadClassificationPayload,
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>
+): EmailThreadAssignee | null {
+  if (!payload.assignedToId) return null;
+
+  const current = findCachedClassification(messages, payload.conversationKey)?.assignedTo;
+  if (current?.id === payload.assignedToId) return current;
+
+  const assignees = queryClient.getQueryData<EmailThreadAssignee[]>([
+    ...emailKeys.all,
+    'thread-assignees',
+  ]);
+  return assignees?.find((assignee) => assignee.id === payload.assignedToId) ?? null;
+}
 
 function applyClassificationToMessagePages(
   data: EmailMessagePages | undefined,
@@ -413,22 +472,32 @@ export const useSaveEmailThreadClassificationMutation = () => {
     onMutate: async (payload): Promise<EmailThreadClassificationSnapshot> => {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
-        queryClient.cancelQueries({ queryKey: emailKeys.message(payload.accountId, undefined) }),
+        // `message(accountId, undefined)` never matched a cached single message:
+        // the trailing `undefined` is part of the key, so it only ever cancelled
+        // a query nothing writes. The root prefix matches every one of them.
+        queryClient.cancelQueries({ queryKey: emailKeys.messageRoot(payload.accountId) }),
       ]);
 
-      const optimisticClassification: EmailThreadClassification = {
-        id: null,
-        conversationKey: payload.conversationKey,
-        threadId: payload.threadId ?? null,
-        status: payload.status,
-        references: normalizeClassificationReferences(payload.references),
-      };
       const messages = queryClient.getQueriesData<EmailMessagePages>({
         queryKey: emailKeys.messagesRoot(payload.accountId),
       });
       const message = queryClient.getQueryData<ConnectedEmailListItem>(
         emailKeys.message(payload.accountId, payload.threadId ?? null)
       );
+      const previousReferenceKeys = referenceIdentityKey(
+        findCachedClassification(messages, payload.conversationKey)?.references ?? []
+      );
+      const optimisticClassification: EmailThreadClassification = {
+        id: null,
+        conversationKey: payload.conversationKey,
+        threadId: payload.threadId ?? null,
+        status: payload.status,
+        // Carried, not dropped. An optimistic update that omits a field the
+        // server would have returned makes the UI flicker — change the court on
+        // an assigned thread and the assignee blinked out until the save landed.
+        assignedTo: resolveOptimisticAssignee(queryClient, payload, messages),
+        references: normalizeClassificationReferences(payload.references),
+      };
 
       queryClient.setQueriesData<EmailMessagePages>(
         { queryKey: emailKeys.messagesRoot(payload.accountId) },
@@ -439,28 +508,43 @@ export const useSaveEmailThreadClassificationMutation = () => {
             optimisticClassification
           )
       );
-      queryClient.setQueriesData<ConnectedEmailListItem>({ queryKey: emailKeys.all }, (current) =>
-        current?.conversationKey === payload.conversationKey
-          ? { ...current, classification: optimisticClassification }
-          : current
+      // Scoped to the single-message caches. Against `emailKeys.all` this ran
+      // the updater over every email query there is — accounts, folders, tags,
+      // every list page, every conversation — to find the one or two entries
+      // that are a `ConnectedEmailListItem`, which is most of what made an
+      // optimistic court change take ~80ms to show on screen.
+      queryClient.setQueriesData<ConnectedEmailListItem>(
+        { queryKey: emailKeys.messageRoot(payload.accountId) },
+        (current) =>
+          current?.conversationKey === payload.conversationKey
+            ? { ...current, classification: optimisticClassification }
+            : current
       );
 
-      return { messages, message };
+      return { messages, message, previousReferenceKeys };
     },
-    onSuccess: (classification, payload) => {
+    onSuccess: (classification, payload, snapshot) => {
       queryClient.setQueriesData<EmailMessagePages>(
         { queryKey: emailKeys.messagesRoot(payload.accountId) },
         (current) =>
           applyClassificationToMessagePages(current, payload.conversationKey, classification)
       );
-      queryClient.setQueriesData<ConnectedEmailListItem>({ queryKey: emailKeys.all }, (current) =>
-        current?.conversationKey === payload.conversationKey
-          ? { ...current, classification }
-          : current
+      queryClient.setQueriesData<ConnectedEmailListItem>(
+        { queryKey: emailKeys.messageRoot(payload.accountId) },
+        (current) =>
+          current?.conversationKey === payload.conversationKey
+            ? { ...current, classification }
+            : current
       );
-      void queryClient.invalidateQueries({
-        queryKey: emailKeys.referenceProjects(payload.accountId),
-      });
+      // The project list is "projects this mailbox has mail for", so it only
+      // moves when the references themselves move. Refetching it on a court
+      // change or an assignment put a request on the wire for an answer that
+      // could not have changed.
+      if (referenceIdentityKey(classification.references) !== snapshot?.previousReferenceKeys) {
+        void queryClient.invalidateQueries({
+          queryKey: emailKeys.referenceProjects(payload.accountId),
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
     },
     onError: (error, payload, snapshot) => {

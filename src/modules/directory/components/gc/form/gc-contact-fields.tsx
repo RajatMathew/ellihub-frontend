@@ -1,10 +1,9 @@
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
 import type { GCFormValues } from '@/modules/directory/schemas/gc.schema';
 import { Building2, Mail, Phone } from 'lucide-react';
 import { Controller, type Control } from 'react-hook-form';
-
-import { GCFormFieldLabel, gcInvalidControlClassName } from './gc-form-field';
 
 interface GCContactFieldsProps {
   control: Control<GCFormValues>;
@@ -19,8 +18,10 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <GCFormFieldLabel>Company Email</GCFormFieldLabel>
-              <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
+              <FormFieldLabel>Company Email</FormFieldLabel>
+              <InputWrapper
+                className={fieldState.invalid ? formInvalidControlClassName : undefined}
+              >
                 <Mail className="size-4" />
                 <Input
                   {...field}
@@ -39,8 +40,10 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
           control={control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <GCFormFieldLabel>Company Phone</GCFormFieldLabel>
-              <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
+              <FormFieldLabel>Company Phone</FormFieldLabel>
+              <InputWrapper
+                className={fieldState.invalid ? formInvalidControlClassName : undefined}
+              >
                 <Phone className="size-4" />
                 <Input
                   {...field}
@@ -64,8 +67,8 @@ export function GCContactFields({ control }: GCContactFieldsProps) {
         control={control}
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
-            <GCFormFieldLabel>Address</GCFormFieldLabel>
-            <InputWrapper className={fieldState.invalid ? gcInvalidControlClassName : undefined}>
+            <FormFieldLabel>Address</FormFieldLabel>
+            <InputWrapper className={fieldState.invalid ? formInvalidControlClassName : undefined}>
               <Building2 className="size-4" />
               <Input
                 {...field}

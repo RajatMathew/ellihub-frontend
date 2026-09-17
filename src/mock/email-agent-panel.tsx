@@ -34,7 +34,7 @@ import {
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
 import { filesApi } from '@/modules/files/api/files.api';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import {
   useCreateScheduleEntryMutation,
   useDeleteScheduleEntryMutation,

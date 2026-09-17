@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
 import { Input, InputWrapper } from '@/app/components/ui/input';
@@ -19,8 +20,6 @@ import {
 import type { VendorFormValues, VendorTypeObject } from '@/modules/directory/schemas/vendor.schema';
 import { Globe, Mail } from 'lucide-react';
 import { Controller, useWatch, type Control } from 'react-hook-form';
-
-import { VendorFormFieldLabel, vendorInvalidControlClassName } from './vendor-form-field';
 
 interface VendorInfoFormSectionProps {
   control: Control<VendorFormValues>;
@@ -74,9 +73,9 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel required>Vendor Name</VendorFormFieldLabel>
+                <FormFieldLabel required>Vendor Name</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Input
                     {...field}
@@ -96,9 +95,9 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel>Email</VendorFormFieldLabel>
+                <FormFieldLabel>Email</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Mail className="size-4" />
                   <Input
@@ -122,7 +121,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel required>Vendor Type</VendorFormFieldLabel>
+                <FormFieldLabel required>Vendor Type</FormFieldLabel>
                 <Select
                   key={field.value || 'empty-type'}
                   value={field.value || ''}
@@ -130,7 +129,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                 >
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    className={fieldState.invalid ? formInvalidControlClassName : undefined}
                     data-testid="vendor-type-select"
                   >
                     <SelectValue placeholder="Select vendor type..." />
@@ -153,13 +152,13 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel
+                <FormFieldLabel
                   required
                   info="Choose Inactive if the vendor is currently out of operation or unavailable for new work."
                   infoLabel="Default status information"
                 >
                   Default Status
-                </VendorFormFieldLabel>
+                </FormFieldLabel>
                 <Select
                   key={field.value || 'empty-status'}
                   value={field.value || ''}
@@ -167,7 +166,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                 >
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    className={fieldState.invalid ? formInvalidControlClassName : undefined}
                     data-testid="vendor-status-select"
                   >
                     <SelectValue placeholder="Select status..." />
@@ -192,9 +191,9 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel>Tax ID / EIN</VendorFormFieldLabel>
+                <FormFieldLabel>Tax ID / EIN</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Input
                     {...field}
@@ -218,9 +217,9 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel>Website</VendorFormFieldLabel>
+                <FormFieldLabel>Website</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Globe className="size-4" />
                   <Input
@@ -241,7 +240,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <VendorFormFieldLabel required>Payment Terms</VendorFormFieldLabel>
+                <FormFieldLabel required>Payment Terms</FormFieldLabel>
                 <Select
                   key={field.value || 'empty-payment-terms'}
                   value={field.value || ''}
@@ -249,7 +248,7 @@ export function VendorInfoFormSection({ control, vendorTypes }: VendorInfoFormSe
                 >
                   <SelectTrigger
                     aria-invalid={fieldState.invalid}
-                    className={fieldState.invalid ? vendorInvalidControlClassName : undefined}
+                    className={fieldState.invalid ? formInvalidControlClassName : undefined}
                     data-testid="vendor-payment-terms-select"
                   >
                     <SelectValue placeholder="Select terms..." />

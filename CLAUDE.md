@@ -54,7 +54,7 @@ themselves behave the same under `npm run` or `bun run`.
 - `npm run test:e2e` — Playwright.
 
 `npm run lint && npm run build` runs **no tests** — do not claim "tests pass" from a type-check.
-`tests/email-account-identity.test.ts` has one known pre-existing failure; everything else is green.
+The unit suite is green; keep it that way.
 
 ## Hard rules (the ones that cost the most rework)
 

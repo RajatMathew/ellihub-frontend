@@ -1,3 +1,4 @@
+import { FormFieldLabel, formInvalidControlClassName } from '@/app/components/form-field-label';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Field, FieldError } from '@/app/components/ui/field';
@@ -16,8 +17,6 @@ import { generateEmployeePassword } from '@/modules/hr/lib/employee-auth.utils';
 import type { CreateEmployeeInput, EmployeeAuthRole } from '@/modules/hr/schemas/employee.schema';
 import { Calendar, KeyRound, ShieldCheck } from 'lucide-react';
 import { Controller, useController, useWatch, type Control } from 'react-hook-form';
-
-import { EmployeeFormFieldLabel, employeeInvalidControlClassName } from './employee-form-field';
 
 interface EmployeeEmploymentSectionProps {
   control: Control<CreateEmployeeInput>;
@@ -55,9 +54,9 @@ export function EmployeeEmploymentSection({
             control={control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <EmployeeFormFieldLabel>Commencement Date</EmployeeFormFieldLabel>
+                <FormFieldLabel>Commencement Date</FormFieldLabel>
                 <InputWrapper
-                  className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                  className={fieldState.invalid ? formInvalidControlClassName : undefined}
                 >
                   <Calendar className="size-4 text-muted-foreground" />
                   <Input
@@ -78,7 +77,7 @@ export function EmployeeEmploymentSection({
               control={control}
               render={({ field }) => (
                 <Field>
-                  <EmployeeFormFieldLabel>Link Auth User</EmployeeFormFieldLabel>
+                  <FormFieldLabel>Link Auth User</FormFieldLabel>
                   <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                     <span data-testid="employee-create-account-switch" className="sr-only">
@@ -101,7 +100,7 @@ export function EmployeeEmploymentSection({
 
               return (
                 <Field data-invalid={isInvalid}>
-                  <EmployeeFormFieldLabel required>Job Title</EmployeeFormFieldLabel>
+                  <FormFieldLabel required>Job Title</FormFieldLabel>
                   <SearchableSelect
                     options={roleOptions}
                     value={field.value ?? ''}
@@ -119,7 +118,7 @@ export function EmployeeEmploymentSection({
                     placeholder="Select or type job title..."
                     searchPlaceholder="Search or type job title..."
                     emptyMessage="No job titles found."
-                    className={isInvalid ? employeeInvalidControlClassName : undefined}
+                    className={isInvalid ? formInvalidControlClassName : undefined}
                     testId="employee-role-select"
                   />
                   {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -137,14 +136,14 @@ export function EmployeeEmploymentSection({
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <EmployeeFormFieldLabel required>Auth Role</EmployeeFormFieldLabel>
+                    <FormFieldLabel required>Auth Role</FormFieldLabel>
                     <Select
                       value={field.value ?? 'user'}
                       onValueChange={(value) => field.onChange(value as EmployeeAuthRole)}
                     >
                       <SelectTrigger
                         aria-invalid={fieldState.invalid}
-                        className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                        className={fieldState.invalid ? formInvalidControlClassName : undefined}
                       >
                         <ShieldCheck className="me-1.5 size-4 text-muted-foreground" />
                         <SelectValue placeholder="Select auth role" />
@@ -168,9 +167,9 @@ export function EmployeeEmploymentSection({
                 control={control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <EmployeeFormFieldLabel required>Temporary Password</EmployeeFormFieldLabel>
+                    <FormFieldLabel required>Temporary Password</FormFieldLabel>
                     <InputWrapper
-                      className={fieldState.invalid ? employeeInvalidControlClassName : undefined}
+                      className={fieldState.invalid ? formInvalidControlClassName : undefined}
                     >
                       <Input
                         {...field}
@@ -199,7 +198,7 @@ export function EmployeeEmploymentSection({
                   control={control}
                   render={({ field }) => (
                     <Field className="md:col-span-2">
-                      <EmployeeFormFieldLabel>Checking Register Access</EmployeeFormFieldLabel>
+                      <FormFieldLabel>Checking Register Access</FormFieldLabel>
                       <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:gap-3">
                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                         <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">

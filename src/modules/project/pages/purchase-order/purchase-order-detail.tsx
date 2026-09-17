@@ -23,7 +23,7 @@ import type { GeneratedPdfFile } from '@/app/lib/generated-pdf';
 import { formatCurrency, formatDate, formatPercent } from '@/app/lib/helpers';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { useDownloadFile } from '@/modules/files/hooks/files.hooks';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { useFeatureMailDraftQuery, useSendFeatureMailMutation } from '@/modules/mail/hooks';
 import type { FeatureMailTarget } from '@/modules/mail/schemas/mail.schema';
 import { usePdfNoticeConfigQuery, usePdfTermsConfigQuery } from '@/modules/pdf/hooks';

@@ -5,7 +5,8 @@ import { ProgressCircle } from '@/app/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { cn } from '@/app/lib/utils';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
-import { useUploadManager, type UploadTask } from '@/modules/files/uploads/upload-manager';
+import { type UploadTask } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import {
   AlertCircle,
   CheckCircle2,

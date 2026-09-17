@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   CategorySegmentedControl,
@@ -14,9 +14,11 @@ import {
   type EntityReferenceApi,
   type EntityReferenceCategory,
 } from '@/app/components/entity-reference-marker-storage';
+import { projectReferenceOptionsQuery } from '@/app/components/entity-reference-options-query';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { Popover, PopoverTrigger } from '@/app/components/ui/popover';
+import { useQueryClient } from '@tanstack/react-query';
 import { AtSign } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -71,6 +73,7 @@ export function useEntityReferenceMarker({
   renderTrigger,
   confirmOtherSwitch = false,
 }: UseEntityReferenceMarkerConfig) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<EntityReferenceFilterType>('all');
   const [pendingOtherSwitch, setPendingOtherSwitch] = useState(false);
@@ -89,6 +92,14 @@ export function useEntityReferenceMarker({
   const references = useMemo(() => normalizeReferenceTimeline(rawReferences), [rawReferences]);
   const isOtherSelected = references.some((reference) => reference.type === 'other');
   const hasProjectReference = references.some((reference) => reference.type === 'project');
+  const prefetchProjectOptions = useCallback(() => {
+    // Only what the picker is about to ask for. A thread that already has a
+    // project opens on the overview tab, whose query is keyed differently, so
+    // warming the Project tab there would be the very request this is meant to
+    // save. `prefetchQuery` respects staleTime, so hovering repeatedly is free.
+    if (!scopeId || hasProjectReference) return;
+    void queryClient.prefetchQuery(projectReferenceOptionsQuery(scopeId, api));
+  }, [api, hasProjectReference, queryClient, scopeId]);
   const isProjectMode = !isOtherSelected;
   const effectiveSelectedType =
     isOtherSelected && selectedType !== 'other' ? 'other' : selectedType;
@@ -184,7 +195,15 @@ export function useEntityReferenceMarker({
         }
       }}
     >
-      <PopoverTrigger asChild>
+      {/* Warmed on hover and on focus. The options query lives inside the
+          popover, so it could not start until the popover was already open —
+          the first open of a session always showed an empty list while the
+          request it had just started came back. */}
+      <PopoverTrigger
+        asChild
+        onPointerEnter={prefetchProjectOptions}
+        onFocus={prefetchProjectOptions}
+      >
         {renderTrigger ? (
           renderTrigger({ disabled: Boolean(isSaving) || isOtherSelected })
         ) : (

@@ -1,18 +1,13 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, type ReactNode } from 'react';
 
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { filesApi, type FileUploadPayload } from '@/modules/files/api/files.api';
 import { filesKeys } from '@/modules/files/constants/files.keys';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
+import {
+  UploadManagerContext,
+  type UploadManagerValue,
+} from '@/modules/files/uploads/upload-manager-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
@@ -32,7 +27,13 @@ function getUploadSuccessMessage(fileName: string, uploadedFile: FileItem): stri
     : `${fileName} uploaded.`;
 }
 
-type UploadTaskStatus = 'queued' | 'uploading' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
+type UploadTaskStatus =
+  | 'queued'
+  | 'uploading'
+  | 'finalizing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 type UploadFailureStage = 'upload' | 'finalizing';
 
 export interface UploadTask {
@@ -87,27 +88,6 @@ type UploadAction =
   | { type: 'set-open'; open: boolean }
   | { type: 'set-collapsed'; collapsed: boolean };
 
-interface UploadManagerValue {
-  tasks: UploadTask[];
-  open: boolean;
-  collapsed: boolean;
-  enqueueUpload: (payload: FileUploadPayload, options?: UploadTaskOptions) => string;
-  enqueueUploads: (payloads: FileUploadPayload[], options?: UploadTaskOptions) => string[];
-  enqueueUploadsAndWait: (
-    payloads: FileUploadPayload[],
-    options?: UploadTaskOptions
-  ) => Promise<FileItem[]>;
-  cancelUpload: (id: string) => void;
-  cancelAll: () => void;
-  retryUpload: (id: string) => void;
-  clearUpload: (id: string) => void;
-  clearTerminalUploads: () => void;
-  setOpen: (open: boolean) => void;
-  setCollapsed: (collapsed: boolean) => void;
-}
-
-const UploadManagerContext = createContext<UploadManagerValue | null>(null);
-
 function uploadReducer(state: UploadState, action: UploadAction): UploadState {
   switch (action.type) {
     case 'enqueue':
@@ -144,7 +124,9 @@ function uploadReducer(state: UploadState, action: UploadAction): UploadState {
 }
 
 function createUploadId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return (
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 }
 
 function createUploadCompletion(): UploadCompletion {
@@ -349,11 +331,7 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
   }, [runUpload, state.tasks]);
 
   const enqueueUploadsInternal = useCallback(
-    (
-      payloads: FileUploadPayload[],
-      options: UploadTaskOptions = {},
-      waitForCompletion = false
-    ) => {
+    (payloads: FileUploadPayload[], options: UploadTaskOptions = {}, waitForCompletion = false) => {
       if (payloads.length === 0) return { ids: [], completions: [] as Promise<FileItem>[] };
 
       const tasks = payloads.map((payload) => createTask(payload, options));
@@ -445,17 +423,21 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearUpload = useCallback((id: string) => {
-    const task = tasksRef.current.find((item) => item.id === id);
-    if (task?.status === 'queued' || task?.status === 'uploading') cancelUpload(id);
-    entriesRef.current.delete(id);
-    dispatch({ type: 'remove', id });
-  }, [cancelUpload]);
+  const clearUpload = useCallback(
+    (id: string) => {
+      const task = tasksRef.current.find((item) => item.id === id);
+      if (task?.status === 'queued' || task?.status === 'uploading') cancelUpload(id);
+      entriesRef.current.delete(id);
+      dispatch({ type: 'remove', id });
+    },
+    [cancelUpload]
+  );
 
   const clearTerminalUploads = useCallback(() => {
     const terminalIds = tasksRef.current
-      .filter((task) =>
-        task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled'
+      .filter(
+        (task) =>
+          task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled'
       )
       .map((task) => task.id);
 
@@ -495,10 +477,4 @@ export function UploadManagerProvider({ children }: { children: ReactNode }) {
   );
 
   return <UploadManagerContext.Provider value={value}>{children}</UploadManagerContext.Provider>;
-}
-
-export function useUploadManager() {
-  const context = useContext(UploadManagerContext);
-  if (!context) throw new Error('useUploadManager must be used within UploadManagerProvider');
-  return context;
 }

@@ -2,10 +2,8 @@ import { useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode }
 
 import type { ActivityLogDetails } from '@/app/api/activity-log.api';
 import { ActivityChangeDetailsButton } from '@/app/components/activity-change-details-dialog';
-import {
-  ActivityRevisionBadge,
-  stripActivityRevisionSuffix,
-} from '@/app/components/activity-revision-badge';
+import { ActivityRevisionBadge } from '@/app/components/activity-revision-badge';
+import { stripActivityRevisionSuffix } from '@/app/components/activity-revision-label';
 import { Button } from '@/app/components/ui/button';
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import {

@@ -11,7 +11,7 @@ import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { ProjectInlineListLoading } from '@/modules/project/components/shared';
 import type { ProjectMasterSchedule } from '@/modules/project/schemas/project-master-schedule.schema';
 import { FileText, RefreshCw, Trash2, Upload } from 'lucide-react';

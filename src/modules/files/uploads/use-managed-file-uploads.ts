@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 
 import type { FileUploadPayload } from '@/modules/files/api/files.api';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { useUploadManager, type UploadTaskOptions } from '@/modules/files/uploads/upload-manager';
+import { type UploadTaskOptions } from '@/modules/files/uploads/upload-manager';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 
 type UploadNameResolver = (file: File) => string;
 

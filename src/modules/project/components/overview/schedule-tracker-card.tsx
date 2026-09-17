@@ -8,8 +8,8 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { UploadFileDialog } from '@/modules/files/components/upload-file-dialog';
-import { useUploadManager } from '@/modules/files/uploads/upload-manager';
 import type { FileUploadInput } from '@/modules/files/schemas/file.schema';
+import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { ScheduleTrackerContractDates } from '@/modules/project/components/overview/schedule-tracker-contract-dates';
 import { ScheduleTrackerEntryDialog } from '@/modules/project/components/overview/schedule-tracker-entry-dialog';
 import { ScheduleTrackerEntryTable } from '@/modules/project/components/overview/schedule-tracker-entry-table';

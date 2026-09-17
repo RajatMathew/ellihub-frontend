@@ -5,10 +5,8 @@ import type {
   ActivityFieldSnapshotDetails,
   ActivityLogDetails,
 } from '@/app/api/activity-log.api';
-import {
-  ActivityRevisionBadge,
-  stripActivityRevisionSuffix,
-} from '@/app/components/activity-revision-badge';
+import { ActivityRevisionBadge } from '@/app/components/activity-revision-badge';
+import { stripActivityRevisionSuffix } from '@/app/components/activity-revision-label';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import {
