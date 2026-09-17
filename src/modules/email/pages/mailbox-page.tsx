@@ -1550,7 +1550,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             {showEmailList && (
               <div
                 className={cn(
-                  'flex h-full min-h-0 w-full shrink-0 flex-col bg-mail-paper lg:w-(--mail-list-width)',
+                  // The divider belongs to the whole column, not to the rows.
+                  // On the list pane it started below the folder picker and the
+                  // search box, so the line began a third of the way down.
+                  'flex h-full min-h-0 w-full shrink-0 flex-col border-e border-mail-line bg-mail-paper',
+                  'lg:w-(--mail-list-width)',
                   mobilePane === 'reading' && 'hidden lg:flex'
                 )}
               >
