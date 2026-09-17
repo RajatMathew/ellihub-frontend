@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { cn } from '@/app/lib/utils';
 import {
-  DEFAULT_DUE_TIME,
-  toTaskPayload,
-} from '@/modules/tasks/components/task-form/task-form-values';
+  canSaveMailTaskDraft,
+  mailTaskDraftToPayload,
+  taskDateInputValue,
+} from '@/modules/email/lib/mail-task-draft';
 import { useCreateTaskMutation } from '@/modules/tasks/hooks/tasks.hooks';
 import type { TaskEmailReference, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 
@@ -69,9 +70,15 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
   const createTask = useCreateTaskMutation();
   const [text, setText] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('P2');
-  const [dueDate, setDueDate] = useState('');
+  // A due date is not optional: the board has no "No due date" column, so the
+  // API rejects a task without one. Offering an empty date field meant Add task
+  // answered with "Due at: A due date is required" and left the draft sitting in
+  // a popover that never closed. Today is the honest default for something
+  // raised off a mail you are reading now, and it is one click to change.
+  const [dueDate, setDueDate] = useState(() => taskDateInputValue(new Date()));
 
-  const canAdd = text.trim().length > 0 && !createTask.isPending;
+  const draft = { text, priority, dueDate };
+  const canAdd = canSaveMailTaskDraft(draft) && !createTask.isPending;
 
   const reference: TaskEmailReference = {
     accountId: email.accountId,
@@ -85,16 +92,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
   const submit = async () => {
     if (!canAdd) return;
     await createTask.mutateAsync({
-      ...toTaskPayload({
-        title: text.trim(),
-        description: '',
-        priority,
-        court: 'OURS',
-        dueDate,
-        // Only meaningful alongside a date; `toTaskPayload` drops it otherwise.
-        dueTime: dueDate ? DEFAULT_DUE_TIME : '',
-        assigneeId: '',
-      }),
+      ...mailTaskDraftToPayload(draft),
       emailReferences: [reference],
     });
     onDone();
@@ -158,9 +156,11 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           id="mail-add-task-due"
           type="date"
           value={dueDate}
+          required
+          aria-invalid={dueDate ? undefined : 'true'}
           className={cn(
             'cursor-pointer rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-            dueDate ? 'bg-mail-chip-count text-mail-ink' : 'text-mail-muted hover:bg-mail-chip'
+            dueDate ? 'bg-mail-chip-count text-mail-ink' : 'text-destructive hover:bg-mail-chip'
           )}
           onChange={(event) => setDueDate(event.target.value)}
         />

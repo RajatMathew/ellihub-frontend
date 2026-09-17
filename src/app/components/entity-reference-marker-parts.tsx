@@ -5,8 +5,21 @@
  * fast-refresh boundary (`react-refresh/only-export-components`) requires a
  * file to export either only components or only non-components, not both.
  */
+
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  getReferenceGroupLabel,
+  getReferenceIdentity,
+  getReferenceTypeLabel,
+  groupReferencesByType,
+  type EntityReference,
+  type EntityReferenceApi,
+  type EntityReferenceCategory,
+  type EntityReferenceOption,
+  type EntityReferenceType,
+} from '@/app/components/entity-reference-marker-storage';
+import { dedupeReferenceOptions } from '@/app/components/entity-reference-options-query';
 import { Button } from '@/app/components/ui/button';
 import {
   Command,
@@ -22,17 +35,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
-import {
-  getReferenceGroupLabel,
-  getReferenceIdentity,
-  getReferenceTypeLabel,
-  groupReferencesByType,
-  type EntityReference,
-  type EntityReferenceApi,
-  type EntityReferenceCategory,
-  type EntityReferenceOption,
-  type EntityReferenceType,
-} from '@/app/components/entity-reference-marker-storage';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Info, Loader2, Plus, X } from 'lucide-react';
 
@@ -469,7 +471,14 @@ function AllReferencePicker({
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search.trim(), 200);
   const optionsQuery = useQuery({
-    queryKey: ['entity-reference-options', scopeId, 'all', searchableTypes, projectIds, debouncedSearch],
+    queryKey: [
+      'entity-reference-options',
+      scopeId,
+      'all',
+      searchableTypes,
+      projectIds,
+      debouncedSearch,
+    ],
     queryFn: async () => {
       const optionGroups = await Promise.all(
         searchableTypes.flatMap((type) =>
@@ -751,18 +760,6 @@ function optionToReference(option: EntityReferenceOption): EntityReference {
     entityId: option.entityId,
     label: option.label,
   };
-}
-
-function dedupeReferenceOptions<T extends EntityReferenceOption>(options: T[]): T[] {
-  const seen = new Set<string>();
-  return options.filter((option) => {
-    const key = [option.type, option.entityType ?? 'manual', option.entityId ?? option.label].join(
-      '|'
-    );
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }
 
 function referenceToOption(

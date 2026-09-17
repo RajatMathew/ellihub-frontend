@@ -332,7 +332,16 @@ export function EmailReadingPane({
   const projectReference = email?.classification?.references?.find(
     (reference) => reference.type === 'project' && reference.entityId
   );
-  const savedRootProjectId = projectReference?.entityId ?? undefined;
+  // Resolved only for a thread that actually carries a file. It is a two-hop
+  // lookup on this backend and was measured at ~2.2s, and it ran on every
+  // project-classified thread the moment it opened — for a destination folder
+  // nobody had asked for yet. Most mail has no attachment and now pays nothing.
+  const threadCarriesAFile =
+    Boolean(email?.attachments?.length) ||
+    Boolean(email?.threadMessages?.some((message) => message.attachments?.length));
+  const savedRootProjectId = threadCarriesAFile
+    ? (projectReference?.entityId ?? undefined)
+    : undefined;
   const projectFolderQuery = useProjectFolderQuery(savedRootProjectId);
   const savedRootFolderId = projectFolderQuery.data ?? undefined;
   const savedRootLabel = projectReference?.label ?? 'Project Files';
