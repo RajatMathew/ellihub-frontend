@@ -73,6 +73,7 @@ import {
   toComposeDraftFields,
 } from '@/modules/email/lib/email-draft-compose';
 import { isEmailReconnectRequiredError } from '@/modules/email/lib/email-errors';
+import { listRowIsWholeThread } from '@/modules/email/lib/email-list-body';
 import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { richTextToEmailHtml } from '@/modules/email/lib/email-rich-text';
@@ -363,10 +364,11 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const address = connectedAccount?.mailboxAddress ?? connectedAccount?.email ?? 'email';
   const selectedEmail = routeConversationId ? (routeSelectedEmail ?? deepLinkEmail) : defaultEmail;
   const selectedEmailId = selectedEmail?.id;
+  const rowIsWholeThread = listRowIsWholeThread(selectedEmail);
   const conversationQuery = useEmailConversationQuery(
     connectedAccount?.id,
     isConnected ? selectedEmail?.threadId : null,
-    canLoadConnectedMailbox,
+    canLoadConnectedMailbox && !rowIsWholeThread,
     isConnected ? selectedEmail?.conversationKey : null
   );
   const messageDetailQuery = useEmailMessageQuery(
