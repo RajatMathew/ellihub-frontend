@@ -25,6 +25,7 @@ import {
   isEmailReconnectRequiredError,
   shouldRetryEmailRequest,
 } from '@/modules/email/lib/email-errors';
+import { emailSyncInvalidation } from '@/modules/email/lib/email-sync-invalidation';
 import {
   useInfiniteQuery,
   useMutation,
@@ -240,21 +241,41 @@ export const useRefreshEmailMessagesMutation = () => {
     // on opening a mailbox, the notice greeted them every time they went to
     // read their mail. The list already says it is catching up through
     // `freshness`; a toast over the top of that is just in the way.
-    onSuccess: (_result, payload) => {
+    onSuccess: (result, payload) => {
+      const stale = emailSyncInvalidation(result);
       void Promise.allSettled([
-        queryClient.invalidateQueries({
-          queryKey: emailKeys.messagesRoot(payload.accountId),
-          refetchType: 'active',
-        }),
-        queryClient.invalidateQueries({
-          queryKey: emailKeys.folders(payload.accountId),
-          refetchType: 'active',
-        }),
-        queryClient.invalidateQueries({
-          queryKey: emailKeys.tags(payload.accountId),
-          refetchType: 'active',
-        }),
-        queryClient.invalidateQueries({ queryKey: emailKeys.accounts(), refetchType: 'active' }),
+        ...(stale.messages
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.messagesRoot(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.folders
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.folders(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.tags
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.tags(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.accounts
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.accounts(),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
       ]);
     },
     onError: (error) => {
