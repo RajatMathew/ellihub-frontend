@@ -84,6 +84,32 @@ export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): bo
   return attachment.inline === true || normalizeEmailContentId(attachment.contentId) !== null;
 }
 
+/**
+ * Whether an attachment should stay out of the attachment row.
+ *
+ * Only `inline === true` can keep it out. That is the provider saying
+ * "render this in the body" — a signature logo, a tracking pixel — and it is
+ * what every other mail client keys off.
+ *
+ * A `contentId` on its own means nothing: Outlook stamps one on *every*
+ * attachment it sends. Treating that as inline is what made real files vanish
+ * from the row — 178 of the attachments in our own cache are contentId-bearing
+ * documents a person actually attached, among them
+ * `Screen Recording 2026-07-28 000939.mp4` and `gitlab_cover_letter_aaryan.docx`.
+ * Any whose id happened to appear in the body was hidden outright, which is the
+ * "attachments are not seen at all" in elli-ui#954.
+ *
+ * The decision also must not depend on whether the body is loaded.
+ * `selectConversationBodies` sends the newest messages' bodies and defers the
+ * rest against a byte budget, so on a long thread most messages arrive with
+ * nothing to search — and the old referenced-check read "no body" as "not
+ * referenced", so every deferred message put its signature logos in the row.
+ * The same thread opened twice counted 2 attachments and then 11.
+ */
+export function isHiddenInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {
+  return attachment.inline === true;
+}
+
 export function isReferencedInlineEmailAttachment(
   attachment: EmailAttachmentMetadata,
   body: readonly string[]

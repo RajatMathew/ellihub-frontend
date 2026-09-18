@@ -47,7 +47,7 @@ import { MailShortcutsMenu } from '@/modules/email/components/mail-shortcuts-men
 import { MailThreadActions } from '@/modules/email/components/mail-thread-actions';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
-import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { isHiddenInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
   isReplyableEmailMessage,
   markPendingReplyFailed,
@@ -378,9 +378,8 @@ export function EmailReadingPane({
   const totalAttachments = messages.reduce(
     (total, message) =>
       total +
-      (message.attachments?.filter(
-        (attachment) => !isReferencedInlineEmailAttachment(attachment, message.body)
-      ).length ?? 0),
+      (message.attachments?.filter((attachment) => !isHiddenInlineEmailAttachment(attachment))
+        .length ?? 0),
     0
   );
   const sendReply = (messageId: string, draft: EmailReplyDraft) => {

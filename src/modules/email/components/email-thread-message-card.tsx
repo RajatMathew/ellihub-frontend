@@ -21,7 +21,7 @@ import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
 import {
   emailAttachmentDisplayName,
-  isReferencedInlineEmailAttachment,
+  isHiddenInlineEmailAttachment,
 } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
@@ -130,7 +130,7 @@ export function EmailThreadMessageCard({
   const body = message.bodyPending ? (deferredBody.data ?? EMPTY_BODY) : message.body;
   const isDeferredBodyPending = message.bodyPending === true && !deferredBody.data;
   const visibleAttachments = attachments.filter(
-    (attachment) => !isReferencedInlineEmailAttachment(attachment, body)
+    (attachment) => !isHiddenInlineEmailAttachment(attachment)
   );
   const hasBodyContent = hasVisibleEmailBodyContent(body);
   const isSingleAttachmentOnly =
