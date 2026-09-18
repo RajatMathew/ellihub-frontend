@@ -4,6 +4,7 @@ import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import { emailAttachmentDisplayName } from '@/modules/email/lib/email-attachments';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 
@@ -36,6 +37,9 @@ export function EmailAttachmentHoverCard({
     attachment.sizeBytes !== undefined && attachment.sizeBytes > MAX_AUTOMATIC_PREVIEW_BYTES;
   const previewUrl = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
   const previewKind = getAttachmentPreviewKind(attachment, blob?.type);
+  // An attached email is named after its subject, with no extension — the chip
+  // showed "Payment" and looked like a file nobody could identify.
+  const displayName = emailAttachmentDisplayName(attachment);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -88,7 +92,7 @@ export function EmailAttachmentHoverCard({
         <button
           type="button"
           className="inline-flex min-h-10 max-w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
-          aria-label={`Preview attachment ${attachment.name}`}
+          aria-label={`Preview attachment ${displayName}`}
           onClick={() => {
             setOpen(false);
             onOpen?.();
@@ -97,11 +101,11 @@ export function EmailAttachmentHoverCard({
           <FileTypeIcon
             fileType="FILE"
             mimeType={attachment.mimeType}
-            fileName={attachment.name}
+            fileName={displayName}
             aria-hidden="true"
             className="size-3.5 shrink-0"
           />
-          <span className="min-w-0 truncate">{attachment.name}</span>
+          <span className="min-w-0 truncate">{displayName}</span>
           {attachment.size && (
             <span className="shrink-0 text-muted-foreground">{attachment.size}</span>
           )}
@@ -121,12 +125,12 @@ export function EmailAttachmentHoverCard({
           <FileTypeIcon
             fileType="FILE"
             mimeType={attachment.mimeType}
-            fileName={attachment.name}
+            fileName={displayName}
             aria-hidden="true"
             className="size-4 shrink-0"
           />
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-            {attachment.name}
+            {displayName}
           </p>
           {attachment.size && (
             <span className="shrink-0 text-xs text-muted-foreground">{attachment.size}</span>
@@ -170,6 +174,7 @@ function AttachmentHoverPreview({
   textPreview: string;
   onRetry: () => void;
 }) {
+  const displayName = emailAttachmentDisplayName(attachment);
   if (isLargeAttachment) {
     return (
       <AttachmentPreviewMessage
@@ -221,7 +226,7 @@ function AttachmentHoverPreview({
       <div className="flex h-full items-center justify-center p-3">
         <img
           src={previewUrl}
-          alt={`Preview of ${attachment.name}`}
+          alt={`Preview of ${displayName}`}
           className="max-h-full max-w-full rounded-sm object-contain"
         />
       </div>
@@ -232,7 +237,7 @@ function AttachmentHoverPreview({
     return (
       <iframe
         src={`${previewUrl}#toolbar=0&navpanes=0`}
-        title={`Preview of ${attachment.name}`}
+        title={`Preview of ${displayName}`}
         className="h-full w-full border-0 bg-background"
       />
     );

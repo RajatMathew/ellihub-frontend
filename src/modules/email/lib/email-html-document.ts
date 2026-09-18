@@ -170,6 +170,16 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
 }
+/* Word and Outlook write every line — blank ones included — as its own
+   paragraph and put a zero margin in the stylesheet, which we drop for being a
+   stylesheet. Without it each line collected the browser's default 1em above
+   and below, so a five-line message read as though it were double spaced
+   (elli-ui#954). Restoring the sender's own metric rather than inventing one:
+   Word's spacing comes from its explicit empty paragraphs, not from margins. */
+p.MsoNormal, p.MsoPlainText, p.MsoNoSpacing, p.MsoListParagraph,
+li.MsoNormal, li.MsoListParagraph, div.MsoNormal {
+  margin: 0;
+}
 img { max-width: 100%; height: auto; }
 a { color: ${EMAIL_LINK_COLOR}; text-decoration: underline; text-underline-offset: 2px; }
 table { border-collapse: collapse; max-width: 100%; }

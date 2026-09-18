@@ -54,6 +54,32 @@ export function getEmailInlineImageCid({
   );
 }
 
+/** The MIME type a provider reports for an email attached to another email. */
+export const EMAIL_ITEM_ATTACHMENT_MIME_TYPE = 'message/rfc822';
+
+/** Whether this attachment is an email rather than a file. */
+export function isEmailItemAttachment(mimeType: string | null | undefined): boolean {
+  return mimeType?.trim().toLowerCase() === EMAIL_ITEM_ATTACHMENT_MIME_TYPE;
+}
+
+/**
+ * What to call an attachment on screen and in the file it saves as.
+ *
+ * An attached email is named after its own subject and carries no extension,
+ * so "Payment" rendered as an anonymous file chip that gave the reader no clue
+ * it was a message, and saved as a file the operating system could not open
+ * (elli-ui#954). `elli-core`'s `resolveEmailAttachmentFileName` derives the
+ * same name for the download, so the two agree.
+ */
+export function emailAttachmentDisplayName(attachment: {
+  name: string;
+  mimeType?: string | null;
+}): string {
+  const trimmed = attachment.name.trim() || 'Attachment';
+  if (!isEmailItemAttachment(attachment.mimeType)) return trimmed;
+  return /\.eml$/i.test(trimmed) ? trimmed : `${trimmed}.eml`;
+}
+
 export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {
   return attachment.inline === true || normalizeEmailContentId(attachment.contentId) !== null;
 }
