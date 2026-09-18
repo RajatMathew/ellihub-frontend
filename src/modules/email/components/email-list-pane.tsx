@@ -46,7 +46,6 @@ interface EmailListPaneProps {
   onLoadMore?: () => void;
   onRetry?: () => void;
   onSearchChange?: (value: string) => void;
-  onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
@@ -92,7 +91,6 @@ export function EmailListPane({
   onLoadMore,
   onRetry,
   onSearchChange,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -342,7 +340,6 @@ export function EmailListPane({
               groupByMonth={groupByMonth}
               highlightQuery={highlightQuery ?? search}
               onSelectEmail={onSelectEmail}
-              onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}

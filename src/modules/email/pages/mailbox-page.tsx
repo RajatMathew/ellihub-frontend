@@ -96,10 +96,6 @@ interface MailboxPageProps {
 
 const CONNECTED_EMAIL_PAGE_SIZE = 50;
 const PROJECT_EMAIL_PAGE_SIZE = 100;
-/** Dwell before a hover counts as intent to open, rather than passing through. */
-const PREFETCH_HOVER_INTENT_MS = 350;
-/** How long after a scroll the list is still considered to be moving. */
-const PREFETCH_SCROLL_QUIET_MS = 500;
 const CONNECTED_WELL_KNOWN_FOLDER_KEYS = new Set<string>([
   'inbox',
   'drafts',
@@ -1189,87 +1185,12 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     return () => window.removeEventListener('keydown', handleComposeShortcut, { capture: true });
   }, [composeOpen, isConnected, openNewCompose, workspaceView]);
 
-  // Hover means "I am about to open this", not "my cursor crossed this row".
-  // Firing on pointer-enter sent a conversation request — a provider round trip
-  // each — for every row the mouse swept past; one pass down the list was six.
-  // A short dwell separates intent from transit.
-  const prefetchTimer = useRef<number | null>(null);
-  const lastScrollAt = useRef(0);
-  const cancelPrefetch = useCallback(() => {
-    if (prefetchTimer.current === null) return;
-    window.clearTimeout(prefetchTimer.current);
-    prefetchTimer.current = null;
-  }, []);
-  useEffect(() => cancelPrefetch, [cancelPrefetch]);
-
-  const runPrefetch = useCallback(
-    (email: EmailListItem) => {
-      if (!connectedAccount) return;
-
-      if (email.threadId) {
-        void queryClient.prefetchQuery({
-          queryKey: emailKeys.conversation(connectedAccount.id, email.threadId),
-          queryFn: () =>
-            emailApi.listConversation(connectedAccount.id, email.threadId!, email.conversationKey),
-          staleTime: 60 * 1000,
-        });
-        return;
-      }
-
-      const messageId = email.latestMessageId ?? email.id;
-      void queryClient.prefetchQuery({
-        queryKey: emailKeys.message(connectedAccount.id, messageId),
-        queryFn: () => emailApi.getMessage(connectedAccount.id, messageId),
-        staleTime: 60 * 1000,
-      });
-    },
-    [connectedAccount, queryClient]
-  );
-
-  // Scrolling slides rows under a stationary pointer, and each one then "dwells"
-  // there indefinitely — so a timer alone never filters it out. Scrolling the
-  // inbox with the mouse over it fired ten conversation requests. A prefetch
-  // needs both conditions: the pointer settled, and the list not moving.
-  useEffect(() => {
-    const noteScroll = () => {
-      lastScrollAt.current = Date.now();
-      cancelPrefetch();
-    };
-    window.addEventListener('scroll', noteScroll, { capture: true, passive: true });
-    window.addEventListener('wheel', noteScroll, { capture: true, passive: true });
-    return () => {
-      window.removeEventListener('scroll', noteScroll, { capture: true });
-      window.removeEventListener('wheel', noteScroll, { capture: true });
-    };
-  }, [cancelPrefetch]);
-
-  const prefetchEmail = useCallback(
-    (email: EmailListItem) => {
-      cancelPrefetch();
-      prefetchTimer.current = window.setTimeout(() => {
-        // Checked when the timer fires rather than when it was set: a scroll can
-        // begin after the pointer has already entered the row.
-        if (Date.now() - lastScrollAt.current < PREFETCH_SCROLL_QUIET_MS) return;
-        runPrefetch(email);
-      }, PREFETCH_HOVER_INTENT_MS);
-    },
-    [cancelPrefetch, runPrefetch]
-  );
-
   const selectedEmailIndex = orderedEmails.findIndex((email) => email.id === selectedEmailId);
   const previousEmail = selectedEmailIndex > 0 ? orderedEmails[selectedEmailIndex - 1] : null;
   const nextEmail =
     selectedEmailIndex >= 0 && selectedEmailIndex < orderedEmails.length - 1
       ? orderedEmails[selectedEmailIndex + 1]
       : null;
-
-  // The neighbours of the open message, warmed directly: this is not a hover,
-  // so it must not share the hover timer — routing both through it meant the
-  // second call cancelled the first and only one neighbour was ever fetched.
-  useEffect(() => {
-    if (previousEmail) runPrefetch(previousEmail);
-    if (nextEmail) runPrefetch(nextEmail);
-  }, [nextEmail, runPrefetch, previousEmail]);
 
   useEffect(() => {
     if (workspaceView !== 'mail') return;
@@ -1637,7 +1558,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   // The settled term, not the one mid-typing — see the prop.
                   highlightQuery={debouncedMessageSearch}
                   onSearchChange={setMessageSearch}
-                  onPrefetchEmail={prefetchEmail}
                   onArchiveEmail={
                     connectedAccount && !isArchiveFolder ? handleArchiveEmail : undefined
                   }
