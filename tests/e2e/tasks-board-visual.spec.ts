@@ -115,7 +115,7 @@ const TASKS = [
 ];
 
 async function setupMockApi(page: Page) {
-  const updates: { id: string; dueAt?: string | null }[] = [];
+  const updates: { id: string; dueAt?: string | null; priority?: string }[] = [];
 
   await page.route('**/api/v1/**', async (route, request) => {
     const path = new URL(request.url()).pathname;
@@ -175,7 +175,11 @@ async function setupMockApi(page: Page) {
     }
 
     if (method === 'PUT' && path === '/api/v1/task') {
-      const body = request.postDataJSON() as { id: string; dueAt?: string | null };
+      const body = request.postDataJSON() as {
+        id: string;
+        dueAt?: string | null;
+        priority?: string;
+      };
       updates.push(body);
       const original = TASKS.find((item) => item.id === body.id) ?? TASKS[0];
       await route.fulfill({ json: { success: true, data: { ...original, ...body } } });
@@ -284,6 +288,52 @@ test('the chevron beside the initials opens a reassign menu', async ({ page }) =
   await expect(menu.getByRole('menuitem', { name: 'Unassign' })).toBeVisible();
 
   await page.screenshot({ path: 'output/visual/task-assignee-menu.png', animations: 'disabled' });
+});
+
+test('the priority badge opens a menu of the three levels, and picking one saves it', async ({
+  page,
+}) => {
+  const { updates } = await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  const badge = page
+    .getByRole('button', { name: 'Priority P1. Change priority', exact: true })
+    .first();
+  await expect(badge).toBeVisible({ timeout: 30_000 });
+  await badge.click();
+
+  // All three, the current one marked, so a P1 -> P3 change is one pick rather
+  // than two clicks through P2.
+  // Scoped by its items: the sidebar's accordion menus are role=menu too.
+  const options = page.getByRole('menuitemradio');
+  const menu = page.getByRole('menu').filter({ has: options.first() });
+  await expect(menu).toBeVisible();
+  await expect(options).toHaveText(['P1', 'P2', 'P3']);
+  await expect(options.filter({ hasText: 'P1' })).toHaveAttribute('aria-checked', 'true');
+  await expect(options.filter({ hasText: 'P3' })).toHaveAttribute('aria-checked', 'false');
+
+  await page.screenshot({ path: 'output/visual/task-priority-menu.png', animations: 'disabled' });
+
+  await options.filter({ hasText: 'P3' }).click();
+  await expect(options).toHaveCount(0);
+  await expect.poll(() => updates.map((u) => u.priority)).toEqual(['P3']);
+});
+
+test('picking the priority a task already has saves nothing', async ({ page }) => {
+  const { updates } = await setupMockApi(page);
+  await page.setViewportSize({ width: 1600, height: 950 });
+  await page.goto('/app/tasks');
+
+  const badge = page
+    .getByRole('button', { name: 'Priority P1. Change priority', exact: true })
+    .first();
+  await expect(badge).toBeVisible({ timeout: 30_000 });
+  await badge.click();
+  await page.getByRole('menuitemradio', { name: 'P1' }).click();
+
+  await expect(page.getByRole('menuitemradio')).toHaveCount(0);
+  expect(updates).toEqual([]);
 });
 
 test('a forbidden column says no while the card is still in the air', async ({ page }) => {

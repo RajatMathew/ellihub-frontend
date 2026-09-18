@@ -188,25 +188,11 @@
      went. Rings rather than fills, so the card's own colours are untouched.
      Drawn in the same colour the completion circle fills with rather than
      `primary`, which is dark enough here to read as a black outline rather than
-     a highlight - so the beat and the ring that follows it are one gesture.
+     a highlight - so the tick's green and the ring that follows it are one
+     gesture.
      Someone who has asked for less motion gets the ring without the fade — see
      useJustLandedTask, which decides which of the two applies. */
   --animate-task-landed: task-landed 1.2s ease-out;
-
-  /* The completion beat. Ticking a task used to be the card vanishing, which
-     reads as "gone" rather than "done", so the circle fills and swells for a
-     moment first and the card leaves after it. See elli-ui#829. */
-  --animate-task-completing: task-completing 200ms ease-out;
-
-  @keyframes task-completing {
-    from {
-      transform: scale(0.8);
-    }
-
-    to {
-      transform: scale(1);
-    }
-  }
 
   @keyframes task-landed {
     from {

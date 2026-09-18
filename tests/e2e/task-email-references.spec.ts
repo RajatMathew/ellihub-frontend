@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { groupTasksByColumn, TASK_COLUMNS } from '../../src/modules/tasks/lib/task-board';
+
 /**
  * Proves the two things a real mailbox gives you, without needing one.
  *
@@ -65,7 +67,8 @@ type CreatedTask = {
   emailReferences?: { accountId: string; providerId: string; subject?: string | null }[];
 };
 
-// One task citing five threads, which is what puts the card over its limit.
+// One task citing five threads, which is what makes its list scroll, and one
+// citing two, which is the most the popover shows without scrolling.
 const MULTI_REFERENCE_TASKS = [
   {
     id: 'multi-1',
@@ -87,6 +90,30 @@ const MULTI_REFERENCE_TASKS = [
       threadId: `thread-${n}`,
       subject: `Reference thread ${n}`,
       fromEmail: `sender${n}@example.com`,
+    })),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'pair-1',
+    title: 'Confirm the Boyland delivery window',
+    description: null,
+    priority: 'P3',
+    status: 'OPEN',
+    court: 'THEIRS',
+    dueAt: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+    dueHasTime: false,
+    completedAt: null,
+    assigneeId: null,
+    assignee: null,
+    entityLinks: [],
+    emailReferences: [1, 2].map((n) => ({
+      accountId: ACCOUNT_ID,
+      providerId: `pair-ref-${n}`,
+      conversationKey: `pair-conv-${n}`,
+      threadId: `pair-thread-${n}`,
+      subject: `Delivery thread ${n}`,
+      fromEmail: `logistics${n}@example.com`,
     })),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -246,6 +273,22 @@ async function setupMockApi(page: Page) {
       return;
     }
 
+    // The board arrives grouped, the way tasks-board-visual.spec.ts serves it.
+    if (method === 'GET' && path === '/api/v1/task/board') {
+      const grouped = groupTasksByColumn(MULTI_REFERENCE_TASKS, new Date());
+      const columns = Object.fromEntries(
+        TASK_COLUMNS.map((id) => [id, { tasks: grouped[id], total: grouped[id].length }])
+      );
+      await route.fulfill({
+        json: {
+          success: true,
+          message: 'OK',
+          data: { today: new Date().toISOString().slice(0, 10), columns, people: [] },
+        },
+      });
+      return;
+    }
+
     if (method === 'GET' && path === '/api/v1/task') {
       await route.fulfill({
         json: {
@@ -362,48 +405,7 @@ test('a task created this way sends every attached email', async ({ page }) => {
   expect(refs).toHaveLength(2);
 });
 
-test('a card shows three sources and hides the rest behind a count', async ({ page }) => {
-  await setupMockApi(page);
-  await page.setViewportSize({ width: 1500, height: 950 });
-  await page.goto('/app/tasks');
-
-  await expect(page.getByText('Reconcile the Boyland submittals')).toBeVisible({
-    timeout: 30_000,
-  });
-
-  // Three of five, and the other two behind a count rather than a taller card.
-  await expect(page.getByText('Reference thread 3')).toBeVisible();
-  await expect(page.getByText('Reference thread 4')).toBeHidden();
-
-  // `exact` matters: the dnd-kit wrapper around the card is itself role=button,
-  // and its accessible name is the whole card's text, so a substring match finds
-  // it too.
-  // Each source is a way back into the mail, not a note about it.
-  const firstSource = page.getByRole('link', { name: 'Reference thread 1' });
-  await expect(firstSource).toBeVisible();
-  await expect(firstSource).toHaveAttribute(
-    'href',
-    `/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-1`
-  );
-
-  const more = page.getByRole('button', { name: '+2', exact: true });
-  await expect(more).toBeVisible();
-  await page.screenshot({
-    path: 'output/visual/task-card-email-sources.png',
-    animations: 'disabled',
-  });
-
-  await more.click();
-  await expect(page.getByText('Reference thread 4')).toBeVisible();
-  await expect(page.getByText('Reference thread 5')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Show less', exact: true })).toBeVisible();
-  await page.screenshot({
-    path: 'output/visual/task-card-email-sources-expanded.png',
-    animations: 'disabled',
-  });
-});
-
-test('the sources are labelled as a group, not led by a line that reads as one', async ({
+test('the envelope opens the emails a task was raised from, each a link to its message', async ({
   page,
 }) => {
   await setupMockApi(page);
@@ -414,45 +416,92 @@ test('the sources are labelled as a group, not led by a line that reads as one',
     timeout: 30_000,
   });
 
-  // The lead-in used to be concatenated into the first source's line — `from
-  // email · Reference thread 1` — so it read as a fourth subject in the list.
-  // It is a heading of its own now, and the list it names is a real list.
-  const heading = page.getByText('From email', { exact: true });
-  await expect(heading).toBeVisible();
+  // Provenance lives behind a button in the card header now, not in a list at
+  // the foot of the card, so the card itself says nothing about its sources.
+  await expect(page.getByText('From email', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Reference thread 1')).toBeHidden();
 
-  const firstSource = page.getByRole('link', { name: 'Reference thread 1' });
-  await expect(firstSource).toHaveText('Reference thread 1');
+  // `exact` matters: the dnd-kit wrapper around the card is itself role=button,
+  // and its accessible name is the whole card's text, so a substring match finds
+  // it too.
+  const envelope = page.getByRole('button', { name: 'Raised from 5 emails', exact: true });
+  await expect(envelope).toBeVisible();
+  await envelope.click();
 
-  const sources = page.getByRole('list').filter({ has: firstSource });
-  await expect(sources.getByRole('listitem')).toHaveCount(3);
-  // The heading names the list without being an item in it.
-  await expect(sources.getByText('From email')).toHaveCount(0);
+  const popover = page.getByRole('dialog');
+  await expect(popover).toBeVisible();
 
-  // Nothing here is tinted any more. `destructive` is the colour of a delete
-  // confirmation; where a task came from is not a warning.
-  const colour = await firstSource.evaluate((el) => getComputedStyle(el).color);
-  const danger = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--destructive').trim()
+  // Every source is one link carrying both the subject and the sender, so
+  // either line is a way back into the mail rather than a note about it.
+  const sources = popover.getByRole('link');
+  await expect(sources).toHaveCount(5);
+  const first = sources.first();
+  await expect(first).toContainText('Reference thread 1');
+  await expect(first).toContainText('sender1@example.com');
+  await expect(first).toHaveAttribute(
+    'href',
+    `/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-1`
   );
-  expect(danger).not.toBe('');
-  expect(colour).not.toBe(danger);
-  await expect(firstSource).toHaveCSS('font-style', 'normal');
 
-  // The card on its own, big enough to judge the type and the spacing by.
-  const card = page.locator('[data-slot="kanban-item"]').first();
-  await card.screenshot({
-    path: 'output/visual/task-card-sources-detail.png',
+  await page.screenshot({
+    path: 'output/visual/task-card-email-sources.png',
     animations: 'disabled',
   });
+});
+
+test('more than two sources scroll behind a fade rather than lengthening the popover', async ({
+  page,
+}) => {
+  await setupMockApi(page);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByText('Reconcile the Boyland submittals')).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Two fit without scrolling, so the pair shows no fade at either edge.
+  await page.getByRole('button', { name: 'Raised from 2 emails', exact: true }).click();
+  const pairList = page.getByRole('dialog').getByRole('list');
+  await expect(pairList).toHaveAttribute('data-scroll-at-start', 'true');
+  await expect(pairList).toHaveAttribute('data-scroll-at-end', 'true');
+  const pairFits = await pairList.evaluate((el) => el.scrollHeight <= el.clientHeight + 2);
+  expect(pairFits).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  // Five do not: the list scrolls, and the bottom edge fades until it is
+  // reached, which is what says there is more.
+  await page.getByRole('button', { name: 'Raised from 5 emails', exact: true }).click();
+  const list = page.getByRole('dialog').getByRole('list');
+  await expect(list).toHaveClass(/scroll-fade/);
+  await expect(list).toHaveAttribute('data-scroll-at-start', 'true');
+  await expect(list).toHaveAttribute('data-scroll-at-end', 'false');
+  const overflows = await list.evaluate((el) => el.scrollHeight > el.clientHeight + 2);
+  expect(overflows).toBe(true);
+
+  await page.screenshot({
+    path: 'output/visual/task-card-email-sources-scroll.png',
+    animations: 'disabled',
+  });
+
+  await list.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await expect(list).toHaveAttribute('data-scroll-at-end', 'true');
+  await expect(list).toHaveAttribute('data-scroll-at-start', 'false');
 });
 
 test('clicking a source opens that email', async ({ page }) => {
   await setupMockApi(page);
   await page.goto('/app/tasks');
 
-  const source = page.getByRole('link', { name: 'Reference thread 2' });
-  await expect(source).toBeVisible({ timeout: 30_000 });
-  await source.click();
+  const envelope = page.getByRole('button', { name: 'Raised from 5 emails', exact: true });
+  await expect(envelope).toBeVisible({ timeout: 30_000 });
+  await envelope.click();
+
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: /Reference thread 2/ })
+    .click();
 
   await expect(page).toHaveURL(new RegExp(`/app/email/accounts/${ACCOUNT_SLUG}/inbox/id/conv-2$`));
 });
@@ -625,9 +674,7 @@ test('editing a task keeps the emails it already cites, and saves a change to th
   // `exact`: the dnd-kit wrapper around the card is itself role=button and its
   // name is the whole card's text, so a substring match finds it too — and
   // clicking the wrapper does not open the task.
-  await page
-    .getByRole('button', { name: 'Reconcile the Boyland submittals', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Reconcile the Boyland submittals', exact: true }).click();
 
   const dialog = page.getByRole('dialog').first();
   await expect(dialog.getByText('Edit Task')).toBeVisible();

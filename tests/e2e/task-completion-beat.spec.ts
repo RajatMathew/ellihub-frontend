@@ -1,14 +1,18 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { groupTasksByColumn, TASK_COLUMNS } from '../../src/modules/tasks/lib/task-board';
+
 /**
- * The completion beat — elli-ui#829.
+ * The completion circle and the court label on a task card — elli-ui#829 and
+ * the hover states around it.
  *
- * Ticking a task used to be the card vanishing, which reads as "gone" rather
- * than "done". The circle now fills and holds before the card leaves, and the
- * only way to prove a beat happened is to look while it is happening: the save
- * is held open so the held state stays on screen to be seen.
+ * The beat that used to hold the circle filled before the card left is gone:
+ * the card fades out where it sat and slides into Completed, and that motion
+ * says "done" on its own. What remains here is what the circle promises before
+ * the click - the ghost tick on hover - and the ring a landed card wears.
  */
-async function setupMockApi(page: Page, holdCompleteMs = 0) {
+
+async function setupMockApi(page: Page) {
   const task = {
     id: 't1',
     title: 'Chase the certificate',
@@ -56,6 +60,22 @@ async function setupMockApi(page: Page, holdCompleteMs = 0) {
       return;
     }
 
+    // The board arrives grouped, the way tasks-board-visual.spec.ts serves it.
+    if (method === 'GET' && path === '/api/v1/task/board') {
+      const grouped = groupTasksByColumn([task], new Date());
+      const columns = Object.fromEntries(
+        TASK_COLUMNS.map((id) => [id, { tasks: grouped[id], total: grouped[id].length }])
+      );
+      await route.fulfill({
+        json: {
+          success: true,
+          message: 'OK',
+          data: { today: new Date().toISOString().slice(0, 10), columns, people: [] },
+        },
+      });
+      return;
+    }
+
     if (method === 'GET' && path === '/api/v1/task') {
       await route.fulfill({
         json: {
@@ -75,8 +95,6 @@ async function setupMockApi(page: Page, holdCompleteMs = 0) {
     }
 
     if (method === 'PATCH' && path === '/api/v1/task/complete') {
-      // Held open so the card cannot leave while we are looking at it.
-      if (holdCompleteMs) await new Promise((resolve) => setTimeout(resolve, holdCompleteMs));
       await route.fulfill({ json: { success: true, data: { ...task, status: 'COMPLETED' } } });
       return;
     }
@@ -151,27 +169,4 @@ test('pointing at the court underlines it', async ({ page }) => {
   await expect(label).toHaveCSS('text-decoration-line', 'underline');
 
   await page.screenshot({ path: 'output/visual/task-court-hover.png' });
-});
-
-test('the circle fills and holds before the card leaves', async ({ page }) => {
-  await setupMockApi(page, 3_000);
-  await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto('/app/tasks');
-
-  const circle = page.getByRole('checkbox', { name: 'Complete Chase the certificate' });
-  await expect(circle).toBeVisible({ timeout: 30_000 });
-
-  // Not held before the click - otherwise the assertion below proves nothing.
-  await expect(circle).not.toHaveAttribute('data-completing', 'true');
-
-  await circle.click();
-
-  // The beat itself: filled, and the card still on screen behind it.
-  await expect(circle).toHaveAttribute('data-completing', 'true');
-  await expect(page.getByText('Chase the certificate')).toBeVisible();
-
-  await page.screenshot({ path: 'output/visual/task-completion-beat.png', animations: 'disabled' });
-
-  // And it lets go rather than claiming success forever.
-  await expect(circle).not.toHaveAttribute('data-completing', 'true', { timeout: 5_000 });
 });
