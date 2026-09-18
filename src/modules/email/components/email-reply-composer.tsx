@@ -246,8 +246,8 @@ export function EmailReplyComposer({
             </button>
             <span className="hidden min-w-0 shrink truncate text-[12.5px] text-mail-muted lg:inline">
               {isFullScreen
-                ? 'Lands at the top of the thread'
-                : 'Your reply lands at the top of the thread'}
+                ? 'Lands at the end of the thread'
+                : 'Your reply lands at the end of the thread'}
             </span>
             <button
               type="submit"
