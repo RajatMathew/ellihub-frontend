@@ -10,6 +10,7 @@ export const taskKeys = {
   // a different person is a different board.
   boards: () => [...taskKeys.all, 'board'] as const,
   board: (params: TaskBoardParams) => [...taskKeys.boards(), params] as const,
+  assignees: () => [...taskKeys.all, 'assignees'] as const,
   details: () => [...taskKeys.all, 'detail'] as const,
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };

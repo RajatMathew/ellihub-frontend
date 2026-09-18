@@ -14,13 +14,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/app/components/ui/form';
-import { InfiniteSearchSelect } from '@/app/components/ui/infinite-search-select';
+import {
+  InfiniteSearchSelect,
+  type InfiniteSearchSelectOption,
+} from '@/app/components/ui/infinite-search-select';
 import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
-import {
-  useEmployeePickerOptions,
-  type EmployeePickerOption,
-} from '@/modules/hr/hooks/use-employee-picker-options';
 import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
 import {
   disclosureTriggerClassName,
@@ -35,6 +34,7 @@ import {
   TASK_COURT_OPTIONS,
   TASK_PRIORITY_OPTIONS,
 } from '@/modules/tasks/constants/tasks.constants';
+import { useTaskAssigneeOptions } from '@/modules/tasks/hooks/use-task-assignee-options';
 import type { TaskFormData } from '@/modules/tasks/schemas/task.schema';
 import { ChevronRight } from 'lucide-react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -62,7 +62,7 @@ export function TaskFormFields({
   form: UseFormReturn<TaskFormData>;
   density?: TaskFormDensity;
   /** The assignee a task already has, so editing opens showing their name. */
-  initialAssignee?: EmployeePickerOption | null;
+  initialAssignee?: InfiniteSearchSelectOption | null;
   /** Open on a task that already has description text, so editing never hides it. */
   descriptionDefaultOpen?: boolean;
   /**
@@ -74,20 +74,18 @@ export function TaskFormFields({
 }) {
   const [descriptionOpen, setDescriptionOpen] = useState(descriptionDefaultOpen);
   const [assigneeSearch, setAssigneeSearch] = useState('');
-  const [selectedAssignee, setSelectedAssignee] = useState<EmployeePickerOption | null>(
+  const [selectedAssignee, setSelectedAssignee] = useState<InfiniteSearchSelectOption | null>(
     initialAssignee
   );
 
-  const assigneePicker = useEmployeePickerOptions({
+  const assigneePicker = useTaskAssigneeOptions({
     search: assigneeSearch,
     selectedOptions: selectedAssignee ? [selectedAssignee] : undefined,
   });
 
-  // Employees without a login cannot hold a task — the API rejects them — so
-  // show them greyed rather than letting someone pick one and hit an error.
-  const assigneeOptions = assigneePicker.options.map((option) =>
-    option.badge === 'Unlinked' ? { ...option, disabled: true } : option
-  );
+  // The list only ever holds people who can take a task - the server filters
+  // to employees with a login - so nothing here needs greying out.
+  const assigneeOptions = assigneePicker.options;
 
   const labelClassName = fieldLabelClassName(density);
   const controlSize = density === 'comfortable' ? 'lg' : 'md';
@@ -250,9 +248,7 @@ export function TaskFormFields({
               <InfiniteSearchSelect
                 options={assigneeOptions}
                 size={controlSize}
-                leadingSlot={
-                  <TaskAssigneeAvatar name={selectedAssignee?.label} />
-                }
+                leadingSlot={<TaskAssigneeAvatar name={selectedAssignee?.label} />}
                 value={field.value || null}
                 selectedOption={selectedAssignee}
                 search={assigneeSearch}
