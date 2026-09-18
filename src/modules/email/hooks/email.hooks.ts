@@ -471,6 +471,24 @@ export const useEmailMessageSearchQuery = (
     placeholderData: (previous) => previous,
   });
 
+/**
+ * The same, across every mailbox at once. Enabled with an empty term too: that
+ * is the recent-mail list the picker opens on. Cache-backed on the server, so
+ * it is cheap to hold and cheap to refetch.
+ */
+export const useEmailMessagesAcrossAccountsQuery = (term: string, enabled = true) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'message-search', 'all-accounts', term.trim()] as const,
+    queryFn: ({ signal }) => emailApi.searchMessagesAcrossAccounts({ q: term.trim(), signal }),
+    enabled,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previous) => previous,
+  });
+
 export const useEmailThreadAssigneesQuery = (enabled = true) =>
   useQuery({
     queryKey: [...emailKeys.all, 'thread-assignees'] as const,

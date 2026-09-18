@@ -434,6 +434,15 @@ export const emailMessageSearchResultSchema = z.object({
 
 export type EmailMessageSearchResult = z.infer<typeof emailMessageSearchResultSchema>;
 
+// A row from across every mailbox names the one it is in - the caller did not.
+export const emailMessageAcrossAccountsResultSchema = emailMessageSearchResultSchema.extend({
+  accountId: z.string(),
+});
+
+export type EmailMessageAcrossAccountsResult = z.infer<
+  typeof emailMessageAcrossAccountsResultSchema
+>;
+
 export type EmailThreadAssignee = z.infer<typeof emailThreadAssigneeSchema>;
 
 function unwrapData<T>(data: unknown, key = 'data'): T {
@@ -537,6 +546,25 @@ export const emailApi = {
       signal: params.signal,
     });
     return z.array(emailMessageSearchResultSchema).parse(unwrapData(res.data));
+  },
+
+  /**
+   * Recent or matching mail across every mailbox at once, for a picker that
+   * does not know which one holds the message. No term means the newest inbox
+   * mail. Served from the server's cache alone - one request however many
+   * mailboxes there are - so a message newer than the last sync is found by
+   * searching its own mailbox.
+   */
+  async searchMessagesAcrossAccounts(params: {
+    q?: string;
+    size?: number;
+    signal?: AbortSignal;
+  }): Promise<EmailMessageAcrossAccountsResult[]> {
+    const res = await api.get(`${BASE}/messages/search`, {
+      params: { q: params.q || undefined, size: params.size ?? 25 },
+      signal: params.signal,
+    });
+    return z.array(emailMessageAcrossAccountsResultSchema).parse(unwrapData(res.data));
   },
 
   async listThreadAssignees(): Promise<EmailThreadAssignee[]> {
