@@ -15,7 +15,6 @@ interface VirtualizedEmailListProps {
   /** Search term to highlight within each row's subject/preview text. */
   highlightQuery?: string;
   onSelectEmail?: (emailId: string) => void;
-  onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
@@ -32,7 +31,6 @@ type EmailListRowProps = {
   bulkSelectActive: boolean;
   highlightQuery?: string;
   onSelectEmail?: (emailId: string) => void;
-  onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
@@ -61,7 +59,6 @@ const EmailListRow = memo(function EmailListRow({
   bulkSelectActive,
   highlightQuery,
   onSelectEmail,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -74,7 +71,6 @@ const EmailListRow = memo(function EmailListRow({
       selected={selected}
       highlightQuery={highlightQuery}
       onSelect={() => onSelectEmail?.(email.id)}
-      onPrefetch={onPrefetchEmail ? () => onPrefetchEmail(email) : undefined}
       onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
       onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
       onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
@@ -98,7 +94,6 @@ export function VirtualizedEmailList({
   groupByMonth = false,
   highlightQuery,
   onSelectEmail,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -115,7 +110,6 @@ export function VirtualizedEmailList({
         selectedEmailId={selectedEmailId}
         highlightQuery={highlightQuery}
         onSelectEmail={onSelectEmail}
-        onPrefetchEmail={onPrefetchEmail}
         onArchiveEmail={onArchiveEmail}
         onDeleteEmail={onDeleteEmail}
         onToggleFlagEmail={onToggleFlagEmail}
@@ -134,7 +128,6 @@ export function VirtualizedEmailList({
       selectedEmailId={selectedEmailId}
       highlightQuery={highlightQuery}
       onSelectEmail={onSelectEmail}
-      onPrefetchEmail={onPrefetchEmail}
       onArchiveEmail={onArchiveEmail}
       onDeleteEmail={onDeleteEmail}
       onToggleFlagEmail={onToggleFlagEmail}
@@ -152,7 +145,6 @@ function VirtualizedFlatEmailList({
   selectedEmailId,
   highlightQuery,
   onSelectEmail,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -199,7 +191,6 @@ function VirtualizedFlatEmailList({
               isChecked={checkedIds?.has(email.id) ?? false}
               bulkSelectActive={bulkSelectActive}
               onSelectEmail={onSelectEmail}
-              onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}
@@ -219,7 +210,6 @@ function VirtualizedMonthGroups({
   selectedEmailId,
   highlightQuery,
   onSelectEmail,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -272,7 +262,6 @@ function VirtualizedMonthGroups({
               selectedEmailId={selectedEmailId}
               highlightQuery={highlightQuery}
               onSelectEmail={onSelectEmail}
-              onPrefetchEmail={onPrefetchEmail}
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}
@@ -305,7 +294,6 @@ function MonthGroupSection({
   selectedEmailId,
   highlightQuery,
   onSelectEmail,
-  onPrefetchEmail,
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
@@ -320,7 +308,6 @@ function MonthGroupSection({
   selectedEmailId?: string;
   highlightQuery?: string;
   onSelectEmail?: (emailId: string) => void;
-  onPrefetchEmail?: (email: EmailListItem) => void;
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
@@ -384,7 +371,6 @@ function MonthGroupSection({
                   isChecked={checkedIds?.has(email.id) ?? false}
                   bulkSelectActive={bulkSelectActive}
                   onSelectEmail={onSelectEmail}
-                  onPrefetchEmail={onPrefetchEmail}
                   onArchiveEmail={onArchiveEmail}
                   onDeleteEmail={onDeleteEmail}
                   onToggleFlagEmail={onToggleFlagEmail}

@@ -143,7 +143,6 @@ interface EmailRowCardProps {
   /** Search term to highlight within the subject/preview text. */
   highlightQuery?: string;
   onSelect?: () => void;
-  onPrefetch?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
   onToggleFlag?: () => void;
@@ -178,7 +177,6 @@ export function EmailRowCard({
   selected,
   highlightQuery,
   onSelect,
-  onPrefetch,
   onArchive,
   onDelete,
   onToggleFlag,
@@ -254,11 +252,9 @@ export function EmailRowCard({
             ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
             : ''
         }`}
-        onPointerEnter={onPrefetch}
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button === 0) onSelect?.();
         }}
-        onFocus={onPrefetch}
         onClick={(event) => {
           const pointerType = (event.nativeEvent as PointerEvent).pointerType;
           if (pointerType === 'mouse' && event.detail > 0) return;
