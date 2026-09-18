@@ -23,6 +23,7 @@ import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import {
   useEmailAccountsQuery,
+  useEmailMessagesAcrossAccountsQuery,
   useEmailMessageSearchQuery,
   useEmailMessagesQuery,
 } from '@/modules/email/hooks';
@@ -52,6 +53,8 @@ const RECENT_LIMIT = 25;
  * differently; the rows below should not have to care which one they came from.
  */
 type PickerEmail = {
+  /** Which mailbox the row is in - the one being browsed, or, across all of them, its own. */
+  accountId: string;
   providerId: string;
   conversationKey: string | null;
   threadId: string | null;
@@ -59,6 +62,12 @@ type PickerEmail = {
   senderName: string | null;
   senderEmail: string | null;
 };
+
+/**
+ * The select's value for every mailbox at once. Not an account id, so it can
+ * never collide with one - ids are nanoids, and this is a word.
+ */
+const ALL_ACCOUNTS = 'all';
 
 function labelFor(reference: TaskEmailReference) {
   return reference.subject?.trim() || reference.fromEmail?.trim() || 'Linked email';
@@ -94,12 +103,26 @@ export function TaskEmailReferences({
     [accountsQuery.data]
   );
 
-  const [chosenAccountId, setChosenAccountId] = useState<string | null>(null);
-  const activeAccountId = accountId ?? chosenAccountId ?? accounts[0]?.id;
-
   // A mailbox is only a choice where one was not handed down, and only worth
   // offering when there is more than one to choose between.
   const canChooseMailbox = !accountId && accounts.length > 1;
+
+  // Where it is a choice, the default is not to make one: every mailbox at
+  // once, because "which mailbox is it in?" is the question the picker should
+  // not be asking (elli-ui#968). A single mailbox is still there to pick, and
+  // is where a search goes to the provider for mail newer than the last sync.
+  const [chosenAccountId, setChosenAccountId] = useState<string>(ALL_ACCOUNTS);
+  const browsingAll = canChooseMailbox && chosenAccountId === ALL_ACCOUNTS;
+  const activeAccountId = browsingAll
+    ? undefined
+    : (accountId ?? (canChooseMailbox ? chosenAccountId : accounts[0]?.id));
+
+  // Named on each row while browsing all of them, so the same subject in two
+  // mailboxes is two rows you can tell apart.
+  const accountLabels = useMemo(
+    () => new Map(accounts.map((account) => [account.id, account.nickname || account.email])),
+    [accounts]
+  );
 
   const searching = debouncedTerm.trim().length > 0;
 
@@ -110,9 +133,16 @@ export function TaskEmailReferences({
     activeAccountId,
     { key: 'inbox' },
     { size: RECENT_LIMIT },
-    open
+    open && !browsingAll
   );
-  const searchQuery = useEmailMessageSearchQuery(activeAccountId, debouncedTerm, open);
+  const searchQuery = useEmailMessageSearchQuery(
+    activeAccountId,
+    debouncedTerm,
+    open && !browsingAll
+  );
+  // One query serves both recent and search across all mailboxes: the term is
+  // what decides which, and an empty one is the recent list.
+  const acrossQuery = useEmailMessagesAcrossAccountsQuery(debouncedTerm, open && browsingAll);
 
   const recent = useMemo<PickerEmail[]>(
     () =>
@@ -125,6 +155,7 @@ export function TaskEmailReferences({
           message.providerId
             ? [
                 {
+                  accountId: activeAccountId as string,
                   providerId: message.providerId,
                   conversationKey: message.conversationKey ?? null,
                   threadId: message.threadId ?? null,
@@ -136,12 +167,13 @@ export function TaskEmailReferences({
             : []
         )
       ),
-    [recentQuery.data]
+    [recentQuery.data, activeAccountId]
   );
 
   const found = useMemo<PickerEmail[]>(
     () =>
       (searchQuery.data ?? []).map((result) => ({
+        accountId: activeAccountId as string,
         providerId: result.providerId,
         conversationKey: result.conversationKey,
         threadId: result.threadId ?? null,
@@ -149,14 +181,36 @@ export function TaskEmailReferences({
         senderName: result.senderName,
         senderEmail: result.senderEmail,
       })),
-    [searchQuery.data]
+    [searchQuery.data, activeAccountId]
   );
 
-  // One list, two sources. The rows below are the same rows either way, so they
-  // are written once and fed whichever source is in play.
-  const results = searching ? found : recent;
-  const isLoading = searching ? searchQuery.isLoading : recentQuery.isLoading;
-  const isError = searching ? searchQuery.isError : recentQuery.isError;
+  const across = useMemo<PickerEmail[]>(
+    () =>
+      (acrossQuery.data ?? []).map((result) => ({
+        accountId: result.accountId,
+        providerId: result.providerId,
+        conversationKey: result.conversationKey,
+        threadId: result.threadId ?? null,
+        subject: result.subject,
+        senderName: result.senderName,
+        senderEmail: result.senderEmail,
+      })),
+    [acrossQuery.data]
+  );
+
+  // One list, three sources. The rows below are the same rows either way, so
+  // they are written once and fed whichever source is in play.
+  const results = browsingAll ? across : searching ? found : recent;
+  const isLoading = browsingAll
+    ? acrossQuery.isLoading
+    : searching
+      ? searchQuery.isLoading
+      : recentQuery.isLoading;
+  const isError = browsingAll
+    ? acrossQuery.isError
+    : searching
+      ? searchQuery.isError
+      : recentQuery.isError;
 
   const selectedIds = useMemo(
     () => new Set(value.map((reference) => reference.providerId)),
@@ -238,7 +292,7 @@ export function TaskEmailReferences({
                   variant="outline"
                   size="sm"
                   aria-label="Attach another email"
-                  disabled={!activeAccountId}
+                  disabled={!browsingAll && !activeAccountId}
                   className="size-6 shrink-0 p-0"
                 >
                   <Plus aria-hidden className="size-3" />
@@ -284,16 +338,19 @@ export function TaskEmailReferences({
             {canChooseMailbox ? (
               <div className="border-b border-border px-3 py-2">
                 <Select
-                  value={activeAccountId ?? undefined}
+                  value={chosenAccountId}
                   onValueChange={(next) => {
                     setChosenAccountId(next);
                     setTerm('');
                   }}
                 >
-                  <SelectTrigger size="sm" className="w-full text-xs">
+                  <SelectTrigger size="sm" className="w-full text-xs" aria-label="Mailbox">
                     <SelectValue placeholder="Choose a mailbox" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={ALL_ACCOUNTS} className="text-xs">
+                      All email accounts
+                    </SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id} className="text-xs">
                         {account.nickname || account.email}
@@ -348,7 +405,7 @@ export function TaskEmailReferences({
                               // The reference carries the mailbox it came from,
                               // so switching mailboxes mid-pick keeps each chip
                               // pointing at its own.
-                              accountId: activeAccountId as string,
+                              accountId: result.accountId,
                               providerId: result.providerId,
                               conversationKey: result.conversationKey,
                               threadId: result.threadId,
@@ -374,6 +431,15 @@ export function TaskEmailReferences({
                               {result.senderName || result.senderEmail}
                             </span>
                           </span>
+                          {browsingAll ? (
+                            <span
+                              className="mt-0.5 max-w-28 shrink-0 truncate text-[11px] text-muted-foreground"
+                              title={accountLabels.get(result.accountId)}
+                              data-testid="picker-mailbox"
+                            >
+                              {accountLabels.get(result.accountId) ?? ''}
+                            </span>
+                          ) : null}
                         </CommandItem>
                       );
                     })}

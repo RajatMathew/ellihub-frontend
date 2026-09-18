@@ -12,6 +12,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 const ACCOUNT_ID = 'task-account';
 const ACCOUNT_SLUG = 'task-account-slug';
+// A second mailbox, for the board's picker to have a choice to not make (#968).
+const SECOND_ACCOUNT_ID = 'contracts-account';
+const SECOND_ACCOUNT_NICKNAME = 'Elli - Contracts';
 const ADDRESS = 'procurement@ellicorp.com';
 const MESSAGE_ID = 'message-1';
 const PROVIDER_ID = 'provider-message-1';
@@ -93,9 +96,13 @@ const MULTI_REFERENCE_TASKS = [
   },
 ];
 
-async function setupMockApi(page: Page) {
+async function setupMockApi(page: Page, options: { secondAccount?: boolean } = {}) {
   const createdTasks: CreatedTask[] = [];
   const updatedTasks: CreatedTask[] = [];
+  /** Every request to the cross-mailbox search, by its term ('' for recent). */
+  const acrossSearches: string[] = [];
+  /** Requests to a single mailbox's list or search, which "All" must not make. */
+  const singleMailboxReads: string[] = [];
 
   await page.route('**/api/v1/**', async (route, request) => {
     const path = new URL(request.url()).pathname;
@@ -157,10 +164,72 @@ async function setupMockApi(page: Page) {
               connectedById: 'user-admin',
               freshness,
             },
+            ...(options.secondAccount
+              ? [
+                  {
+                    id: SECOND_ACCOUNT_ID,
+                    slug: 'contracts',
+                    email: 'contracts@ellicorp.com',
+                    mailboxAddress: 'contracts@ellicorp.com',
+                    displayName: SECOND_ACCOUNT_NICKNAME,
+                    nickname: SECOND_ACCOUNT_NICKNAME,
+                    needsNickname: false,
+                    provider: 'outlook',
+                    calendarAccess: 'granted',
+                    status: 'CONNECTED',
+                    lastSyncedAt: freshness.lastSyncedAt,
+                    connectedById: null,
+                    freshness,
+                  },
+                ]
+              : []),
           ],
         },
       });
       return;
+    }
+
+    // Across every mailbox, from the server's cache: rows carry their account.
+    if (method === 'GET' && path === '/api/v1/email/messages/search') {
+      const term = (new URL(request.url()).searchParams.get('q') || '').toLowerCase();
+      acrossSearches.push(term);
+      const rows = [
+        {
+          accountId: SECOND_ACCOUNT_ID,
+          providerId: 'p-contracts-1',
+          threadId: 't-contracts-1',
+          conversationKey: 'c-contracts-1',
+          subject: 'Boyland subcontract, countersigned',
+          senderName: 'Boyland Steel',
+          senderEmail: 'legal@boylandsteel.com',
+          preview: '',
+          receivedAt: '2026-09-02T10:00:00.000Z',
+          folder: 'inbox',
+        },
+        {
+          accountId: ACCOUNT_ID,
+          providerId: PROVIDER_ID,
+          threadId: 't-open',
+          conversationKey: 'c-open',
+          subject: SUBJECT,
+          senderName: 'Boyland Steel',
+          senderEmail: 'submittals@boylandsteel.com',
+          preview: '',
+          receivedAt: '2026-09-01T09:15:00.000Z',
+          folder: 'inbox',
+        },
+      ];
+      await route.fulfill({
+        json: {
+          success: true,
+          data: term ? rows.filter((row) => row.subject.toLowerCase().includes(term)) : rows,
+        },
+      });
+      return;
+    }
+
+    if (method === 'GET' && /^\/api\/v1\/email\/accounts\/[^/]+\/messages(\/search)?$/.test(path)) {
+      singleMailboxReads.push(path);
     }
 
     if (method === 'GET' && path === `/api/v1/email/accounts/${ACCOUNT_ID}/folders`) {
@@ -307,7 +376,7 @@ async function setupMockApi(page: Page) {
     await route.fulfill({ json: { data: null } });
   });
 
-  return { createdTasks, updatedTasks };
+  return { createdTasks, updatedTasks, acrossSearches, singleMailboxReads };
 }
 
 test('the open email is attached by default and more can be added', async ({ page }) => {
@@ -612,6 +681,104 @@ test('a task made on the board can cite mail too, without one being open', async
   expect(refs.map((ref) => ref.providerId)).toContain(PROVIDER_ID);
 });
 
+test("with more than one mailbox, the board's picker starts on all of them", async ({ page }) => {
+  const api = await setupMockApi(page, { secondAccount: true });
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: 'New task' }).first().click();
+  await page.getByRole('button', { name: 'Attach another email' }).click();
+
+  // The choice is offered, and the default is not to make one.
+  const mailbox = page.getByRole('combobox', { name: 'Mailbox' });
+  await expect(mailbox).toBeVisible();
+  await expect(mailbox).toHaveText('All email accounts');
+
+  // Recent mail from both, in one request, and none to either mailbox alone.
+  const suggestions = page.getByLabel('Suggestions');
+  await expect(suggestions.getByText('Boyland subcontract, countersigned')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(suggestions.getByText(SUBJECT)).toBeVisible();
+  expect(api.acrossSearches).toEqual(['']);
+  expect(api.singleMailboxReads).toEqual([]);
+
+  // Each row says which mailbox it is in.
+  const labels = suggestions.getByTestId('picker-mailbox');
+  await expect(labels).toHaveText([SECOND_ACCOUNT_NICKNAME, ADDRESS]);
+
+  await page.screenshot({
+    path: 'output/visual/task-picker-all-accounts.png',
+    animations: 'disabled',
+  });
+});
+
+test('typing searches every mailbox in one request, and a pick keeps its own mailbox', async ({
+  page,
+}) => {
+  const api = await setupMockApi(page, { secondAccount: true });
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: 'New task' }).first().click();
+  const dialog = page.getByRole('dialog').first();
+  await page.getByRole('button', { name: 'Attach another email' }).click();
+
+  const suggestions = page.getByLabel('Suggestions');
+  await expect(suggestions.getByText(SUBJECT)).toBeVisible({ timeout: 15_000 });
+
+  await page.getByPlaceholder('Search subject or sender').fill('countersigned');
+  await expect(suggestions.getByText(SUBJECT)).toBeHidden();
+  await expect(suggestions.getByText('Boyland subcontract, countersigned')).toBeVisible();
+  await expect.poll(() => api.acrossSearches).toEqual(['', 'countersigned']);
+  expect(api.singleMailboxReads).toEqual([]);
+
+  await suggestions.getByText('Boyland subcontract, countersigned').click();
+  await page.keyboard.press('Escape');
+  await expect(dialog.getByRole('button', { name: /^Remove / })).toHaveCount(1);
+
+  await dialog.getByPlaceholder('Add a title').fill('Countersign the Boyland subcontract');
+  await dialog.getByRole('button', { name: 'Create task' }).click();
+
+  // Saved against the mailbox the row came from, not the first in the list.
+  await expect.poll(() => api.createdTasks.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const refs = api.createdTasks[0].emailReferences ?? [];
+  expect(refs).toEqual([
+    expect.objectContaining({ accountId: SECOND_ACCOUNT_ID, providerId: 'p-contracts-1' }),
+  ]);
+});
+
+test('picking one mailbox narrows the picker to it, as before', async ({ page }) => {
+  const api = await setupMockApi(page, { secondAccount: true });
+  await page.setViewportSize({ width: 1500, height: 1000 });
+  await page.goto('/app/tasks');
+
+  await expect(page.getByRole('heading', { name: 'Tasks', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole('button', { name: 'New task' }).first().click();
+  await page.getByRole('button', { name: 'Attach another email' }).click();
+
+  const suggestions = page.getByLabel('Suggestions');
+  await expect(suggestions.getByText(SUBJECT)).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('combobox', { name: 'Mailbox' }).click();
+  await page.getByRole('option', { name: ADDRESS }).click();
+
+  // The single-mailbox list, from that mailbox's own endpoint, with no
+  // mailbox label - there is only one it could be.
+  await expect.poll(() => api.singleMailboxReads.length).toBeGreaterThan(0);
+  expect(api.singleMailboxReads[0]).toBe(`/api/v1/email/accounts/${ACCOUNT_ID}/messages`);
+  await expect(suggestions.getByText('Boyland subcontract, countersigned')).toBeHidden();
+  await expect(suggestions.getByTestId('picker-mailbox')).toHaveCount(0);
+});
+
 test('editing a task keeps the emails it already cites, and saves a change to them', async ({
   page,
 }) => {
@@ -625,9 +792,7 @@ test('editing a task keeps the emails it already cites, and saves a change to th
   // `exact`: the dnd-kit wrapper around the card is itself role=button and its
   // name is the whole card's text, so a substring match finds it too — and
   // clicking the wrapper does not open the task.
-  await page
-    .getByRole('button', { name: 'Reconcile the Boyland submittals', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Reconcile the Boyland submittals', exact: true }).click();
 
   const dialog = page.getByRole('dialog').first();
   await expect(dialog.getByText('Edit Task')).toBeVisible();
