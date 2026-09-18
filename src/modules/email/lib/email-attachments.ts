@@ -54,8 +54,60 @@ export function getEmailInlineImageCid({
   );
 }
 
+/** The MIME type a provider reports for an email attached to another email. */
+export const EMAIL_ITEM_ATTACHMENT_MIME_TYPE = 'message/rfc822';
+
+/** Whether this attachment is an email rather than a file. */
+export function isEmailItemAttachment(mimeType: string | null | undefined): boolean {
+  return mimeType?.trim().toLowerCase() === EMAIL_ITEM_ATTACHMENT_MIME_TYPE;
+}
+
+/**
+ * What to call an attachment on screen and in the file it saves as.
+ *
+ * An attached email is named after its own subject and carries no extension,
+ * so "Payment" rendered as an anonymous file chip that gave the reader no clue
+ * it was a message, and saved as a file the operating system could not open
+ * (elli-ui#954). `elli-core`'s `resolveEmailAttachmentFileName` derives the
+ * same name for the download, so the two agree.
+ */
+export function emailAttachmentDisplayName(attachment: {
+  name: string;
+  mimeType?: string | null;
+}): string {
+  const trimmed = attachment.name.trim() || 'Attachment';
+  if (!isEmailItemAttachment(attachment.mimeType)) return trimmed;
+  return /\.eml$/i.test(trimmed) ? trimmed : `${trimmed}.eml`;
+}
+
 export function isInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {
   return attachment.inline === true || normalizeEmailContentId(attachment.contentId) !== null;
+}
+
+/**
+ * Whether an attachment should stay out of the attachment row.
+ *
+ * Only `inline === true` can keep it out. That is the provider saying
+ * "render this in the body" — a signature logo, a tracking pixel — and it is
+ * what every other mail client keys off.
+ *
+ * A `contentId` on its own means nothing: Outlook stamps one on *every*
+ * attachment it sends. Treating that as inline is what made real files vanish
+ * from the row — 178 of the attachments in our own cache are contentId-bearing
+ * documents a person actually attached, among them
+ * `Screen Recording 2026-07-28 000939.mp4` and `gitlab_cover_letter_aaryan.docx`.
+ * Any whose id happened to appear in the body was hidden outright, which is the
+ * "attachments are not seen at all" in elli-ui#954.
+ *
+ * The decision also must not depend on whether the body is loaded.
+ * `selectConversationBodies` sends the newest messages' bodies and defers the
+ * rest against a byte budget, so on a long thread most messages arrive with
+ * nothing to search — and the old referenced-check read "no body" as "not
+ * referenced", so every deferred message put its signature logos in the row.
+ * The same thread opened twice counted 2 attachments and then 11.
+ */
+export function isHiddenInlineEmailAttachment(attachment: EmailAttachmentMetadata): boolean {
+  return attachment.inline === true;
 }
 
 export function isReferencedInlineEmailAttachment(

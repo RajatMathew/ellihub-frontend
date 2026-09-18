@@ -19,7 +19,10 @@ import type {
 } from '@/modules/email/components/email-row-card';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
-import { isReferencedInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import {
+  emailAttachmentDisplayName,
+  isHiddenInlineEmailAttachment,
+} from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
 import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
@@ -127,7 +130,7 @@ export function EmailThreadMessageCard({
   const body = message.bodyPending ? (deferredBody.data ?? EMPTY_BODY) : message.body;
   const isDeferredBodyPending = message.bodyPending === true && !deferredBody.data;
   const visibleAttachments = attachments.filter(
-    (attachment) => !isReferencedInlineEmailAttachment(attachment, body)
+    (attachment) => !isHiddenInlineEmailAttachment(attachment)
   );
   const hasBodyContent = hasVisibleEmailBodyContent(body);
   const isSingleAttachmentOnly =
@@ -528,6 +531,8 @@ function EmailAttachmentChip({
   }, [attachment.id, messageId, onLoadAttachment]);
 
   const canSaveToFiles = Boolean(onLoadAttachment);
+  // Saved under the same name the chip shows and the download sends.
+  const displayName = emailAttachmentDisplayName(attachment);
 
   return (
     <div className="inline-flex max-w-full items-center gap-1">
@@ -542,13 +547,13 @@ function EmailAttachmentChip({
           asChild
           source={{
             kind: 'lazy',
-            fileName: attachment.name,
+            fileName: displayName,
             mimeType: attachment.mimeType ?? undefined,
             resolve: resolveAttachment,
           }}
           rootFolderId={saveToFilesRootFolderId}
           rootLabel={saveToFilesRootLabel ?? 'Project Files'}
-          onSaved={() => toast.success(`Saved ${attachment.name} to Files.`)}
+          onSaved={() => toast.success(`Saved ${displayName} to Files.`)}
         >
           <Button
             type="button"
@@ -556,7 +561,7 @@ function EmailAttachmentChip({
             mode="icon"
             size="sm"
             className="size-8 shrink-0"
-            aria-label={`Save ${attachment.name} to Files`}
+            aria-label={`Save ${displayName} to Files`}
             title="Save to Files"
           >
             <FolderPlus aria-hidden="true" className="size-3.5" />
