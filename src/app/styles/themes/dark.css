@@ -139,6 +139,15 @@
   --mail-ai-from: #2f57b4;
   --mail-ai-mid: #4570cf;
   --mail-ai-to: #6a93e2;
+  /** See light.css. On a dark page the bar cannot invert to light without
+      shouting, so it lifts a step *above* the page instead and keeps the same
+      light ink. **/
+  --mail-bulk-bar: #2e2e33;
+  --mail-bulk-bar-foreground: #fafafa;
+  --mail-bulk-bar-muted: rgba(250, 250, 250, 0.62);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.1);
+  --mail-bulk-bar-danger: #fca5a5;
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
   --input-border: var(--color-zinc-800);
   --ring: var(--color-zinc-600);
   --radius: 0.5rem;

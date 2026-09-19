@@ -37,8 +37,14 @@ export function MailReadingToolbar({
   agentTriggerRef,
   shortcuts,
 }: MailReadingToolbarProps) {
+  // The toolbar has to out-rank the thread cards, not just the page behind it.
+  // The scroll container below is `position: relative; z-index: auto`, so it is
+  // *not* a stacking context, and a message card's own `z-10` layers (avatar,
+  // sender row, To/Cc chips) are compared directly against this toolbar. At the
+  // old `z-[6]` they won: a card scrolling past painted its avatar over the nav
+  // arrows and its recipients over the subject and the fade (elli-ui#1002).
   return (
-    <div className="absolute inset-x-0 top-0 z-[6] flex min-w-0 items-center gap-1.5 px-4 py-[11px] sm:px-[18px]">
+    <div className="absolute inset-x-0 top-0 z-20 flex min-w-0 items-center gap-1.5 px-4 py-[11px] sm:px-[18px]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 top-0 z-[-1] h-16 bg-linear-to-b from-mail-pane from-55% to-transparent"

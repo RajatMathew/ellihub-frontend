@@ -152,6 +152,14 @@
   --mail-ai-from: #3e6fe0;
   --mail-ai-mid: #5c8aee;
   --mail-ai-to: #82aef5;
+  /** See light.css. Editorial takes the navy its sidebar already uses, so the
+      floating bar reads as the same chrome rather than a second dark. **/
+  --mail-bulk-bar: #183450;
+  --mail-bulk-bar-foreground: #f8fafc;
+  --mail-bulk-bar-muted: rgba(248, 250, 252, 0.64);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.12);
+  --mail-bulk-bar-danger: #fca5a5;
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
   --input-border: #d8d0c5;
   --ring: #1a3a5f;
   --radius: 0.5rem;

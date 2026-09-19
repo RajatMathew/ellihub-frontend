@@ -147,6 +147,22 @@
   --mail-ai-from: #3e6fe0;
   --mail-ai-mid: #5c8aee;
   --mail-ai-to: #82aef5;
+  /** The bulk-selection bar floats over the list instead of pushing it down,
+      so it needs a surface that separates from the paper on its own rather
+      than borrowing the page's (elli-ui#1000). It is deliberately inverted —
+      the same dark chrome the app sidebar already uses — because it is
+      transient and must not read as another row. `danger` is a light red: it
+      sits on the dark bar, so the usual `--destructive` ramp is the wrong way
+      round here. **/
+  --mail-bulk-bar: #26272b;
+  --mail-bulk-bar-foreground: #fafafa;
+  --mail-bulk-bar-muted: rgba(250, 250, 250, 0.62);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.1);
+  --mail-bulk-bar-danger: #fca5a5;
+  /** Public Sans is loaded globally in index.html. This exposes it as a
+      `font-public-sans` utility for the places the design names it outside the
+      editorial theme's body font (elli-ui#1001). **/
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
   --input-border: var(--color-zinc-300);
   --ring: var(--color-zinc-400);
   --radius: 0.5rem;

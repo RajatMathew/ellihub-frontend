@@ -150,6 +150,14 @@
   --color-mail-ai-from: var(--mail-ai-from);
   --color-mail-ai-mid: var(--mail-ai-mid);
   --color-mail-ai-to: var(--mail-ai-to);
+  --color-mail-bulk-bar: var(--mail-bulk-bar);
+  --color-mail-bulk-bar-foreground: var(--mail-bulk-bar-foreground);
+  --color-mail-bulk-bar-muted: var(--mail-bulk-bar-muted);
+  --color-mail-bulk-bar-hover: var(--mail-bulk-bar-hover);
+  --color-mail-bulk-bar-danger: var(--mail-bulk-bar-danger);
+
+  /** Public Sans, loaded in index.html, as a utility (elli-ui#1001). **/
+  --font-public-sans: var(--public-sans);
 
   /** Base Styles **/
   --color-border: var(--border);
