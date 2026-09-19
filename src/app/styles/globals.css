@@ -156,6 +156,18 @@
   --color-mail-bulk-bar-hover: var(--mail-bulk-bar-hover);
   --color-mail-bulk-bar-danger: var(--mail-bulk-bar-danger);
 
+  /** File-format badge tones (elli-ui#1042). Same values in every theme — see
+      the note beside them in `themes/light.css`. **/
+  --color-file-format-foreground: var(--file-format-foreground);
+  --color-file-format-red: var(--file-format-red);
+  --color-file-format-green: var(--file-format-green);
+  --color-file-format-blue: var(--file-format-blue);
+  --color-file-format-cyan: var(--file-format-cyan);
+  --color-file-format-violet: var(--file-format-violet);
+  --color-file-format-amber: var(--file-format-amber);
+  --color-file-format-navy: var(--file-format-navy);
+  --color-file-format-slate: var(--file-format-slate);
+
   /** Public Sans, loaded in index.html, as a utility (elli-ui#1001). **/
   --font-public-sans: var(--public-sans);
 

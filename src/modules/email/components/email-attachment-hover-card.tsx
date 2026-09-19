@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { FileFormatBadge } from '@/app/components/file-format-badge';
 import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { Skeleton } from '@/app/components/ui/skeleton';
@@ -105,12 +106,10 @@ export function EmailAttachmentHoverCard({
             onOpen?.();
           }}
         >
-          <FileTypeIcon
-            fileType="FILE"
+          <FileFormatBadge
             mimeType={attachment.mimeType}
             fileName={displayName}
-            aria-hidden="true"
-            className="size-5 shrink-0"
+            className="size-7 rounded-[5px]"
           />
           <span className="flex min-w-0 flex-col">
             <span
@@ -136,12 +135,11 @@ export function EmailAttachmentHoverCard({
         className="w-96 max-w-[var(--radix-hover-card-content-available-width)] overflow-hidden p-0 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
       >
         <div className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-2.5">
-          <FileTypeIcon
-            fileType="FILE"
+          <FileFormatBadge
             mimeType={attachment.mimeType}
             fileName={displayName}
-            aria-hidden="true"
-            className="size-4 shrink-0"
+            className="size-6 rounded-[5px]"
+            labelClassName="text-[8px]"
           />
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
             {displayName}
