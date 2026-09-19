@@ -57,6 +57,7 @@ import {
   OPTIMISTIC_EMAIL_REPLY_PREFIX,
   type PendingEmailReply,
 } from '@/modules/email/lib/email-reply-state';
+import { resolveThreadHeaderCounts } from '@/modules/email/lib/email-thread-counts';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -408,6 +409,18 @@ export function EmailReadingPane({
         .length ?? 0),
     0
   );
+  // What the head is allowed to say about the conversation's size. While the
+  // real messages are still on their way the pane is rendering a single
+  // stand-in built from the list row, and counting that said "1 message" for a
+  // thread the row already knew held more — a stated fact the pane then
+  // contradicted a few hundred milliseconds later (elli-ui#1016).
+  const headerCounts = resolveThreadHeaderCounts({
+    renderedMessageCount: messages.length,
+    renderedAttachmentCount: totalAttachments,
+    rowMessageCount: email.threadMessageCount,
+    rowAttachmentCount: email.attachmentCount,
+    isThreadPending: isBodyLoading,
+  });
   const sendReply = (messageId: string, draft: EmailReplyDraft) => {
     const mode = replyTarget?.mode ?? 'reply';
     const send = mode === 'forward' ? onForward : onReply;
@@ -599,12 +612,13 @@ export function EmailReadingPane({
           <div className="min-w-0 @min-[760px]:col-span-2 @min-[760px]:col-start-1 @min-[760px]:row-start-1">
             <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>
-                {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+                {headerCounts.messageCount}{' '}
+                {headerCounts.messageCount === 1 ? 'message' : 'messages'}
               </span>
-              {totalAttachments > 0 && (
+              {headerCounts.attachmentCount > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <Paperclip aria-hidden="true" className="size-3.5" strokeWidth={1.8} />
-                  {totalAttachments}
+                  {headerCounts.attachmentCount}
                 </span>
               )}
               {email.category && <span className="text-mail-mid">{email.category}</span>}
