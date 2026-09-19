@@ -72,69 +72,118 @@ export function MailAccountBar({
     () => accounts.filter((candidate) => !candidate.sharedMailboxKey),
     [accounts]
   );
-  const hasAccountActions = Boolean(onEditNickname || onDisconnectAccount);
 
   return (
     <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-mail-line bg-mail-card px-4 py-2.5 sm:px-[18px]">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-left text-sm font-semibold tracking-[-0.01em] text-mail-ink hover:bg-mail-paper focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
-            aria-label="Switch mailbox"
-          >
-            <span className="min-w-0 truncate">{mailboxAddress}</span>
-            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-mail-muted" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-72">
-          {sharedAccounts.length > 0 && (
-            <>
-              <DropdownMenuLabel className="text-[11px] font-medium text-mail-muted">
-                Common
-              </DropdownMenuLabel>
-              {sharedAccounts.map((candidate) => (
-                <MailboxMenuItem
-                  key={candidate.id}
-                  account={candidate}
-                  label={candidate.displayName || candidate.mailboxAddress}
-                  isActive={candidate.id === account?.id}
-                />
-              ))}
-            </>
-          )}
-          {personalAccounts.length > 0 && (
-            <>
-              {sharedAccounts.length > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuLabel className="text-[11px] font-medium text-mail-muted">
-                Personal
-              </DropdownMenuLabel>
-              {personalAccounts.map((candidate) => (
-                <MailboxMenuItem
-                  key={candidate.id}
-                  account={candidate}
-                  label={candidate.mailboxAddress || candidate.email}
-                  isActive={candidate.id === account?.id}
-                />
-              ))}
-            </>
-          )}
-          {canAddAccount && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/app/email/add-account">
-                  <Plus aria-hidden="true" />
-                  Add account
-                </Link>
+      {/* The mailbox and the menu that acts on it travel together (elli-ui#1005). */}
+      <div className="flex min-w-0 items-center gap-0.5">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-left text-sm font-semibold tracking-[-0.01em] text-mail-ink hover:bg-mail-paper focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+              aria-label="Switch mailbox"
+            >
+              <span className="min-w-0 truncate">{mailboxAddress}</span>
+              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-mail-muted" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-72">
+            {sharedAccounts.length > 0 && (
+              <>
+                <DropdownMenuLabel className="text-[11px] font-medium text-mail-muted">
+                  Common
+                </DropdownMenuLabel>
+                {sharedAccounts.map((candidate) => (
+                  <MailboxMenuItem
+                    key={candidate.id}
+                    account={candidate}
+                    label={candidate.displayName || candidate.mailboxAddress}
+                    isActive={candidate.id === account?.id}
+                  />
+                ))}
+              </>
+            )}
+            {personalAccounts.length > 0 && (
+              <>
+                {sharedAccounts.length > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuLabel className="text-[11px] font-medium text-mail-muted">
+                  Personal
+                </DropdownMenuLabel>
+                {personalAccounts.map((candidate) => (
+                  <MailboxMenuItem
+                    key={candidate.id}
+                    account={candidate}
+                    label={candidate.mailboxAddress || candidate.email}
+                    isActive={candidate.id === account?.id}
+                  />
+                ))}
+              </>
+            )}
+            {canAddAccount && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/app/email/add-account">
+                    <Plus aria-hidden="true" />
+                    Add account
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-muted hover:bg-mail-paper hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+              aria-label="More mailbox actions"
+            >
+              <MoreHorizontal aria-hidden="true" className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {onEditNickname && (
+              <DropdownMenuItem onClick={onEditNickname}>
+                <Pencil aria-hidden="true" />
+                Rename mailbox
               </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            )}
+            <DropdownMenuItem asChild>
+              <Link to="/app/email/accounts">
+                <Mail aria-hidden="true" />
+                Manage accounts
+              </Link>
+            </DropdownMenuItem>
+            {onDisconnectAccount && (
+              <DropdownMenuItem variant="destructive" onClick={onDisconnectAccount}>
+                <Unplug aria-hidden="true" />
+                Disconnect
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/*
+        Display settings sits to the left of the view switcher and the account
+        menu beside the mailbox it acts on, rather than both being stranded
+        together at the far right of the bar (elli-ui#1005).
+      */}
+      <button
+        type="button"
+        className="ms-auto flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-muted hover:bg-mail-paper hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+        aria-label="Display settings"
+        title="Display settings"
+        onClick={() => setDisplaySettingsOpen(true)}
+      >
+        <Settings aria-hidden="true" className="size-4" />
+      </button>
 
       <nav
-        className="ms-auto flex shrink-0 items-center gap-0.5 rounded-[9px] border border-mail-line bg-mail-paper p-[3px]"
+        className="flex shrink-0 items-center gap-0.5 rounded-[9px] border border-mail-line bg-mail-paper p-[3px]"
         aria-label="Mailbox views"
       >
         {WORKSPACE_TABS.map((tab) => (
@@ -155,43 +204,6 @@ export function MailAccountBar({
           </button>
         ))}
       </nav>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-muted hover:bg-mail-paper hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
-            aria-label="Mailbox settings"
-          >
-            <MoreHorizontal aria-hidden="true" className="size-4" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={() => setDisplaySettingsOpen(true)}>
-            <Settings aria-hidden="true" />
-            Display settings
-          </DropdownMenuItem>
-          {hasAccountActions && <DropdownMenuSeparator />}
-          {onEditNickname && (
-            <DropdownMenuItem onClick={onEditNickname}>
-              <Pencil aria-hidden="true" />
-              Rename mailbox
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem asChild>
-            <Link to="/app/email/accounts">
-              <Mail aria-hidden="true" />
-              Manage accounts
-            </Link>
-          </DropdownMenuItem>
-          {onDisconnectAccount && (
-            <DropdownMenuItem variant="destructive" onClick={onDisconnectAccount}>
-              <Unplug aria-hidden="true" />
-              Disconnect
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       <EmailDisplaySettingsDialog
         open={displaySettingsOpen}
