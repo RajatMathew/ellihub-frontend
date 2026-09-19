@@ -237,6 +237,26 @@ export function EmailReadingPane({
     },
     [loadEmailAttachment, previewAttachment]
   );
+  /**
+   * Built once per attachment, not once per render. `loadPreviewAttachment`
+   * reports download progress into state, so this component re-renders
+   * throughout the download — and an inline object here would hand the preview
+   * dialog a different file every time (elli-ui#975).
+   */
+  const previewFile = useMemo<FilePreviewItem | null>(
+    () =>
+      previewAttachment
+        ? {
+            id: previewAttachment.attachment.id,
+            name: previewAttachment.attachment.name,
+            displayName: previewAttachment.attachment.name,
+            mimeType: previewAttachment.attachment.mimeType,
+            size: previewAttachment.attachment.sizeBytes,
+            type: 'FILE',
+          }
+        : null,
+    [previewAttachment]
+  );
   const conversationKey = email?.conversationKey ?? email?.threadId ?? email?.id ?? '';
   const referenceMarkerState: EmailReferenceMarkerState = useMemo(
     () =>
@@ -659,18 +679,7 @@ export function EmailReadingPane({
         onOpenChange={(open) => {
           if (!open) setPreviewAttachment(null);
         }}
-        file={
-          previewAttachment
-            ? ({
-                id: previewAttachment.attachment.id,
-                name: previewAttachment.attachment.name,
-                displayName: previewAttachment.attachment.name,
-                mimeType: previewAttachment.attachment.mimeType,
-                size: previewAttachment.attachment.sizeBytes,
-                type: 'FILE',
-              } satisfies FilePreviewItem)
-            : null
-        }
+        file={previewFile}
         loadFile={loadPreviewAttachment}
         loadProgress={previewProgress}
         saveToFiles={

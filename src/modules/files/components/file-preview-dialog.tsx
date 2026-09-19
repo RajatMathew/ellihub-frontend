@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import { FILE_TEXT_PREVIEW_BYTES, filesApi } from '@/modules/files/api/files.api';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { useDownloadFile, useTextContentQuery } from '@/modules/files/hooks/files.hooks';
+import { filePreviewLoadKey } from '@/modules/files/lib/file-preview-load';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { Download, Eye, FolderPlus, Loader2, X } from 'lucide-react';
@@ -540,17 +541,31 @@ export function FilePreviewDialog({
     blob: Blob | null;
     failed: boolean;
   } | null>(null);
+  // The file to fetch, but not the object it arrived in — see
+  // `filePreviewLoadKey`. Callers build that object inline, so keying the load
+  // on its reference made every re-render of the caller look like a new file,
+  // and a `loadFile` that reports progress re-renders the caller (elli-ui#975).
+  const loadKey = filePreviewLoadKey({ open, file, hasLoader: Boolean(loadFile) });
+  // The key says *whether* and *what* to load; this is the object to hand the
+  // loader, kept out of the load effect's dependencies so its churn cannot
+  // restart a download. Synced in its own effect — effects run in declaration
+  // order, so it is current before the load below reads it.
+  const fileRef = useRef(file);
   useEffect(() => {
-    if (!open || !file || !loadFile) return;
+    fileRef.current = file;
+  }, [file]);
+  useEffect(() => {
+    const target = fileRef.current;
+    if (!loadKey || !loadFile || !target) return;
     let active = true;
-    const fileId = file.id;
-    loadFile(file)
+    const fileId = target.id;
+    loadFile(target)
       .then((blob) => active && setBlobResult({ fileId, blob, failed: false }))
       .catch(() => active && setBlobResult({ fileId, blob: null, failed: true }));
     return () => {
       active = false;
     };
-  }, [file, loadFile, open]);
+  }, [loadKey, loadFile]);
   const loadedBlob = open && blobResult && blobResult.fileId === file?.id ? blobResult.blob : null;
   const blobLoadError = open && !!blobResult && blobResult.fileId === file?.id && blobResult.failed;
   const blobUrl = useMemo(
