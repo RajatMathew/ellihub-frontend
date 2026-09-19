@@ -51,13 +51,17 @@ import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks'
 import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { isHiddenInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import {
+  createOptimisticReplyId,
   isReplyableEmailMessage,
   markPendingReplyFailed,
   markPendingReplySent,
-  OPTIMISTIC_EMAIL_REPLY_PREFIX,
   type PendingEmailReply,
 } from '@/modules/email/lib/email-reply-state';
 import { resolveThreadHeaderCounts } from '@/modules/email/lib/email-thread-counts';
+import {
+  latestThreadMessage,
+  orderThreadNewestFirst,
+} from '@/modules/email/lib/email-thread-order';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -395,8 +399,11 @@ export function EmailReadingPane({
     .filter((reply) => reply.emailId === email.id)
     .filter((reply) => !hasMatchingSyncedReply(baseMessages, mailboxAddress, reply.plainBody))
     .map((reply) => reply.message);
+  // Chronological, and stays that way — everything below derives from send
+  // order. Only the reading order is flipped, in `displayMessages`.
   const messages = [...baseMessages, ...visiblePendingReplies];
-  const latestMessage = messages[messages.length - 1] ?? null;
+  const latestMessage = latestThreadMessage(messages);
+  const displayMessages = orderThreadNewestFirst(messages);
   const latestReplyableMessage =
     latestMessage && isReplyableEmailMessage(latestMessage) ? latestMessage : null;
   const meetingMessage = [...messages].reverse().find((message) => message.meetingEvent);
@@ -426,7 +433,7 @@ export function EmailReadingPane({
     const send = mode === 'forward' ? onForward : onReply;
     if (!send) return;
     const targetMessage = messages.find((message) => message.id === messageId);
-    const optimisticId = `${OPTIMISTIC_EMAIL_REPLY_PREFIX}${Date.now()}`;
+    const optimisticId = createOptimisticReplyId();
     const optimisticMessage: EmailThreadMessage = {
       id: optimisticId,
       senderName: mailboxAddress,
@@ -633,7 +640,16 @@ export function EmailReadingPane({
             // what puts the panel's top edge level with the reply strip rather
             // than hard up under the subject now that the subject owns the full
             // width above it (elli-ui#997).
-            <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-5">
+            // `self-start` is what makes the `sticky` above it actually do
+            // anything (elli-ui#1019). A grid item defaults to `align-self:
+            // stretch`, so this column was being drawn the full height of the
+            // row — 1650px against a 541px card — and a sticky box that already
+            // fills its containing block has nowhere to travel within it. It
+            // was inert, and the panel scrolled away with the thread. Shrunk to
+            // its content it pins at `top-0`, which is the scrollport's content
+            // edge and so already clears the 54px reading toolbar the scroller
+            // pads for.
+            <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-5 @min-[760px]:self-start">
               {detailsPanel}
             </div>
           )}
@@ -685,14 +701,16 @@ export function EmailReadingPane({
             )}
 
             <div className="space-y-3">
-              {messages.map((message, index) => (
+              {displayMessages.map((message) => (
                 <EmailThreadMessageCard
                   key={message.id}
                   message={message}
                   inlineImageBaseUrl={inlineImageBaseUrl}
                   singleMessage={messages.length === 1}
                   isBodyPending={isShowingPreviewStandIn}
-                  latest={index === messages.length - 1}
+                  // By identity, not by position: the newest message is drawn
+                  // first now, so "last one rendered" is the oldest one.
+                  latest={message.id === latestMessage?.id}
                   accountId={accountId}
                   onComposeTo={onComposeTo}
                   onSearchSender={onSearchSender}
