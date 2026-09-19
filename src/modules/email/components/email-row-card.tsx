@@ -17,6 +17,7 @@ import {
   MEETING_RESPONSE_ICONS,
 } from '@/modules/email/lib/email-meeting-response';
 import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
+import { emailRowQuickActionReserve } from '@/modules/email/lib/email-row-quick-actions';
 import { emailRowSurfaceClasses } from '@/modules/email/lib/email-row-surface';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
@@ -351,16 +352,22 @@ export function EmailRowCard({
               // The quick actions now sit on this line rather than in a box
               // above it, so the subject gives up the width they need while
               // they are showing and takes it back when they go (elli-ui#991).
-              // Only from `lg`, which is where the actions are hover-revealed;
-              // below that they are always visible and the row is laid out for
-              // them already.
-              hasQuickActions && 'lg:group-focus-within:pe-24 lg:group-hover:pe-24'
+              emailRowQuickActionReserve(hasQuickActions)
             )}
           >
             {highlightQuery ? highlightText(email.subject, highlightQuery) : email.subject}
           </span>
 
-          <span className="mt-0.5 block truncate text-[12.5px] leading-[1.45] text-mail-muted">
+          {/* The cluster is two lines tall and covers this one as well as the
+              subject, and these icons carry no fill of their own — so without
+              the same reservation the preview simply ran on underneath them
+              (elli-ui#995). */}
+          <span
+            className={cn(
+              'mt-0.5 block truncate text-[12.5px] leading-[1.45] text-mail-muted',
+              emailRowQuickActionReserve(hasQuickActions)
+            )}
+          >
             {meetingResponse && MeetingResponseIcon ? (
               <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 align-bottom">
                 <MeetingResponseIcon

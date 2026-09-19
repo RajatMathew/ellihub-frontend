@@ -590,7 +590,13 @@ export function EmailReadingPane({
               : '@min-[760px]:grid-cols-[minmax(0,1fr)_minmax(288px,34%)]'
           )}
         >
-          <div className="min-w-0 @min-[760px]:col-start-1 @min-[760px]:row-start-1">
+          {/* The head spans both columns. A subject is the one thing on this
+              screen with no natural width — it is whatever the sender typed —
+              and boxing it into the thread column wrapped a long one onto three
+              lines while a third of the row sat empty above the details card
+              (elli-ui#997). Across the full width it wraps where the window
+              runs out, not where the grid does. */}
+          <div className="min-w-0 @min-[760px]:col-span-2 @min-[760px]:col-start-1 @min-[760px]:row-start-1">
             <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>
                 {messages.length} {messages.length === 1 ? 'message' : 'messages'}
@@ -609,6 +615,10 @@ export function EmailReadingPane({
           </div>
 
           {detailsPanel && (
+            // `mt-5` is the thread column's own offset below the head, which is
+            // what puts the panel's top edge level with the reply strip rather
+            // than hard up under the subject now that the subject owns the full
+            // width above it (elli-ui#997).
             <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-5">
               {detailsPanel}
             </div>

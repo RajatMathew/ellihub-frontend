@@ -42,15 +42,22 @@
   --success-alpha: var(--color-emerald-200);
   --success-accent: var(--color-emerald-700);
   --success-soft-foreground: var(--success-accent);
-  /* The middle step of the red -> orange -> gold priority ramp. */
   /* The task card's own scale - a priority meter reading as three steps of one
      ramp, and the two courts. Taken from the #799 design, which is drawn on a
      warm paper ground; deliberately muted rather than the alarm-red and amber
      of `destructive` and `warning`, because a dozen sit on screen at once and a
-     card is a resting state, not a warning. */
+     card is a resting state, not a warning.
+
+     Muted, but not washed out: the ramp is read as a P1/P2/P3 *label*, which is
+     small text, so each step has to clear WCAG AA (4.5:1) on the two grounds it
+     is ever drawn on - `--card` and `--mail-chip`, the fill of a selected
+     priority chip. The original gold and olive measured 3.10:1 and 3.78:1 on
+     the chip (elli-ui#994); these are the same hues stepped down in lightness
+     until they clear it. Measured on `--mail-chip`: 5.45 / 5.11 / 5.02.
+     `tests/theme-contrast.test.ts` holds them to it. */
   --priority-high: #a64439;
-  --priority-medium: #af7c34;
-  --priority-low: #7a7a4c;
+  --priority-medium: #8a5f22;
+  --priority-low: #6b6b41;
   --court-ours: #435a87;
   --court-theirs: #a64439;
   --caution: var(--color-orange-500);
@@ -130,8 +137,6 @@
   --mail-accent-foreground: var(--primary-foreground);
   --mail-accent-soft: var(--accent);
   --mail-accent-edge: var(--primary-alpha);
-  --mail-project-pill: var(--primary);
-  --mail-project-pill-hover: var(--primary-hover);
   /* The reading pane sits a half-step off the page so the two columns read as
      two surfaces without a heavier border between them. */
   --mail-pane: #fbfbfc;

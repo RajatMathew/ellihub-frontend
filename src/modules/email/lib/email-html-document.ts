@@ -189,12 +189,16 @@ pre { overflow-x: auto; }
 [style*="position: fixed"], [style*="position:fixed"],
 [style*="position: absolute"], [style*="position:absolute"] { position: relative !important; }
 
-/* An outline, not a filled chip. A solid grey pill reads as a piece of the
-   message — it has more visual weight than the sentence it sits under — and it
-   matches nothing else in the app, where a low-emphasis control is a hairline
-   border over the page. Same border colour as the quoted block below, so the
-   toggle and the history it opens are visibly one thing. It stays quiet until
-   the pointer is on it. */
+/* A filled grey chip. It was a hairline outline, on the reasoning that a
+   low-emphasis control in this app is a border over the page — but this one is
+   not over the page, it is over a *message*, whose own body text is the only
+   other thing in the frame. A 1px #e4e4e7 outline on white is the same weight
+   as a table rule a sender drew, so the control read as part of the email and
+   went unnoticed (elli-ui#993). The fill is what separates it from the
+   sender's content: nothing in a message body is painted, so a painted pill is
+   unambiguously ours. Same grey as --muted, and the same fill its React twin
+   in email-message-body.tsx already carries, so a plain-text message and an
+   HTML one show the same control. */
 [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}] {
   display: inline-flex;
   align-items: center;
@@ -202,21 +206,19 @@ pre { overflow-x: auto; }
   height: 18px;
   margin: 6px 0;
   padding: 0 7px;
-  border: 1px solid #e4e4e7;
+  border: 0;
   border-radius: 999px;
-  background: transparent;
-  color: #a1a1aa;
+  background: #f4f4f5;
+  color: #71717a;
   cursor: pointer;
   line-height: 0;
   transition:
     background-color 120ms ease,
-    border-color 120ms ease,
     color 120ms ease;
 }
 [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]:hover {
-  border-color: #d4d4d8;
-  background: #fafafa;
-  color: #52525b;
+  background: #e4e4e7;
+  color: #3f3f46;
 }
 [${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]:focus-visible { outline: 2px solid ${EMAIL_LINK_COLOR}; outline-offset: 2px; }
 [data-elli-quote-dot] { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
