@@ -7,6 +7,7 @@ import {
   mailTaskDraftToPayload,
   taskDateInputValue,
 } from '@/modules/email/lib/mail-task-draft';
+import { TASK_COURT_TONES, TASK_PRIORITY_TONES } from '@/modules/tasks/constants/tasks.constants';
 import { useCreateTaskMutation } from '@/modules/tasks/hooks/tasks.hooks';
 import { useTaskAssigneeOptions } from '@/modules/tasks/hooks/use-task-assignee-options';
 import type {
@@ -25,18 +26,10 @@ export type MailTaskEmailContext = {
 };
 
 const PRIORITIES: TaskPriority[] = ['P1', 'P2', 'P3'];
-const COURTS: { value: TaskCourt; label: string }[] = [
-  { value: 'OURS', label: 'Our court' },
-  { value: 'THEIRS', label: 'Their court' },
-];
+const COURTS: TaskCourt[] = ['OURS', 'THEIRS'];
 
 /** Filled bars for the level, hollow for the rest — the board's own meter. */
 const PRIORITY_BARS: Record<TaskPriority, number> = { P1: 1, P2: 2, P3: 3 };
-const PRIORITY_TEXT: Record<TaskPriority, string> = {
-  P1: 'text-priority-high',
-  P2: 'text-priority-medium',
-  P3: 'text-mail-mid',
-};
 
 /**
  * Raising a task from the open conversation.
@@ -167,8 +160,8 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
             className={cn(
               'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
-              PRIORITY_TEXT[level],
-              priority === level ? 'bg-mail-chip-count' : 'hover:bg-mail-chip'
+              TASK_PRIORITY_TONES[level].text,
+              priority === level ? 'bg-mail-chip' : 'hover:bg-mail-chip/60'
             )}
             onClick={() => setPriority(level)}
           >
@@ -190,29 +183,33 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           aria-invalid={dueDate ? undefined : 'true'}
           className={cn(
             'cursor-pointer rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-            dueDate ? 'bg-mail-chip-count text-mail-ink' : 'text-destructive hover:bg-mail-chip'
+            dueDate ? 'bg-mail-chip text-mail-ink' : 'text-destructive hover:bg-mail-chip/60'
           )}
           onChange={(event) => setDueDate(event.target.value)}
         />
       </div>
 
       <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
-        {COURTS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={court === option.value}
-            className={cn(
-              'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold',
-              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
-              option.value === 'OURS' ? 'text-court-ours' : 'text-mail-mid',
-              court === option.value ? 'bg-mail-chip-count' : 'hover:bg-mail-chip'
-            )}
-            onClick={() => setCourt(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {COURTS.map((value) => {
+          const tone = TASK_COURT_TONES[value];
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={court === value}
+              className={cn(
+                'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold',
+                'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+                tone.text,
+                court === value ? 'bg-mail-chip' : 'hover:bg-mail-chip/60'
+              )}
+              onClick={() => setCourt(value)}
+            >
+              <span className={cn('size-2 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
+              {tone.label}
+            </button>
+          );
+        })}
 
         <span aria-hidden="true" className="mx-1 h-5 w-px bg-mail-hair" />
 
@@ -227,7 +224,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           value={assigneeId}
           className={cn(
             'min-w-0 max-w-[10.5rem] cursor-pointer truncate rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-            assigneeId ? 'bg-mail-chip-count text-mail-ink' : 'text-mail-mid hover:bg-mail-chip'
+            assigneeId ? 'bg-mail-chip text-mail-ink' : 'text-mail-mid hover:bg-mail-chip/60'
           )}
           onChange={(event) => setAssigneeId(event.target.value)}
         >
@@ -263,7 +260,7 @@ function PriorityBars({ level }: { level: TaskPriority }) {
           key={height}
           className={cn(
             'block w-[2.5px] rounded-[1px]',
-            index < filled ? 'bg-current' : 'bg-mail-pane-line'
+            index < filled ? 'bg-current' : 'bg-muted-foreground/25'
           )}
           style={{ height: `${height}px` }}
         />
