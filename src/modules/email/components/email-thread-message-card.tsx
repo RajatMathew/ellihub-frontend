@@ -1,8 +1,15 @@
 import { useCallback, useId, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { downloadBlob } from '@/app/lib/generated-pdf';
 import { cn } from '@/app/lib/utils';
 import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
 import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
@@ -28,7 +35,18 @@ import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
 import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
 import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
-import { ChevronUp, Copy, FolderPlus, Forward, Mail, Reply, Search } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  FileSearch,
+  FolderPlus,
+  Forward,
+  Mail,
+  Reply,
+  Search,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 /** Stable identities for the two "nothing here" cases, so renders that change
@@ -516,6 +534,15 @@ function MessageIconAction({
   );
 }
 
+/**
+ * One attachment, as a card rather than a chip (elli-ui#1017).
+ *
+ * The chip put the name and the size on one line and hung a bare "add to
+ * folder" icon off the side, so the only two things you can do with a file
+ * were one visible button and one that was not there at all. Actions now live
+ * behind a single chevron — preview, download, save to Files — and the name
+ * gets the card's whole width to truncate against.
+ */
 function EmailAttachmentChip({
   attachment,
   messageId,
@@ -539,43 +566,81 @@ function EmailAttachmentChip({
   }, [attachment.id, messageId, onLoadAttachment]);
 
   const canSaveToFiles = Boolean(onLoadAttachment);
-  // Saved under the same name the chip shows and the download sends.
+  // Saved under the same name the card shows and the download sends.
   const displayName = emailAttachmentDisplayName(attachment);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const download = async () => {
+    if (!onLoadAttachment || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      downloadBlob(await resolveAttachment(), displayName);
+    } catch {
+      // The attachment never arrived, so there is nothing to save. Say so here
+      // rather than leaving a menu item that silently does nothing.
+      toast.error(`Could not download ${displayName}.`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
-    <div className="inline-flex max-w-full items-center gap-1">
+    <div className="flex min-w-0 max-w-72 items-center gap-1 rounded-lg border border-mail-line bg-mail-card py-1.5 pe-1 ps-2.5">
       <EmailAttachmentHoverCard
         attachment={attachment}
         messageId={messageId}
         loadAttachment={onLoadAttachment}
         onOpen={() => onOpenAttachment?.(attachment)}
       />
-      {canSaveToFiles && (
-        <SaveToFilesTrigger
-          asChild
-          source={{
-            kind: 'lazy',
-            fileName: displayName,
-            mimeType: attachment.mimeType ?? undefined,
-            resolve: resolveAttachment,
-          }}
-          rootFolderId={saveToFilesRootFolderId}
-          rootLabel={saveToFilesRootLabel ?? 'Project Files'}
-          onSaved={() => toast.success(`Saved ${displayName} to Files.`)}
-        >
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
             mode="icon"
             size="sm"
-            className="size-8 shrink-0"
-            aria-label={`Save ${displayName} to Files`}
-            title="Save to Files"
+            className="size-7 shrink-0"
+            aria-label={`Actions for ${displayName}`}
+            title="Actions"
           >
-            <FolderPlus aria-hidden="true" className="size-3.5" />
+            <ChevronDown aria-hidden="true" className="size-3.5" />
           </Button>
-        </SaveToFilesTrigger>
-      )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => onOpenAttachment?.(attachment)}>
+            <FileSearch aria-hidden="true" />
+            Preview
+          </DropdownMenuItem>
+          {onLoadAttachment && (
+            <DropdownMenuItem disabled={isDownloading} onClick={() => void download()}>
+              <Download aria-hidden="true" />
+              {isDownloading ? 'Downloading...' : 'Download'}
+            </DropdownMenuItem>
+          )}
+          {canSaveToFiles && (
+            <SaveToFilesTrigger
+              asChild
+              source={{
+                kind: 'lazy',
+                fileName: displayName,
+                mimeType: attachment.mimeType ?? undefined,
+                resolve: resolveAttachment,
+              }}
+              rootFolderId={saveToFilesRootFolderId}
+              rootLabel={saveToFilesRootLabel ?? 'Project Files'}
+              onSaved={() => toast.success(`Saved ${displayName} to Files.`)}
+            >
+              {/* The picker owns its own dialog, so the menu must not close
+                  this item out from under it on select. */}
+              <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                <FolderPlus aria-hidden="true" />
+                Add to folder
+              </DropdownMenuItem>
+            </SaveToFilesTrigger>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
