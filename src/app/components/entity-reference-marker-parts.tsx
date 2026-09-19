@@ -54,16 +54,20 @@ export function CategorySegmentedControl({
   onChange: (value: 'project' | 'other') => void;
 }) {
   return (
-    <div className="inline-flex h-8 shrink-0 overflow-hidden rounded-md bg-muted/60 p-0.5">
+    // No track behind the pair. A filled grey rail around two words was the
+    // heaviest object in a 288px details panel and read as a form control
+    // rather than a choice already made — the selected side alone carries the
+    // fill now, and the other is plain text (elli-ui#984).
+    <div className="inline-flex h-8 shrink-0 items-center gap-1">
       {(['project', 'other'] as const).map((item) => (
         <button
           key={item}
           type="button"
           className={cn(
-            'inline-flex min-w-16 cursor-pointer items-center justify-center rounded-sm px-2.5 text-xs font-medium capitalize transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+            'inline-flex h-7 cursor-pointer items-center justify-center rounded-md px-3 text-[13px] capitalize transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
             value === item
-              ? 'bg-background text-foreground shadow-xs'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-mail-chip font-semibold text-mail-ink'
+              : 'font-medium text-mail-mid hover:bg-mail-chip/60 hover:text-mail-ink'
           )}
           aria-pressed={value === item}
           disabled={disabled}

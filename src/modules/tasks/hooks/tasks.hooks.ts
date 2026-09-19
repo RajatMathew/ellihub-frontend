@@ -8,6 +8,7 @@ import {
 } from '@/modules/tasks/lib/task-cache';
 import type {
   CreateTaskInput,
+  ListTasksParams,
   Task,
   TaskBoard,
   TaskBoardParams,
@@ -43,6 +44,30 @@ export const useTaskDetailQuery = (id: string) =>
     queryFn: () => tasksApi.getById(id),
     enabled: !!id,
   });
+
+/**
+ * The tasks raised from one mail thread, for the mailbox's details panel.
+ *
+ * A thread is not an entity, so this reads through the task's email references
+ * — `filter[conversationKey]` plus the mailbox that key belongs to. A thread
+ * carries a handful of tasks at most, so one page is the whole list.
+ */
+export const useThreadTasksQuery = (accountId?: string, conversationKey?: string | null) => {
+  const params: ListTasksParams = {
+    page: 1,
+    size: 50,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    accountId,
+    conversationKey: conversationKey ?? undefined,
+  };
+
+  return useQuery({
+    queryKey: taskKeys.list(params),
+    queryFn: () => tasksApi.list(params),
+    enabled: Boolean(accountId && conversationKey),
+  });
+};
 
 /** The cached boards, each with the params it was fetched for. */
 type CachedBoard = readonly [key: readonly unknown[], board: TaskBoard | undefined];
@@ -120,6 +145,12 @@ export const useCreateTaskMutation = () => {
     // that then has to be reconciled buys nothing for that.
     onSuccess: (task) => {
       writeTask(queryClient, task);
+      // `writeTask` patches the boards and the detail, which is everything the
+      // board needs. The lists are a different shape and a different key, so
+      // they have to be asked again — without this the mailbox panel kept
+      // showing the thread's tasks as they were before the one just created,
+      // right under its own "Task created" toast (elli-ui#983).
+      void queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
       toast.success('Task created');
     },
     onError: (error) => toastApiError(error, 'Failed to create task'),

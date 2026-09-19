@@ -51,6 +51,13 @@ export function useEmailReferenceMarker({
   appliedTags = [],
   isUpdatingTags = false,
   isCreatingTag = false,
+  /**
+   * Greys out the switch, the picker and the linked rows. Leave it unset for a
+   * caller whose save is optimistic — the value is on screen before the request
+   * goes out, so there is nothing to wait for, and disabling reads as a freeze
+   * (elli-ui#985). Tag edits still gate on their own flags below: those are not
+   * optimistic.
+   */
   isSaving,
   onToggleTag,
   onCreateTag,

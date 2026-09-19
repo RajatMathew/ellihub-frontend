@@ -45,6 +45,7 @@ import { MailReadingToolbar } from '@/modules/email/components/mail-reading-tool
 import { MailReplyStrip } from '@/modules/email/components/mail-reply-strip';
 import { MailShortcutsMenu } from '@/modules/email/components/mail-shortcuts-menu';
 import { MailThreadActions } from '@/modules/email/components/mail-thread-actions';
+import { MailThreadTasks } from '@/modules/email/components/mail-thread-tasks';
 import { useSaveEmailThreadClassificationMutation } from '@/modules/email/hooks';
 import { useEmailAiSuggestion } from '@/modules/email/hooks/use-email-ai-suggestion';
 import { isHiddenInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
@@ -60,6 +61,7 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
+import { useThreadTasksQuery } from '@/modules/tasks/hooks/tasks.hooks';
 import { Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -176,6 +178,9 @@ export function EmailReadingPane({
     total: number | null;
   } | null>(null);
   const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
+  // The tasks this thread has raised. Keyed on the conversation, so it follows
+  // the reader from thread to thread without the panel asking for it.
+  const threadTasksQuery = useThreadTasksQuery(accountId, email?.conversationKey);
   // The details card starts open; collapsing it is a per-reader preference for
   // the session, not something worth persisting.
   const [detailsCollapsed, setDetailsCollapsed] = useState(false);
@@ -311,7 +316,7 @@ export function EmailReadingPane({
     appliedTags: email?.tags,
     isUpdatingTags,
     isCreatingTag,
-    isSaving: saveClassificationMutation.isPending,
+    // Deliberately not `saveClassificationMutation.isPending` — see the prop.
     onToggleTag: onToggleTag
       ? (tag, enabled) =>
           referenceActionMessageId && onToggleTag(referenceActionMessageId, tag, enabled)
@@ -448,7 +453,6 @@ export function EmailReadingPane({
         referenceMarker.isProjectMode && referenceMarker.references.length > 0 ? (
           <MailLinkedItems
             references={referenceMarker.references}
-            isSaving={saveClassificationMutation.isPending}
             onRemove={referenceMarker.removeReference}
           />
         ) : null
@@ -457,11 +461,17 @@ export function EmailReadingPane({
       tagsSection={referenceMarker.tagsSection}
       isOtherSelected={referenceMarker.isOtherSelected}
       actions={<MailThreadActions conversationKey={conversationKey} />}
+      // Neither the assignee nor the court is disabled while the save is in
+      // flight. The mutation is optimistic — `onMutate` writes both into the
+      // cache before the request leaves and `onError` puts the old ones back —
+      // so what is on screen is already the answer. Greying them out for the
+      // length of a round trip only made the panel feel frozen, and it stopped
+      // the reader correcting a misclick until the previous one landed
+      // (elli-ui#985).
       assignee={
         <EmailAssigneePicker
           accountId={accountId}
           assignee={referenceMarkerState.assignedTo ?? null}
-          disabled={saveClassificationMutation.isPending}
           onChange={(assignee) => {
             aiSuggestion.resolve();
             saveReferenceMarkerState({ ...referenceMarkerState, assignedTo: assignee });
@@ -471,7 +481,6 @@ export function EmailReadingPane({
       court={
         <EmailThreadStatusMarker
           state={referenceMarkerState.status}
-          isSaving={saveClassificationMutation.isPending}
           onChange={(status) => {
             aiSuggestion.resolve();
             saveThreadState(status);
@@ -491,6 +500,13 @@ export function EmailReadingPane({
             }}
           />
         ) : null
+      }
+      tasksSection={
+        threadTasksQuery.isError ? (
+          <p className="pb-1 text-[12.5px] text-mail-muted">Couldn’t load this thread’s tasks.</p>
+        ) : (
+          <MailThreadTasks tasks={threadTasksQuery.data?.data ?? []} />
+        )
       }
       ai={aiSuggestion}
       collapsed={detailsCollapsed}

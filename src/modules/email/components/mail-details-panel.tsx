@@ -14,11 +14,22 @@ interface MailDetailsPanelProps {
   /** The tag row, rendered in place of everything else while Other is on. */
   tagsSection: ReactNode;
   isOtherSelected: boolean;
-  /** What this thread made someone do. */
+  /**
+   * What this thread made someone do.
+   *
+   * Not rendered for now (elli-ui#987). `MailThreadActions` draws from a
+   * fixture — elli-core logs email activity against the project, not the
+   * conversation — so every real thread carried a plausible-looking history
+   * that never happened. Still accepted and still passed in: turning it back
+   * on once there is a real feed is destructuring it below and uncommenting
+   * the one line that renders it.
+   */
   actions: ReactNode;
   assignee: ReactNode;
   court: ReactNode;
   addTask: ReactNode;
+  /** The tasks this thread has already raised, drawn by `MailThreadTasks`. */
+  tasksSection: ReactNode;
   ai: EmailAiSuggestionState;
   collapsed: boolean;
   onToggleCollapsed: () => void;
@@ -44,10 +55,12 @@ export function MailDetailsPanel({
   referenceTrigger,
   tagsSection,
   isOtherSelected,
-  actions,
+  // `actions` is deliberately left undestructured — see the prop. Strict mode
+  // fails the build on a binding nothing reads.
   assignee,
   court,
   addTask,
+  tasksSection,
   ai,
   collapsed,
   onToggleCollapsed,
@@ -121,17 +134,10 @@ export function MailDetailsPanel({
               )}
 
               <SectionHeader title="Tasks" action={addTask} bordered />
-              {/*
-                Tasks raised from this thread are not listed yet: elli-core's
-                task list filters on entity type and id only, and a thread is
-                neither. Raising one from here works and links correctly — what
-                is missing is a `filter[conversationKey]` to read them back.
-              */}
-              <p className="pb-1 text-[12.5px] text-mail-muted">
-                Tasks raised here appear on the board.
-              </p>
+              {tasksSection}
 
-              {actions}
+              {/* elli-ui#987 — see the `actions` prop. */}
+              {/* {actions} */}
             </>
           )}
         </div>
