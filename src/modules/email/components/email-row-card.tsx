@@ -17,6 +17,7 @@ import {
   MEETING_RESPONSE_ICONS,
 } from '@/modules/email/lib/email-meeting-response';
 import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
+import { emailRowSurfaceClasses } from '@/modules/email/lib/email-row-surface';
 import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
@@ -241,17 +242,7 @@ export function EmailRowCard({
           'flex w-full cursor-pointer gap-[11px] rounded-[10px] px-2.5 py-[13px] text-left',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
           'motion-safe:transition-[background-color,box-shadow] motion-safe:duration-100',
-          isSelected
-            ? // A drawn edge and a real lift, not a hairline. The 1px ring this
-              // started with read as "slightly paler paper"; the open
-              // conversation is the reader's place in a long list and has to be
-              // findable without hunting (elli-ui#992). The ring is a shade
-              // darker than `--mail-row-edge` so it holds against the white
-              // card, and the shadow is deep enough to sit the row above the
-              // page rather than merely beside it.
-              'bg-mail-card shadow-[0_0_0_1.5px_var(--mail-row-selected-edge),0_2px_4px_rgba(26,28,31,0.08),0_10px_24px_-6px_rgba(26,28,31,0.20)]'
-            : 'bg-mail-paper hover:bg-mail-row-hover',
-          isChecked && !isSelected && 'bg-mail-accent-soft'
+          ...emailRowSurfaceClasses({ isSelected, isChecked })
         )}
         aria-current={isSelected ? 'true' : undefined}
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
