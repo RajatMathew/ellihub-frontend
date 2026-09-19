@@ -74,6 +74,48 @@ export type EntityReferenceApi = {
   }) => Promise<EntityReferenceOption[]>;
 };
 
+type ReferenceLike = Pick<EntityReference, 'type' | 'entityType' | 'entityId' | 'label'>;
+
+/** Whether two references (or a reference and a picker option) are the same record. */
+export function referencesMatch(a: ReferenceLike, b: ReferenceLike) {
+  if (a.type !== b.type) return false;
+  if (a.entityId || b.entityId) {
+    return a.entityId === b.entityId && (a.entityType ?? null) === (b.entityType ?? null);
+  }
+
+  return a.label.toLowerCase() === b.label.toLowerCase();
+}
+
+/**
+ * Picked options first, in the order they were picked; everything else after,
+ * in the order it arrived.
+ *
+ * `selected` is click order — `addReference` appends and
+ * `normalizeReferenceTimeline` numbers by array index — and that is what the
+ * pinned block is sorted by (elli-ui#1041). Sorting it by the fetched
+ * (alphabetical) order instead meant the row you had just ticked landed
+ * wherever its name happened to fall among the others, so the row that
+ * visibly jumped to the top was rarely the one you touched.
+ *
+ * The sort is stable, so the unpicked tail keeps the server's ordering.
+ */
+export function orderOptionsBySelection<T extends ReferenceLike>(
+  options: T[],
+  selected: ReferenceLike[]
+): T[] {
+  const indexOf = (option: T) =>
+    selected.findIndex((reference) => referencesMatch(reference, option));
+
+  return [...options].sort((a, b) => {
+    const aIndex = indexOf(a);
+    const bIndex = indexOf(b);
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+}
+
 export function getReferenceIdentity(
   reference: Pick<EntityReference, 'type' | 'entityType' | 'entityId' | 'label'>
 ) {
