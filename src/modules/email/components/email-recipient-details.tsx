@@ -15,10 +15,19 @@ export function EmailRecipientDetails({ message }: EmailRecipientDetailsProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="group -my-1 -ml-1 mt-0 flex min-h-10 max-w-full cursor-pointer items-center gap-1.5 rounded-md px-1 py-1 text-left text-xs text-muted-foreground hover:text-foreground active:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-100"
+          // No `min-h-10`, no negative margin, no horizontal padding
+          // (elli-ui#1004). A 40px floor on a 16px line left a band of empty
+          // space under the sender's address, and the `-mx-1`/`px-1` pair —
+          // there to pull a hover surface back into line — took 8px off the
+          // width the shrink-wrapped parent handed back, which is exactly what
+          // cropped "…@outlook.com" off an address the card had room for.
+          className="group flex w-fit max-w-full cursor-pointer items-center gap-1.5 rounded-md py-0.5 text-left text-xs text-muted-foreground hover:text-foreground active:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-100"
           aria-label={`View message recipients: ${formatAccessibleSummary(groups)}`}
         >
-          <span className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-hidden">
+          {/* Not `flex-1`: a zero flex-basis made the row's max-content width
+              collapse to less than the address, so the chip sized itself to a
+              truncation it did not need (elli-ui#1004). */}
+          <span className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
             <RecipientSummary label="To" recipients={groups.to} />
             {groups.cc.length > 0 && (
               <RecipientSummary label="Cc" recipients={groups.cc} secondary />
@@ -81,7 +90,10 @@ function RecipientSummary({
       }
     >
       <span className="shrink-0 font-medium">{label}:</span>
-      <span className="max-w-40 truncate text-foreground">{formatCompactGroup(recipients)}</span>
+      {/* No `max-w-40`: the cap cut "…@outlook.com" off an address the card
+          had room for. It still truncates, but only where the row genuinely
+          runs out of width (elli-ui#1004). */}
+      <span className="min-w-0 truncate text-foreground">{formatCompactGroup(recipients)}</span>
     </span>
   );
 }

@@ -502,7 +502,7 @@ function MailFilterPills({
             type="button"
             aria-pressed={Boolean(selectedProject)}
             className={cn(
-              'flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] rounded-full py-2 pe-[11px] ps-[13px] text-xs font-semibold',
+              'mail-pill flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] py-2 pe-[11px] ps-[13px] text-xs font-semibold',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
               // Resting, this is not a filter — it is the label for the view
               // you are already in, and a filled navy pill announced it as the
@@ -580,7 +580,7 @@ function MailFilterPills({
                 : 'Filter conversations'
             }
             className={cn(
-              'flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              'mail-pill flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
               isFiltered
                 ? 'bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover'
                 : 'bg-mail-chip text-mail-mid hover:bg-mail-chip-hover hover:text-mail-ink'

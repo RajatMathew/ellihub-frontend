@@ -24,6 +24,19 @@
   }
 }
 
+/* The filter and project pills.
+
+   A finite radius on purpose. `rounded-full` compiles to
+   `border-radius: calc(infinity * 1px)`, which Chrome resolves to 16777216px
+   and then has to scale back down to half the box every time it rasterises the
+   pill. On the small `Filters` pill that scaling intermittently collapsed to
+   ~0 and the pill painted as a hard-cornered rectangle — the "square" state in
+   elli-ui#1015. 9999px is past half of anything this strip will ever hold, so
+   the shape is identical and there is nothing left to underflow. */
+.mail-pill {
+  border-radius: 9999px;
+}
+
 /* The filter strip scrolls horizontally with no scrollbar; fade only the edge
    that genuinely has more strip past it, so a fade always means "there's more". */
 .mail-pill-strip[data-fade='r'] {

@@ -241,30 +241,6 @@ export function EmailThreadMessageCard({
                   {message.senderEmail}
                 </span>
               </div>
-              <div className={cn(canCollapse && 'pointer-events-auto w-fit max-w-full')}>
-                <EmailRecipientDetails message={message} />
-              </div>
-              {(elliTags.length > 0 || providerCategories.length > 0) && (
-                <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
-                  {elliTags.map((tag) => (
-                    <span
-                      key={`tag-${tag}`}
-                      className="max-w-36 truncate rounded-sm border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {providerCategories.map((category) => (
-                    <span
-                      key={`category-${category}`}
-                      title="Mailbox category, set in Outlook or Gmail. Read-only in Elli."
-                      className="max-w-36 truncate rounded-sm border border-border border-dashed bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
-                    >
-                      {category}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
@@ -288,6 +264,38 @@ export function EmailThreadMessageCard({
               {canCollapse && <ChevronUp aria-hidden="true" className="mx-2 size-3.5" />}
             </div>
           </div>
+
+          {/*
+            Recipients sit under the whole header rather than in the column
+            beside the timestamp and the action icons. Sharing that column left
+            them roughly 190px on a normal pane and "To: someone@outlook.com"
+            was cropped mid-domain with half the card empty next to it
+            (elli-ui#1004).
+          */}
+          <div className={cn('min-w-0', canCollapse && 'pointer-events-auto w-fit max-w-full')}>
+            <EmailRecipientDetails message={message} />
+          </div>
+          {(elliTags.length > 0 || providerCategories.length > 0) && (
+            <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+              {elliTags.map((tag) => (
+                <span
+                  key={`tag-${tag}`}
+                  className="max-w-36 truncate rounded-sm border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+              {providerCategories.map((category) => (
+                <span
+                  key={`category-${category}`}
+                  title="Mailbox category, set in Outlook or Gmail. Read-only in Elli."
+                  className="max-w-36 truncate rounded-sm border border-border border-dashed bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  {category}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
