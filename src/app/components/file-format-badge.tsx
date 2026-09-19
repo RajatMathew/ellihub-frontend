@@ -36,7 +36,7 @@ export function FileFormatBadge({
     <span
       aria-hidden="true"
       className={cn(
-        'relative inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md',
+        '@container relative inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md',
         TONE_BACKGROUND[tone],
         className
       )}
@@ -44,9 +44,16 @@ export function FileFormatBadge({
       {/* The folded corner. Decorative, and the only thing that separates the
           badge from a plain colour swatch at this size. */}
       <span className="absolute right-0 top-0 h-1/3 w-1/3 bg-file-format-foreground/25 [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+      {/*
+        The label is sized in `cqw` off the badge itself, so one component
+        serves the 24px mark in an attachment row and the 64px tile in the
+        Files grid without either call site passing a font size (elli-ui#1045).
+        26cqw lands on ~8px at size-6 and ~17px at size-16, which is the same
+        optical weight at both ends.
+      */}
       <span
         className={cn(
-          'px-0.5 text-[9px] font-bold uppercase leading-none tracking-tight text-file-format-foreground',
+          'px-[6cqw] text-[26cqw] font-bold uppercase leading-none tracking-tight text-file-format-foreground',
           labelClassName
         )}
       >
