@@ -59,13 +59,20 @@ export function FolderPickerPanel({
   const isFiltering = filter.trim().length > 0;
 
   return (
-    <div className={cn('flex min-h-0 flex-col gap-3', className)}>
-      <div className="flex min-h-8 min-w-0 items-center gap-2">
+    <div className={cn('flex min-h-0 flex-col', className)}>
+      {/*
+        Where you are and how to narrow it, on one line (elli-ui#1048). These
+        were two full-width rows — a bordered back button beside a breadcrumb,
+        then a search box of its own — which put two controls above the list
+        before the list had said anything.
+      */}
+      <div className="flex min-h-9 min-w-0 items-center gap-1 border-b pb-2">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           mode="icon"
           size="sm"
+          className="shrink-0"
           disabled={isAtRoot}
           aria-label="Go to parent folder"
           onClick={goUp}
@@ -86,11 +93,27 @@ export function FolderPickerPanel({
             onBreadcrumbClick={navigateTo}
           />
         )}
+
+        {hasAnyFolder && (
+          <div className="relative w-40 shrink-0">
+            <Search
+              className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={filter}
+              placeholder="Filter"
+              aria-label={`Filter folders in ${currentFolderName}`}
+              className="h-8 border-transparent bg-muted/50 ps-8 text-sm focus-visible:border-input focus-visible:bg-background"
+              onChange={(event) => setFilter(event.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {isAtRoot && recentFolders.length > 0 && !isFiltering && (
-        <div className="flex flex-wrap gap-1.5">
-          <span className="w-full text-xs font-medium text-muted-foreground">Recent</span>
+        <div className="flex flex-wrap items-center gap-1.5 pt-2">
+          <span className="text-xs font-medium text-muted-foreground">Recent</span>
           {recentFolders.map((folder) => (
             <Button
               key={folder.id}
@@ -107,23 +130,9 @@ export function FolderPickerPanel({
         </div>
       )}
 
-      {hasAnyFolder && (
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            value={filter}
-            placeholder={`Filter folders in ${currentFolderName}`}
-            aria-label="Filter folders in the current folder"
-            className="ps-9"
-            onChange={(event) => setFilter(event.target.value)}
-          />
-        </div>
-      )}
-
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-md border">
+      {/* Borderless: the list is the sheet's subject, and a box around it only
+          made it one more panel among the rest. */}
+      <div className="min-h-0 flex-1 overflow-y-auto pt-1">
         {isError ? (
           <QueryErrorState
             title="Failed to load folders"
@@ -133,7 +142,7 @@ export function FolderPickerPanel({
         ) : isLoading ? (
           <FolderListSkeleton />
         ) : (
-          <div className="space-y-1 p-1">
+          <div className="space-y-0.5 py-1">
             {folders.map((folder) => (
               <FolderPickerRow key={folder.id} folder={folder} onOpen={(f) => navigateTo(f.id)} />
             ))}
@@ -184,10 +193,12 @@ export function FolderPickerPanel({
       </div>
 
       {allowCreateFolder && canCreateFolderHere && currentFolderId && !isLoading && !isError && (
-        <NewFolderInlineForm
-          parentId={currentFolderId}
-          onCreated={(folder) => navigateTo(folder.id)}
-        />
+        <div className="border-t pt-2">
+          <NewFolderInlineForm
+            parentId={currentFolderId}
+            onCreated={(folder) => navigateTo(folder.id)}
+          />
+        </div>
       )}
     </div>
   );
