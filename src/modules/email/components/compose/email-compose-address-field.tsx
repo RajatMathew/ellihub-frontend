@@ -24,6 +24,7 @@ export function EmailComposeAddressField({
   accountId,
   onChange,
   onRemove,
+  dense = false,
   children,
 }: {
   id: string;
@@ -39,6 +40,16 @@ export function EmailComposeAddressField({
    * field. Used by Cc/Bcc so the fields can be added and removed cleanly.
    */
   onRemove?: () => void;
+  /**
+   * Tightens the row for the inline composer, which is a card in the thread
+   * rather than a full page (elli-ui#1024).
+   *
+   * The roomy default is right where To, Cc, Bcc and Subject stack up and want
+   * their labels on a shared gutter. Inline there is one row, and at full size
+   * it stood taller than the header above it and pushed the placeholder a
+   * label-width to the right of a two-letter label.
+   */
+  dense?: boolean;
   children?: ReactNode;
 }) {
   const errorId = `${id}-error`;
@@ -170,10 +181,13 @@ export function EmailComposeAddressField({
 
   return (
     <div>
-      <div className="flex items-start gap-3 px-5 py-2.5">
+      <div className={cn('flex items-start gap-3', dense ? 'px-4 py-1.5' : 'px-5 py-2.5')}>
         <label
           htmlFor={id}
-          className="mt-1.5 w-16 shrink-0 text-xs font-medium text-muted-foreground"
+          className={cn(
+            'shrink-0 text-xs font-medium text-muted-foreground',
+            dense ? 'mt-[7px]' : 'mt-1.5 w-16'
+          )}
         >
           {label}
           {required && <span className="text-destructive"> *</span>}
@@ -185,7 +199,8 @@ export function EmailComposeAddressField({
         */}
         <div
           className={cn(
-            'relative flex min-h-9 min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1',
+            'relative flex min-w-0 flex-1 flex-wrap items-center gap-1.5',
+            dense ? 'min-h-7 py-0.5' : 'min-h-9 py-1',
             shownError && 'text-destructive'
           )}
           onClick={(event) => {
@@ -282,7 +297,11 @@ export function EmailComposeAddressField({
         )}
       </div>
       {shownError && (
-        <p id={errorId} className="px-5 pb-2.5 pl-24 text-xs text-destructive" role="alert">
+        <p
+          id={errorId}
+          className={cn('text-xs text-destructive', dense ? 'px-4 pb-1.5' : 'px-5 pb-2.5 pl-24')}
+          role="alert"
+        >
           {shownError}
         </p>
       )}

@@ -297,8 +297,11 @@ export function EmailReplyComposer({
         still infers it from the message being answered and shows no field.
       */}
       {isForward && (
-        <div className="border-b border-mail-pane-line px-4 py-2.5">
+        <div className="border-b border-mail-pane-line">
+          {/* The field brings its own padding — wrapping it in more is what
+              made this row taller than the header above it. */}
           <EmailComposeAddressField
+            dense
             id={toId}
             label="To"
             value={to}
