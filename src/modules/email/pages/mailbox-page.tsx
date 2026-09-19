@@ -68,6 +68,7 @@ import {
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
+import { encodeEmailAttachments } from '@/modules/email/lib/email-compose-attachments';
 import { COMPOSE_LAYER_ATTRIBUTE } from '@/modules/email/lib/email-compose-layer';
 import {
   buildInstantDraftSnapshot,
@@ -1754,7 +1755,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                 onSearchSender={setMessageSearch}
                 onReply={
                   connectedAccount
-                    ? (messageId, draft) =>
+                    ? async (messageId, draft) =>
                         replyMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
@@ -1764,12 +1765,14 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                           to: parseEmailAddresses(draft.to),
                           cc: parseEmailAddresses(draft.cc),
                           bcc: parseEmailAddresses(draft.bcc),
+                          // Read only now, with a message to put them on.
+                          attachments: await encodeEmailAttachments(draft.attachments),
                         })
                     : undefined
                 }
                 onForward={
                   connectedAccount
-                    ? (messageId, draft) =>
+                    ? async (messageId, draft) =>
                         forwardMutation.mutateAsync({
                           accountId: connectedAccount.id,
                           messageId,
@@ -1779,6 +1782,8 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                           to: parseEmailAddresses(draft.to),
                           cc: parseEmailAddresses(draft.cc),
                           bcc: parseEmailAddresses(draft.bcc),
+                          // Read only now, with a message to put them on.
+                          attachments: await encodeEmailAttachments(draft.attachments),
                         })
                     : undefined
                 }

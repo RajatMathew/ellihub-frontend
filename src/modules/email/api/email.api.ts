@@ -396,6 +396,17 @@ export type ReplyConnectedEmailPayload = {
   to?: Array<{ address: string; name?: string }>;
   cc?: Array<{ address: string; name?: string }>;
   bcc?: Array<{ address: string; name?: string }>;
+  /**
+   * elli-core has always accepted these — `ReplyMessageSchema` and
+   * `ForwardMessageSchema` both extend `SendMessageSchema`, and the service
+   * passes them straight to the provider. Only this type omitted them, so the
+   * composer had nowhere to put a file (elli-ui#1018).
+   */
+  attachments?: Array<{
+    name: string;
+    mimeType?: string;
+    content: string;
+  }>;
 };
 
 export type ForwardConnectedEmailPayload = {
@@ -407,6 +418,17 @@ export type ForwardConnectedEmailPayload = {
   to: Array<{ address: string; name?: string }>;
   cc?: Array<{ address: string; name?: string }>;
   bcc?: Array<{ address: string; name?: string }>;
+  /**
+   * elli-core has always accepted these — `ReplyMessageSchema` and
+   * `ForwardMessageSchema` both extend `SendMessageSchema`, and the service
+   * passes them straight to the provider. Only this type omitted them, so the
+   * composer had nowhere to put a file (elli-ui#1018).
+   */
+  attachments?: Array<{
+    name: string;
+    mimeType?: string;
+    content: string;
+  }>;
 };
 
 export type SaveEmailThreadClassificationPayload = {
