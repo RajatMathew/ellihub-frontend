@@ -8,6 +8,7 @@ import {
   type Ref,
 } from 'react';
 
+import { cn } from '@/app/lib/utils';
 import type {
   ConnectedEmailFolder,
   ConnectedEmailTag,
@@ -576,7 +577,19 @@ export function EmailReadingPane({
           than the head, which is what lines its top edge up with the reply
           strip instead of the subject.
         */}
-        <article className="mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[760px]:grid @min-[760px]:max-w-[1520px] @min-[760px]:grid-cols-[minmax(0,1fr)_minmax(288px,34%)] @min-[760px]:grid-rows-[auto_1fr] @min-[760px]:gap-x-7">
+        <article
+          className={cn(
+            'mx-auto w-full min-w-0 max-w-[1140px] px-5 pb-16 pt-6 sm:px-[30px] @min-[760px]:grid @min-[760px]:max-w-[1520px] @min-[760px]:grid-rows-[auto_1fr] @min-[760px]:gap-x-7',
+            // Collapsed, the panel is a rail, so the column shrinks to it and
+            // the thread takes the rest. It used to keep its full
+            // `minmax(288px,34%)` whether or not anything was in it, which made
+            // collapsing pointless at exactly the widths it was meant to help
+            // (elli-ui#990).
+            detailsCollapsed
+              ? '@min-[760px]:grid-cols-[minmax(0,1fr)_auto]'
+              : '@min-[760px]:grid-cols-[minmax(0,1fr)_minmax(288px,34%)]'
+          )}
+        >
           <div className="min-w-0 @min-[760px]:col-start-1 @min-[760px]:row-start-1">
             <p className="mb-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[12.5px] text-mail-muted">
               <span>

@@ -44,6 +44,14 @@ export type EntityReferenceFilterType = 'all' | EntityReferenceType;
 const OVERFLOW_TOGGLE_RESERVED_WIDTH = 72;
 const CHIP_GAP = 6;
 
+/**
+ * One reference-type tab. Matches `CategorySegmentedControl` below — same fill,
+ * same weights — so the picker and the switch that opens it read as one control
+ * rather than two (elli-ui#984, #988).
+ */
+const REFERENCE_TAB_CLASS =
+  'h-7 rounded-md px-3 text-[13px] font-medium text-mail-mid hover:bg-mail-chip/60 hover:text-mail-ink data-[state=active]:bg-mail-chip data-[state=active]:font-semibold data-[state=active]:text-mail-ink';
+
 export function CategorySegmentedControl({
   value,
   disabled,
@@ -313,16 +321,23 @@ export function ReferencePickerPopover({
         onValueChange={(value) => onSelectedTypeChange(value as EntityReferenceFilterType)}
         className="shrink-0"
       >
+        {/*
+          Pills rather than underlines (elli-ui#988), and the same pills the
+          Project | Other switch above the panel uses — the two sit within a few
+          hundred pixels of each other and were drawn in two different
+          languages. The list keeps its rule underneath to hold the popover's
+          header apart from the results; the tabs themselves carry no track.
+        */}
         <TabsList
-          variant="line"
+          variant="button"
           size="sm"
-          className="w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b bg-muted/20 px-3 pt-2.5"
+          className="w-full flex-nowrap justify-start gap-1 overflow-x-auto border-b border-mail-hair px-2 py-1.5"
           aria-label="Reference type"
         >
           <TabsTrigger
             value="all"
             disabled={otherLocked || projectRequired}
-            className="min-h-9 px-1 uppercase tracking-normal"
+            className={REFERENCE_TAB_CLASS}
           >
             All
           </TabsTrigger>
@@ -331,7 +346,7 @@ export function ReferencePickerPopover({
               key={item.type}
               value={item.type}
               disabled={otherLocked || (projectRequired && item.type !== 'project')}
-              className="min-h-9 px-1"
+              className={REFERENCE_TAB_CLASS}
             >
               {item.label}
             </TabsTrigger>

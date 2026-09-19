@@ -242,7 +242,12 @@ export function EmailRowCard({
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
           'motion-safe:transition-[background-color,box-shadow] motion-safe:duration-100',
           isSelected
-            ? 'bg-mail-card shadow-[0_0_0_1px_var(--mail-row-edge),0_2px_8px_rgba(26,28,31,0.07)]'
+            ? // A firmer edge and a little more lift than the hairline this
+              // started as. The 1px ring was there from the redesign and still
+              // read as "slightly paler paper" rather than as a card — the open
+              // conversation is the reader's place in a long list and has to be
+              // findable at a glance (elli-ui#992).
+              'bg-mail-card shadow-[0_0_0_1px_var(--mail-row-edge),0_1px_2px_rgba(26,28,31,0.06),0_6px_16px_-4px_rgba(26,28,31,0.14)]'
             : 'bg-mail-paper hover:bg-mail-row-hover',
           isChecked && !isSelected && 'bg-mail-accent-soft'
         )}
@@ -319,8 +324,27 @@ export function EmailRowCard({
                 ({threadCount})
               </span>
             )}
+            {/*
+              Who holds the thread, beside when it arrived.
+              It used to sit in the footer at `size-4` with 8px initials,
+              between the flag and the paperclip — too small to read and
+              reading as one more status glyph rather than a person
+              (elli-ui#991). Up here it is next to the only other
+              per-conversation fact on the row, and the footer is left to
+              status.
+            */}
+            {email.classification?.assignedTo && (
+              <EmailAssigneeAvatar
+                accountId={accountId}
+                assignee={email.classification.assignedTo}
+                className="ms-auto size-5 text-[10px]"
+              />
+            )}
             <span
-              className="ms-auto shrink-0 whitespace-nowrap text-[11px] tabular-nums text-mail-muted"
+              className={cn(
+                'shrink-0 whitespace-nowrap text-[11px] tabular-nums text-mail-muted',
+                !email.classification?.assignedTo && 'ms-auto'
+              )}
               title={email.receivedAt}
             >
               {formatEmailListDate(email.receivedAt)}
@@ -330,7 +354,14 @@ export function EmailRowCard({
           <span
             className={cn(
               'block truncate text-sm leading-[1.35] tracking-[-0.008em]',
-              email.unread ? 'font-bold text-mail-unread' : 'font-medium text-mail-ink'
+              email.unread ? 'font-bold text-mail-unread' : 'font-medium text-mail-ink',
+              // The quick actions now sit on this line rather than in a box
+              // above it, so the subject gives up the width they need while
+              // they are showing and takes it back when they go (elli-ui#991).
+              // Only from `lg`, which is where the actions are hover-revealed;
+              // below that they are always visible and the row is laid out for
+              // them already.
+              hasQuickActions && 'lg:group-focus-within:pe-24 lg:group-hover:pe-24'
             )}
           >
             {highlightQuery ? highlightText(email.subject, highlightQuery) : email.subject}
@@ -407,18 +438,10 @@ export function EmailRowCard({
                   strokeWidth={1.8}
                 />
               )}
-              {email.classification?.assignedTo && (
-                <EmailAssigneeAvatar
-                  accountId={accountId}
-                  assignee={email.classification.assignedTo}
-                  className="ms-auto size-4"
-                />
-              )}
               {Boolean(email.attachmentCount) && (
                 <span
                   className={cn(
-                    'inline-flex shrink-0 items-center gap-[3px] text-[11px] tabular-nums text-mail-muted',
-                    !email.classification?.assignedTo && 'ms-auto'
+                    'ms-auto inline-flex shrink-0 items-center gap-[3px] text-[11px] tabular-nums text-mail-muted'
                   )}
                 >
                   <Paperclip className="size-[11px]" strokeWidth={1.7} />
@@ -462,7 +485,12 @@ export function EmailRowCard({
       )}
 
       {hasQuickActions && (
-        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 rounded-lg border border-mail-line bg-mail-card p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+        // Inline, on the row's own background, rather than floating in a
+        // bordered white box. The box was a second surface sitting on top of a
+        // row that is already a surface, and it cost the width of its own
+        // padding and border for three icons (elli-ui#991). The subject line
+        // truncates behind it — see `hasQuickActions` on the subject below.
+        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
           {onToggleFlag && (
             <QuickAction
               label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}

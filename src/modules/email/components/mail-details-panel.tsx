@@ -72,6 +72,45 @@ export function MailDetailsPanel({
   // in on top if and when a suggestion arrives.
   const showBanner = ai.stage === 'pending' && Boolean(ai.suggestion);
 
+  /**
+   * Collapsed, this used to keep the whole 288px column and show a title bar in
+   * it — so collapsing the panel bought a little height and none of the width
+   * it was taking from the message (elli-ui#990).
+   *
+   * Beside the thread it now folds into a rail; stacked above it, where there
+   * is no width to give back, it stays the bar it always was. The `@min-[760px]`
+   * threshold is the reading pane's own, set on the `@container` in
+   * `email-reading-pane.tsx` — the same query that decides one column or two,
+   * so the two cannot disagree about which layout is on screen.
+   */
+  if (collapsed) {
+    return (
+      <>
+        <div className="@min-[760px]:hidden">
+          <DetailsHeader collapsed onToggleCollapsed={onToggleCollapsed} highlighted={showBanner} />
+        </div>
+        <button
+          type="button"
+          className={cn(
+            'hidden w-10 cursor-pointer flex-col items-center gap-2 rounded-xl border py-3',
+            'text-mail-mid hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+            'motion-safe:transition-colors motion-safe:duration-100 @min-[760px]:flex',
+            showBanner ? 'border-[1.5px] border-mail-ai-mid' : 'border-mail-pane-line bg-mail-card'
+          )}
+          aria-expanded={false}
+          aria-label="Expand additional details"
+          title="Additional Details"
+          onClick={onToggleCollapsed}
+        >
+          <ChevronDown aria-hidden="true" className="size-[15px] rotate-90" strokeWidth={2} />
+          <span className="text-[11px] font-semibold tracking-[0.02em] [writing-mode:vertical-rl]">
+            Additional Details
+          </span>
+        </button>
+      </>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -96,52 +135,74 @@ export function MailDetailsPanel({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 bg-mail-paper px-4 py-2.5">
-        <span className="text-[13px] font-semibold text-mail-ink">Additional Details</span>
-        <button
-          type="button"
-          className="flex size-[26px] shrink-0 cursor-pointer items-center justify-center rounded-md text-mail-muted hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand additional details' : 'Collapse additional details'}
-          title={collapsed ? 'Expand' : 'Collapse'}
-          onClick={onToggleCollapsed}
-        >
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              'size-[15px] motion-safe:transition-transform motion-safe:duration-150',
-              collapsed && '-rotate-180'
+      <DetailsHeader collapsed={false} onToggleCollapsed={onToggleCollapsed} />
+
+      <div className="px-4 pb-4 pt-2.5">
+        <div className="pb-2.5">{categoryControl}</div>
+
+        {isOtherSelected ? (
+          tagsSection
+        ) : (
+          <>
+            <DetailRow label="Assignee">{assignee}</DetailRow>
+            <DetailRow label="Court">{court}</DetailRow>
+
+            <SectionHeader title="Linked items" action={referenceTrigger} />
+            {referenceList ?? (
+              <p className="pb-1 text-[12.5px] text-mail-muted">No items linked yet</p>
             )}
-            strokeWidth={2}
-          />
-        </button>
+
+            <SectionHeader title="Tasks" action={addTask} bordered />
+            {tasksSection}
+
+            {/* elli-ui#987 — see the `actions` prop. */}
+            {/* {actions} */}
+          </>
+        )}
       </div>
+    </div>
+  );
+}
 
-      {!collapsed && (
-        <div className="px-4 pb-4 pt-2.5">
-          <div className="pb-2.5">{categoryControl}</div>
-
-          {isOtherSelected ? (
-            tagsSection
-          ) : (
-            <>
-              <DetailRow label="Assignee">{assignee}</DetailRow>
-              <DetailRow label="Court">{court}</DetailRow>
-
-              <SectionHeader title="Linked items" action={referenceTrigger} />
-              {referenceList ?? (
-                <p className="pb-1 text-[12.5px] text-mail-muted">No items linked yet</p>
-              )}
-
-              <SectionHeader title="Tasks" action={addTask} bordered />
-              {tasksSection}
-
-              {/* elli-ui#987 — see the `actions` prop. */}
-              {/* {actions} */}
-            </>
-          )}
-        </div>
+/**
+ * The card's title bar. Shared by the open card and by the collapsed bar the
+ * stacked layout keeps, so the two cannot drift apart.
+ */
+function DetailsHeader({
+  collapsed,
+  onToggleCollapsed,
+  highlighted = false,
+}: {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-2 bg-mail-paper px-4 py-2.5',
+        collapsed && 'rounded-xl border',
+        collapsed && (highlighted ? 'border-[1.5px] border-mail-ai-mid' : 'border-mail-pane-line')
       )}
+    >
+      <span className="text-[13px] font-semibold text-mail-ink">Additional Details</span>
+      <button
+        type="button"
+        className="flex size-[26px] shrink-0 cursor-pointer items-center justify-center rounded-md text-mail-muted hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand additional details' : 'Collapse additional details'}
+        title={collapsed ? 'Expand' : 'Collapse'}
+        onClick={onToggleCollapsed}
+      >
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            'size-[15px] motion-safe:transition-transform motion-safe:duration-150',
+            collapsed && '-rotate-180'
+          )}
+          strokeWidth={2}
+        />
+      </button>
     </div>
   );
 }

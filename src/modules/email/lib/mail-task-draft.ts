@@ -2,13 +2,22 @@ import {
   DEFAULT_DUE_TIME,
   toTaskPayload,
 } from '@/modules/tasks/components/task-form/task-form-values';
-import type { CreateTaskInput, TaskPriority } from '@/modules/tasks/schemas/task.schema';
+import type { CreateTaskInput, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 
 export type MailTaskDraft = {
   text: string;
   priority: TaskPriority;
   /** `yyyy-mm-dd`, as a date input produces it. */
   dueDate: string;
+  /**
+   * The three the popover used to hard-code — description `''`, court `OURS`,
+   * assignee nobody — so a task raised from a mail could only ever be half a
+   * task and had to be finished on the board (elli-ui#989). Optional here
+   * because each has a sensible default; the form fills them in.
+   */
+  description?: string;
+  court?: TaskCourt;
+  assigneeId?: string;
 };
 
 /** `yyyy-mm-dd` for a day in the reader's own timezone, which is what a date input wants. */
@@ -34,11 +43,13 @@ export function canSaveMailTaskDraft(draft: MailTaskDraft): boolean {
 export function mailTaskDraftToPayload(draft: MailTaskDraft): CreateTaskInput {
   return toTaskPayload({
     title: draft.text.trim(),
-    description: '',
+    description: draft.description?.trim() ?? '',
     priority: draft.priority,
-    court: 'OURS',
+    // Ours is the honest default for something raised off a mail you are
+    // reading: you are the one who decided it needed doing.
+    court: draft.court ?? 'OURS',
     dueDate: draft.dueDate,
     dueTime: DEFAULT_DUE_TIME,
-    assigneeId: '',
+    assigneeId: draft.assigneeId ?? '',
   });
 }

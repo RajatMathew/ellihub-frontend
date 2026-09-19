@@ -8,7 +8,12 @@ import {
   taskDateInputValue,
 } from '@/modules/email/lib/mail-task-draft';
 import { useCreateTaskMutation } from '@/modules/tasks/hooks/tasks.hooks';
-import type { TaskEmailReference, TaskPriority } from '@/modules/tasks/schemas/task.schema';
+import { useTaskAssigneeOptions } from '@/modules/tasks/hooks/use-task-assignee-options';
+import type {
+  TaskCourt,
+  TaskEmailReference,
+  TaskPriority,
+} from '@/modules/tasks/schemas/task.schema';
 
 export type MailTaskEmailContext = {
   accountId: string;
@@ -20,6 +25,10 @@ export type MailTaskEmailContext = {
 };
 
 const PRIORITIES: TaskPriority[] = ['P1', 'P2', 'P3'];
+const COURTS: { value: TaskCourt; label: string }[] = [
+  { value: 'OURS', label: 'Our court' },
+  { value: 'THEIRS', label: 'Their court' },
+];
 
 /** Filled bars for the level, hollow for the rest — the board's own meter. */
 const PRIORITY_BARS: Record<TaskPriority, number> = { P1: 1, P2: 2, P3: 3 };
@@ -69,7 +78,13 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
 function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: () => void }) {
   const createTask = useCreateTaskMutation();
   const [text, setText] = useState('');
+  const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('P2');
+  const [court, setCourt] = useState<TaskCourt>('OURS');
+  const [assigneeId, setAssigneeId] = useState('');
+  // Only once the popover is open — this is a request, and the trigger sits on
+  // every thread the reader opens.
+  const { options: assigneeOptions } = useTaskAssigneeOptions();
   // A due date is not optional: the board has no "No due date" column, so the
   // API rejects a task without one. Offering an empty date field meant Add task
   // answered with "Due at: A due date is required" and left the draft sitting in
@@ -77,7 +92,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
   // raised off a mail you are reading now, and it is one click to change.
   const [dueDate, setDueDate] = useState(() => taskDateInputValue(new Date()));
 
-  const draft = { text, priority, dueDate };
+  const draft = { text, description, priority, court, dueDate, assigneeId };
   const canAdd = canSaveMailTaskDraft(draft) && !createTask.isPending;
 
   const reference: TaskEmailReference = {
@@ -127,6 +142,21 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         onChange={(event) => setText(event.target.value)}
       />
 
+      {/* Borderless like the title above it, and one line until it is used —
+          detail is worth having but must not make the popover look like a form
+          before anybody has typed anything (elli-ui#989). */}
+      <label className="sr-only" htmlFor="mail-add-task-description">
+        Details
+      </label>
+      <textarea
+        id="mail-add-task-description"
+        value={description}
+        placeholder="Add detail (optional)"
+        rows={description ? 3 : 1}
+        className="w-full resize-none border-0 bg-transparent px-4 pb-3 text-[12.5px] leading-relaxed text-mail-mid outline-hidden placeholder:text-mail-muted"
+        onChange={(event) => setDescription(event.target.value)}
+      />
+
       <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
         {PRIORITIES.map((level) => (
           <button
@@ -164,6 +194,50 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           )}
           onChange={(event) => setDueDate(event.target.value)}
         />
+      </div>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
+        {COURTS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={court === option.value}
+            className={cn(
+              'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-semibold',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              option.value === 'OURS' ? 'text-court-ours' : 'text-mail-mid',
+              court === option.value ? 'bg-mail-chip-count' : 'hover:bg-mail-chip'
+            )}
+            onClick={() => setCourt(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+
+        <span aria-hidden="true" className="mx-1 h-5 w-px bg-mail-hair" />
+
+        {/* A plain select, not the board's search picker: a company has tens of
+            people, the list is already loaded, and a combobox inside a popover
+            is a second layer to escape from. */}
+        <label className="sr-only" htmlFor="mail-add-task-assignee">
+          Assignee
+        </label>
+        <select
+          id="mail-add-task-assignee"
+          value={assigneeId}
+          className={cn(
+            'min-w-0 max-w-[10.5rem] cursor-pointer truncate rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+            assigneeId ? 'bg-mail-chip-count text-mail-ink' : 'text-mail-mid hover:bg-mail-chip'
+          )}
+          onChange={(event) => setAssigneeId(event.target.value)}
+        >
+          <option value="">Unassigned</option>
+          {assigneeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3.5 py-2.5">
