@@ -135,6 +135,7 @@
   --color-mail-muted: var(--mail-muted);
   --color-mail-row-hover: var(--mail-row-hover);
   --color-mail-row-edge: var(--mail-row-edge);
+  --color-mail-row-selected-edge: var(--mail-row-selected-edge);
   --color-mail-chip: var(--mail-chip);
   --color-mail-chip-hover: var(--mail-chip-hover);
   --color-mail-chip-count: var(--mail-chip-count);

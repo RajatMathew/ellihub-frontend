@@ -115,6 +115,10 @@
   --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
   --mail-row-hover: var(--surface-hover);
   --mail-row-edge: var(--card-border);
+  /* The open conversation's edge. A shade firmer than --mail-row-edge:
+     that one is drawn against the paper, this one against the white card
+     it rings, where the same value disappears (elli-ui#992). */
+  --mail-row-selected-edge: color-mix(in oklab, var(--card-border) 72%, var(--foreground));
   --mail-chip: var(--muted);
   --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
   --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
