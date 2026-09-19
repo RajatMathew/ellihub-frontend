@@ -30,23 +30,36 @@ function rule(selector: string): string {
 describe('quoted-content toggle styling', () => {
   const toggle = `[${EMAIL_QUOTE_TOGGLE_ATTRIBUTE}]`;
 
-  test('is an outlined pill, not a filled chip', () => {
+  test('is a filled chip, so it is not mistaken for the sender’s own rule', () => {
     const declarations = rule(`${toggle} {`);
 
-    // A solid grey fill gave the control more weight than the message text it
-    // sits under, and matched nothing else in the app.
-    expect(declarations).toContain('background: transparent');
-    expect(declarations).toMatch(/border:\s*1px solid/);
+    // It used to be a hairline outline, which on white is the same weight as a
+    // table border a sender drew — so it read as part of the message and went
+    // unnoticed (elli-ui#993). A painted pill is unambiguously the app's.
+    expect(declarations).not.toContain('background: transparent');
+    expect(declarations).toMatch(/background:\s*#[0-9a-f]{3,8}/i);
     expect(declarations).toContain('border-radius: 999px');
   });
 
-  test('borrows the border colour of the quoted block it opens', () => {
+  test('carries no border that would compete with its fill', () => {
+    const declarations = rule(`${toggle} {`);
+
+    expect(declarations).not.toMatch(/border:\s*1px solid/);
+  });
+
+  test('is filled with the same grey as its React twin, not the quote rule', () => {
     const declarations = rule(`${toggle} {`);
     const quoted = rule(`[data-elli-quoted-content] {`);
 
-    const border = declarations.match(/border:\s*1px solid (#[0-9a-f]{3,8})/i)?.[1];
-    expect(border).toBeTruthy();
-    expect(quoted.toLowerCase()).toContain(border!.toLowerCase());
+    const background = declarations.match(/background:\s*(#[0-9a-f]{3,8})/i)?.[1];
+
+    // `--muted` in `styles/themes/light.css`, which is what the plain-text
+    // twin in `email-message-body.tsx` paints itself with via `bg-muted`.
+    expect(background?.toLowerCase()).toBe('#f4f4f5');
+
+    // And distinctly not the hairline the quoted block below it is ruled with,
+    // which is the colour it used to borrow.
+    expect(quoted.toLowerCase()).not.toContain('#f4f4f5');
   });
 
   test('the dots stay small enough to read as an ellipsis', () => {
@@ -60,9 +73,9 @@ describe('quoted-content toggle styling', () => {
     const resting = rule(`${toggle} {`);
     const hover = rule(`${toggle}:hover {`);
 
-    expect(resting).toContain('color: #a1a1aa');
-    expect(hover).toContain('color: #52525b');
-    expect(hover).toMatch(/background:\s*#fafafa/);
+    expect(resting).toContain('color: #71717a');
+    expect(hover).toContain('color: #3f3f46');
+    expect(hover).toMatch(/background:\s*#e4e4e7/);
   });
 
   test('keeps a visible focus ring, which is the only way to reach it by keyboard', () => {
