@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
 import {
   ResponsiveDialog,
   ResponsiveDialogBody,
@@ -14,12 +12,14 @@ import {
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
 } from '@/app/components/ui/responsive-dialog';
+import { cn } from '@/app/lib/utils';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { formatFileSize } from '@/modules/files/constants/files.constants';
 import { getUploadNameError } from '@/modules/files/lib/file-upload-policy';
 import { FolderPickerPanel } from '@/modules/files/save-to-files/folder-picker-panel';
 import {
   getSourceDefaultName,
+  getSourceExtension,
   getSourceFileName,
   getSourceMimeType,
   getSourceSizeBytes,
@@ -29,7 +29,7 @@ import {
 import { useFolderPicker } from '@/modules/files/save-to-files/use-folder-picker';
 import { useSaveToFiles } from '@/modules/files/save-to-files/use-save-to-files';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
-import { Loader2, Lock, Save } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 
 export interface SaveToFilesDialogProps {
   open: boolean;
@@ -51,6 +51,21 @@ export interface SaveToFilesDialogProps {
   onSaved?: (file: FileItem) => void;
 }
 
+/**
+ * Pick a folder, save.
+ *
+ * The dialog used to stack four bordered boxes down the sheet — a file card, a
+ * labelled name field, a filter input, then the folder list — so the one
+ * decision being made, *which folder*, was the fourth thing down and the same
+ * weight as everything above it (elli-ui#1048).
+ *
+ * It is one column now. The file is a single row whose name is editable in
+ * place rather than a form field of its own; navigation and filtering share one
+ * bar; and the folder list is the tallest thing in the sheet, because it is the
+ * question. Nothing was removed — the rename, the filter, the duplicate
+ * warning, the permission lock and the create-folder affordance are all still
+ * here, just no longer competing.
+ */
 export function SaveToFilesDialog({
   open,
   onOpenChange,
@@ -58,7 +73,7 @@ export function SaveToFilesDialog({
   rootFolderId,
   rootLabel = 'Files',
   defaultFolderId,
-  title = 'Save to Files',
+  title,
   allowCreateFolder = true,
   enableExternalUrl,
   enableExistingTransfer,
@@ -66,8 +81,6 @@ export function SaveToFilesDialog({
 }: SaveToFilesDialogProps) {
   const sources = useMemo(() => toSaveSourceList(source), [source]);
   const single = sources.length === 1 ? sources[0] : null;
-  const sourceFileName = single ? getSourceFileName(single) : `${sources.length} files`;
-  const sourceSize = single ? getSourceSizeBytes(single) : undefined;
   const [name, setName] = useState(() => (single ? getSourceDefaultName(single) : ''));
 
   const picker = useFolderPicker({ rootFolderId, rootLabel, defaultFolderId, open });
@@ -111,94 +124,80 @@ export function SaveToFilesDialog({
     onOpenChange(false);
   };
 
+  // `sources.length` and not `single`: a one-file selection can still arrive
+  // through the multi path, and "Save 1 files to Files" is what counting
+  // without a singular case gets you.
+  const heading =
+    title ?? (sources.length > 1 ? `Save ${sources.length} files to Files` : 'Save to Files');
+
   return (
     <ResponsiveDialog open={open} onOpenChange={(next) => !isSaving && onOpenChange(next)}>
       <ResponsiveDialogContent>
         <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
+          <ResponsiveDialogTitle>{heading}</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
             {single
-              ? 'Choose a destination folder, then save.'
-              : `Choose one folder for all ${sources.length} files, then save.`}
+              ? 'Rename it if you like, then choose where it goes.'
+              : 'They all go to the one folder you choose.'}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <ResponsiveDialogBody className="flex flex-col gap-4">
           {single ? (
-            <div className="flex min-w-0 items-center gap-3 rounded-md border bg-muted/30 p-3">
-              <FileTypeIcon
-                fileType="FILE"
-                presentation="badge"
-                fileName={sourceFileName}
-                mimeType={getSourceMimeType(single)}
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{sourceFileName}</p>
-                {sourceSize !== undefined && (
-                  <p className="text-xs text-muted-foreground">{formatFileSize(sourceSize)}</p>
-                )}
-              </div>
-            </div>
+            <SaveFileRow
+              fileName={getSourceFileName(single)}
+              mimeType={getSourceMimeType(single)}
+              sizeBytes={getSourceSizeBytes(single)}
+              extension={getSourceExtension(single)}
+              name={name}
+              disabled={isSaving}
+              invalid={!!nameError}
+              onNameChange={setName}
+            />
           ) : (
             /* Every file named, scrolling past four. A bare "5 files" is the
                one thing you cannot check before committing to a folder. */
-            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border bg-muted/30 p-3">
+            <div className="max-h-40 overflow-y-auto">
               {sources.map((item, index) => (
-                <div
+                <SaveFileRow
                   key={`${getSourceFileName(item)}-${index}`}
-                  className="flex min-w-0 items-center gap-2.5"
-                >
-                  <FileTypeIcon
-                    fileType="FILE"
-                    presentation="badge"
-                    fileName={getSourceFileName(item)}
-                    mimeType={getSourceMimeType(item)}
-                    className="size-6"
-                  />
-                  <p className="min-w-0 flex-1 truncate text-sm">{getSourceFileName(item)}</p>
-                </div>
+                  fileName={getSourceFileName(item)}
+                  mimeType={getSourceMimeType(item)}
+                  sizeBytes={getSourceSizeBytes(item)}
+                />
               ))}
             </div>
           )}
 
-          {single && (
-            <div className="space-y-2">
-              <Label htmlFor="save-to-files-name">File name</Label>
-              <Input
-                id="save-to-files-name"
-                value={name}
-                disabled={isSaving}
-                aria-invalid={!!nameError}
-                placeholder="Document name"
-                onChange={(event) => setName(event.target.value)}
-              />
-              {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-              {!nameError && duplicateName && (
-                <p className="text-xs text-muted-foreground">
-                  A file with this name already exists in {picker.currentFolderName}.
-                </p>
-              )}
-            </div>
+          {(nameError || duplicateName) && (
+            <p className={cn('-mt-2 text-xs', nameError ? 'text-destructive' : 'text-warning')}>
+              {nameError ??
+                `A file called “${name.trim()}” is already in ${picker.currentFolderName}.`}
+            </p>
           )}
 
           <FolderPickerPanel
             picker={picker}
             allowCreateFolder={allowCreateFolder}
-            className="min-h-64"
+            className="min-h-72"
           />
         </ResponsiveDialogBody>
 
         <ResponsiveDialogFooter className="items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-x-0">
-          <p className="min-w-0 truncate text-sm text-muted-foreground">
+          <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
             {picker.canSaveHere ? (
               <>
-                Saving to{' '}
-                <span className="font-medium text-foreground">{picker.currentFolderName}</span>
+                <span className="shrink-0">Saving to</span>
+                <span className="min-w-0 truncate font-medium text-foreground">
+                  {picker.currentFolderName}
+                </span>
               </>
             ) : (
-              <span className="flex items-center gap-1.5 text-destructive">
-                <Lock className="size-3.5" aria-hidden="true" />
-                You cannot save into {picker.currentFolderName}
+              <span className="flex min-w-0 items-center gap-1.5 text-destructive">
+                <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 truncate">
+                  You cannot save into {picker.currentFolderName}
+                </span>
               </span>
             )}
           </p>
@@ -213,12 +212,81 @@ export function SaveToFilesDialog({
               Cancel
             </Button>
             <Button type="button" disabled={!canSave} onClick={() => void handleSave()}>
-              {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {isSaving && <Loader2 className="size-4 animate-spin" />}
               {isSaving ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </ResponsiveDialogFooter>
       </ResponsiveDialogContent>
     </ResponsiveDialog>
+  );
+}
+
+/**
+ * One file. With `onNameChange` the name is an input dressed as text — the
+ * rename is right there without a labelled field and a second box around it,
+ * and the extension sits beside it as the fixed thing it actually is.
+ */
+function SaveFileRow({
+  fileName,
+  mimeType,
+  sizeBytes,
+  extension,
+  name,
+  disabled,
+  invalid,
+  onNameChange,
+}: {
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  extension?: string;
+  name?: string;
+  disabled?: boolean;
+  invalid?: boolean;
+  onNameChange?: (value: string) => void;
+}) {
+  const editable = typeof onNameChange === 'function';
+
+  return (
+    <div className="flex min-w-0 items-center gap-3 py-1.5">
+      <FileTypeIcon
+        fileType="FILE"
+        presentation="badge"
+        fileName={fileName}
+        mimeType={mimeType}
+        className="size-9"
+      />
+
+      <div className="min-w-0 flex-1">
+        {editable ? (
+          <div
+            className={cn(
+              'flex min-w-0 items-center rounded-md border border-transparent px-1.5 py-0.5',
+              'focus-within:border-input focus-within:bg-background hover:border-input',
+              invalid && 'border-destructive focus-within:border-destructive'
+            )}
+          >
+            <input
+              value={name}
+              disabled={disabled}
+              aria-label="File name"
+              aria-invalid={invalid}
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-hidden disabled:opacity-60"
+              onChange={(event) => onNameChange(event.target.value)}
+            />
+            {extension && (
+              <span className="shrink-0 text-sm text-muted-foreground">{extension}</span>
+            )}
+          </div>
+        ) : (
+          <p className="truncate text-sm font-medium">{fileName}</p>
+        )}
+
+        {sizeBytes !== undefined && (
+          <p className="px-1.5 text-xs text-muted-foreground">{formatFileSize(sizeBytes)}</p>
+        )}
+      </div>
+    </div>
   );
 }

@@ -98,6 +98,14 @@ function getBaseName(fileName: string): string {
   return dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
 }
 
+/** The `.pdf` a name field deliberately does not hold, dot included, or ''. */
+export function getSourceExtension(source: SaveToFilesSource): string {
+  const fileName = getSourceFileName(source);
+  const dotIndex = fileName.lastIndexOf('.');
+
+  return dotIndex > 0 ? fileName.slice(dotIndex) : '';
+}
+
 /**
  * Default value for the name field. Matches the upload dialog: the extension
  * is kept on the underlying file and left out of the display name.
