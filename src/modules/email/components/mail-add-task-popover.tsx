@@ -130,8 +130,8 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         value={text}
         placeholder="What needs doing?"
         autoFocus
-        rows={3}
-        className="w-full resize-none border-0 bg-transparent px-4 pb-2.5 pt-4 text-[14px] leading-relaxed text-mail-ink outline-hidden placeholder:text-mail-muted"
+        rows={text ? 3 : 1}
+        className="w-full resize-none border-0 bg-transparent px-4 pb-1.5 pt-3 text-[14px] leading-relaxed text-mail-ink outline-hidden placeholder:text-mail-muted"
         onChange={(event) => setText(event.target.value)}
       />
 
@@ -146,11 +146,16 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         value={description}
         placeholder="Add detail (optional)"
         rows={description ? 3 : 1}
-        className="w-full resize-none border-0 bg-transparent px-4 pb-3 text-[12.5px] leading-relaxed text-mail-mid outline-hidden placeholder:text-mail-muted"
+        className="w-full resize-none border-0 bg-transparent px-4 pb-2 text-[12.5px] leading-relaxed text-mail-mid outline-hidden placeholder:text-mail-muted"
         onChange={(event) => setDescription(event.target.value)}
       />
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
+      {/*
+        One row, not two. Priority, due date, court and assignee each had a
+        half-empty line to themselves, which is what left the popover looking
+        mostly blank — they wrap against each other now and fill the width.
+      */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1.5 px-3.5 pb-2.5">
         {PRIORITIES.map((level) => (
           <button
             key={level}
@@ -187,9 +192,9 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           )}
           onChange={(event) => setDueDate(event.target.value)}
         />
-      </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pb-3">
+        <span aria-hidden="true" className="mx-1 h-5 w-px bg-mail-hair" />
+
         {COURTS.map((value) => {
           const tone = TASK_COURT_TONES[value];
           return (
@@ -223,7 +228,10 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           id="mail-add-task-assignee"
           value={assigneeId}
           className={cn(
-            'min-w-0 max-w-[10.5rem] cursor-pointer truncate rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+            // `flex-1` so it takes whatever the court chips leave rather than
+            // claiming a line of its own — a floor here pushed it onto one,
+            // which is the empty-row problem this change is undoing.
+            'min-w-0 flex-1 cursor-pointer truncate rounded-md px-2.5 py-1.5 text-[12.5px] outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
             assigneeId ? 'bg-mail-chip text-mail-ink' : 'text-mail-mid hover:bg-mail-chip/60'
           )}
           onChange={(event) => setAssigneeId(event.target.value)}
