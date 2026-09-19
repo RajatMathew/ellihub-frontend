@@ -129,8 +129,6 @@
   --mail-accent-foreground: var(--primary-foreground);
   --mail-accent-soft: var(--accent);
   --mail-accent-edge: var(--primary-alpha);
-  --mail-project-pill: var(--primary);
-  --mail-project-pill-hover: var(--primary-hover);
   /* The reading pane sits a half-step off the page so the two columns read as
      two surfaces without a heavier border between them. */
   --mail-pane: #131313;

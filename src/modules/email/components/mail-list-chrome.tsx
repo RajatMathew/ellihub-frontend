@@ -500,9 +500,20 @@ function MailFilterPills({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
+            aria-pressed={Boolean(selectedProject)}
             className={cn(
-              'flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] rounded-full py-2 pe-[11px] ps-[13px] text-xs font-semibold text-mail-accent-foreground',
-              'bg-[var(--mail-project-pill)] hover:bg-[var(--mail-project-pill-hover)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              'flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] rounded-full py-2 pe-[11px] ps-[13px] text-xs font-semibold',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              // Resting, this is not a filter — it is the label for the view
+              // you are already in, and a filled navy pill announced it as the
+              // loudest control on the screen (elli-ui#996). It now takes the
+              // chip fill its neighbour `Filters` wears at rest, so the two
+              // read as one row of controls, and keeps the accent for when a
+              // project *is* selected and something really is filtered — the
+              // same two-state rule `Filters` follows below.
+              selectedProject
+                ? 'bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover'
+                : 'bg-mail-chip text-mail-mid hover:bg-mail-chip-hover hover:text-mail-ink',
               !onProjectChange && 'pointer-events-none opacity-45'
             )}
             title={selectedProject ? selectedProject.label : 'Filter by project'}
@@ -519,7 +530,10 @@ function MailFilterPills({
                 )}
               </span>
             ) : (
-              <span>Project emails</span>
+              // "All", because nothing is filtered out yet — the dropdown's own
+              // resting option is `All emails`, and the pill now says the same
+              // thing the menu does.
+              <span>All project emails</span>
             )}
             <ChevronDown aria-hidden="true" className="size-[13px] shrink-0 opacity-70" />
           </button>
