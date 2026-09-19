@@ -51,7 +51,10 @@ const FILTER_LABELS: Record<EmailListFilter, string> = {
   all: 'All emails',
   unread: 'Unread',
   flagged: 'Flagged',
-  attachments: 'Attachments',
+  // "With attachments" rather than "Attachments" (elli-ui#1023): every entry in
+  // this map is a predicate the list is narrowed by, and the bare noun read as
+  // a place to find attachments instead of a filter over mail that has them.
+  attachments: 'With attachments',
   other: 'Other',
 };
 
@@ -553,12 +556,20 @@ function MailFilterPills({
             ) : (
               projects.map((project) => (
                 <DropdownMenuRadioItem key={project.entityId} value={project.entityId}>
-                  {project.jobNumber && (
-                    <span className="shrink-0 font-mono text-xs text-mail-ink">
-                      {project.jobNumber}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-mail-mid">{project.name}</span>
+                  {/* The number and the name are one label, so they share a row
+                      that owns the gap between them rather than relying on the
+                      menu item's own spacing, which left them touching —
+                      "28100-25Brooklyn Animal Care Center" (elli-ui#1020). The
+                      number drops `font-mono` for the app's own face; it is an
+                      identifier, not a column of figures to be scanned. */}
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                    {project.jobNumber && (
+                      <span className="shrink-0 text-xs font-medium text-mail-ink">
+                        {project.jobNumber}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-mail-mid">{project.name}</span>
+                  </span>
                   <span className="shrink-0 font-mono text-[11px] tabular-nums text-mail-muted">
                     {project.mailCount}
                   </span>

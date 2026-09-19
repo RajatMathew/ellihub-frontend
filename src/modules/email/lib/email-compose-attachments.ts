@@ -214,3 +214,17 @@ export function getNewAttachments(
 function uniqueNames(files: readonly File[]): string[] {
   return [...new Set(files.map((file) => file.name))];
 }
+
+/**
+ * Encodes picked files for the wire, in the order they were attached.
+ *
+ * Deliberately at the send call rather than at the pick: a reply whose files
+ * are read into base64 the moment they are chosen pays 4/3 of their size in
+ * memory for as long as the draft is open, and pays it again for a draft that
+ * is abandoned. Nothing is read until there is a message to put it on.
+ */
+export function encodeEmailAttachments(
+  files: readonly File[]
+): Promise<Array<{ name: string; mimeType?: string; content: string }>> {
+  return Promise.all(files.map(fileToAttachment));
+}

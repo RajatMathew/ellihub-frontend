@@ -89,9 +89,16 @@ export function EmailAttachmentHoverCard({
   return (
     <HoverCard open={open} onOpenChange={handleOpenChange} openDelay={120} closeDelay={100}>
       <HoverCardTrigger asChild>
+        {/*
+          The file's own row inside the card `EmailAttachmentChip` draws
+          around it (elli-ui#1017). Name and size are stacked rather than run
+          together on one line: a long name then has the full width of the card
+          to truncate against instead of competing with the size for it, and
+          the size stops reading as part of the filename.
+        */}
         <button
           type="button"
-          className="inline-flex min-h-10 max-w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-md py-1 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={`Preview attachment ${displayName}`}
           onClick={() => {
             setOpen(false);
@@ -103,12 +110,19 @@ export function EmailAttachmentHoverCard({
             mimeType={attachment.mimeType}
             fileName={displayName}
             aria-hidden="true"
-            className="size-3.5 shrink-0"
+            className="size-5 shrink-0"
           />
-          <span className="min-w-0 truncate">{displayName}</span>
-          {attachment.size && (
-            <span className="shrink-0 text-muted-foreground">{attachment.size}</span>
-          )}
+          <span className="flex min-w-0 flex-col">
+            <span
+              className="min-w-0 truncate text-[12.5px] font-medium text-mail-ink"
+              title={displayName}
+            >
+              {displayName}
+            </span>
+            {attachment.size && (
+              <span className="text-[11.5px] text-mail-muted">{attachment.size}</span>
+            )}
+          </span>
         </button>
       </HoverCardTrigger>
 

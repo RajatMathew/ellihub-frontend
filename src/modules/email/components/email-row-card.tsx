@@ -308,7 +308,11 @@ export function EmailRowCard({
                 email.unread ? 'font-semibold text-mail-ink' : 'font-medium text-mail-mid'
               )}
             >
-              {email.senderName}
+              {/* The sender is as likely to be what was searched for as the
+                  subject or the body — searching a company name and seeing the
+                  match lit in the preview but not in the name it came from
+                  reads as the wrong row matching (elli-ui#1022). */}
+              {highlightQuery ? highlightText(email.senderName, highlightQuery) : email.senderName}
             </span>
             {threadCount > 1 && (
               <span
