@@ -142,6 +142,14 @@
   --mail-ai-from: #2f57b4;
   --mail-ai-mid: #4570cf;
   --mail-ai-to: #6a93e2;
+  /** See light.css. Lifted a step above the navy page for the same reason
+      dark.css lifts above black. **/
+  --mail-bulk-bar: #1c2740;
+  --mail-bulk-bar-foreground: #f8fafc;
+  --mail-bulk-bar-muted: rgba(248, 250, 252, 0.64);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.1);
+  --mail-bulk-bar-danger: #fca5a5;
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
   --input-border: #334155;
   --ring: #60a5fa;
   --radius: 0.5rem;
