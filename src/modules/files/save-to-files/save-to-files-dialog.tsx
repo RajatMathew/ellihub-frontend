@@ -23,7 +23,8 @@ import {
   getSourceFileName,
   getSourceMimeType,
   getSourceSizeBytes,
-  type SaveToFilesSource,
+  toSaveSourceList,
+  type SaveToFilesInputSource,
 } from '@/modules/files/save-to-files/save-source';
 import { useFolderPicker } from '@/modules/files/save-to-files/use-folder-picker';
 import { useSaveToFiles } from '@/modules/files/save-to-files/use-save-to-files';
@@ -33,7 +34,8 @@ import { Loader2, Lock, Save } from 'lucide-react';
 export interface SaveToFilesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  source: SaveToFilesSource;
+  /** One file, or several picked together (elli-ui#1046). */
+  source: SaveToFilesInputSource;
   /**
    * Restrict browsing to this folder subtree (e.g. a project's folder).
    * Required for non-admin users: `GET /file/root` is admin-only, so omitting
@@ -62,9 +64,11 @@ export function SaveToFilesDialog({
   enableExistingTransfer,
   onSaved,
 }: SaveToFilesDialogProps) {
-  const sourceFileName = getSourceFileName(source);
-  const sourceSize = getSourceSizeBytes(source);
-  const [name, setName] = useState(() => getSourceDefaultName(source));
+  const sources = useMemo(() => toSaveSourceList(source), [source]);
+  const single = sources.length === 1 ? sources[0] : null;
+  const sourceFileName = single ? getSourceFileName(single) : `${sources.length} files`;
+  const sourceSize = single ? getSourceSizeBytes(single) : undefined;
+  const [name, setName] = useState(() => (single ? getSourceDefaultName(single) : ''));
 
   const picker = useFolderPicker({ rootFolderId, rootLabel, defaultFolderId, open });
   const { save, isSaving } = useSaveToFiles({
@@ -75,8 +79,8 @@ export function SaveToFilesDialog({
   });
 
   useEffect(() => {
-    if (open) setName(getSourceDefaultName(source));
-  }, [open, source]);
+    if (open) setName(single ? getSourceDefaultName(single) : '');
+  }, [open, single]);
 
   const nameError = name.length > 0 ? getUploadNameError(name) : null;
 
@@ -90,8 +94,12 @@ export function SaveToFilesDialog({
     );
   }, [name, picker.folderDetail?.children]);
 
+  // A multi-selection has no name to validate — each file keeps its own.
   const canSave =
-    !!picker.currentFolderId && picker.canSaveHere && !!name.trim() && !nameError && !isSaving;
+    !!picker.currentFolderId &&
+    picker.canSaveHere &&
+    !isSaving &&
+    (!single || (!!name.trim() && !nameError));
 
   const handleSave = async () => {
     if (!canSave || !picker.currentFolderId) return;
@@ -109,43 +117,69 @@ export function SaveToFilesDialog({
         <ResponsiveDialogHeader>
           <ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
           <ResponsiveDialogDescription>
-            Choose a destination folder, then save.
+            {single
+              ? 'Choose a destination folder, then save.'
+              : `Choose one folder for all ${sources.length} files, then save.`}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <ResponsiveDialogBody className="flex flex-col gap-4">
-          <div className="flex min-w-0 items-center gap-3 rounded-md border bg-muted/30 p-3">
-            <FileTypeIcon
-              fileType="FILE"
-              presentation="badge"
-              fileName={sourceFileName}
-              mimeType={getSourceMimeType(source)}
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{sourceFileName}</p>
-              {sourceSize !== undefined && (
-                <p className="text-xs text-muted-foreground">{formatFileSize(sourceSize)}</p>
+          {single ? (
+            <div className="flex min-w-0 items-center gap-3 rounded-md border bg-muted/30 p-3">
+              <FileTypeIcon
+                fileType="FILE"
+                presentation="badge"
+                fileName={sourceFileName}
+                mimeType={getSourceMimeType(single)}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{sourceFileName}</p>
+                {sourceSize !== undefined && (
+                  <p className="text-xs text-muted-foreground">{formatFileSize(sourceSize)}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Every file named, scrolling past four. A bare "5 files" is the
+               one thing you cannot check before committing to a folder. */
+            <div className="max-h-36 space-y-1.5 overflow-y-auto rounded-md border bg-muted/30 p-3">
+              {sources.map((item, index) => (
+                <div
+                  key={`${getSourceFileName(item)}-${index}`}
+                  className="flex min-w-0 items-center gap-2.5"
+                >
+                  <FileTypeIcon
+                    fileType="FILE"
+                    presentation="badge"
+                    fileName={getSourceFileName(item)}
+                    mimeType={getSourceMimeType(item)}
+                    className="size-6"
+                  />
+                  <p className="min-w-0 flex-1 truncate text-sm">{getSourceFileName(item)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {single && (
+            <div className="space-y-2">
+              <Label htmlFor="save-to-files-name">File name</Label>
+              <Input
+                id="save-to-files-name"
+                value={name}
+                disabled={isSaving}
+                aria-invalid={!!nameError}
+                placeholder="Document name"
+                onChange={(event) => setName(event.target.value)}
+              />
+              {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+              {!nameError && duplicateName && (
+                <p className="text-xs text-muted-foreground">
+                  A file with this name already exists in {picker.currentFolderName}.
+                </p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="save-to-files-name">File name</Label>
-            <Input
-              id="save-to-files-name"
-              value={name}
-              disabled={isSaving}
-              aria-invalid={!!nameError}
-              placeholder="Document name"
-              onChange={(event) => setName(event.target.value)}
-            />
-            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
-            {!nameError && duplicateName && (
-              <p className="text-xs text-muted-foreground">
-                A file with this name already exists in {picker.currentFolderName}.
-              </p>
-            )}
-          </div>
+          )}
 
           <FolderPickerPanel
             picker={picker}

@@ -33,6 +33,17 @@ export type SaveToFilesSource =
 
 export type SaveToFilesSourceKind = SaveToFilesSource['kind'];
 
+/**
+ * One source or several, as a list. The picker saves a single file and a
+ * multi-selection through the same path (elli-ui#1046), so callers hand it
+ * whichever they have and everything downstream sees an array.
+ */
+export type SaveToFilesInputSource = SaveToFilesSource | SaveToFilesSource[];
+
+export function toSaveSourceList(source: SaveToFilesInputSource): SaveToFilesSource[] {
+  return Array.isArray(source) ? source : [source];
+}
+
 const FALLBACK_FILE_NAME = 'download';
 
 /** Kinds the API performs on the server; no local bytes are ever read. */
