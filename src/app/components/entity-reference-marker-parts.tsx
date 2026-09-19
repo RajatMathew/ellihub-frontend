@@ -13,6 +13,8 @@ import {
   getReferenceIdentity,
   getReferenceTypeLabel,
   groupReferencesByType,
+  orderOptionsBySelection,
+  referencesMatch,
   type EntityReference,
   type EntityReferenceApi,
   type EntityReferenceCategory,
@@ -37,6 +39,36 @@ import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Info, Loader2, Plus, X } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
+
+/**
+ * The option rows, gapped and able to animate between positions.
+ *
+ * Ticking an option moves it into the pinned block at the top of the list
+ * (see `withSelectedOptionsPinned`). It used to teleport: the row you clicked
+ * and the rows it displaced all changed place between two frames, so nothing
+ * connected the row you touched to the one that ended up at the top
+ * (elli-ui#1041).
+ */
+const OPTION_LIST_CLASSNAME =
+  'max-h-none min-h-0 flex-1 [&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col [&_[cmdk-list-sizer]]:gap-1';
+
+const MotionCommandItem = motion.create(CommandItem);
+
+function ReferenceOptionItem(props: React.ComponentProps<typeof MotionCommandItem>) {
+  // `position` and not `true`: the rows are different heights (a second line
+  // of meta on some, not others) and animating size as well makes the list
+  // breathe on every click rather than just resettle.
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <MotionCommandItem
+      layout={reduceMotion ? false : 'position'}
+      transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.6 }}
+      {...props}
+    />
+  );
+}
 
 export type EntityReferenceFilterType = 'all' | EntityReferenceType;
 
@@ -544,7 +576,7 @@ function AllReferencePicker({
   return (
     <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
-      <CommandList className="max-h-none min-h-0 flex-1">
+      <CommandList className={OPTION_LIST_CLASSNAME}>
         {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
@@ -556,7 +588,7 @@ function AllReferencePicker({
         {options.map((option) => {
           const selected = isOptionSelected(option, selectedReferences);
           return (
-            <CommandItem
+            <ReferenceOptionItem
               key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.groupLabel} ${option.label} ${option.meta ?? ''}`}
               className={cn(
@@ -587,7 +619,7 @@ function AllReferencePicker({
                 )}
               </span>
               {selected && <CommandCheck aria-hidden="true" />}
-            </CommandItem>
+            </ReferenceOptionItem>
           );
         })}
       </CommandList>
@@ -666,7 +698,7 @@ function SearchReferencePicker({
   return (
     <Command shouldFilter={false} className="min-h-0 flex-1">
       <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
-      <CommandList className="max-h-none min-h-0 flex-1">
+      <CommandList className={OPTION_LIST_CLASSNAME}>
         {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
@@ -678,7 +710,7 @@ function SearchReferencePicker({
         {options.map((option) => {
           const selected = isOptionSelected(option, selectedReferences);
           return (
-            <CommandItem
+            <ReferenceOptionItem
               key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.label} ${option.meta ?? ''}`}
               className={cn(
@@ -701,7 +733,7 @@ function SearchReferencePicker({
                 )}
               </span>
               {selected && <CommandCheck aria-hidden="true" />}
-            </CommandItem>
+            </ReferenceOptionItem>
           );
         })}
         {canCreateReference && (
@@ -817,23 +849,7 @@ function withSelectedOptionsPinned<T extends EntityReferenceOption>(
     .map((reference) => referenceToOption(reference, getGroupLabel(reference.type)));
 
   const merged = dedupeReferenceOptions([...missingSelected, ...fetchedOptions] as T[]);
-  return merged.sort((a, b) => {
-    const aSelected = isOptionSelected(a, selectedReferences);
-    const bSelected = isOptionSelected(b, selectedReferences);
-    if (aSelected === bSelected) return 0;
-    return aSelected ? -1 : 1;
-  });
-}
-
-type ReferenceLike = Pick<EntityReference, 'type' | 'entityType' | 'entityId' | 'label'>;
-
-function referencesMatch(a: ReferenceLike, b: ReferenceLike) {
-  if (a.type !== b.type) return false;
-  if (a.entityId || b.entityId) {
-    return a.entityId === b.entityId && (a.entityType ?? null) === (b.entityType ?? null);
-  }
-
-  return a.label.toLowerCase() === b.label.toLowerCase();
+  return orderOptionsBySelection(merged, selectedReferences);
 }
 
 function isOptionSelected(option: EntityReferenceOption, selectedReferences: EntityReference[]) {

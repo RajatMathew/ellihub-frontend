@@ -160,6 +160,25 @@
   --mail-bulk-bar-hover: rgba(255, 255, 255, 0.12);
   --mail-bulk-bar-danger: #fca5a5;
   --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /** File-format badge (elli-ui#1042)
+      A PDF is the same red in every theme — a file-type colour identifies the
+      format, not the surface it is drawn on, so these are the one block here
+      that is deliberately identical across all four theme files. Every value
+      clears AA against `--file-format-foreground` for the badge's bold 9px
+      label. `getFileFormatTone` in `src/app/lib/file-format.ts` decides which
+      one a given file gets, and hashes onto this same list for a format
+      nothing recognises. **/
+  --file-format-foreground: #ffffff;
+  --file-format-red: #c0392b;
+  --file-format-green: #1b7f4c;
+  --file-format-blue: #1d4fa3;
+  --file-format-cyan: #0b7a96;
+  --file-format-violet: #5b3fd1;
+  --file-format-amber: #a25c06;
+  --file-format-navy: #27365e;
+  --file-format-slate: #4b5563;
+
   --input-border: #d8d0c5;
   --ring: #1a3a5f;
   --radius: 0.5rem;

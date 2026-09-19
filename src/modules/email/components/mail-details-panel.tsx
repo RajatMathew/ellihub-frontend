@@ -119,7 +119,11 @@ export function MailDetailsPanel({
       )}
     >
       {showBanner && ai.suggestion && (
-        <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 py-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
+        // `pb-6` rather than `py-3`: the card below is pulled back up over the
+        // bottom 12px of it, so the banner has to be that much taller for its
+        // own text to keep the padding it reads with. See the junction note on
+        // the body wrapper.
+        <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 pb-6 pt-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
           <AiGlyph />
           <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-mail-accent-foreground">
             {ai.suggestion.rationale ?? 'AI Suggestion'}
@@ -135,30 +139,43 @@ export function MailDetailsPanel({
         </div>
       )}
 
-      <DetailsHeader collapsed={false} onToggleCollapsed={onToggleCollapsed} />
+      {/*
+        The junction with the AI banner is a curve, not a seam (elli-ui#1037).
+        The banner runs 12px further down than it looks, and the rest of the
+        card is lifted back over it with its own rounded top — so the blue
+        follows the corner round instead of stopping at a straight edge. Only
+        while the banner is up: with nothing above it, the card's own
+        `rounded-xl` is already the top corner and a second one would cut a
+        notch out of the border.
+      */}
+      <div
+        className={cn('relative bg-mail-card', showBanner && '-mt-3 overflow-hidden rounded-t-xl')}
+      >
+        <DetailsHeader collapsed={false} onToggleCollapsed={onToggleCollapsed} />
 
-      <div className="px-4 pb-4 pt-2.5">
-        <div className="pb-2.5">{categoryControl}</div>
+        <div className="px-4 pb-4 pt-2.5">
+          <div className="pb-2.5">{categoryControl}</div>
 
-        {isOtherSelected ? (
-          tagsSection
-        ) : (
-          <>
-            <DetailRow label="Assignee">{assignee}</DetailRow>
-            <DetailRow label="Court">{court}</DetailRow>
+          {isOtherSelected ? (
+            tagsSection
+          ) : (
+            <>
+              <DetailRow label="Assignee">{assignee}</DetailRow>
+              <DetailRow label="Court">{court}</DetailRow>
 
-            <SectionHeader title="Linked items" action={referenceTrigger} />
-            {referenceList ?? (
-              <p className="pb-1 text-[12.5px] text-mail-muted">No items linked yet</p>
-            )}
+              <SectionHeader title="Linked items" action={referenceTrigger} />
+              {referenceList ?? (
+                <p className="pb-1 text-[12.5px] text-mail-muted">No items linked yet</p>
+              )}
 
-            <SectionHeader title="Tasks" action={addTask} bordered />
-            {tasksSection}
+              <SectionHeader title="Tasks" action={addTask} bordered />
+              {tasksSection}
 
-            {/* elli-ui#987 — see the `actions` prop. */}
-            {/* {actions} */}
-          </>
-        )}
+              {/* elli-ui#987 — see the `actions` prop. */}
+              {/* {actions} */}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
