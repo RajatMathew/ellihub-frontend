@@ -95,7 +95,13 @@ export function EmailAssigneePicker({
                 // the list below belongs to, rather than floating loose.
                 open
                   ? 'border-mail-ink bg-mail-card text-mail-ink'
-                  : 'border-mail-pane-line bg-mail-card text-mail-mid hover:border-mail-row-edge hover:text-mail-ink'
+                  : // `text-mail-mid` is the muted foreground, and an assignee's
+                    // name is not muted content — it is the answer to "whose is
+                    // this". Against the card it was too faint to read at 12px
+                    // (elli-ui#986). The unassigned "Assign" prompt keeps the
+                    // lighter weight: that one really is a placeholder.
+                    'border-mail-pane-line bg-mail-card hover:border-mail-row-edge hover:text-mail-ink',
+                !open && (assignee ? 'text-mail-ink' : 'text-mail-mid')
               )}
               aria-label={assignee ? `Assigned to ${assignee.name}` : 'Assign this email'}
               disabled={disabled}
@@ -108,7 +114,9 @@ export function EmailAssigneePicker({
                     className="size-4 text-[8px]"
                   />
                   <span className="max-w-28 truncate">{assignee.name.split(' ')[0]}</span>
-                  <ChevronDown aria-hidden="true" className="size-3 shrink-0 text-mail-muted" />
+                  {/* `mail-muted` is lighter again than `mail-mid`; beside a
+                      name that now reads properly the chevron looked broken. */}
+                  <ChevronDown aria-hidden="true" className="size-3 shrink-0 text-mail-mid" />
                 </>
               ) : (
                 <>

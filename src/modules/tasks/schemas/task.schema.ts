@@ -204,6 +204,13 @@ export type ListTasksParams = {
   assigneeId?: string;
   entityType?: TaskEntityType;
   entityId?: string;
+  /**
+   * The mail thread a task was raised from. A conversation key is only unique
+   * within a mailbox, so `accountId` goes with it — the server ignores
+   * `accountId` on its own rather than answering with the whole mailbox.
+   */
+  conversationKey?: string;
+  accountId?: string;
 };
 
 export type CreateTaskInput = {

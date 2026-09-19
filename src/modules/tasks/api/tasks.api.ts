@@ -1,4 +1,5 @@
 import api from '@/app/api';
+import { toTaskListQuery } from '@/modules/tasks/lib/task-list-query';
 import {
   taskAssigneeOptionSchema,
   taskBatchResponseSchema,
@@ -21,23 +22,9 @@ import { z } from 'zod';
 
 const BASE = '/task';
 
-// The API nests list filters under filter[...]; flatten them here so callers
-// pass a plain params object.
-function toQuery(params: ListTasksParams) {
-  const { status, priority, assigneeId, entityType, entityId, ...rest } = params;
-  return {
-    ...rest,
-    ...(status ? { 'filter[status]': status } : {}),
-    ...(priority ? { 'filter[priority]': priority } : {}),
-    ...(assigneeId ? { 'filter[assigneeId]': assigneeId } : {}),
-    ...(entityType ? { 'filter[entityType]': entityType } : {}),
-    ...(entityId ? { 'filter[entityId]': entityId } : {}),
-  };
-}
-
 export const tasksApi = {
   async list(params: ListTasksParams): Promise<TaskPaginatedResponse> {
-    const res = await api.get(BASE, { params: toQuery(params) });
+    const res = await api.get(BASE, { params: toTaskListQuery(params) });
     const body = res.data?.data?.data ? res.data.data : res.data;
     const pagination = body?.pagination ?? {};
     return taskPaginatedResponseSchema.parse({
