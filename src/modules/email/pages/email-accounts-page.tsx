@@ -17,7 +17,7 @@ import {
 } from '@/modules/email/hooks';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
-import { MailCheck, MailOpen, Plus, RefreshCw, Unplug } from 'lucide-react';
+import { LogOut, MailCheck, MailOpen, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function EmailAccountsPage() {
@@ -119,13 +119,13 @@ export function EmailAccountsPage() {
         onOpenChange={(open) => {
           if (!open && !disconnectMutation.isPending) setDisconnectingAccount(null);
         }}
-        title="Disconnect this email account?"
+        title="Log out of this email account?"
         description={
           disconnectingAccount
             ? `${disconnectingAccount.mailboxAddress} will be removed from Elli. Your provider mailbox and its messages will not be deleted.`
             : ''
         }
-        confirmLabel={disconnectMutation.isPending ? 'Disconnecting...' : 'Disconnect account'}
+        confirmLabel={disconnectMutation.isPending ? 'Logging out...' : 'Log out'}
         variant="destructive"
         isPending={disconnectMutation.isPending}
         keepOpenOnConfirm
@@ -218,8 +218,8 @@ function AccountRow({
           className="min-h-10 text-destructive hover:text-destructive"
           onClick={onDisconnect}
         >
-          <Unplug aria-hidden="true" className="size-4" />
-          Disconnect
+          <LogOut aria-hidden="true" className="size-4" />
+          Log out
         </Button>
       </div>
     </article>

@@ -1302,9 +1302,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       onOpenChange={(open) => {
         if (!disconnectAccountMutation.isPending) setDisconnectConfirmOpen(open);
       }}
-      title="Disconnect this email account?"
+      title="Log out of this email account?"
       description={`${address} will be removed from Elli. Your provider mailbox and messages will not be deleted.`}
-      confirmLabel={disconnectAccountMutation.isPending ? 'Disconnecting…' : 'Disconnect account'}
+      confirmLabel={disconnectAccountMutation.isPending ? 'Logging out…' : 'Log out'}
       variant="destructive"
       isPending={disconnectAccountMutation.isPending}
       keepOpenOnConfirm

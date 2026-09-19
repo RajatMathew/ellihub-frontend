@@ -312,7 +312,7 @@ export function MailboxSidebar({
                             onClick={() => setDisconnectConfirmOpen(true)}
                           >
                             <LogOut aria-hidden="true" className="size-3.5" />
-                            Disconnect account
+                            Log out
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
@@ -382,7 +382,7 @@ export function MailboxSidebar({
       <Dialog open={disconnectConfirmOpen} onOpenChange={setDisconnectConfirmOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Disconnect account</DialogTitle>
+            <DialogTitle>Log out of this mailbox</DialogTitle>
           </DialogHeader>
           <DialogBody>
             <p className="text-sm text-muted-foreground">
@@ -407,7 +407,7 @@ export function MailboxSidebar({
                 setDisconnectConfirmOpen(false);
               }}
             >
-              Disconnect
+              Log out
             </Button>
           </DialogFooter>
         </DialogContent>
