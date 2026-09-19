@@ -14,6 +14,7 @@ import {
   DEFAULT_EMAIL_NOTIFICATION_SCOPE,
   type EmailNotificationScope,
 } from '@/modules/email/lib/email-realtime-scope';
+import { emailSyncedActions } from '@/modules/email/lib/email-synced-actions';
 import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 
@@ -97,6 +98,7 @@ export function useEmailRealtime(
         const parsed = data as {
           type?: string;
           accountId?: string;
+          changed?: boolean;
           newMail?: {
             count: number;
             senderName: string | null;
@@ -141,15 +143,15 @@ export function useEmailRealtime(
           insertRealtimeMessage(queryClient, eventAccountId, parsedItem.data);
         }
 
-        // Only when the sync actually landed something. The server publishes
-        // `email.synced` after every sync run, new mail or not, and invalidating
-        // three query roots each time refetched the message list, the open
-        // conversation and the folder counts on a loop — with nothing to show
-        // for it. A quiet mailbox was issuing a request every few seconds.
-        if (parsed.newMail) scheduleRefetch(eventAccountId);
+        // Only when the sync actually landed something — see
+        // `emailSyncedActions` for why that is the server's `changed` flag and
+        // not the arrival of the event, and why the toast is a narrower gate
+        // than the refetch.
+        const actions = emailSyncedActions(parsed);
+        if (actions.refetch) scheduleRefetch(eventAccountId);
 
         const newMail = parsed.newMail;
-        if (newMail?.conversationId && decision.allowNotification) {
+        if (actions.notify && decision.allowNotification && newMail?.conversationId) {
           const account = knownAccounts?.find((item) => item.id === eventAccountId);
           const slug = account?.slug ?? eventAccountId;
           showNewMailToast({
