@@ -609,7 +609,7 @@ export function EmailReadingPane({
           </div>
 
           {detailsPanel && (
-            <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-0">
+            <div className="mb-5 mt-4 min-w-0 @min-[760px]:sticky @min-[760px]:top-0 @min-[760px]:col-start-2 @min-[760px]:row-start-2 @min-[760px]:mb-0 @min-[760px]:mt-5">
               {detailsPanel}
             </div>
           )}
