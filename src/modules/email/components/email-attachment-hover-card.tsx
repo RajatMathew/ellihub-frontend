@@ -16,6 +16,12 @@ type EmailAttachmentHoverCardProps = {
   attachment: EmailAttachment;
   messageId: string;
   loadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
+  /**
+   * The card is selectable, so the badge has moved out to the checkbox beside
+   * this button and drawing a second one would show the format twice
+   * (elli-ui#1046).
+   */
+  hideBadge?: boolean;
   onOpen?: () => void;
 };
 
@@ -26,6 +32,7 @@ export function EmailAttachmentHoverCard({
   attachment,
   messageId,
   loadAttachment,
+  hideBadge = false,
   onOpen,
 }: EmailAttachmentHoverCardProps) {
   const [open, setOpen] = useState(false);
@@ -106,11 +113,13 @@ export function EmailAttachmentHoverCard({
             onOpen?.();
           }}
         >
-          <FileFormatBadge
-            mimeType={attachment.mimeType}
-            fileName={displayName}
-            className="size-7 rounded-[5px]"
-          />
+          {!hideBadge && (
+            <FileFormatBadge
+              mimeType={attachment.mimeType}
+              fileName={displayName}
+              className="size-7 rounded-[5px]"
+            />
+          )}
           <span className="flex min-w-0 flex-col">
             <span
               className="min-w-0 truncate text-[12.5px] font-medium text-mail-ink"

@@ -421,14 +421,13 @@ function FallbackPreview({
   return (
     <div className="flex h-full items-center justify-center p-6">
       <div className="flex w-full max-w-md flex-col items-center text-center">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-md border border-border bg-background shadow-xs">
-          <FileTypeIcon
-            fileType="FILE"
-            mimeType={file?.mimeType}
-            fileName={displayName}
-            className="size-6"
-          />
-        </div>
+        <FileTypeIcon
+          fileType="FILE"
+          presentation="badge"
+          mimeType={file?.mimeType}
+          fileName={displayName}
+          className="mb-4 size-12 rounded-lg"
+        />
         <p className="text-sm font-semibold text-foreground">Preview not available</p>
         <p className="mt-1 max-w-sm text-sm leading-5 text-muted-foreground">
           {type === 'Document'
@@ -461,9 +460,10 @@ function LargeFilePreview({
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
       <FileTypeIcon
         fileType="FILE"
+        presentation="badge"
         mimeType={file?.mimeType}
         fileName={displayName}
-        className="size-16 text-muted-foreground/50"
+        className="size-16 rounded-lg"
       />
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">Large preview paused</p>
@@ -799,9 +799,10 @@ export function FilePreviewDialog({
               {isEmbeddedFileLoading && <FileLoadingOverlay />}
               <FileTypeIcon
                 fileType="FILE"
+                presentation="badge"
                 mimeType={file?.mimeType}
                 fileName={displayName}
-                className="size-16"
+                className="size-16 rounded-lg"
               />
               <audio
                 src={url}

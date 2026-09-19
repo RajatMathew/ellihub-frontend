@@ -1,3 +1,4 @@
+import { FileFormatBadge } from '@/app/components/file-format-badge';
 import { cn } from '@/app/lib/utils';
 import {
   FileIcon,
@@ -23,15 +24,15 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
     mime?.startsWith('image/') ||
     ['heic', 'heif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp'].includes(ext)
   ) {
-    return { Icon: FileImage, color: 'text-emerald-600', background: 'bg-emerald-50' };
+    return { Icon: FileImage, color: 'text-emerald-600' };
   }
 
   if (mime?.startsWith('video/') || ['m4v', 'mov', 'mp4', 'webm'].includes(ext)) {
-    return { Icon: FileVideo, color: 'text-amber-600', background: 'bg-amber-50' };
+    return { Icon: FileVideo, color: 'text-amber-600' };
   }
 
   if (mime === 'application/pdf' || ext === 'pdf') {
-    return { Icon: FileText, color: 'text-rose-600', background: 'bg-rose-50' };
+    return { Icon: FileText, color: 'text-rose-600' };
   }
 
   if (
@@ -40,7 +41,7 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
     mime?.includes('msword') ||
     mime?.startsWith('text/')
   ) {
-    return { Icon: FileType2, color: 'text-sky-600', background: 'bg-sky-50' };
+    return { Icon: FileType2, color: 'text-sky-600' };
   }
 
   if (
@@ -48,10 +49,10 @@ function resolveIcon(mime: string | null | undefined, name: string | null | unde
     mime?.includes('spreadsheet') ||
     mime?.includes('excel')
   ) {
-    return { Icon: FileSpreadsheet, color: 'text-emerald-600', background: 'bg-emerald-50' };
+    return { Icon: FileSpreadsheet, color: 'text-emerald-600' };
   }
 
-  return { Icon: FileIcon, color: 'text-sky-600', background: 'bg-sky-50' };
+  return { Icon: FileIcon, color: 'text-sky-600' };
 }
 
 interface FileTypeIconProps extends LucideProps {
@@ -88,21 +89,20 @@ export function FileTypeIcon({
     return <FolderIcon className={cn('text-warning', className)} {...props} />;
   }
 
-  const { Icon, color, background } = resolveIcon(mimeType, fileName);
-
+  // The badge presentation is the shared `FileFormatBadge` (elli-ui#1045): it
+  // names the format instead of implying a family with a tinted glyph, and it
+  // is the same badge the mailbox draws on an attachment, so a file looks the
+  // same wherever it is listed.
+  //
+  // `presentation="icon"` deliberately keeps the outline glyph. The badge
+  // carries three or four letters and stops being readable much below 24px,
+  // and most icon call sites here are 14–16px inline marks beside a filename
+  // that already spells the extension out.
   if (presentation === 'badge') {
-    return (
-      <span
-        className={cn(
-          'inline-flex size-10 shrink-0 items-center justify-center rounded-full',
-          background,
-          className
-        )}
-      >
-        <Icon className={cn('size-5', color, iconClassName)} {...props} />
-      </span>
-    );
+    return <FileFormatBadge fileName={fileName} mimeType={mimeType} className={className} />;
   }
+
+  const { Icon, color } = resolveIcon(mimeType, fileName);
 
   return <Icon className={cn(color, className)} {...props} />;
 }

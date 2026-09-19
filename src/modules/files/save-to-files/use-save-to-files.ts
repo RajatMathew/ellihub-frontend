@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { getApiErrorMessage } from '@/app/lib/toast-api-error';
 import {
@@ -12,18 +12,21 @@ import {
   getUploadNameError,
 } from '@/modules/files/lib/file-upload-policy';
 import {
+  getSourceDefaultName,
   getSourceFileName,
   getSourceMimeType,
   isServerSideSource,
   resolveSaveSourceFile,
-  type SaveToFilesSource,
+  toSaveSourceList,
+  type SaveToFilesInputSource,
 } from '@/modules/files/save-to-files/save-source';
 import type { FileItem } from '@/modules/files/schemas/file.schema';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import { toast } from 'sonner';
 
 export interface UseSaveToFilesOptions {
-  source: SaveToFilesSource;
+  /** One file, or several picked together — see `toSaveSourceList`. */
+  source: SaveToFilesInputSource;
   onSaved?: (file: FileItem) => void;
   /** Server-side import via `POST /file/import-url`. */
   enableExternalUrl?: boolean;
@@ -33,6 +36,11 @@ export interface UseSaveToFilesOptions {
 
 export interface SaveToFilesInput {
   parentId: string;
+  /**
+   * Only meaningful for a single file. A multi-selection keeps each file's own
+   * name — there is one name field in the dialog and it cannot rename five
+   * things at once.
+   */
   name: string;
 }
 
@@ -45,6 +53,8 @@ export function useSaveToFiles({
   enableExternalUrl = true,
   enableExistingTransfer = true,
 }: UseSaveToFilesOptions) {
+  const sources = useMemo(() => toSaveSourceList(source), [source]);
+  const isBulk = sources.length > 1;
   const { enqueueUploads } = useUploadManager();
   const importFromUrl = useImportFileFromUrlMutation();
   const copyFile = useCopyFileMutation();
@@ -53,6 +63,7 @@ export function useSaveToFiles({
 
   const saveServerSide = useCallback(
     async ({ parentId, name }: SaveToFilesInput): Promise<FileItem> => {
+      const source = sources[0]!;
       if (source.kind === 'externalUrl') {
         if (!enableExternalUrl) {
           throw new Error('Saving from an external link is not available yet.');
@@ -75,7 +86,59 @@ export function useSaveToFiles({
 
       return transfer.mutateAsync({ id: source.fileId, parentId, name });
     },
-    [copyFile, enableExistingTransfer, enableExternalUrl, importFromUrl, moveFile, source]
+    [copyFile, enableExistingTransfer, enableExternalUrl, importFromUrl, moveFile, sources]
+  );
+
+  /**
+   * Several files into one folder. Every source is resolved first and handed
+   * to the upload manager in **one** `enqueueUploads` call: the tray then shows
+   * a single transfer with real progress across the set, and a failure part-way
+   * through does not leave the reader guessing which of five files landed.
+   *
+   * Bulk is blob-only. The server-side kinds (`externalUrl`, `existing`) are
+   * single-file affordances in the Files module and nothing offers them in a
+   * multi-selection, so the guard is an assertion rather than a branch.
+   */
+  const saveMany = useCallback(
+    async (parentId: string): Promise<SaveToFilesOutcome | null> => {
+      if (sources.some(isServerSideSource)) {
+        toast.error('These files cannot be saved together.');
+        return null;
+      }
+
+      const resolved = await Promise.all(
+        sources.map(async (item) => ({ item, file: await resolveSaveSourceFile(item) }))
+      );
+
+      for (const { item, file } of resolved) {
+        const error =
+          getUploadFileValidationError(file) ??
+          getUploadDisplayNameValidationError(getSourceDefaultName(item), file);
+        if (error) {
+          toast.error(`${getSourceFileName(item)}: ${error}`);
+          return null;
+        }
+      }
+
+      enqueueUploads(
+        resolved.map(({ item, file }) => ({
+          file,
+          data: {
+            name: getSourceDefaultName(item),
+            parentId,
+            mimeType: getSourceMimeType(item) || file.type || undefined,
+            size: file.size,
+          },
+        })),
+        {
+          label: `${resolved.length} files`,
+          onUploaded: (uploaded) => onSaved?.(uploaded),
+        }
+      );
+
+      return 'queued';
+    },
+    [enqueueUploads, onSaved, sources]
   );
 
   const save = useCallback(
@@ -84,6 +147,9 @@ export function useSaveToFiles({
       setIsPreparing(true);
 
       try {
+        if (isBulk) return await saveMany(parentId);
+
+        const source = sources[0]!;
         if (isServerSideSource(source)) {
           const nameError = getUploadNameError(trimmedName);
           if (nameError) {
@@ -137,10 +203,12 @@ export function useSaveToFiles({
       copyFile.isError,
       enqueueUploads,
       importFromUrl.isError,
+      isBulk,
       moveFile.isError,
       onSaved,
+      saveMany,
       saveServerSide,
-      source,
+      sources,
     ]
   );
 

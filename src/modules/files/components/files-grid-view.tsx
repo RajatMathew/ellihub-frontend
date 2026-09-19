@@ -86,7 +86,8 @@ export function FilesGridView({
                       fileType={item.type}
                       mimeType={item.mimeType}
                       fileName={itemName}
-                      className="size-8"
+                      presentation={item.type === 'FILE' ? 'badge' : 'icon'}
+                      className={item.type === 'FILE' ? 'size-9 rounded-md' : 'size-8'}
                     />
                   </span>
                   <span

@@ -1,18 +1,12 @@
-import { useCallback, useId, useState } from 'react';
+import { useId, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { Skeleton } from '@/app/components/ui/skeleton';
-import { downloadBlob } from '@/app/lib/generated-pdf';
 import { cn } from '@/app/lib/utils';
-import { EmailAttachmentHoverCard } from '@/modules/email/components/email-attachment-hover-card';
+import { EmailBodyClamp } from '@/modules/email/components/email-body-clamp';
 import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
+import { EmailMessageAttachments } from '@/modules/email/components/email-message-attachments';
 import { EmailMessageBody } from '@/modules/email/components/email-message-body';
 import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
 import {
@@ -26,27 +20,12 @@ import type {
 } from '@/modules/email/components/email-row-card';
 import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
 import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
-import {
-  emailAttachmentDisplayName,
-  isHiddenInlineEmailAttachment,
-} from '@/modules/email/lib/email-attachments';
+import { isHiddenInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
 import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
 import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
 import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
 import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
-import { SaveToFilesTrigger } from '@/modules/files/save-to-files';
-import {
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Download,
-  FileSearch,
-  FolderPlus,
-  Forward,
-  Mail,
-  Reply,
-  Search,
-} from 'lucide-react';
+import { ChevronUp, Copy, Forward, Mail, Reply, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 /** Stable identities for the two "nothing here" cases, so renders that change
@@ -323,6 +302,24 @@ export function EmailThreadMessageCard({
           width (padding on top of a fixed-width email design was clipping
           content at the right edge). Non-body children add their own px-4. */}
       <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
+        {visibleAttachments.length > 0 && (
+          /*
+            Above the body, the way Outlook and Gmail place them (elli-ui#1043).
+            At the bottom they sat after however many screens of quoted chain
+            the message dragged along, so the one thing a reader opens a mail
+            with an attachment to find was the one thing they had to scroll
+            past the whole message for.
+          */
+          <EmailMessageAttachments
+            attachments={visibleAttachments}
+            messageId={message.id}
+            onLoadAttachment={onLoadAttachment}
+            onOpenAttachment={onOpenAttachment}
+            saveToFilesRootFolderId={saveToFilesRootFolderId}
+            saveToFilesRootLabel={saveToFilesRootLabel}
+          />
+        )}
+
         {isBodyPending || isDeferredBodyPending ? (
           /* The preview is plain text — a flattened excerpt that still carries
              the quoted chain's `-----Original Message-----` rules. Rendered as
@@ -337,31 +334,14 @@ export function EmailThreadMessageCard({
           </div>
         ) : (
           hasBodyContent && (
-            <EmailMessageBody
-              body={body}
-              attachments={attachments}
-              inlineImageBaseUrl={inlineImageBaseUrl}
-            />
-          )
-        )}
-
-        {visibleAttachments.length > 0 && (
-          <div
-            className={cn('flex flex-wrap gap-2 px-4', hasBodyContent && 'pt-1')}
-            aria-label="Message attachments"
-          >
-            {visibleAttachments.map((attachment) => (
-              <EmailAttachmentChip
-                key={attachment.id}
-                attachment={attachment}
-                messageId={message.id}
-                onLoadAttachment={onLoadAttachment}
-                onOpenAttachment={onOpenAttachment}
-                saveToFilesRootFolderId={saveToFilesRootFolderId}
-                saveToFilesRootLabel={saveToFilesRootLabel}
+            <EmailBodyClamp>
+              <EmailMessageBody
+                body={body}
+                attachments={attachments}
+                inlineImageBaseUrl={inlineImageBaseUrl}
               />
-            ))}
-          </div>
+            </EmailBodyClamp>
+          )
         )}
 
         {replyOpen && (
@@ -531,116 +511,5 @@ function MessageIconAction({
     >
       <Icon aria-hidden="true" className="size-3.5" />
     </Button>
-  );
-}
-
-/**
- * One attachment, as a card rather than a chip (elli-ui#1017).
- *
- * The chip put the name and the size on one line and hung a bare "add to
- * folder" icon off the side, so the only two things you can do with a file
- * were one visible button and one that was not there at all. Actions now live
- * behind a single chevron — preview, download, save to Files — and the name
- * gets the card's whole width to truncate against.
- */
-function EmailAttachmentChip({
-  attachment,
-  messageId,
-  onLoadAttachment,
-  onOpenAttachment,
-  saveToFilesRootFolderId,
-  saveToFilesRootLabel,
-}: {
-  attachment: EmailAttachment;
-  messageId: string;
-  onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
-  onOpenAttachment?: (attachment: EmailAttachment) => void;
-  saveToFilesRootFolderId?: string;
-  saveToFilesRootLabel?: string;
-}) {
-  const resolveAttachment = useCallback(async (): Promise<Blob> => {
-    if (!onLoadAttachment) {
-      throw new Error('This attachment cannot be downloaded right now.');
-    }
-    return onLoadAttachment(messageId, attachment.id);
-  }, [attachment.id, messageId, onLoadAttachment]);
-
-  const canSaveToFiles = Boolean(onLoadAttachment);
-  // Saved under the same name the card shows and the download sends.
-  const displayName = emailAttachmentDisplayName(attachment);
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const download = async () => {
-    if (!onLoadAttachment || isDownloading) return;
-    setIsDownloading(true);
-    try {
-      downloadBlob(await resolveAttachment(), displayName);
-    } catch {
-      // The attachment never arrived, so there is nothing to save. Say so here
-      // rather than leaving a menu item that silently does nothing.
-      toast.error(`Could not download ${displayName}.`);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  return (
-    <div className="flex min-w-0 max-w-72 items-center gap-1 rounded-lg border border-mail-line bg-mail-card py-1.5 pe-1 ps-2.5">
-      <EmailAttachmentHoverCard
-        attachment={attachment}
-        messageId={messageId}
-        loadAttachment={onLoadAttachment}
-        onOpen={() => onOpenAttachment?.(attachment)}
-      />
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            mode="icon"
-            size="sm"
-            className="size-7 shrink-0"
-            aria-label={`Actions for ${displayName}`}
-            title="Actions"
-          >
-            <ChevronDown aria-hidden="true" className="size-3.5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem onClick={() => onOpenAttachment?.(attachment)}>
-            <FileSearch aria-hidden="true" />
-            Preview
-          </DropdownMenuItem>
-          {onLoadAttachment && (
-            <DropdownMenuItem disabled={isDownloading} onClick={() => void download()}>
-              <Download aria-hidden="true" />
-              {isDownloading ? 'Downloading...' : 'Download'}
-            </DropdownMenuItem>
-          )}
-          {canSaveToFiles && (
-            <SaveToFilesTrigger
-              asChild
-              source={{
-                kind: 'lazy',
-                fileName: displayName,
-                mimeType: attachment.mimeType ?? undefined,
-                resolve: resolveAttachment,
-              }}
-              rootFolderId={saveToFilesRootFolderId}
-              rootLabel={saveToFilesRootLabel ?? 'Project Files'}
-              onSaved={() => toast.success(`Saved ${displayName} to Files.`)}
-            >
-              {/* The picker owns its own dialog, so the menu must not close
-                  this item out from under it on select. */}
-              <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                <FolderPlus aria-hidden="true" />
-                Add to folder
-              </DropdownMenuItem>
-            </SaveToFilesTrigger>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   );
 }
