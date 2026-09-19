@@ -5,12 +5,17 @@ import { Button } from '@/app/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import type { EmailAttachment } from '@/modules/email/components/email-row-card';
+import {
+  getAttachmentPreviewKind,
+  resolveAttachmentMimeType,
+  toPreviewBlob,
+  type AttachmentPreviewKind,
+} from '@/modules/email/lib/email-attachment-preview';
 import { emailAttachmentDisplayName } from '@/modules/email/lib/email-attachments';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 
 type AttachmentPreviewStatus = 'idle' | 'loading' | 'ready' | 'error';
-type AttachmentPreviewKind = 'image' | 'pdf' | 'video' | 'audio' | 'text' | 'generic';
 
 type EmailAttachmentHoverCardProps = {
   attachment: EmailAttachment;
@@ -43,7 +48,15 @@ export function EmailAttachmentHoverCard({
   const mountedRef = useRef(true);
   const isLargeAttachment =
     attachment.sizeBytes !== undefined && attachment.sizeBytes > MAX_AUTOMATIC_PREVIEW_BYTES;
-  const previewUrl = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
+  // Re-typed before the URL exists, not after: the object URL inherits the
+  // blob's type, and an `application/octet-stream` PDF behind an iframe is a
+  // download rather than a preview (elli-ui#1047).
+  const previewUrl = useMemo(() => {
+    if (!blob) return null;
+    const mimeType = resolveAttachmentMimeType(attachment, blob.type);
+
+    return URL.createObjectURL(toPreviewBlob(blob, mimeType));
+  }, [attachment, blob]);
   const previewKind = getAttachmentPreviewKind(attachment, blob?.type);
   // An attached email is named after its subject, with no extension — the chip
   // showed "Payment" and looked like a file nobody could identify.
@@ -337,34 +350,4 @@ function AttachmentPreviewMessage({
       </div>
     </div>
   );
-}
-
-function getAttachmentPreviewKind(
-  attachment: EmailAttachment,
-  loadedMimeType?: string
-): AttachmentPreviewKind {
-  const mimeType = (loadedMimeType || attachment.mimeType || '').toLowerCase();
-  const extension = attachment.name.split('.').pop()?.toLowerCase() ?? '';
-
-  if (
-    mimeType.startsWith('image/') ||
-    ['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'svg', 'webp'].includes(extension)
-  ) {
-    return 'image';
-  }
-  if (mimeType === 'application/pdf' || extension === 'pdf') return 'pdf';
-  if (mimeType.startsWith('video/') || ['m4v', 'mov', 'mp4', 'webm'].includes(extension)) {
-    return 'video';
-  }
-  if (mimeType.startsWith('audio/') || ['aac', 'm4a', 'mp3', 'ogg', 'wav'].includes(extension)) {
-    return 'audio';
-  }
-  if (
-    mimeType.startsWith('text/') ||
-    ['csv', 'css', 'html', 'json', 'log', 'md', 'sql', 'tsv', 'txt', 'xml'].includes(extension)
-  ) {
-    return 'text';
-  }
-
-  return 'generic';
 }
