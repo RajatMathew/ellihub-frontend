@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Info } from 'lucide-react';
@@ -59,17 +59,62 @@ const MAIL_SHORTCUT_SECTIONS: ShortcutSection[] = [
  */
 export function MailShortcutsMenu() {
   const [open, setOpen] = useState(false);
+  /**
+   * Opened by a click rather than a hover, and so not the pointer's to close.
+   *
+   * The component has always claimed to "stay on a click", but the trigger
+   * closed on `mouseleave` whatever had opened it — so a click bought nothing,
+   * and reading to the end of a list taller than the panel meant keeping the
+   * cursor on a 30px button the whole way down. Pinned, only Escape, a click
+   * away, or a second click on the trigger puts it away.
+   */
+  const [pinned, setPinned] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelClose = () => {
+    if (closeTimer.current === null) return;
+    clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+
+  /**
+   * Closing is deferred by a beat rather than done on the leave itself.
+   * Trigger and panel are separate elements with an 8px gap between them, so
+   * crossing from one to the other puts the pointer over neither for a frame;
+   * closing on that flicker is what made the panel unreachable.
+   */
+  const scheduleClose = () => {
+    if (pinned) return;
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  useEffect(() => cancelClose, []);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setPinned(false);
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"
           className="grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-lg text-mail-muted hover:bg-mail-card hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
           aria-label="Keyboard shortcuts"
-          title="Keyboard shortcuts"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+          onMouseEnter={() => {
+            cancelClose();
+            setOpen(true);
+          }}
+          onMouseLeave={scheduleClose}
+          onClick={() => {
+            // Radix toggles `open` for us; this only records that the pointer
+            // no longer owns the panel's lifetime.
+            cancelClose();
+            setPinned((current) => (open ? !current : true));
+          }}
         >
           <Info aria-hidden="true" className="size-4" strokeWidth={1.6} />
         </button>
@@ -78,10 +123,22 @@ export function MailShortcutsMenu() {
         align="end"
         sideOffset={8}
         collisionPadding={16}
-        // Pointer events off on the content so moving the cursor toward it does
-        // not count as leaving the trigger and close it out from under you; the
-        // list is read, never interacted with.
-        className="pointer-events-none max-h-[min(var(--radix-popover-content-available-height),30rem)] w-80 overflow-y-auto rounded-xl border-mail-line bg-mail-card p-4"
+        /**
+         * The panel takes pointer events (elli-ui#1021). It used to refuse them
+         * so that moving the cursor onto it could not read as leaving the
+         * trigger — on the assumption that the list is only ever read. But the
+         * list is taller than the panel, so it has to be scrolled, and a
+         * `pointer-events-none` element cannot take a wheel: the last section,
+         * "Anywhere", was unreachable. The grace period above buys what the
+         * dead panel was buying, without costing the scroll.
+         */
+        onMouseEnter={cancelClose}
+        onMouseLeave={scheduleClose}
+        // Opened by hover, so it must not pull focus out of whatever the reader
+        // was doing. Wheel and drag still scroll it; Escape and a click away
+        // still dismiss it.
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        className="max-h-[min(var(--radix-popover-content-available-height),30rem)] w-80 overflow-y-auto overscroll-contain rounded-xl border-mail-line bg-mail-card p-4"
       >
         <h2 className="sr-only">Keyboard shortcuts</h2>
         <dl className="flex flex-col gap-4">
