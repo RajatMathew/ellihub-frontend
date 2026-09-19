@@ -1,52 +1,110 @@
-import { Button } from '@/app/components/ui/button';
+import type { DragEvent, ReactNode } from 'react';
+
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils';
 import { EmailComposeAddressField } from '@/modules/email/components/compose/email-compose-address-field';
-import { EmailComposeAttachments } from '@/modules/email/components/compose/email-compose-attachments';
 import { EmailRichTextEditor } from '@/modules/email/components/email-rich-text-editor';
-import type { EmailComposeController } from '@/modules/email/hooks/use-email-compose';
-import { Send } from 'lucide-react';
+import type { AddressField } from '@/modules/email/hooks/use-email-compose';
+
+export interface ComposeFieldIds {
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+}
+
+export interface ComposeFieldValues {
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+}
+
+export interface EmailComposeFieldsProps {
+  accountId?: string;
+  fieldIds: ComposeFieldIds;
+  values: ComposeFieldValues;
+  addressErrors?: Partial<Record<AddressField, string>>;
+  showCc: boolean;
+  showBcc: boolean;
+  onToggleCc: (show: boolean) => void;
+  onToggleBcc: (show: boolean) => void;
+  onAddressChange: (field: AddressField, value: string) => void;
+  /** Absent for a reply or forward: the thread already fixed the subject. */
+  onSubjectChange?: (value: string) => void;
+  onBodyChange: (value: string) => void;
+  bodyLabel: string;
+  bodyPlaceholder: string;
+  disabled?: boolean;
+  /** The footer row's trailing end — the hint and the one button that sends. */
+  toolbarTrailing: ReactNode;
+  /** Rendered under the editor by the surfaces that accept attachments. */
+  attachments?: ReactNode;
+  onFilesSelected?: (files: FileList) => void;
+  drag?: {
+    isDragging: boolean;
+    onDragEnter: (event: DragEvent<HTMLDivElement>) => void;
+    onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
+    onDropCapture: () => void;
+  };
+  className?: string;
+}
 
 /**
- * The composer itself: recipients, subject, body and attachments, plus the
- * drag-and-drop target that wraps them. It knows nothing about the surface it
- * is mounted in — the modal and the inline reading-pane composer both render
- * exactly this, driven by the same controller.
+ * The editor itself: recipients, subject, body and whatever the surface hangs
+ * off the footer. It knows nothing about the surface it is mounted in — a new
+ * message, a draft, a reply and a forward all render exactly this, which is
+ * what keeps them from drifting apart (elli-ui#1008).
  */
 export function EmailComposeFields({
-  compose,
   accountId,
+  fieldIds,
+  values,
+  addressErrors = {},
+  showCc,
+  showBcc,
+  onToggleCc,
+  onToggleBcc,
+  onAddressChange,
+  onSubjectChange,
+  onBodyChange,
+  bodyLabel,
+  bodyPlaceholder,
+  disabled = false,
+  toolbarTrailing,
+  attachments,
+  onFilesSelected,
+  drag,
   className,
-}: {
-  compose: EmailComposeController;
-  accountId?: string;
-  className?: string;
-}) {
-  const { fieldIds, form, addressErrors, isDragging, isBusy, isPreparingAttachments } = compose;
-
+}: EmailComposeFieldsProps) {
   return (
     <div
       className={cn(
         'relative flex min-h-0 flex-1 flex-col',
-        isDragging && 'bg-primary/5 ring-2 ring-inset ring-primary/40',
+        drag?.isDragging && 'bg-primary/5 ring-2 ring-inset ring-primary/40',
         className
       )}
-      onDragEnter={compose.handleDragEnter}
-      onDragOver={(event) => event.preventDefault()}
-      onDragLeave={compose.handleDragLeave}
+      onDragEnter={drag?.onDragEnter}
+      onDragOver={drag ? (event) => event.preventDefault() : undefined}
+      onDragLeave={drag?.onDragLeave}
       // Capture phase: the body editor handles its own drop and stops the event
       // from bubbling, so a bubble-phase reset here would never run and the
       // overlay would stay up for good (elli-ui#910).
-      onDropCapture={compose.endDrag}
-      onDrop={(event) => {
-        event.preventDefault();
-        // Dropping during an upload queues behind it instead of being ignored:
-        // the user no longer has to wait out a 25 MB round trip to add the next
-        // file.
-        compose.handleAttachmentSelection(event.dataTransfer.files);
-      }}
+      onDropCapture={drag?.onDropCapture}
+      onDrop={
+        drag
+          ? (event) => {
+              event.preventDefault();
+              // Dropping during an upload queues behind it instead of being
+              // ignored: no waiting out a 25 MB round trip to add the next file.
+              onFilesSelected?.(event.dataTransfer.files);
+            }
+          : undefined
+      }
     >
-      {isDragging && (
+      {drag?.isDragging && (
         <div className="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-background/85 text-sm font-medium text-primary">
           Drop files to attach
         </div>
@@ -57,108 +115,114 @@ export function EmailComposeFields({
           accountId={accountId}
           id={fieldIds.to}
           label="To"
-          value={form.to}
+          value={values.to}
           required
           placeholder="Add recipients"
           error={addressErrors.to}
-          onChange={(to) => compose.updateAddressField('to', to)}
+          onChange={(to) => onAddressChange('to', to)}
         >
-          {!compose.showCc && (
-            <ComposeFieldToggle label="Cc" onClick={() => compose.setShowCc(true)} />
-          )}
-          {!compose.showBcc && (
-            <ComposeFieldToggle label="Bcc" onClick={() => compose.setShowBcc(true)} />
-          )}
+          {!showCc && <ComposeFieldToggle label="Cc" onClick={() => onToggleCc(true)} />}
+          {!showBcc && <ComposeFieldToggle label="Bcc" onClick={() => onToggleBcc(true)} />}
         </EmailComposeAddressField>
-        {compose.showCc && (
+        {showCc && (
           <EmailComposeAddressField
             accountId={accountId}
             id={fieldIds.cc}
             label="Cc"
-            value={form.cc}
+            value={values.cc}
             placeholder="Add Cc recipients"
             error={addressErrors.cc}
-            onChange={(cc) => compose.updateAddressField('cc', cc)}
+            onChange={(cc) => onAddressChange('cc', cc)}
             onRemove={() => {
-              compose.setShowCc(false);
-              compose.updateAddressField('cc', '');
+              onToggleCc(false);
+              onAddressChange('cc', '');
             }}
           />
         )}
-        {compose.showBcc && (
+        {showBcc && (
           <EmailComposeAddressField
             accountId={accountId}
             id={fieldIds.bcc}
             label="Bcc"
-            value={form.bcc}
+            value={values.bcc}
             placeholder="Add Bcc recipients"
             error={addressErrors.bcc}
-            onChange={(bcc) => compose.updateAddressField('bcc', bcc)}
+            onChange={(bcc) => onAddressChange('bcc', bcc)}
             onRemove={() => {
-              compose.setShowBcc(false);
-              compose.updateAddressField('bcc', '');
+              onToggleBcc(false);
+              onAddressChange('bcc', '');
             }}
           />
         )}
-        <div className="flex items-center gap-3 px-5 py-2.5">
-          <label
-            htmlFor={fieldIds.subject}
-            className="w-16 shrink-0 text-xs font-medium text-muted-foreground"
-          >
-            Subject
-            <span className="text-destructive"> *</span>
-          </label>
-          <Input
-            id={fieldIds.subject}
-            value={form.subject}
-            required
-            placeholder="Add a subject"
-            className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            onChange={(event) => compose.setSubject(event.target.value)}
-          />
-        </div>
+        <ComposeSubjectRow
+          id={fieldIds.subject}
+          value={values.subject}
+          onChange={onSubjectChange}
+        />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
         <EmailRichTextEditor
           className="min-h-0 flex-1 gap-0"
           id={fieldIds.body}
-          value={form.body}
-          label="Email body"
-          // A draft opened from the cache can be on screen before its body has
-          // arrived. Saying so beats an empty "Write your message…" that reads
-          // like the draft lost its contents (elli-ui#925).
-          placeholder={
-            compose.isDraftBodyPending ? 'Loading this draft’s message…' : 'Write your message...'
-          }
-          disabled={isBusy || compose.isDraftBodyPending}
+          value={values.body}
+          label={bodyLabel}
+          placeholder={bodyPlaceholder}
+          disabled={disabled}
           contentClassName="px-5 py-4"
           editorClassName="min-h-full"
           toolbarClassName="border-t border-mail-pane-line bg-mail-pane px-2.5 py-2"
           // One footer: how the message is formatted, and the one button that
           // sends it. Nothing else competes for the corner.
-          toolbarTrailing={
-            <Button
-              type="submit"
-              size="sm"
-              className="gap-2"
-              disabled={!compose.canSend || isBusy || isPreparingAttachments}
-              aria-busy={compose.isSubmitting || compose.isSending}
-            >
-              {compose.isSubmitting || compose.isSending ? 'Sending' : 'Send'}
-              <Send aria-hidden="true" className="size-3.5" />
-            </Button>
-          }
-          onChange={compose.setBody}
-          onFilesSelected={(files) => {
-            if (!isPreparingAttachments) compose.handleAttachmentSelection(files);
-          }}
+          toolbarTrailing={toolbarTrailing}
+          onChange={onBodyChange}
+          onFilesSelected={onFilesSelected}
         />
       </div>
 
-      <div className="shrink-0 border-t border-mail-pane-line">
-        <EmailComposeAttachments compose={compose} />
+      {attachments && <div className="shrink-0 border-t border-mail-pane-line">{attachments}</div>}
+    </div>
+  );
+}
+
+/**
+ * A new message types its own subject; a reply inherits the thread's and shows
+ * it as text, because changing it there would fork the conversation. It is not
+ * a disabled input: a control nobody can use is noise in a row of fields that
+ * all take typing.
+ */
+function ComposeSubjectRow({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange?: (value: string) => void;
+}) {
+  if (!onChange) {
+    return (
+      <div className="flex min-w-0 items-center gap-3 px-5 py-2.5">
+        <span className="w-16 shrink-0 text-xs font-medium text-muted-foreground">Subject</span>
+        <p className="min-w-0 truncate text-sm text-foreground">{value}</p>
       </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-2.5">
+      <label htmlFor={id} className="w-16 shrink-0 text-xs font-medium text-muted-foreground">
+        Subject
+        <span className="text-destructive"> *</span>
+      </label>
+      <Input
+        id={id}
+        value={value}
+        required
+        placeholder="Add a subject"
+        className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        onChange={(event) => onChange(event.target.value)}
+      />
     </div>
   );
 }
