@@ -252,8 +252,16 @@ function VirtualizedMonthGroups({
             key={virtualRow.key}
             ref={virtualizer.measureElement}
             data-index={virtualRow.index}
-            className="absolute left-0 top-0 w-full"
-            style={{ transform: `translateY(${virtualRow.start}px)` }}
+            // Positioned with `top`, deliberately, not `transform`. A
+            // transformed ancestor becomes the containing block for its sticky
+            // descendants, so the group header resolved its `top: 0` against
+            // this moving wrapper rather than the scrollport and rode the
+            // scroll instead of pinning (elli-ui#1001). Only the month groups
+            // are virtualised here — a handful of boxes, not the rows — so
+            // giving up the compositor fast path costs nothing measurable. The
+            // flat row list above keeps `transform` for exactly that reason.
+            className="absolute left-0 w-full"
+            style={{ top: virtualRow.start }}
           >
             <MonthGroupSection
               accountId={accountId}
@@ -328,13 +336,22 @@ function MonthGroupSection({
         the next one up over the last as the list scrolls. The count is a bare
         number — "Today 9" over nine rows needs no unit (elli-ui#921).
       */}
-      <h2 className="m-0">
+      {/*
+        The stick has to be on the `h2`, not on the button inside it. A sticky
+        box can never travel outside its own containing block, and the `h2`
+        hugs the button exactly — so with `sticky` on the button its travel was
+        zero and the header scrolled away with its rows like any static element.
+        On the `h2` the containing block is this `section`, which spans the
+        whole group, so the header holds the top until its last row leaves
+        (elli-ui#1001).
+      */}
+      <h2 className="sticky top-0 z-20 m-0 bg-mail-paper">
         <button
           id={triggerId}
           type="button"
           className={cn(
-            'mail-group-header sticky top-0 z-20 flex w-full cursor-pointer items-center gap-2 bg-mail-paper px-4 pb-[7px] pt-2 text-left',
-            'text-xs font-semibold tracking-[0.01em] text-mail-mid',
+            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-paper px-4 pb-[7px] pt-2 text-left',
+            'font-public-sans text-xs font-semibold tracking-[0.01em] text-mail-mid',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
           )}
           aria-expanded={!collapsed}
