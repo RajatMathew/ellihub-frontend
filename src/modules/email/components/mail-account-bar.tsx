@@ -15,12 +15,12 @@ import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
 import {
   Check,
   ChevronDown,
+  LogOut,
   Mail,
   MoreHorizontal,
   Pencil,
   Plus,
   Settings,
-  Unplug,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -186,8 +186,8 @@ export function MailAccountBar({
           </DropdownMenuItem>
           {onDisconnectAccount && (
             <DropdownMenuItem variant="destructive" onClick={onDisconnectAccount}>
-              <Unplug aria-hidden="true" />
-              Disconnect
+              <LogOut aria-hidden="true" />
+              Log out
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

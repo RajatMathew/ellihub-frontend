@@ -68,6 +68,7 @@ import {
 import { useEmailRealtime } from '@/modules/email/hooks/use-email-realtime';
 import { useMailboxUrlState } from '@/modules/email/hooks/use-mailbox-url-state';
 import { parseEmailAddresses } from '@/modules/email/lib/email-addresses';
+import { COMPOSE_LAYER_ATTRIBUTE } from '@/modules/email/lib/email-compose-layer';
 import {
   buildInstantDraftSnapshot,
   toComposeDraftFields,
@@ -1302,9 +1303,9 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       onOpenChange={(open) => {
         if (!disconnectAccountMutation.isPending) setDisconnectConfirmOpen(open);
       }}
-      title="Disconnect this email account?"
+      title="Log out of this email account?"
       description={`${address} will be removed from Elli. Your provider mailbox and messages will not be deleted.`}
-      confirmLabel={disconnectAccountMutation.isPending ? 'Disconnecting…' : 'Disconnect account'}
+      confirmLabel={disconnectAccountMutation.isPending ? 'Logging out…' : 'Log out'}
       variant="destructive"
       isPending={disconnectAccountMutation.isPending}
       keepOpenOnConfirm
@@ -1607,6 +1608,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
             )}
 
             <div
+              // The layer both full-page editors live in: the new-message one
+              // below, and a reply that portals in when it goes full page
+              // (elli-ui#1008).
+              {...{ [COMPOSE_LAYER_ATTRIBUTE]: '' }}
               className={cn(
                 'relative min-w-0 flex-1 overflow-hidden bg-mail-pane',
                 mobilePane === 'list' ? 'hidden lg:flex' : 'flex'
