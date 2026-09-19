@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/app/components/ui/button';
-import { Checkbox } from '@/app/components/ui/checkbox';
 import { Skeleton } from '@/app/components/ui/skeleton';
+import { EmailBulkActionBar } from '@/modules/email/components/email-bulk-action-bar';
 import { EmailListScrollbar } from '@/modules/email/components/email-list-scrollbar';
 import type { EmailListItem } from '@/modules/email/components/email-row-card';
 import { VirtualizedEmailList } from '@/modules/email/components/virtualized-email-list';
 import { getEmailFolderLabel } from '@/modules/email/constants/email-folders';
-import { Archive, ArchiveRestore, Inbox, RefreshCcw, Trash2, X } from 'lucide-react';
+import { Inbox, RefreshCcw } from 'lucide-react';
 
 interface EmailListPaneProps {
   accountId?: string;
@@ -227,68 +227,6 @@ export function EmailListPane({
         {emailCountLabel}
       </div>
 
-      {isBulkActive && onToggleChecked && (
-        <div className="flex min-w-0 items-center gap-2 border-b border-mail-line bg-mail-chip px-3 py-2">
-          <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-foreground">
-            <Checkbox
-              checked={allInViewChecked}
-              onCheckedChange={() => onToggleCheckedAll?.()}
-              disabled={isBulkMutating}
-              aria-label={allInViewChecked ? 'Deselect all visible' : 'Select all visible'}
-            />
-            {checkedCount}
-          </label>
-          <div className="ml-auto flex items-center gap-0.5">
-            {onBulkArchive && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 shrink-0 gap-1 whitespace-nowrap px-1.5 text-xs"
-                onClick={onBulkArchive}
-                disabled={isBulkMutating}
-                title={bulkArchiveLabel}
-              >
-                {bulkArchiveVariant === 'restore' ? (
-                  <ArchiveRestore aria-hidden="true" className="size-3.5" />
-                ) : (
-                  <Archive aria-hidden="true" className="size-3.5" />
-                )}
-                {bulkArchiveLabel}
-              </Button>
-            )}
-            {onBulkDelete && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 shrink-0 gap-1 whitespace-nowrap px-1.5 text-xs text-destructive hover:text-destructive"
-                onClick={onBulkDelete}
-                disabled={isBulkMutating}
-                title={bulkDeleteLabel}
-              >
-                <Trash2 aria-hidden="true" className="size-3.5" />
-                {bulkDeleteLabel}
-              </Button>
-            )}
-            {onClearChecked && (
-              <Button
-                type="button"
-                variant="ghost"
-                mode="icon"
-                size="sm"
-                className="size-8 shrink-0"
-                onClick={onClearChecked}
-                disabled={isBulkMutating}
-                aria-label="Clear selection"
-              >
-                <X aria-hidden="true" className="size-3.5" />
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="relative min-h-0 flex-1">
         <EmailListScrollbar scrollElement={scrollContainer} />
         {/*
@@ -377,6 +315,21 @@ export function EmailListPane({
             </div>
           )}
         </div>
+
+        {isBulkActive && onToggleChecked && (
+          <EmailBulkActionBar
+            checkedCount={checkedCount}
+            allInViewChecked={allInViewChecked}
+            isBulkMutating={isBulkMutating}
+            bulkArchiveLabel={bulkArchiveLabel}
+            bulkArchiveVariant={bulkArchiveVariant}
+            bulkDeleteLabel={bulkDeleteLabel}
+            onToggleCheckedAll={onToggleCheckedAll}
+            onBulkArchive={onBulkArchive}
+            onBulkDelete={onBulkDelete}
+            onClearChecked={onClearChecked}
+          />
+        )}
       </div>
     </section>
   );
