@@ -157,7 +157,7 @@ export function EmailAssigneePicker({
             {assignee && (
               <CommandItem
                 value="__unassign"
-                className="min-h-8 gap-2 text-xs text-muted-foreground"
+                className="min-h-8 cursor-pointer gap-2 text-xs text-muted-foreground"
                 onSelect={() => {
                   onChange(null);
                   setOpen(false);
@@ -174,7 +174,7 @@ export function EmailAssigneePicker({
               <CommandItem
                 key={user.id}
                 value={`${user.name} ${user.email}`}
-                className="min-h-11 gap-3 rounded-lg px-2.5"
+                className="min-h-11 cursor-pointer gap-3 rounded-lg px-2.5"
                 onSelect={() => {
                   // Picking the current assignee again toggles them off.
                   onChange(assignee?.id === user.id ? null : user);
