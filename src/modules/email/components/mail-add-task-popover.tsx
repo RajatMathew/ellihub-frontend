@@ -56,9 +56,19 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
           + Add task
         </button>
       </PopoverTrigger>
+      {/*
+        Always below the trigger, like the linked-items picker beside it.
+        With collision avoidance on, the popover flipped above the button
+        whenever the panel was near the bottom of the pane and flipped back on
+        scroll — so the same control opened in two different places depending
+        on where the page happened to be.
+      */}
       <PopoverContent
         align="end"
-        collisionPadding={16}
+        side="bottom"
+        avoidCollisions={false}
+        sideOffset={8}
+        collisionPadding={12}
         className="w-[21.5rem] overflow-hidden rounded-xl border-mail-line p-0"
       >
         {/* Keyed by open so each visit starts clean without a reset effect. */}
