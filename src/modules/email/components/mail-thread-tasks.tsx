@@ -116,7 +116,12 @@ function MetaLine({ task, now, isDone }: { task: Task; now: Date; isDone: boolea
   const isOverdue = !isDone && isMailThreadTaskOverdue(task.dueAt, now);
 
   return (
-    <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+    /* `text-xs` on the row, matching the priority label the meter draws, so
+       every run on this line shares a font size and a line height. They did
+       not: the label is 12px/16px and the due date was 11.5px/17.25px, and
+       centring two boxes of different line heights leaves their baselines
+       apart — the priority read as sitting lower than the clock beside it. */
+    <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
       {/* No `onChange`, so the meter draws as a label rather than a control —
           changing priority is the edit dialog's job, and a menu here would
           fight the row's own click. */}
@@ -125,17 +130,17 @@ function MetaLine({ task, now, isDone }: { task: Task; now: Date; isDone: boolea
       {dueLabel && (
         <span
           className={cn(
-            'inline-flex min-w-0 items-center gap-1 text-[11.5px]',
+            'inline-flex min-w-0 items-center gap-1 leading-4',
             isOverdue ? 'text-destructive' : 'text-mail-muted'
           )}
         >
-          <Clock aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} />
+          <Clock aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
           <span className="truncate">{dueLabel}</span>
         </span>
       )}
 
       {task.assignee?.name && (
-        <span className="min-w-0 truncate text-[11.5px] text-mail-muted">{task.assignee.name}</span>
+        <span className="min-w-0 truncate leading-4 text-mail-muted">{task.assignee.name}</span>
       )}
     </span>
   );
