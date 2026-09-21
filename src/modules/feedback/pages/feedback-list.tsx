@@ -20,7 +20,9 @@ export function FeedbackListPage() {
   const [composing, setComposing] = useState(false);
 
   return (
-    <>
+    /* The shell every other list page uses. Without it the board sat flush
+       against the page edges and the right-hand column's count was clipped. */
+    <div className="container-fluid py-7.5">
       <ListPageHeader
         title="Feedback"
         actions={[
@@ -47,12 +49,10 @@ export function FeedbackListPage() {
           onNotionUrlReady={() => undefined}
         />
       ) : (
-        <FeedbackBoardView
-          open
-          onAddFeedback={() => setComposing(true)}
-          onSelectFeedback={(item) => setSelectedId(item.id)}
-        />
+        /* No `onAddFeedback`: the page header already carries that action, and
+           two "new feedback" buttons on one screen is one too many. */
+        <FeedbackBoardView open onSelectFeedback={(item) => setSelectedId(item.id)} />
       )}
-    </>
+    </div>
   );
 }
