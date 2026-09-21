@@ -11,17 +11,7 @@ import type {
   FeedbackDetailContentBlock,
 } from '@/modules/feedback/schemas/feedback.schema';
 import { FileTypeIcon } from '@/modules/files/components/file-type-icon';
-import {
-  ArrowLeft,
-  CheckSquare2,
-  Clock3,
-  ExternalLink,
-  FileStack,
-  List,
-  MessageSquareText,
-  PanelTop,
-  Paperclip,
-} from 'lucide-react';
+import { ArrowLeft, CheckSquare2, ExternalLink, List, MessageSquareText } from 'lucide-react';
 
 interface FeedbackDetailViewProps {
   feedbackId: string | null;
@@ -249,90 +239,63 @@ export function FeedbackDetailView({
     return null;
   }
 
+  // Both timestamps are the same until someone edits the page in Notion, and
+  // printing an identical date twice under a title says nothing twice.
+  const created = feedback.createdAt ? formatDateTime(feedback.createdAt) : null;
+  const updated = feedback.updatedAt ? formatDateTime(feedback.updatedAt) : null;
+  const showUpdated = Boolean(updated && updated !== created);
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="-ms-2 gap-2 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Back
-        </Button>
-      </div>
+    <div className="max-w-3xl space-y-6">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onBack}
+        className="-ms-2 gap-2 text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Back
+      </Button>
 
-      <section className="rounded-xl border border-border/80 bg-card px-5 py-5 shadow-xs shadow-black/5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
-                <MessageSquareText className="size-4.5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="break-words text-xl font-semibold tracking-tight text-foreground">
-                  {feedback.title}
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              {feedback.createdAt && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 className="size-3.5" />
-                  Created {formatDateTime(feedback.createdAt)}
-                </span>
-              )}
-              {feedback.updatedAt && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 className="size-3.5" />
-                  Updated {formatDateTime(feedback.updatedAt)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border/80 bg-card px-5 py-5 shadow-xs shadow-black/5">
-        <div className="mb-4 flex items-center gap-3">
-          <PanelTop className="size-4 text-primary" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Details</h3>
-            <p className="text-xs text-muted-foreground">Feedback notes and context</p>
-          </div>
-        </div>
-
-        {feedback.content.length > 0 ? (
-          <div className="space-y-3 rounded-lg border border-border/70 bg-muted/10 px-4 py-4">
-            {feedback.content.map((block, index) => (
-              <FeedbackDetailBlockView key={block.id} block={block} index={index} />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border bg-muted/10 px-4 py-10 text-center">
-            <MessageSquareText className="mx-auto mb-3 size-8 text-muted-foreground/35" />
-            <p className="text-sm font-medium text-muted-foreground">No written details</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              This feedback was submitted without additional notes.
-            </p>
-          </div>
+      {/*
+        No card, no icon tile, no panel headings restating themselves —
+        "Details / Feedback notes and context" over a box inside a box was
+        three frames around one paragraph of prose. A page with one thing on it
+        does not need to announce what the thing is.
+      */}
+      <header className="min-w-0 space-y-1.5">
+        <h2 className="break-words text-xl font-semibold tracking-tight text-foreground">
+          {feedback.title}
+        </h2>
+        {created && (
+          <p className="text-xs text-muted-foreground">
+            {created}
+            {showUpdated && ` · edited ${updated}`}
+          </p>
         )}
-      </section>
+      </header>
 
-      <section className="rounded-xl border border-border/80 bg-card px-5 py-5 shadow-xs shadow-black/5">
-        <div className="mb-4 flex items-center gap-3">
-          <FileStack className="size-4 text-primary" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
-            <p className="text-xs text-muted-foreground">Files added with this feedback</p>
-          </div>
+      {feedback.content.length > 0 ? (
+        <div className="min-w-0 space-y-3">
+          {feedback.content.map((block, index) => (
+            <FeedbackDetailBlockView key={block.id} block={block} index={index} />
+          ))}
         </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No written details.</p>
+      )}
 
-        {feedback.attachments.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+      {/* Only when there are some. An empty state for files nobody attached is
+          a paragraph explaining that nothing happened. */}
+      {feedback.attachments.length > 0 && (
+        <section className="min-w-0 space-y-2">
+          <h3 className="text-[13px] font-semibold text-foreground">
+            {feedback.attachments.length === 1
+              ? '1 attachment'
+              : `${feedback.attachments.length} attachments`}
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2">
             {feedback.attachments.map((attachment) => (
               <AttachmentCard
                 key={`${attachment.url}-${attachment.name}`}
@@ -340,16 +303,8 @@ export function FeedbackDetailView({
               />
             ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border bg-muted/10 px-4 py-10 text-center">
-            <Paperclip className="mx-auto mb-3 size-8 text-muted-foreground/35" />
-            <p className="text-sm font-medium text-muted-foreground">No attachments</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              No files were added to this feedback.
-            </p>
-          </div>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }
