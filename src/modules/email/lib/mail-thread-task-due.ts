@@ -25,3 +25,23 @@ export function mailThreadTaskDueLabel(
   if (days === 1) return 'due tomorrow';
   return `due ${format(due, 'MMM d')}`;
 }
+
+/**
+ * Whether the due date has passed, for the row that has to colour it.
+ *
+ * Its own function rather than sniffing `mailThreadTaskDueLabel` for the word
+ * "overdue": the label is prose meant for a reader, and deciding a colour by
+ * matching against it would make every future wording change a silent styling
+ * bug. Counted the same way the label is, so the two cannot disagree.
+ */
+export function isMailThreadTaskOverdue(
+  dueAt: string | null | undefined,
+  now: Date = new Date()
+): boolean {
+  if (!dueAt) return false;
+
+  const due = new Date(dueAt);
+  if (Number.isNaN(due.getTime())) return false;
+
+  return differenceInCalendarDays(due, now) < 0;
+}

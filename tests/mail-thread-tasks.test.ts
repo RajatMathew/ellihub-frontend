@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { mailThreadTaskDueLabel } from '../src/modules/email/lib/mail-thread-task-due';
+import {
+  isMailThreadTaskOverdue,
+  mailThreadTaskDueLabel,
+} from '../src/modules/email/lib/mail-thread-task-due';
 import { toTaskListQuery } from '../src/modules/tasks/lib/task-list-query';
 
 /**
@@ -102,5 +105,34 @@ describe('when a thread’s task is due', () => {
     expect(mailThreadTaskDueLabel(undefined, now)).toBeNull();
     // Rendering "due Invalid Date" under a task is worse than saying nothing.
     expect(mailThreadTaskDueLabel('not a date', now)).toBeNull();
+  });
+});
+
+describe('whether a thread’s task is late', () => {
+  const now = new Date('2026-09-19T12:00:00.000Z');
+
+  test('a passed date is overdue, so the row can colour it', () => {
+    expect(isMailThreadTaskOverdue('2026-09-17T09:00:00.000Z', now)).toBe(true);
+  });
+
+  test('today is not overdue, however late in the day it is due', () => {
+    // Counted in calendar days, like the label — a task due at 5pm is not
+    // late at noon, and should not be red for the rest of the afternoon.
+    expect(isMailThreadTaskOverdue('2026-09-19T17:00:00.000Z', now)).toBe(false);
+  });
+
+  test('no date, and an unusable one, are never overdue', () => {
+    expect(isMailThreadTaskOverdue(null, now)).toBe(false);
+    expect(isMailThreadTaskOverdue(undefined, now)).toBe(false);
+    expect(isMailThreadTaskOverdue('not a date', now)).toBe(false);
+  });
+
+  test('agrees with the label it is drawn beside', () => {
+    // The two are computed separately; if they ever disagree the row says
+    // "overdue 2d" in the colour of something due next week.
+    const late = '2026-09-17T09:00:00.000Z';
+    expect(mailThreadTaskDueLabel(late, now)?.startsWith('overdue')).toBe(
+      isMailThreadTaskOverdue(late, now)
+    );
   });
 });

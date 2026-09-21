@@ -1,9 +1,13 @@
 import { SPRING_CHECK_STRIKE_LAG_MS, SpringCheck } from '@/app/components/ui/spring-check';
 import { cn } from '@/app/lib/utils';
-import { mailThreadTaskDueLabel } from '@/modules/email/lib/mail-thread-task-due';
+import {
+  isMailThreadTaskOverdue,
+  mailThreadTaskDueLabel,
+} from '@/modules/email/lib/mail-thread-task-due';
 import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
 import { orderThreadTasks } from '@/modules/tasks/lib/thread-task-order';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
+import { Clock } from 'lucide-react';
 
 /**
  * The tasks raised from the open thread.
@@ -17,6 +21,11 @@ import type { Task } from '@/modules/tasks/schemas/task.schema';
  * the reader go and find it on the board to do either is the long way round.
  * Everything else still belongs to the board — this shows what it says, how
  * urgent it is, who holds it and when it is due, and nothing more.
+ *
+ * The task reads before its metadata does: the title takes a line of its own
+ * at full width, and the priority, the clock and the due date sit under it as
+ * one quieter line. Priority used to lead the title, which put a two-character
+ * code where the eye lands and pushed the words that matter to the right.
  */
 export function MailThreadTasks({
   tasks,
@@ -39,7 +48,7 @@ export function MailThreadTasks({
   const ordered = orderThreadTasks(tasks);
 
   return (
-    <ul className="min-w-0 pb-1">
+    <ul className="min-w-0 space-y-0.5 pb-1">
       {ordered.map((task) => {
         const isDone = task.status === 'COMPLETED';
 
@@ -47,7 +56,7 @@ export function MailThreadTasks({
           <li key={task.id} className="min-w-0">
             <div
               className={cn(
-                'group/task flex min-w-0 items-start gap-2 rounded-md px-1 py-1.5',
+                'flex min-w-0 items-start gap-2.5 rounded-md px-1 py-1.5',
                 onEdit && 'cursor-pointer hover:bg-mail-chip',
                 'motion-safe:transition-colors motion-safe:duration-100'
               )}
@@ -64,40 +73,33 @@ export function MailThreadTasks({
                   }
                 : {})}
             >
-              <span className="mt-px">
-                <SpringCheck
-                  checked={isDone}
-                  disabled={!onToggleComplete || isUpdating}
-                  label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
-                  onChange={(next) => onToggleComplete?.(task, next)}
-                />
-              </span>
+              <SpringCheck
+                checked={isDone}
+                disabled={!onToggleComplete || isUpdating}
+                label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
+                onChange={(next) => onToggleComplete?.(task, next)}
+                className="mt-px"
+              />
 
               <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {/* No `onChange`, so the meter draws as a label rather than
-                      a control — changing priority is the edit dialog's job,
-                      and a menu here would fight the row's own click. */}
-                  <TaskPriorityMeter priority={task.priority} />
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate text-[12.5px] leading-snug',
-                      // The rule chases the tick rather than landing with it,
-                      // which is the whole of the Spring Check micro-interaction.
-                      'motion-safe:transition-[opacity,color] motion-safe:duration-200',
-                      isDone ? 'text-mail-mid line-through' : 'text-mail-ink'
-                    )}
-                    style={
-                      isDone
-                        ? { transitionDelay: `${SPRING_CHECK_STRIKE_LAG_MS}ms`, opacity: 0.62 }
-                        : undefined
-                    }
-                    title={task.title}
-                  >
-                    {task.title}
-                  </span>
+                <span
+                  className={cn(
+                    'block truncate text-[13px] leading-snug',
+                    // The rule chases the tick rather than landing with it,
+                    // which is the whole of the Spring Check micro-interaction.
+                    'motion-safe:transition-[opacity,color] motion-safe:duration-200',
+                    isDone ? 'text-mail-mid line-through' : 'text-mail-ink'
+                  )}
+                  style={
+                    isDone
+                      ? { transitionDelay: `${SPRING_CHECK_STRIKE_LAG_MS}ms`, opacity: 0.62 }
+                      : undefined
+                  }
+                  title={task.title}
+                >
+                  {task.title}
                 </span>
-                <MetaLine task={task} now={now} />
+                <MetaLine task={task} now={now} isDone={isDone} />
               </span>
             </div>
           </li>
@@ -107,15 +109,39 @@ export function MailThreadTasks({
   );
 }
 
-function MetaLine({ task, now }: { task: Task; now: Date }) {
-  // Only what is actually set, joined by a dot — an empty "· ·" under a task
-  // with neither an assignee nor a due date reads as something failing to load.
-  const parts = [task.assignee?.name, mailThreadTaskDueLabel(task.dueAt, now)].filter(Boolean);
+function MetaLine({ task, now, isDone }: { task: Task; now: Date; isDone: boolean }) {
+  const dueLabel = mailThreadTaskDueLabel(task.dueAt, now);
+  // A completed task is not late, whatever its date says — leaving it red
+  // reads as something still wanting attention.
+  const isOverdue = !isDone && isMailThreadTaskOverdue(task.dueAt, now);
 
-  if (parts.length === 0) return null;
   return (
-    <span className="block truncate ps-[22px] text-[11.5px] text-mail-muted">
-      {parts.join(' · ')}
+    /* `text-xs` on the row, matching the priority label the meter draws, so
+       every run on this line shares a font size and a line height. They did
+       not: the label is 12px/16px and the due date was 11.5px/17.25px, and
+       centring two boxes of different line heights leaves their baselines
+       apart — the priority read as sitting lower than the clock beside it. */
+    <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
+      {/* No `onChange`, so the meter draws as a label rather than a control —
+          changing priority is the edit dialog's job, and a menu here would
+          fight the row's own click. */}
+      <TaskPriorityMeter priority={task.priority} />
+
+      {dueLabel && (
+        <span
+          className={cn(
+            'inline-flex min-w-0 items-center gap-1 leading-4',
+            isOverdue ? 'text-destructive' : 'text-mail-muted'
+          )}
+        >
+          <Clock aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2} />
+          <span className="truncate">{dueLabel}</span>
+        </span>
+      )}
+
+      {task.assignee?.name && (
+        <span className="min-w-0 truncate leading-4 text-mail-muted">{task.assignee.name}</span>
+      )}
     </span>
   );
 }
