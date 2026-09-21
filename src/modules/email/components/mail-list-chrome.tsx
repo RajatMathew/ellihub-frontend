@@ -495,7 +495,10 @@ function MailFilterPills({
       ref={stripRef}
       data-fade={fade}
       className={cn(
-        'mail-pill-strip flex min-w-0 flex-nowrap gap-[7px] overflow-x-auto overflow-y-hidden px-4 pb-3',
+        // `-mt-1 pt-1` buys the focus ring somewhere to draw without moving the
+        // strip: overflow clips at the padding box, and with no top padding a
+        // focused pill had its ring sliced off along the top edge.
+        'mail-pill-strip -mt-1 flex min-w-0 flex-nowrap gap-[7px] overflow-x-auto overflow-y-hidden px-4 pb-3 pt-1',
         '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
       )}
     >
