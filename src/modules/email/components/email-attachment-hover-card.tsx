@@ -147,13 +147,29 @@ export function EmailAttachmentHoverCard({
         </button>
       </HoverCardTrigger>
 
+      {/*
+        Under the attachment, not beside it (elli-ui#1094).
+
+        `side="right"` opened the preview into the only part of the screen it
+        could not have: the Additional Details panel. Radix measures collisions
+        against the viewport, not against the reading pane, so it never saw the
+        panel at all — the card simply drew itself 157px over it, measured, and
+        won on z-index. And with no room below the trigger it slid upward to
+        stay on screen, which is how a preview ends up floating near the top of
+        the pane with the attachment it belongs to several screens away.
+
+        Opening downward puts it inside the message column, which is where the
+        width actually is, and `hideWhenDetached` retires it outright once the
+        chip has been scrolled out from under it rather than leaving it hovering
+        over nothing.
+      */}
       <HoverCardContent
-        side="right"
+        side="bottom"
         align="start"
         sideOffset={8}
         collisionPadding={16}
         avoidCollisions
-        sticky="partial"
+        hideWhenDetached
         className="w-96 max-w-[var(--radix-hover-card-content-available-width)] overflow-hidden p-0 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
       >
         <div className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-2.5">
@@ -272,6 +288,11 @@ function AttachmentHoverPreview({
       <iframe
         src={`${previewUrl}#toolbar=0&navpanes=0`}
         title={`Preview of ${displayName}`}
+        // Out of the tab order on purpose. A hover preview is a glance, not a
+        // destination, and a focusable PDF frame inside a floating card invites
+        // the browser to scroll whatever it is sitting over in order to reveal
+        // it.
+        tabIndex={-1}
         className="h-full w-full border-0 bg-background"
       />
     );

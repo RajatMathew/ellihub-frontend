@@ -49,6 +49,7 @@ interface EmailListPaneProps {
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
 
   /**
    * Bulk-selection wiring. When any callback is provided the list renders
@@ -94,6 +95,7 @@ export function EmailListPane({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   checkedIds,
   onToggleChecked,
   onToggleCheckedAll,
@@ -281,6 +283,7 @@ export function EmailListPane({
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}
+              onTogglePinEmail={onTogglePinEmail}
               checkedIds={checkedIds}
               onToggleChecked={onToggleChecked}
               bulkSelectActive={isBulkActive}

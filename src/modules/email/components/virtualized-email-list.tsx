@@ -18,6 +18,7 @@ interface VirtualizedEmailListProps {
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
   onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   bulkSelectActive?: boolean;
@@ -34,6 +35,7 @@ type EmailListRowProps = {
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
   onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
 };
 
@@ -62,6 +64,7 @@ const EmailListRow = memo(function EmailListRow({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   onToggleChecked,
 }: EmailListRowProps) {
   return (
@@ -74,6 +77,7 @@ const EmailListRow = memo(function EmailListRow({
       onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
       onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
       onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
+      onTogglePin={onTogglePinEmail ? () => onTogglePinEmail(email) : undefined}
       isChecked={isChecked}
       onCheckedChange={
         onToggleChecked ? (next, options) => onToggleChecked(email, next, options) : undefined
@@ -97,6 +101,7 @@ export function VirtualizedEmailList({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -113,6 +118,7 @@ export function VirtualizedEmailList({
         onArchiveEmail={onArchiveEmail}
         onDeleteEmail={onDeleteEmail}
         onToggleFlagEmail={onToggleFlagEmail}
+        onTogglePinEmail={onTogglePinEmail}
         checkedIds={checkedIds}
         onToggleChecked={onToggleChecked}
         bulkSelectActive={bulkSelectActive}
@@ -131,6 +137,7 @@ export function VirtualizedEmailList({
       onArchiveEmail={onArchiveEmail}
       onDeleteEmail={onDeleteEmail}
       onToggleFlagEmail={onToggleFlagEmail}
+      onTogglePinEmail={onTogglePinEmail}
       checkedIds={checkedIds}
       onToggleChecked={onToggleChecked}
       bulkSelectActive={bulkSelectActive}
@@ -148,6 +155,7 @@ function VirtualizedFlatEmailList({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -194,6 +202,7 @@ function VirtualizedFlatEmailList({
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}
+              onTogglePinEmail={onTogglePinEmail}
               onToggleChecked={onToggleChecked}
             />
           </div>
@@ -213,6 +222,7 @@ function VirtualizedMonthGroups({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -273,6 +283,7 @@ function VirtualizedMonthGroups({
               onArchiveEmail={onArchiveEmail}
               onDeleteEmail={onDeleteEmail}
               onToggleFlagEmail={onToggleFlagEmail}
+              onTogglePinEmail={onTogglePinEmail}
               checkedIds={checkedIds}
               onToggleChecked={onToggleChecked}
               bulkSelectActive={bulkSelectActive}
@@ -305,6 +316,7 @@ function MonthGroupSection({
   onArchiveEmail,
   onDeleteEmail,
   onToggleFlagEmail,
+  onTogglePinEmail,
   checkedIds,
   onToggleChecked,
   bulkSelectActive = false,
@@ -319,6 +331,7 @@ function MonthGroupSection({
   onArchiveEmail?: (email: EmailListItem) => void;
   onDeleteEmail?: (email: EmailListItem) => void;
   onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
   checkedIds?: Set<string>;
   onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
   bulkSelectActive?: boolean;
@@ -391,6 +404,7 @@ function MonthGroupSection({
                   onArchiveEmail={onArchiveEmail}
                   onDeleteEmail={onDeleteEmail}
                   onToggleFlagEmail={onToggleFlagEmail}
+                  onTogglePinEmail={onTogglePinEmail}
                   onToggleChecked={onToggleChecked}
                 />
               </div>

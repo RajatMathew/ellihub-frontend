@@ -82,6 +82,10 @@ export const emailKeys = {
     [...emailKeys.conversationRoot(accountId), threadId] as const,
   referenceProjects: (accountId?: string) =>
     [...emailKeys.all, 'reference-projects', accountId] as const,
+  pinnedThreadsRoot: (accountId?: string) =>
+    [...emailKeys.all, 'pinned-threads', accountId] as const,
+  pinnedThreads: (accountId?: string, folderId?: string | null) =>
+    [...emailKeys.pinnedThreadsRoot(accountId), folderId ?? null] as const,
 };
 
 export const useEmailConfigQuery = () =>
@@ -551,6 +555,10 @@ export const useSaveEmailThreadClassificationMutation = () => {
         // server would have returned makes the UI flicker — change the court on
         // an assigned thread and the assignee blinked out until the save landed.
         assignedTo: resolveOptimisticAssignee(queryClient, payload, messages),
+        // Carried for the same reason as the assignee: the classification save
+        // does not write the pin, so an optimistic value that omitted it would
+        // un-pin the thread on screen until the refetch landed.
+        pinnedAt: findCachedClassification(messages, payload.conversationKey)?.pinnedAt ?? null,
         references: normalizeClassificationReferences(payload.references),
       };
 
@@ -637,6 +645,111 @@ export const useSaveEmailThreadClassificationMutation = () => {
       void queryClient.invalidateQueries({
         queryKey: emailKeys.messagesRoot(payload.accountId),
         refetchType: isLastClassificationSave ? 'active' : 'none',
+      });
+    },
+  });
+};
+
+/**
+ * Every pinned thread in a mailbox folder (elli-ui#1034).
+ *
+ * Its own query rather than a slice of the folder page: the pinned group has
+ * to hold a thread that has fallen ten pages down, which is exactly the thread
+ * somebody bothered to pin.
+ */
+export const usePinnedEmailThreadsQuery = (
+  accountId?: string,
+  folderId?: string | null,
+  enabled = true
+) =>
+  useQuery<ConnectedEmailListItem[]>({
+    queryKey: emailKeys.pinnedThreads(accountId, folderId),
+    queryFn: () => emailApi.listPinnedThreads({ accountId: accountId!, folderId }),
+    enabled: Boolean(accountId) && enabled,
+    // Pins move only when somebody pins something, and this hook is the thing
+    // that invalidates it when they do.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+
+export interface SetEmailThreadPinnedPayload {
+  accountId: string;
+  conversationKey: string;
+  threadId?: string | null;
+  /** The folder whose pinned group is on screen, so it can be refetched. */
+  folderId?: string | null;
+  pinned: boolean;
+}
+
+/**
+ * Pin or unpin a thread.
+ *
+ * Optimistic on both the message pages and the single-message caches, so the
+ * pin on the row flips under the cursor rather than after a round trip — the
+ * same treatment the court and the assignee get. The pinned *group* is a
+ * separate query and is refetched rather than hand-patched: it is ordered by
+ * pin time on the server and rebuilding that order here would be a second
+ * implementation of it.
+ */
+export const useSetEmailThreadPinnedMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SetEmailThreadPinnedPayload) =>
+      emailApi.setThreadPinned({
+        accountId: payload.accountId,
+        conversationKey: payload.conversationKey,
+        threadId: payload.threadId,
+        pinned: payload.pinned,
+      }),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const current = findCachedClassification(messages, payload.conversationKey);
+      const optimistic: EmailThreadClassification = {
+        ...(current ?? {
+          id: null,
+          conversationKey: payload.conversationKey,
+          threadId: payload.threadId ?? null,
+          status: 'open',
+          assignedTo: null,
+          references: [],
+        }),
+        pinnedAt: payload.pinned ? new Date().toISOString() : null,
+      };
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (data) => applyClassificationToMessagePages(data, payload.conversationKey, optimistic)
+      );
+      queryClient.setQueriesData<ConnectedEmailListItem>(
+        { queryKey: emailKeys.messageRoot(payload.accountId) },
+        (message) =>
+          message?.conversationKey === payload.conversationKey
+            ? { ...message, classification: optimistic }
+            : message
+      );
+
+      return { messages };
+    },
+    onError: (error, _payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      toastApiError(error, 'Unable to pin this email.');
+    },
+    onSuccess: (classification, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (data) => applyClassificationToMessagePages(data, payload.conversationKey, classification)
+      );
+    },
+    onSettled: (_result, _error, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.pinnedThreadsRoot(payload.accountId),
       });
     },
   });

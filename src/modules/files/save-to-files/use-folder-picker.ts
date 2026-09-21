@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { FilesBreadcrumbEntry } from '@/modules/files/components/files-breadcrumbs';
 import { useFolderDetailQuery, useRootFolderQuery } from '@/modules/files/hooks/files.hooks';
+import { canUploadTo, splitFolderContents } from '@/modules/files/save-to-files/folder-contents';
 import {
   getRecentFoldersScope,
   pushRecentFolder,
@@ -20,11 +21,6 @@ export interface UseFolderPickerOptions {
   defaultFolderId?: string;
   /** Queries stay idle until the picker is actually open. */
   open: boolean;
-}
-
-/** Capabilities come from the API; a missing flag means "not restricted". */
-function canUploadTo(folder: Pick<FileItem, 'capabilities'> | undefined): boolean {
-  return folder?.capabilities?.upload !== false;
 }
 
 function canCreateFolderIn(folder: Pick<FileItem, 'capabilities'> | undefined): boolean {
@@ -72,24 +68,15 @@ export function useFolderPicker({
   const folderQuery = useFolderDetailQuery(currentFolderId, open);
   const folderDetail = folderQuery.data;
 
-  const subFolders = useMemo(
-    () => (folderDetail?.children ?? []).filter((child) => child.type === 'FOLDER'),
-    [folderDetail?.children]
+  /**
+   * Folders, restricted folders and files, from one pass over the children
+   * (elli-ui#1066). The split is a pure function so the rules — what counts as
+   * restricted, what the filter narrows — are testable without a renderer.
+   */
+  const { folders, restrictedFolders, files } = useMemo(
+    () => splitFolderContents(folderDetail?.children, filter),
+    [filter, folderDetail?.children]
   );
-
-  const { folders, restrictedFolders } = useMemo(() => {
-    const normalizedFilter = filter.trim().toLowerCase();
-    const matches = normalizedFilter
-      ? subFolders.filter((folder) =>
-          (folder.displayName || folder.name || '').toLowerCase().includes(normalizedFilter)
-        )
-      : subFolders;
-
-    return {
-      folders: matches.filter(canUploadTo),
-      restrictedFolders: matches.filter((folder) => !canUploadTo(folder)),
-    };
-  }, [filter, subFolders]);
 
   const breadcrumbs = useMemo(
     () => getScopedBreadcrumbs(folderDetail?.breadcrumbs, resolvedRootId),
@@ -130,6 +117,7 @@ export function useFolderPicker({
     rootLabel,
     folderDetail,
     folders,
+    files,
     restrictedFolders,
     breadcrumbs,
     filter,

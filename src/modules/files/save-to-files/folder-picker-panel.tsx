@@ -4,7 +4,10 @@ import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { cn } from '@/app/lib/utils';
 import { FilesBreadcrumbs } from '@/modules/files/components/files-breadcrumbs';
-import { FolderPickerRow } from '@/modules/files/save-to-files/folder-picker-row';
+import {
+  FolderPickerFileRow,
+  FolderPickerRow,
+} from '@/modules/files/save-to-files/folder-picker-row';
 import { NewFolderInlineForm } from '@/modules/files/save-to-files/new-folder-inline-form';
 import type { FolderPicker } from '@/modules/files/save-to-files/use-folder-picker';
 import { ChevronLeft, EyeOff, FolderOpen, Home, Lock, Search } from 'lucide-react';
@@ -39,6 +42,7 @@ export function FolderPickerPanel({
     canCreateFolderHere,
     currentFolderId,
     currentFolderName,
+    files,
     filter,
     folders,
     isAtRoot,
@@ -56,6 +60,7 @@ export function FolderPickerPanel({
   } = picker;
 
   const hasAnyFolder = folders.length > 0 || restrictedFolders.length > 0;
+  const hasAnything = hasAnyFolder || files.length > 0;
   const isFiltering = filter.trim().length > 0;
 
   return (
@@ -94,7 +99,7 @@ export function FolderPickerPanel({
           />
         )}
 
-        {hasAnyFolder && (
+        {hasAnything && (
           <div className="relative w-40 shrink-0">
             <Search
               className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -103,7 +108,7 @@ export function FolderPickerPanel({
             <Input
               value={filter}
               placeholder="Filter"
-              aria-label={`Filter folders in ${currentFolderName}`}
+              aria-label={`Filter ${currentFolderName}`}
               className="h-8 border-transparent bg-muted/50 ps-8 text-sm focus-visible:border-input focus-visible:bg-background"
               onChange={(event) => setFilter(event.target.value)}
             />
@@ -147,12 +152,24 @@ export function FolderPickerPanel({
               <FolderPickerRow key={folder.id} folder={folder} onOpen={(f) => navigateTo(f.id)} />
             ))}
 
-            {folders.length === 0 && (
+            {folders.length === 0 && files.length === 0 && (
               <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                {isFiltering
-                  ? 'No folders match that name.'
-                  : `No subfolders in ${currentFolderName}.`}
+                {isFiltering ? 'Nothing here matches that name.' : `${currentFolderName} is empty.`}
               </p>
+            )}
+
+            {/*
+              What is already filed here (elli-ui#1066). Below the folders and
+              visibly inert — the picker picks a folder, and these are here so
+              you can see you are about to save a second copy of something, or
+              that the folder you are about to commit to is the wrong one.
+            */}
+            {files.length > 0 && (
+              <div className={cn(folders.length > 0 && 'mt-1 border-t pt-1')}>
+                {files.map((file) => (
+                  <FolderPickerFileRow key={file.id} file={file} />
+                ))}
+              </div>
             )}
 
             {restrictedFolders.length > 0 && (

@@ -48,11 +48,13 @@ import {
   useMoveEmailMessageMutation,
   useOpenEmailDraftMutation,
   usePermanentlyDeleteEmailMessageMutation,
+  usePinnedEmailThreadsQuery,
   useRefreshEmailMessagesMutation,
   useReplyConnectedEmailMutation,
   useRespondToEmailMeetingMutation,
   useSaveEmailDraftMutation,
   useSendEmailDraftMutation,
+  useSetEmailThreadPinnedMutation,
   useStartEmailAuthMutation,
   useToggleEmailFlagMutation,
   useUnarchiveEmailMessageMutation,
@@ -253,6 +255,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const respondToMeetingMutation = useRespondToEmailMeetingMutation();
   const updateMeetingMutation = useUpdateEmailMeetingMutation();
   const cancelMeetingMutation = useCancelEmailMeetingMutation();
+  const setThreadPinnedMutation = useSetEmailThreadPinnedMutation();
   const loadedEmailPages = useMemo(
     () => messagesQuery.data?.pages ?? [],
     [messagesQuery.data?.pages]
@@ -332,22 +335,77 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     mailStatusFilter,
     selectedCategoryTagId,
   ]);
+  /**
+   * Pinned threads, lifted to the top of this folder (elli-ui#1034).
+   *
+   * Only on the plain folder view. A pin says "keep this visible", not
+   * "exempt this from every filter" — surfacing a pinned thread while the
+   * reader is looking at Unread, or at one project, or at search results,
+   * would put a row in front of them that does not answer the question they
+   * asked. So the moment anything narrows the list, pins behave like any
+   * other conversation and appear only if they match.
+   */
+  const isPlainFolderView =
+    mailFilter === 'all' &&
+    mailStatusFilter === 'all' &&
+    !selectedProjectId &&
+    messageSearch.trim().length === 0;
+  const pinnedThreadsQuery = usePinnedEmailThreadsQuery(
+    connectedAccount?.id,
+    selectedConnectedFolder?.id ?? null,
+    canLoadConnectedMailbox && isPlainFolderView
+  );
+  const emailsWithPinned = useMemo(() => {
+    if (!isPlainFolderView) return folderEmails;
+
+    // Same shape the folder page gets, built the same way.
+    const pinned: EmailListItem[] = (pinnedThreadsQuery.data ?? []).map((email) => ({
+      ...email,
+      mailbox: connectedAccount?.id ?? 'connected',
+      folder: email.folderId ?? selectedFolder,
+      latestMessageId: email.id,
+    }));
+    if (pinned.length === 0) return folderEmails;
+
+    // The page the list already holds is the fresher copy of any thread that
+    // is in both, so it wins; the pinned query only contributes the threads
+    // that have fallen off it. Keyed on the conversation, not the message id:
+    // a thread that has been replied to since the pin is a different newest
+    // message but the same row.
+    const seen = new Set<string>();
+    const merged: EmailListItem[] = [];
+    for (const email of [...folderEmails, ...pinned]) {
+      const key = email.conversationKey ?? email.threadId ?? email.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(email);
+    }
+
+    return merged;
+  }, [
+    connectedAccount?.id,
+    folderEmails,
+    isPlainFolderView,
+    pinnedThreadsQuery.data,
+    selectedFolder,
+  ]);
   // The list pane renders emails grouped by month (Today/This week/…), which can
   // reorder them relative to the raw query order — server search results arrive in
   // relevance order. Prev/next navigation must walk the list in the order the user
   // actually sees, so flatten the same grouping the list pane renders.
   const orderedEmails = useMemo(
-    () => groupEmailsByMonth(folderEmails).flatMap((group) => group.emails),
-    [folderEmails]
+    () => groupEmailsByMonth(emailsWithPinned).flatMap((group) => group.emails),
+    [emailsWithPinned]
   );
   // Opening a folder with no conversation id in the URL should land on the
   // list, not silently auto-open whatever happens to sort first — only an
   // explicit selection (route deep link, or a row the caller marked
   // `selected`) should populate the reading pane.
-  const defaultEmail = folderEmails.find((email) => email.selected) ?? null;
+  const defaultEmail = emailsWithPinned.find((email) => email.selected) ?? null;
   // The URL id is a conversation id, so a deep link matches its list row directly.
   const routeSelectedEmail = routeConversationId
-    ? (folderEmails.find((email) => getEmailConversationId(email) === routeConversationId) ?? null)
+    ? (emailsWithPinned.find((email) => getEmailConversationId(email) === routeConversationId) ??
+      null)
     : null;
   // Deep link to a mail that isn't in the loaded list (older page, other folder,
   // cold cache): resolve it via the message endpoint, which accepts cache ids,
@@ -1049,7 +1107,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
         setMobilePane('reading');
         return;
       }
-      const row = folderEmails.find((email) => email.id === messageId);
+      const row = emailsWithPinned.find((email) => email.id === messageId);
       const cachedMessageId = row?.latestMessageId ?? messageId;
       const cachedMessage = queryClient.getQueryData<ConnectedEmailListItem>(
         emailKeys.message(connectedAccount.id, cachedMessageId)
@@ -1072,7 +1130,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     },
     [
       connectedAccount,
-      folderEmails,
+      emailsWithPinned,
       hydrateDraftFromServer,
       isComposeDraftOpenFor,
       openComposePendingDraft,
@@ -1088,7 +1146,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const selectEmail = useCallback(
     (emailId: string, options?: { replace?: boolean }) => {
       if (!accountSlug) return;
-      const email = folderEmails.find((item) => item.id === emailId);
+      const email = emailsWithPinned.find((item) => item.id === emailId);
       const targetConversationId = email ? getEmailConversationId(email) : emailId;
       // Re-clicking the open conversation must not push duplicate history entries.
       if (targetConversationId !== routeConversationId) {
@@ -1099,7 +1157,14 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       }
       setMobilePane('reading');
     },
-    [accountSlug, buildMailboxSearch, folderEmails, navigate, routeConversationId, selectedFolder]
+    [
+      accountSlug,
+      buildMailboxSearch,
+      emailsWithPinned,
+      navigate,
+      routeConversationId,
+      selectedFolder,
+    ]
   );
 
   /**
@@ -1158,6 +1223,22 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       });
     },
     [connectedAccount, toggleFlagMutation]
+  );
+
+  const handleTogglePinEmail = useCallback(
+    (email: EmailListItem) => {
+      if (!connectedAccount) return;
+      const conversationKey = email.conversationKey ?? email.threadId;
+      if (!conversationKey) return;
+
+      setThreadPinnedMutation.mutate({
+        accountId: connectedAccount.id,
+        conversationKey,
+        threadId: email.threadId ?? null,
+        pinned: !email.classification?.pinnedAt,
+      });
+    },
+    [connectedAccount, setThreadPinnedMutation]
   );
 
   useEffect(() => {
@@ -1538,7 +1619,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   mailbox={connectedAccount?.id ?? 'connected'}
                   folder={selectedFolder}
                   folderLabel={selectedFolderLabel}
-                  emails={folderEmails}
+                  emails={emailsWithPinned}
                   isLoading={isMailboxLoading}
                   isError={isMailboxError}
                   selectedEmailId={selectedEmailId}
@@ -1569,16 +1650,18 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     connectedAccount && !isDeletedFolder ? handleDeleteEmail : undefined
                   }
                   onToggleFlagEmail={connectedAccount ? handleToggleFlagEmail : undefined}
+                  onTogglePinEmail={connectedAccount ? handleTogglePinEmail : undefined}
                   checkedIds={checkedMessageIds}
                   onToggleChecked={connectedAccount ? toggleChecked : undefined}
                   onToggleCheckedAll={
                     connectedAccount
                       ? () => {
                           const allChecked =
-                            folderEmails.length > 0 &&
-                            folderEmails.every((email) => checkedMessageIds.has(email.id));
+                            emailsWithPinned.length > 0 &&
+                            emailsWithPinned.every((email) => checkedMessageIds.has(email.id));
                           setCheckedMessageIds(
-                            () => new Set(allChecked ? [] : folderEmails.map((email) => email.id))
+                            () =>
+                              new Set(allChecked ? [] : emailsWithPinned.map((email) => email.id))
                           );
                         }
                       : undefined

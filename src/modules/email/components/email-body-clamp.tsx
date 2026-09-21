@@ -71,16 +71,25 @@ export function EmailBodyClamp({ children }: { children: ReactNode }) {
   return (
     <div className="relative">
       {/*
-        Expanded, the same control sits at both ends of the body.
-        `position: sticky` is not available here — the message `<article>` is
-        `overflow-hidden` for its rounded corners, which makes it the nearest
-        scrolling box and pins a sticky child to a box that never scrolls. And
-        one copy at the end is no good on its own: a long message runs several
-        screens once opened, so folding it again would mean scrolling past
-        everything you just chose to skip. The copy above the body is the one
-        that is reachable from the button you pressed.
+        Expanded, the control follows you down the message (elli-ui#1093).
+
+        It used to be a plain row above the body, so "Show less" scrolled away
+        with the first screen and folding a message back up meant scrolling
+        past all of it to reach the copy at the end. `sticky` keeps it at the
+        top of whatever part of this message you are looking at, and stops at
+        the message's own bottom edge — it never floats over the next one.
+
+        This is why the message `<article>` is `overflow-clip` rather than
+        `overflow-hidden`: both clip to the rounded corners, but `hidden`
+        makes the article a scroll container, and a sticky child then pins
+        itself to a box that never scrolls, which looks exactly like
+        `position: static`.
       */}
-      {expanded && overflows && <div className="flex justify-center pb-3">{toggle}</div>}
+      {expanded && overflows && (
+        <div className="pointer-events-none sticky top-2 z-10 flex justify-center pb-3">
+          {toggle}
+        </div>
+      )}
 
       <div
         className={cn(clamped && 'overflow-hidden')}
@@ -104,13 +113,15 @@ export function EmailBodyClamp({ children }: { children: ReactNode }) {
         />
       )}
 
-      {overflows && (
-        <div
-          className={cn(
-            'pointer-events-none flex justify-center',
-            clamped ? 'absolute inset-x-0 bottom-3' : 'pt-3'
-          )}
-        >
+      {/*
+        Folded, the control sits over the fold at the end of the visible part —
+        which is where the eye already is when it runs out of text.
+        Expanded, there is no copy here: the sticky one above is on screen the
+        whole way down, and two "Show less" buttons visible at once is one of
+        them asking to be ignored.
+      */}
+      {clamped && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           {toggle}
         </div>
       )}
