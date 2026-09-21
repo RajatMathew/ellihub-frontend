@@ -175,6 +175,8 @@ const emailThreadClassificationSchema = z.object({
   conversationKey: z.string(),
   threadId: z.string().nullable().optional(),
   status: z.enum(['open', 'open_our_court', 'open_their_court', 'closed']),
+  /** When the thread was pinned to the top of the mailbox, or null. */
+  pinnedAt: z.string().nullable().optional(),
   assignedTo: emailThreadAssigneeSchema.nullable().optional(),
   references: z.array(emailThreadReferenceSchema),
 });
@@ -537,6 +539,41 @@ export const emailApi = {
   async listReferenceProjects(accountId: string): Promise<EmailReferenceProject[]> {
     const res = await api.get(`${BASE}/accounts/${accountId}/reference-projects`);
     return z.array(emailReferenceProjectSchema).parse(unwrapData(res.data));
+  },
+
+  /**
+   * Pin or unpin one thread (elli-ui#1034).
+   *
+   * Its own endpoint, not a field on the classification save: that one writes
+   * the status, the assignee and the whole reference list together, so a pin
+   * routed through it would rewrite everything else filed against the thread.
+   */
+  async setThreadPinned(payload: {
+    accountId: string;
+    conversationKey: string;
+    threadId?: string | null;
+    pinned: boolean;
+  }): Promise<EmailThreadClassification> {
+    const { accountId, ...pin } = payload;
+    const res = await api.put(`${BASE}/accounts/${accountId}/thread-pin`, pin);
+    return emailThreadClassificationSchema.parse(unwrapData(res.data));
+  },
+
+  /**
+   * Every pinned thread in a mailbox, newest pin first.
+   *
+   * Separate from the folder page on purpose: a pin means "keep this where I
+   * can see it", and the thread most worth pinning is the one that has already
+   * fallen several pages down.
+   */
+  async listPinnedThreads(params: {
+    accountId: string;
+    folderId?: string | null;
+  }): Promise<ConnectedEmailListItem[]> {
+    const res = await api.get(`${BASE}/accounts/${params.accountId}/pinned-threads`, {
+      params: { folderId: params.folderId || undefined },
+    });
+    return z.array(emailListItemSchema).parse(unwrapData(res.data));
   },
 
   async saveThreadClassification(

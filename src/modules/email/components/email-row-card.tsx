@@ -19,7 +19,7 @@ import {
 import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
 import { emailRowQuickActionReserve } from '@/modules/email/lib/email-row-quick-actions';
 import { emailRowSurfaceClasses } from '@/modules/email/lib/email-row-surface';
-import { Archive, Flag, Paperclip, Trash2 } from 'lucide-react';
+import { Archive, Flag, Paperclip, Pin, PinOff, Trash2 } from 'lucide-react';
 
 export type EmailListItem = {
   id: string;
@@ -148,6 +148,8 @@ interface EmailRowCardProps {
   onArchive?: () => void;
   onDelete?: () => void;
   onToggleFlag?: () => void;
+  /** Omit where pinning does not apply (search results, the pinned group's own rows still pass it). */
+  onTogglePin?: () => void;
   /**
    * Bulk-selection state (separate from `selected`, which tracks the row
    * currently open in the reading pane). `range` is true when the user held
@@ -182,6 +184,7 @@ export function EmailRowCard({
   onArchive,
   onDelete,
   onToggleFlag,
+  onTogglePin,
   isChecked = false,
   onCheckedChange,
   bulkSelectActive = false,
@@ -196,7 +199,8 @@ export function EmailRowCard({
   const isOtherClassified = (email.classification?.references ?? []).some(
     (reference) => reference.type === 'other'
   );
-  const hasQuickActions = Boolean(onArchive || onDelete || onToggleFlag);
+  const isPinned = Boolean(email.classification?.pinnedAt);
+  const hasQuickActions = Boolean(onArchive || onDelete || onToggleFlag || onTogglePin);
   const threadState = email.classification?.status ?? 'open';
   const projectReferences = (email.classification?.references ?? []).filter(
     (reference) => reference.type === 'project'
@@ -219,6 +223,7 @@ export function EmailRowCard({
   const hasFooter = Boolean(
     email.attachmentCount ||
     email.flagged ||
+    isPinned ||
     isOtherClassified ||
     primaryProject ||
     email.classification?.assignedTo ||
@@ -442,6 +447,20 @@ export function EmailRowCard({
                   strokeWidth={1.8}
                 />
               )}
+              {/*
+                The pushpin, tilted and filled, the way every mail client
+                draws a pinned item — that tilt is what makes it read as a pin
+                rather than as a map marker at 12px (elli-ui#1034). The glyph
+                is the convention; the colour is ours, the same accent the rest
+                of the mailbox uses, not Outlook's blue.
+              */}
+              {isPinned && (
+                <Pin
+                  aria-label="Pinned"
+                  className="size-3 shrink-0 -rotate-45 fill-mail-accent text-mail-accent"
+                  strokeWidth={1.8}
+                />
+              )}
               {Boolean(email.attachmentCount) && (
                 <span
                   className={cn(
@@ -507,6 +526,20 @@ export function EmailRowCard({
                 aria-hidden="true"
                 className={cn('size-3.5', email.flagged && 'fill-destructive text-destructive')}
               />
+            </QuickAction>
+          )}
+          {onTogglePin && (
+            <QuickAction
+              label={isPinned ? `Unpin ${email.subject}` : `Pin ${email.subject}`}
+              title={isPinned ? 'Unpin' : 'Pin to top'}
+              pressed={isPinned}
+              onActivate={onTogglePin}
+            >
+              {isPinned ? (
+                <PinOff aria-hidden="true" className="size-3.5 -rotate-45" />
+              ) : (
+                <Pin aria-hidden="true" className="size-3.5 -rotate-45" />
+              )}
             </QuickAction>
           )}
           {onArchive && (

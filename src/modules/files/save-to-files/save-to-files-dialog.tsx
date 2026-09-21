@@ -81,7 +81,13 @@ export function SaveToFilesDialog({
 }: SaveToFilesDialogProps) {
   const sources = useMemo(() => toSaveSourceList(source), [source]);
   const single = sources.length === 1 ? sources[0] : null;
-  const [name, setName] = useState(() => (single ? getSourceDefaultName(single) : ''));
+  /**
+   * One editable name per file, positionally (elli-ui#1063). A single file
+   * could always be renamed on the way in; a selection of five could not, so
+   * saving five attachments meant filing them under `image003.png` and then
+   * renaming them one at a time in Files afterwards.
+   */
+  const [names, setNames] = useState<string[]>(() => sources.map(getSourceDefaultName));
 
   const picker = useFolderPicker({ rootFolderId, rootLabel, defaultFolderId, open });
   const { save, isSaving } = useSaveToFiles({
@@ -91,33 +97,74 @@ export function SaveToFilesDialog({
     enableExistingTransfer,
   });
 
+  /**
+   * Reset on a signature, not on `sources`.
+   *
+   * Callers pass their source inline (`source={{ kind: 'lazy', ... }}`), so the
+   * memo above hands back a new array on every render. An effect depending on
+   * it would call `setNames` with a fresh array each time, which is never
+   * `Object.is`-equal to the last one, and the dialog would re-render forever.
+   * The signature only changes when the files actually change.
+   */
+  const defaultNames = useMemo(() => sources.map(getSourceDefaultName), [sources]);
+  const namesSignature = defaultNames.join('\u0000');
+
   useEffect(() => {
-    if (open) setName(single ? getSourceDefaultName(single) : '');
-  }, [open, single]);
+    if (open) setNames(namesSignature.length > 0 ? namesSignature.split('\u0000') : []);
+  }, [namesSignature, open]);
 
-  const nameError = name.length > 0 ? getUploadNameError(name) : null;
+  const setNameAt = (index: number, value: string) =>
+    setNames((current) => current.map((entry, position) => (position === index ? value : entry)));
 
-  const duplicateName = useMemo(() => {
-    const target = name.trim().toLowerCase();
-    if (!target) return false;
+  /** Per file, so the message names the one that is wrong. */
+  const nameErrors = useMemo(
+    () => names.map((entry) => (entry.length > 0 ? getUploadNameError(entry) : null)),
+    [names]
+  );
 
-    return (picker.folderDetail?.children ?? []).some(
-      (child) =>
-        child.type === 'FILE' && (child.displayName || child.name || '').toLowerCase() === target
-    );
-  }, [name, picker.folderDetail?.children]);
+  const existingFileNames = useMemo(
+    () =>
+      new Set(
+        (picker.folderDetail?.children ?? [])
+          .filter((child) => child.type === 'FILE')
+          .map((child) => (child.displayName || child.name || '').toLowerCase())
+      ),
+    [picker.folderDetail?.children]
+  );
 
-  // A multi-selection has no name to validate — each file keeps its own.
+  const duplicateNames = useMemo(
+    () => names.map((entry) => existingFileNames.has(entry.trim().toLowerCase())),
+    [existingFileNames, names]
+  );
+
+  const firstProblem = useMemo(() => {
+    const errorIndex = nameErrors.findIndex((entry) => entry !== null);
+    if (errorIndex >= 0) {
+      return { tone: 'error' as const, message: nameErrors[errorIndex]! };
+    }
+
+    const duplicateIndex = duplicateNames.findIndex(Boolean);
+    if (duplicateIndex >= 0) {
+      return {
+        tone: 'warning' as const,
+        message: `A file called “${names[duplicateIndex]?.trim()}” is already in ${picker.currentFolderName}.`,
+      };
+    }
+
+    return null;
+  }, [duplicateNames, nameErrors, names, picker.currentFolderName]);
+
   const canSave =
     !!picker.currentFolderId &&
     picker.canSaveHere &&
     !isSaving &&
-    (!single || (!!name.trim() && !nameError));
+    names.every((entry) => entry.trim().length > 0) &&
+    nameErrors.every((entry) => entry === null);
 
   const handleSave = async () => {
     if (!canSave || !picker.currentFolderId) return;
 
-    const outcome = await save({ parentId: picker.currentFolderId, name });
+    const outcome = await save({ parentId: picker.currentFolderId, names });
     if (!outcome) return;
 
     picker.rememberCurrentFolder();
@@ -138,41 +185,38 @@ export function SaveToFilesDialog({
           <ResponsiveDialogDescription>
             {single
               ? 'Rename it if you like, then choose where it goes.'
-              : 'They all go to the one folder you choose.'}
+              : 'Rename any of them if you like. They all go to the one folder you choose.'}
           </ResponsiveDialogDescription>
         </ResponsiveDialogHeader>
 
         <ResponsiveDialogBody className="flex flex-col gap-4">
-          {single ? (
-            <SaveFileRow
-              fileName={getSourceFileName(single)}
-              mimeType={getSourceMimeType(single)}
-              sizeBytes={getSourceSizeBytes(single)}
-              extension={getSourceExtension(single)}
-              name={name}
-              disabled={isSaving}
-              invalid={!!nameError}
-              onNameChange={setName}
-            />
-          ) : (
-            /* Every file named, scrolling past four. A bare "5 files" is the
-               one thing you cannot check before committing to a folder. */
-            <div className="max-h-40 overflow-y-auto">
-              {sources.map((item, index) => (
-                <SaveFileRow
-                  key={`${getSourceFileName(item)}-${index}`}
-                  fileName={getSourceFileName(item)}
-                  mimeType={getSourceMimeType(item)}
-                  sizeBytes={getSourceSizeBytes(item)}
-                />
-              ))}
-            </div>
-          )}
+          {/* Every file named and every name editable, scrolling past four.
+              A bare "5 files" is the one thing you cannot check before
+              committing to a folder. */}
+          <div className={cn(!single && 'max-h-44 overflow-y-auto')}>
+            {sources.map((item, index) => (
+              <SaveFileRow
+                key={`${getSourceFileName(item)}-${index}`}
+                fileName={getSourceFileName(item)}
+                mimeType={getSourceMimeType(item)}
+                sizeBytes={getSourceSizeBytes(item)}
+                extension={getSourceExtension(item)}
+                name={names[index] ?? ''}
+                disabled={isSaving}
+                invalid={!!nameErrors[index]}
+                onNameChange={(value) => setNameAt(index, value)}
+              />
+            ))}
+          </div>
 
-          {(nameError || duplicateName) && (
-            <p className={cn('-mt-2 text-xs', nameError ? 'text-destructive' : 'text-warning')}>
-              {nameError ??
-                `A file called “${name.trim()}” is already in ${picker.currentFolderName}.`}
+          {firstProblem && (
+            <p
+              className={cn(
+                '-mt-2 text-xs',
+                firstProblem.tone === 'error' ? 'text-destructive' : 'text-warning'
+              )}
+            >
+              {firstProblem.message}
             </p>
           )}
 

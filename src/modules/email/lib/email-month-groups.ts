@@ -24,6 +24,7 @@ type MutableEmailMonthGroup = EmailMonthGroup & {
 };
 
 const UNKNOWN_MONTH_KEY = 'unknown-date';
+export const PINNED_GROUP_KEY = 'pinned';
 const RELATIVE_GROUP_PRIORITIES = {
   today: 5,
   thisWeek: 4,
@@ -34,10 +35,30 @@ const RELATIVE_GROUP_PRIORITIES = {
   unknown: -1,
 } as const;
 
+/**
+ * Is this conversation pinned to the top of the mailbox (elli-ui#1034)?
+ *
+ * Read off the classification the row already carries rather than passed in
+ * separately, so a row and its group can never disagree about the pin.
+ */
+export function isPinnedEmail(email: EmailListItem): boolean {
+  return Boolean(email.classification?.pinnedAt);
+}
+
+/**
+ * The list, grouped.
+ *
+ * Pinned conversations are lifted out of their date group into one "Pinned"
+ * group at the top, in the order they were given — the API returns them newest
+ * pin first — and are not repeated below. A pinned thread staying in "March
+ * 2026" as well would mean the same conversation twice in one list, with two
+ * checkboxes and two selected states.
+ */
 export function groupEmailsByMonth(
   emails: EmailListItem[],
   now: Date = new Date()
 ): EmailMonthGroup[] {
+  const pinned: EmailListItem[] = [];
   const currentDay = startOfDay(now);
   const currentWeek = startOfWeek(now, { weekStartsOn: 1 });
   const previousWeek = subWeeks(currentWeek, 1);
@@ -46,6 +67,11 @@ export function groupEmailsByMonth(
   const groups = new Map<string, MutableEmailMonthGroup>();
 
   for (const email of emails) {
+    if (isPinnedEmail(email)) {
+      pinned.push(email);
+      continue;
+    }
+
     const receivedAt = parseISO(email.receivedAt);
     const descriptor = getDateGroupDescriptor(
       isValid(receivedAt) ? receivedAt : null,
@@ -71,9 +97,13 @@ export function groupEmailsByMonth(
     });
   }
 
-  return Array.from(groups.values())
+  const dated = Array.from(groups.values())
     .sort((first, second) => second.priority - first.priority || second.sortValue - first.sortValue)
     .map(({ priority: _priority, sortValue: _sortValue, ...group }) => group);
+
+  if (pinned.length === 0) return dated;
+
+  return [{ key: PINNED_GROUP_KEY, label: 'Pinned', emails: pinned }, ...dated];
 }
 
 function getDateGroupDescriptor(

@@ -11,6 +11,7 @@ import {
   getUploadFileValidationError,
   getUploadNameError,
 } from '@/modules/files/lib/file-upload-policy';
+import { resolveSaveNames } from '@/modules/files/save-to-files/save-names';
 import {
   getSourceDefaultName,
   getSourceFileName,
@@ -37,11 +38,16 @@ export interface UseSaveToFilesOptions {
 export interface SaveToFilesInput {
   parentId: string;
   /**
-   * Only meaningful for a single file. A multi-selection keeps each file's own
-   * name — there is one name field in the dialog and it cannot rename five
-   * things at once.
+   * One display name per source, positionally. Every file in a selection is
+   * renameable, not just a lone one (elli-ui#1063): attachments arrive named
+   * `image003.png` and `Scan_2026_09_18.pdf`, and a bulk save that could only
+   * take them as they came meant filing five files and then renaming five
+   * files.
+   *
+   * A blank entry falls back to the source's own default name, so a caller
+   * that does not offer renaming can pass `[]`.
    */
-  name: string;
+  names: string[];
 }
 
 /** `queued` hands off to the upload tray; `saved` completed server-side. */
@@ -62,7 +68,7 @@ export function useSaveToFiles({
   const [isPreparing, setIsPreparing] = useState(false);
 
   const saveServerSide = useCallback(
-    async ({ parentId, name }: SaveToFilesInput): Promise<FileItem> => {
+    async ({ parentId, name }: { parentId: string; name: string }): Promise<FileItem> => {
       const source = sources[0]!;
       if (source.kind === 'externalUrl') {
         if (!enableExternalUrl) {
@@ -100,20 +106,24 @@ export function useSaveToFiles({
    * multi-selection, so the guard is an assertion rather than a branch.
    */
   const saveMany = useCallback(
-    async (parentId: string): Promise<SaveToFilesOutcome | null> => {
+    async (parentId: string, names: string[]): Promise<SaveToFilesOutcome | null> => {
       if (sources.some(isServerSideSource)) {
         toast.error('These files cannot be saved together.');
         return null;
       }
 
+      const resolvedNames = resolveSaveNames(sources.map(getSourceDefaultName), names);
       const resolved = await Promise.all(
-        sources.map(async (item) => ({ item, file: await resolveSaveSourceFile(item) }))
+        sources.map(async (item, index) => ({
+          item,
+          name: resolvedNames[index]!,
+          file: await resolveSaveSourceFile(item),
+        }))
       );
 
-      for (const { item, file } of resolved) {
+      for (const { item, name, file } of resolved) {
         const error =
-          getUploadFileValidationError(file) ??
-          getUploadDisplayNameValidationError(getSourceDefaultName(item), file);
+          getUploadFileValidationError(file) ?? getUploadDisplayNameValidationError(name, file);
         if (error) {
           toast.error(`${getSourceFileName(item)}: ${error}`);
           return null;
@@ -121,10 +131,10 @@ export function useSaveToFiles({
       }
 
       enqueueUploads(
-        resolved.map(({ item, file }) => ({
+        resolved.map(({ item, name, file }) => ({
           file,
           data: {
-            name: getSourceDefaultName(item),
+            name,
             parentId,
             mimeType: getSourceMimeType(item) || file.type || undefined,
             size: file.size,
@@ -142,14 +152,14 @@ export function useSaveToFiles({
   );
 
   const save = useCallback(
-    async ({ parentId, name }: SaveToFilesInput): Promise<SaveToFilesOutcome | null> => {
-      const trimmedName = name.trim();
+    async ({ parentId, names }: SaveToFilesInput): Promise<SaveToFilesOutcome | null> => {
       setIsPreparing(true);
 
       try {
-        if (isBulk) return await saveMany(parentId);
+        if (isBulk) return await saveMany(parentId, names);
 
         const source = sources[0]!;
+        const trimmedName = resolveSaveNames([getSourceDefaultName(source)], names)[0]!;
         if (isServerSideSource(source)) {
           const nameError = getUploadNameError(trimmedName);
           if (nameError) {
