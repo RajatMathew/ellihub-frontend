@@ -104,19 +104,23 @@ export function TaskBoardColumn({
         // strength so the edges stop drawing themselves, and a shadow to give
         // the whole thing a lift. At full-strength borders and a fainter fill it
         // read as ruled graph paper.
-        'flex h-full min-h-0 flex-col rounded-lg border border-mail-line bg-mail-pane p-3 shadow-xs transition-colors',
+        'flex h-full min-h-0 flex-col rounded-lg border border-mail-line bg-mail-pane p-2 shadow-xs transition-colors',
         // A card wide enough to read, with the next column showing at the edge.
         'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:shrink',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
         isForbidden && 'bg-destructive/10 ring-2 ring-destructive/50'
       )}
     >
-      {/* The heading is ruled off from the cards, and carries the same faint
-          shadow as the panel so it sits above them rather than beside them. The
-          rule reaches the panel's inner edges to meet the border either side, so
-          it bleeds back out through the p-3 and pays the padding again itself,
-          and is softened to match. */}
-      <div className="-mx-3 mb-3 flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 pb-3 shadow-sm">
+      {/* The heading is ruled off from the cards. The rule reaches the panel's
+          inner edges to meet the border either side, so it bleeds back out
+          through the padding and pays it again itself, and is softened to
+          match.
+
+          No shadow under it. It carried the panel's own `shadow-sm` so it would
+          sit above the cards, but a shadow cast by a hairline rule onto a flat
+          fill is just a grey band under the heading — the rule was already
+          doing the separating. */}
+      <div className="-mx-2 mb-2 flex shrink-0 items-center justify-between gap-2 border-b border-border/50 px-2 pb-2">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <span className={cn('size-2 rounded-full', TASK_COLUMN_TONES[columnId])} aria-hidden />
           {columnHeading(columnId, now)}

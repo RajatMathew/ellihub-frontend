@@ -46,7 +46,7 @@ export const fieldStackClassName = (density: TaskFormDensity = 'comfortable') =>
 /** The track a segmented control sits in: the unchosen options read as one field. */
 export const segmentedTrackClassName = (density: TaskFormDensity = 'comfortable') =>
   `w-fit gap-0 rounded-lg border border-input bg-muted ${
-    density === 'comfortable' ? 'p-1.5' : 'p-1'
+    density === 'comfortable' ? 'p-1.5' : 'p-0.5'
   }`;
 
 /**
@@ -54,12 +54,13 @@ export const segmentedTrackClassName = (density: TaskFormDensity = 'comfortable'
  * accent, which is what tells three near-identical words apart at a glance.
  */
 export const segmentedItemClassName = (density: TaskFormDensity = 'comfortable') =>
-  `gap-2 rounded-md text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm ${
-    density === 'comfortable' ? 'px-4 text-base' : 'px-3 text-sm'
+  `rounded-md text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm ${
+    density === 'comfortable' ? 'gap-2 px-4 text-base' : 'gap-1.5 px-2.5 text-[13px]'
   }`;
 
 /** The dot that carries a segment's meaning — priority colour, or whose court. */
-export const segmentedDotClassName = 'size-2.5 shrink-0 rounded-full';
+export const segmentedDotClassName = (density: TaskFormDensity = 'comfortable') =>
+  `shrink-0 rounded-full ${density === 'comfortable' ? 'size-2.5' : 'size-2'}`;
 
 /** The description disclosure row: a quiet control, not a heading. */
 export const disclosureTriggerClassName = (density: TaskFormDensity = 'comfortable') =>

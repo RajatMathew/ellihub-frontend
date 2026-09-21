@@ -1,4 +1,6 @@
-import { Button } from '@/app/components/ui/button';
+import type { ReactNode } from 'react';
+
+import { cn } from '@/app/lib/utils';
 import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
 import type { TaskBoard } from '@/modules/tasks/schemas/task.schema';
 
@@ -28,34 +30,65 @@ export function TaskFilterBar({
         Filter
       </span>
 
-      <Button
-        type="button"
-        size="sm"
-        variant={value === null ? 'primary' : 'outline'}
-        aria-pressed={value === null}
-        className="h-7 rounded-full px-3 text-xs"
-        onClick={() => onChange(null)}
-      >
-        Everyone
-      </Button>
+      {/* One track, not four loose buttons.
 
-      {people.map(({ id, name }) => {
-        const active = value === id;
-        return (
-          <Button
-            key={id}
-            type="button"
-            size="sm"
-            variant={active ? 'primary' : 'outline'}
-            aria-pressed={active}
-            className="h-7 rounded-full px-2 pe-3 text-xs"
-            onClick={() => onChange(active ? null : id)}
-          >
-            <TaskAssigneeAvatar name={name} size="sm" />
-            <span className="truncate">{name.split(' ')[0]}</span>
-          </Button>
-        );
-      })}
+          Drawn as separate pills it was a bordered outline, a filled navy one
+          and an avatar taller than the pill holding it — three shapes for what
+          is one choice between four. It is the same segmented control the app
+          already uses for Mail / Tasks / Calendar: everything sits in a single
+          muted track and the chosen one lifts out of it. */}
+      <div className="flex flex-wrap items-center gap-0.5 rounded-full border border-input bg-muted p-0.5">
+        <FilterPill active={value === null} onClick={() => onChange(null)}>
+          Everyone
+        </FilterPill>
+
+        {people.map(({ id, name }) => {
+          const active = value === id;
+          return (
+            <FilterPill
+              key={id}
+              active={active}
+              className="ps-1"
+              onClick={() => onChange(active ? null : id)}
+            >
+              <TaskAssigneeAvatar name={name} size="sm" className="size-5.5" />
+              <span className="truncate">{name.split(' ')[0]}</span>
+            </FilterPill>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+/** One segment of the filter track. */
+function FilterPill({
+  active,
+  className,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  className?: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full px-3 text-[13px] font-medium',
+        'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+        'motion-safe:transition-colors motion-safe:duration-100',
+        active
+          ? 'bg-background text-foreground shadow-xs'
+          : 'text-muted-foreground hover:text-foreground',
+        className
+      )}
+    >
+      {children}
+    </button>
   );
 }

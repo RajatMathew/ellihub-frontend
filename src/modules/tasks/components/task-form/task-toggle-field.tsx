@@ -42,7 +42,7 @@ export function TaskToggleField<T extends string>({
   return (
     <ToggleGroup
       type="single"
-      size={density === 'comfortable' ? 'lg' : 'md'}
+      size={density === 'comfortable' ? 'lg' : 'sm'}
       value={value}
       aria-label={label}
       // Radix clears the value when you press the segment that is already on.
@@ -59,7 +59,7 @@ export function TaskToggleField<T extends string>({
           value={option.value}
           className={segmentedItemClassName(density)}
         >
-          <span className={cn(segmentedDotClassName, option.tone)} aria-hidden="true" />
+          <span className={cn(segmentedDotClassName(density), option.tone)} aria-hidden="true" />
           {option.label}
         </ToggleGroupItem>
       ))}
