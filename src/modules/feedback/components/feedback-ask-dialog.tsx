@@ -191,18 +191,20 @@ export function FeedbackAskDialog({
         autoFocus={expanded}
       />
 
-      {/* Only once there is room for it. Docked, the panel is deliberately two
-          fields shorter than the thing it used to be. */}
-      {expanded && (
-        <Input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={session?.user?.name ? `Your name (${session.user.name})` : 'Your name'}
-          maxLength={120}
-          disabled={submitFeedback.isPending}
-          aria-label="Your name"
-        />
-      )}
+      {/* In both sizes. It was dropped from the docked panel to keep that
+          panel short, which quietly made the two states disagree about what
+          the form is: expanding to say who you are, and finding the field
+          you came for was only ever in the big one, is worse than the three
+          lines it saved. */}
+      <Input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        placeholder={session?.user?.name ? `Your name (${session.user.name})` : 'Your name'}
+        className={cn(!expanded && 'h-9 text-[13px]')}
+        maxLength={120}
+        disabled={submitFeedback.isPending}
+        aria-label="Your name"
+      />
 
       {showAttach ? (
         <FeedbackFileDropZone value={files} onChange={setFiles} />
