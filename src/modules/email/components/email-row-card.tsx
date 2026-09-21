@@ -508,12 +508,14 @@ export function EmailRowCard({
       )}
 
       {hasQuickActions && (
-        // Inline, on the row's own background, rather than floating in a
-        // bordered white box. The box was a second surface sitting on top of a
-        // row that is already a surface, and it cost the width of its own
-        // padding and border for three icons (elli-ui#991). The subject line
-        // truncates behind it — see `hasQuickActions` on the subject below.
-        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+        // On its own surface, not inline on the row's. Dropping the box in
+        // elli-ui#991 saved the width of its padding, but these icons carry no
+        // fill of their own: the subject and preview lines under them reserve
+        // `pe-24` and the cluster is wider than that, so whatever did not fit
+        // showed *through* the glyphs instead of ending behind them. The card
+        // background is what makes the cluster opaque, and the border and lift
+        // are what keep it reading as a control rather than as clipped text.
+        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 rounded-lg border border-mail-line bg-mail-card p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
           {onToggleFlag && (
             <QuickAction
               label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}

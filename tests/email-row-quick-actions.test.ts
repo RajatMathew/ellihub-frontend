@@ -74,3 +74,16 @@ describe('the row applies the reservation to every line the cluster covers', () 
     expect(source).not.toContain('lg:group-hover:pe-24');
   });
 });
+
+describe('the cluster sits on an opaque surface', () => {
+  test('the quick actions carry a card background', () => {
+    const source = rowCardSource();
+    const cluster = source.slice(source.indexOf('absolute right-2.5 top-8'));
+
+    // The reservation is one fixed width and the cluster grows with the number
+    // of actions on the row, so the text under it is not guaranteed to end
+    // before the icons start. Without a fill of its own the overflow showed
+    // straight through the glyphs.
+    expect(cluster).toContain('bg-mail-card');
+  });
+});
