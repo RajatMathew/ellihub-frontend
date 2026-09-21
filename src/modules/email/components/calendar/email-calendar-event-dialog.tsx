@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
+import { DatePickerButton, TimePickerButton } from '@/app/components/date-time-picker';
 import { Button } from '@/app/components/ui/button';
-import { Calendar } from '@/app/components/ui/calendar';
 import {
   Dialog,
   DialogBody,
@@ -18,7 +18,6 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
@@ -31,12 +30,12 @@ import { Switch } from '@/app/components/ui/switch';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
 import type { CalendarRecurrenceOption, CalendarSelectionRow } from '@/modules/email/api';
-import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import {
   CALENDAR_EVENT_STYLES,
   colorForCalendar,
   type CalendarEvent,
 } from '@/modules/email/components/calendar/email-calendar-types';
+import { EmailAddressSuggestionList } from '@/modules/email/components/email-address-suggestions';
 import { useEmailAddressSuggestions } from '@/modules/email/hooks/use-email-address-suggestions';
 import {
   EMAIL_ADDRESS_PATTERN,
@@ -336,18 +335,24 @@ export function EmailCalendarEventDialog({
 
             <FieldRow icon={Clock}>
               <div className="flex flex-wrap items-center gap-1">
-                <DatePickerButton value={date} onChange={setDate} />
+                <DatePickerButton value={date} onChange={setDate} className={CHIP_FIELD} />
                 {!allDay && (
                   <>
                     <TimePickerButton
-                      label="Start time"
+                      aria-label="Start time"
                       value={startTime}
                       onChange={setStartTime}
+                      className={CHIP_FIELD}
                     />
                     <span aria-hidden="true" className="shrink-0 text-sm text-muted-foreground">
                       –
                     </span>
-                    <TimePickerButton label="End time" value={endTime} onChange={setEndTime} />
+                    <TimePickerButton
+                      aria-label="End time"
+                      value={endTime}
+                      onChange={setEndTime}
+                      className={CHIP_FIELD}
+                    />
                     {/* Editing an event needs the zone as much as creating one
                         does — the times above are wall-clock, and the zone is
                         what decides which instant they mean. It rides with the
@@ -612,128 +617,6 @@ export function EmailCalendarEventDialog({
 }
 
 // --- helpers --------------------------------------------------------------
-
-/** Date picker: a Popover + the shared shadcn Calendar (same one the files
- * module uses for its date filters), replacing the native `<input type="date">`
- * so the picker matches the rest of the app instead of the OS/browser widget. */
-function DatePickerButton({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const parsed = parseDate(value);
-  const label = Number.isNaN(parsed.getTime()) ? 'Pick a date' : format(parsed, 'MMM d, yyyy');
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn(CHIP_FIELD, 'w-fit shrink-0 gap-1.5 border-transparent font-medium')}
-        >
-          <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground" />
-          {label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={Number.isNaN(parsed.getTime()) ? undefined : parsed}
-          onSelect={(next) => {
-            if (!next) return;
-            onChange(format(next, 'yyyy-MM-dd'));
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/** Every quarter-hour of the day as {value: "HH:mm", label: "9:30 am"}. */
-const TIME_OF_DAY_OPTIONS = Array.from({ length: 24 * 4 }, (_, index) => {
-  const hours = Math.floor(index / 4);
-  const minutes = (index % 4) * 15;
-  const value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  const label = format(parse(value, 'HH:mm', new Date()), 'h:mm a').toLowerCase();
-  return { value, label };
-});
-
-/** Time picker: a Popover with a scrollable quarter-hour list, replacing the
- * native `<input type="time">` OS widget. Free typing isn't needed here — the
- * event dialog's own submit validates start < end regardless of granularity. */
-function TimePickerButton({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const listRef = useRef<HTMLDivElement>(null);
-  const parsed = parse(value, 'HH:mm', new Date());
-  const display = Number.isNaN(parsed.getTime()) ? value : format(parsed, 'h:mm a').toLowerCase();
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) {
-          // Scroll the current value into view instead of always opening at
-          // midnight — most edits are to a time later in the day.
-          requestAnimationFrame(() => {
-            listRef.current
-              ?.querySelector('[data-selected="true"]')
-              ?.scrollIntoView({ block: 'center' });
-          });
-        }
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-label={label}
-          className={cn(CHIP_FIELD, 'w-fit shrink-0 border-transparent font-medium')}
-        >
-          {display}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-32 p-1">
-        <div ref={listRef} className="max-h-64 overflow-y-auto">
-          {TIME_OF_DAY_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              data-selected={option.value === value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              className={cn(
-                'flex h-8 w-full cursor-pointer items-center rounded-sm px-2 text-sm',
-                option.value === value
-                  ? 'bg-primary/10 font-medium text-primary'
-                  : 'text-foreground hover:bg-muted'
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 /** Icon-led form row: a muted glyph on a shared left rail, the field beside it. */
 function FieldRow({

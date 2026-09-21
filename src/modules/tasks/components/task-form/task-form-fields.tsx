@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
+import { DatePickerButton, TimePickerButton } from '@/app/components/date-time-picker';
 import {
   Collapsible,
   CollapsibleContent,
@@ -194,6 +195,11 @@ export function TaskFormFields({
           Due
         </FieldLegend>
         <div className="flex flex-wrap items-start gap-2">
+          {/* The app's own pickers, not the browser's (elli-ui#974). A native
+              date input is drawn by the OS: a different widget per platform, a
+              field order nobody here chose, and a calendar that looks nothing
+              like the one every other date in the app opens. These are the two
+              the calendar's event dialog already uses. */}
           <FormField
             control={form.control}
             name="dueDate"
@@ -201,11 +207,11 @@ export function TaskFormFields({
               <FormItem className="space-y-1.5">
                 <FormLabel className="sr-only">Due date</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    type="date"
-                    required
-                    variant={controlSize}
+                  <DatePickerButton
+                    value={field.value}
+                    onChange={field.onChange}
+                    size={controlSize}
+                    aria-label="Due date"
                     className={dueFieldClassName}
                   />
                 </FormControl>
@@ -220,11 +226,11 @@ export function TaskFormFields({
               <FormItem className="space-y-1.5">
                 <FormLabel className="sr-only">Due time</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    type="time"
-                    required
-                    variant={controlSize}
+                  <TimePickerButton
+                    value={field.value}
+                    onChange={field.onChange}
+                    size={controlSize}
+                    aria-label="Due time"
                     className={dueFieldClassName}
                   />
                 </FormControl>
