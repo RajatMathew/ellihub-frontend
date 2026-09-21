@@ -57,7 +57,7 @@ export function SpringCheck({
         onChange(!checked);
       }}
       className={cn(
-        'grid size-[18px] shrink-0 cursor-pointer place-items-center rounded-[5px] border',
+        'grid size-5 shrink-0 cursor-pointer place-items-center rounded-md border-[1.5px]',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         'disabled:cursor-default disabled:opacity-50',
         checked
@@ -71,7 +71,7 @@ export function SpringCheck({
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
-        className="size-3"
+        className="size-3.5"
         initial={false}
         // The box itself swells a touch as the tick lands, which is what sells
         // the spring — a tick drawn into a static box reads as a state change,
