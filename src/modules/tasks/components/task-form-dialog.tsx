@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Form, FormItem, FormLabel } from '@/app/components/ui/form';
-import { Separator } from '@/app/components/ui/separator';
 import { TaskEmailReferences } from '@/modules/tasks/components/task-email-references';
 import { TaskFormFields } from '@/modules/tasks/components/task-form/task-form-fields';
 import {
@@ -47,7 +46,7 @@ export function TaskFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90vh,760px)] w-[calc(100vw-1rem)] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[min(88vh,680px)] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-xl">
         {/* Mounted only while open, and keyed by the task, so every open starts
             from fresh state. That is what keeps this form free of the usual
             reset-in-an-effect dance. */}
@@ -98,22 +97,27 @@ function TaskFormDialogContent({
 
   return (
     <>
-      <DialogHeader className="mb-0 space-y-2">
-        <DialogTitle className="text-3xl">{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
-        <DialogDescription className="text-base">
+      <DialogHeader>
+        <DialogTitle>{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
+        <DialogDescription>
           {isEdit
             ? 'Update this task and who is carrying it.'
             : 'Capture the follow-up, then say who owns it and when it is due.'}
         </DialogDescription>
       </DialogHeader>
 
-      <Separator className="mt-6" />
-
       <Form {...form}>
         <form onSubmit={(event) => void form.handleSubmit(handleSubmit)(event)}>
-          <DialogBody className="pt-7">
+          <DialogBody>
             <TaskFormFields
               form={form}
+              // The dialog used to render these at `comfortable`, which was a
+              // 4xl title, `text-base` labels and 28px between every field in a
+              // 3xl-wide sheet — a form six fields long that did not fit on a
+              // laptop and read nothing like the rest of the app. `compact` is
+              // the scale the popover beside an open email already uses, and it
+              // is the one the app is drawn at.
+              density="compact"
               // A task made on the board can cite the mail it is about, the same
               // as one raised from a message (#861). No mailbox is handed down
               // here — there is no open message to take one from — so the picker
@@ -121,7 +125,7 @@ function TaskFormDialogContent({
               // email at all.
               afterTitle={
                 <FormItem className="space-y-1.5">
-                  <FormLabel className="text-base">Linked emails</FormLabel>
+                  <FormLabel className="text-sm">Linked emails</FormLabel>
                   <TaskEmailReferences value={references} onChange={setReferences} />
                 </FormItem>
               }
@@ -131,8 +135,6 @@ function TaskFormDialogContent({
               descriptionDefaultOpen={Boolean(task?.description)}
             />
           </DialogBody>
-
-          <Separator className="mt-7" />
 
           {/* `DialogFooter` stacks `flex-col-reverse` below `sm`, and its only gap is
               `sm:space-x-2.5` — horizontal, so stacked buttons would touch. It also
@@ -158,7 +160,6 @@ function TaskFormDialogContent({
               <Button
                 type="button"
                 variant="ghost"
-                size="lg"
                 onClick={() => onDelete(task)}
                 className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto sm:w-auto"
               >
@@ -166,16 +167,10 @@ function TaskFormDialogContent({
                 Delete
               </Button>
             ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="lg"
-              className="text-foreground"
-              onClick={onCancel}
-            >
+            <Button type="button" variant="ghost" className="text-foreground" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="lg" disabled={isSaving}>
+            <Button type="submit" variant="primary" disabled={isSaving}>
               {isEdit ? 'Save task' : 'Create task'}
             </Button>
           </DialogFooter>

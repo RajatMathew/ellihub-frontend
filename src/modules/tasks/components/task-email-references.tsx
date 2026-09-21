@@ -291,11 +291,16 @@ export function TaskEmailReferences({
                   type="button"
                   variant="outline"
                   size="sm"
-                  aria-label="Attach another email"
+                  aria-label={value.length === 0 ? 'Link an email' : 'Attach another email'}
                   disabled={!browsingAll && !activeAccountId}
-                  className="size-6 shrink-0 p-0"
+                  // A bare plus square makes sense beside chips — it is the
+                  // next one in the row. With nothing beside it, it is a small
+                  // empty box under a label, and nobody should have to hover an
+                  // icon to find out that this is where a task cites its mail.
+                  className={cn('shrink-0', value.length === 0 ? 'px-2' : 'size-6 p-0')}
                 >
-                  <Plus aria-hidden className="size-3" />
+                  <Plus aria-hidden className={value.length === 0 ? 'size-3.5' : 'size-3'} />
+                  {value.length === 0 && 'Link an email'}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
