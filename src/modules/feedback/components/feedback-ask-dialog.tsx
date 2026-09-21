@@ -16,7 +16,15 @@ import { cn } from '@/app/lib/utils';
 import { FeedbackFileDropZone } from '@/modules/feedback/components/feedback-file-drop-zone';
 import { useSubmitFeedbackMutation } from '@/modules/feedback/hooks/use-submit-feedback';
 import { clampFeedbackTitle } from '@/modules/feedback/lib/feedback-ask';
-import { Loader2, Maximize2, Minimize2, Paperclip, Sparkles, X } from 'lucide-react';
+import {
+  Loader2,
+  Maximize2,
+  MessageSquareText,
+  Minimize2,
+  Paperclip,
+  SquarePen,
+  X,
+} from 'lucide-react';
 
 /**
  * The ask that follows a change, rather than the one waiting behind a button.
@@ -149,7 +157,7 @@ export function FeedbackAskDialog({
         )}
         onClick={() => setOpenedFromBubble(true)}
       >
-        <Sparkles aria-hidden="true" className="size-5" strokeWidth={2} />
+        <MessageSquareText aria-hidden="true" className="size-5" strokeWidth={1.75} />
       </button>
     );
   }
@@ -177,8 +185,8 @@ export function FeedbackAskDialog({
       <Textarea
         value={message}
         onChange={(event) => setMessage(event.target.value)}
-        placeholder={'Optional — e.g. “assign procurement threads to Owen”'}
-        className={cn('resize-none', expanded ? 'min-h-24' : 'min-h-16 text-[13px]')}
+        placeholder={'Optional. e.g. “assign procurement threads to Owen”'}
+        className={cn('resize-none', expanded ? 'min-h-24' : 'min-h-20 text-[13px]')}
         disabled={submitFeedback.isPending}
         autoFocus={expanded}
       />
@@ -250,7 +258,7 @@ export function FeedbackAskDialog({
                 aria-hidden="true"
                 className="mb-1 grid size-9 place-items-center rounded-full bg-primary/10 text-primary"
               >
-                <Sparkles className="size-4" strokeWidth={2} />
+                <SquarePen className="size-4" strokeWidth={1.75} />
               </span>
               {controls}
             </div>
@@ -276,7 +284,7 @@ export function FeedbackAskDialog({
       role="dialog"
       aria-label={title}
       className={cn(
-        'fixed bottom-4 right-4 z-50 w-[19.5rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3.5 text-popover-foreground shadow-lg',
+        'fixed bottom-4 right-4 z-50 w-[22.5rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg',
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-200'
       )}
     >
@@ -286,7 +294,7 @@ export function FeedbackAskDialog({
             aria-hidden="true"
             className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"
           >
-            <Sparkles className="size-3.5" strokeWidth={2} />
+            <SquarePen className="size-3.5" strokeWidth={1.75} />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{title}</p>
