@@ -80,8 +80,16 @@ export const emailKeys = {
   conversationRoot: (accountId?: string) => [...emailKeys.all, 'conversation', accountId] as const,
   conversation: (accountId?: string, threadId?: string | null) =>
     [...emailKeys.conversationRoot(accountId), threadId] as const,
-  referenceProjects: (accountId?: string) =>
+  // Keyed by folder: the same mailbox answers different counts per folder, so
+  // one key would serve the Inbox numbers inside Sent (elli-ui#1117).
+  referenceProjectsRoot: (accountId?: string) =>
     [...emailKeys.all, 'reference-projects', accountId] as const,
+  referenceProjects: (accountId?: string, folder?: { key?: string; id?: string }) =>
+    [
+      ...emailKeys.referenceProjectsRoot(accountId),
+      folder?.key ?? null,
+      folder?.id ?? null,
+    ] as const,
   pinnedThreadsRoot: (accountId?: string) =>
     [...emailKeys.all, 'pinned-threads', accountId] as const,
   pinnedThreads: (accountId?: string, folderId?: string | null) =>
@@ -206,10 +214,14 @@ export const useEmailMessagesQuery = (
   });
 };
 
-export const useEmailReferenceProjectsQuery = (accountId?: string, enabled = true) =>
+export const useEmailReferenceProjectsQuery = (
+  accountId?: string,
+  folder?: { key?: EmailFolderKey; id?: string },
+  enabled = true
+) =>
   useQuery<EmailReferenceProject[]>({
-    queryKey: emailKeys.referenceProjects(accountId),
-    queryFn: () => emailApi.listReferenceProjects(accountId!),
+    queryKey: emailKeys.referenceProjects(accountId, folder),
+    queryFn: () => emailApi.listReferenceProjects(accountId!, folder),
     enabled: enabled && Boolean(accountId),
     staleTime: EMAIL_METADATA_STALE_TIME_MS,
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
@@ -605,7 +617,7 @@ export const useSaveEmailThreadClassificationMutation = () => {
       // could not have changed.
       if (referenceIdentityKey(classification.references) !== snapshot?.previousReferenceKeys) {
         void queryClient.invalidateQueries({
-          queryKey: emailKeys.referenceProjects(payload.accountId),
+          queryKey: emailKeys.referenceProjectsRoot(payload.accountId),
         });
       }
       void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });

@@ -193,16 +193,6 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     reconnectRequiredAccountId !== connectedAccount?.id;
   const foldersQuery = useEmailFoldersQuery(connectedAccount?.id, canLoadConnectedMailbox);
   const tagsQuery = useEmailTagsQuery(connectedAccount?.id, canLoadConnectedMailbox);
-  const referenceProjectsQuery = useEmailReferenceProjectsQuery(
-    connectedAccount?.id,
-    canLoadConnectedMailbox
-  );
-  const activeProjectId = useMemo(() => {
-    if (!selectedProjectId || !referenceProjectsQuery.isSuccess) return selectedProjectId;
-    return referenceProjectsQuery.data.some((project) => project.entityId === selectedProjectId)
-      ? selectedProjectId
-      : null;
-  }, [referenceProjectsQuery.data, referenceProjectsQuery.isSuccess, selectedProjectId]);
   const selectedConnectedFolder = isConnected
     ? (foldersQuery.data?.find((folder) => folder.id === selectedFolder) ??
       foldersQuery.data?.find((folder) => folder.key === selectedFolder) ??
@@ -211,6 +201,17 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
   const selectedFolderQuery = isConnectedWellKnownFolderKey(selectedFolder)
     ? { key: selectedFolder }
     : { id: selectedConnectedFolder?.id ?? selectedFolder };
+  const referenceProjectsQuery = useEmailReferenceProjectsQuery(
+    connectedAccount?.id,
+    selectedFolderQuery,
+    canLoadConnectedMailbox
+  );
+  const activeProjectId = useMemo(() => {
+    if (!selectedProjectId || !referenceProjectsQuery.isSuccess) return selectedProjectId;
+    return referenceProjectsQuery.data.some((project) => project.entityId === selectedProjectId)
+      ? selectedProjectId
+      : null;
+  }, [referenceProjectsQuery.data, referenceProjectsQuery.isSuccess, selectedProjectId]);
   const messagesQuery = useEmailMessagesQuery(
     connectedAccount?.id,
     selectedFolderQuery,
