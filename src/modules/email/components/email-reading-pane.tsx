@@ -8,6 +8,7 @@ import {
   type Ref,
 } from 'react';
 
+import { toastApiError } from '@/app/lib/toast-api-error';
 import { cn } from '@/app/lib/utils';
 import type {
   ConnectedEmailFolder,
@@ -67,7 +68,17 @@ import {
   type FilePreviewItem,
 } from '@/modules/files/components/file-preview-dialog';
 import { useProjectFolderQuery } from '@/modules/project/hooks';
-import { useThreadTasksQuery } from '@/modules/tasks/hooks/tasks.hooks';
+import { tasksApi } from '@/modules/tasks/api/tasks.api';
+import { TaskFormDialog } from '@/modules/tasks/components/task-form-dialog';
+import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
+import {
+  useSetTaskCompletedMutation,
+  useThreadTasksQuery,
+  useUpdateTaskMutation,
+} from '@/modules/tasks/hooks/tasks.hooks';
+import { changedTaskFields } from '@/modules/tasks/lib/task-edit';
+import type { CreateTaskInput, Task } from '@/modules/tasks/schemas/task.schema';
+import { useQueryClient } from '@tanstack/react-query';
 import { Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -186,7 +197,59 @@ export function EmailReadingPane({
   const saveClassificationMutation = useSaveEmailThreadClassificationMutation();
   // The tasks this thread has raised. Keyed on the conversation, so it follows
   // the reader from thread to thread without the panel asking for it.
+  const queryClient = useQueryClient();
   const threadTasksQuery = useThreadTasksQuery(accountId, email?.conversationKey);
+  /**
+   * Ticking a task off and opening it to edit, from the thread that raised it
+   * (elli-ui#1057).
+   *
+   * `useUpdateTaskMutation` writes its result into the cached boards, which is
+   * where a task normally lives — it knows nothing about this list, so the
+   * thread's own query is invalidated after each write or the row would keep
+   * showing what it showed before.
+   */
+  const [editingThreadTask, setEditingThreadTask] = useState<Task | null>(null);
+  const updateThreadTask = useUpdateTaskMutation();
+  const setThreadTaskCompleted = useSetTaskCompletedMutation();
+  const refreshThreadTasks = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: taskKeys.lists() }),
+    [queryClient]
+  );
+  const handleToggleThreadTask = useCallback(
+    (task: Task, completed: boolean) => {
+      setThreadTaskCompleted.mutate({ id: task.id, completed });
+    },
+    [setThreadTaskCompleted]
+  );
+  const handleDeleteThreadTask = useCallback(
+    (task: Task) => {
+      setEditingThreadTask(null);
+      void tasksApi
+        .delete(task.id)
+        .then(async () => {
+          toast.success('Task deleted');
+          await refreshThreadTasks();
+          await queryClient.invalidateQueries({ queryKey: taskKeys.boards() });
+        })
+        .catch((error: unknown) => toastApiError(error, 'Failed to delete task'));
+    },
+    [queryClient, refreshThreadTasks]
+  );
+  const handleSubmitThreadTask = useCallback(
+    async (payload: CreateTaskInput) => {
+      if (!editingThreadTask) return;
+      // Only what changed — the dialog rebuilds the due date on every save, so
+      // sending the whole form tells the server a date moved that nobody
+      // touched. Same reasoning as the board's own edit.
+      await updateThreadTask.mutateAsync({
+        ...changedTaskFields(editingThreadTask, payload),
+        id: editingThreadTask.id,
+      });
+      await refreshThreadTasks();
+      setEditingThreadTask(null);
+    },
+    [editingThreadTask, refreshThreadTasks, updateThreadTask]
+  );
   // The details card starts open; collapsing it is a per-reader preference for
   // the session, not something worth persisting.
   const [detailsCollapsed, setDetailsCollapsed] = useState(false);
@@ -526,7 +589,12 @@ export function EmailReadingPane({
         threadTasksQuery.isError ? (
           <p className="pb-1 text-[12.5px] text-mail-muted">Couldn’t load this thread’s tasks.</p>
         ) : (
-          <MailThreadTasks tasks={threadTasksQuery.data?.data ?? []} />
+          <MailThreadTasks
+            tasks={threadTasksQuery.data?.data ?? []}
+            isUpdating={setThreadTaskCompleted.isPending}
+            onToggleComplete={handleToggleThreadTask}
+            onEdit={setEditingThreadTask}
+          />
         )
       }
       ai={aiSuggestion}
@@ -763,6 +831,19 @@ export function EmailReadingPane({
               }
             : null
         }
+      />
+
+      {/* The thread's own task, opened from the panel. The board's dialog,
+          not a second one — same form, same validation, same delete. */}
+      <TaskFormDialog
+        open={Boolean(editingThreadTask)}
+        task={editingThreadTask}
+        isSaving={updateThreadTask.isPending}
+        onOpenChange={(open) => {
+          if (!open) setEditingThreadTask(null);
+        }}
+        onSubmit={handleSubmitThreadTask}
+        onDelete={handleDeleteThreadTask}
       />
     </section>
   );

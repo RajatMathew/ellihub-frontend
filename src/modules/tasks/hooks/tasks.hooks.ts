@@ -195,6 +195,32 @@ export const useUpdateTaskMutation = () => {
 
 // Undo, for the toast the delete raises. The server keeps the row, so this only
 // has to clear the flag — there is nothing to rebuild.
+/**
+ * Tick a task off, or reopen it, from outside the board.
+ *
+ * The board drives completion through its outbox, which batches ops and
+ * rewrites the cached columns — machinery that only makes sense where those
+ * columns are on screen. The mail thread's panel has one row and no board, so
+ * it calls the endpoint directly and invalidates what it showed
+ * (elli-ui#1057). Boards go too: a task ticked here has moved column, and a
+ * board left open behind the reading pane should not still show it as open.
+ */
+export const useSetTaskCompletedMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
+      tasksApi.setCompleted(id, completed),
+    onSuccess: async (task) => {
+      writeTask(queryClient, task);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: taskKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: taskKeys.boards() }),
+      ]);
+    },
+    onError: (error) => toastApiError(error, 'Failed to update task'),
+  });
+};
+
 export const useRestoreTaskMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
