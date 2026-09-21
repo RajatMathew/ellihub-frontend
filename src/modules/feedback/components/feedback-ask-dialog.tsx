@@ -42,18 +42,32 @@ import { Loader2, Maximize2, Minimize2, Paperclip, Sparkles, X } from 'lucide-re
  * bottom-right corner, over nothing, and the page stays live behind it.
  * Expanding it is a deliberate second step for anyone who actually wants to
  * write something, and only then does it take the middle of the screen.
+ *
+ * **And when it is not asking, it waits as a bubble.** The ask fires once a
+ * session, which is the right frequency for an interruption and the wrong one
+ * for a door: someone who dismissed it, or who thought of something an hour
+ * later, had nowhere to say it. The same panel is therefore always one click
+ * away in the same corner — the ask simply opens it for you, once, at the
+ * moment it is most likely to be worth answering.
  */
 export function FeedbackAskDialog({
   open,
   context,
+  idleContext = 'Feedback from the mailbox',
   onOpenChange,
 }: {
+  /** The ask fired: open the panel and title the feedback after the change. */
   open: boolean;
   /**
    * What the person just did, recorded with the feedback so a one-line reply
    * still says what it is about. Not shown to them — they were there.
    */
   context: string;
+  /**
+   * The title to file under when the panel was opened from the bubble rather
+   * than by a change. Nobody edited anything, so `context` would be a lie.
+   */
+  idleContext?: string;
   onOpenChange: (open: boolean) => void;
 }) {
   const { data: session } = useSession();
@@ -63,8 +77,17 @@ export function FeedbackAskDialog({
   const [files, setFiles] = useState<File[]>([]);
   const [showAttach, setShowAttach] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  /**
+   * Opened from the bubble, which the parent knows nothing about — it owns
+   * only the ask. Either source shows the same panel.
+   */
+  const [openedFromBubble, setOpenedFromBubble] = useState(false);
+  const panelOpen = open || openedFromBubble;
+  /** An ask beats a bubble: if both are true, this was a change. */
+  const askedByChange = open;
 
   const close = () => {
+    setOpenedFromBubble(false);
     onOpenChange(false);
     // Cleared on the way out rather than on the way in, so a dialog that is
     // still animating closed does not visibly empty itself first.
@@ -76,9 +99,9 @@ export function FeedbackAskDialog({
 
   const send = async () => {
     await submitFeedback.mutateAsync({
-      title: clampFeedbackTitle(context),
+      title: clampFeedbackTitle(askedByChange ? context : idleContext),
       submitterName: name.trim() || session?.user?.name || '',
-      message: message.trim() || `No detail given — ${context}`,
+      message: message.trim() || `No detail given — ${askedByChange ? context : idleContext}`,
       files,
       currentUrl: typeof window === 'undefined' ? undefined : window.location.href,
       userAgent: typeof navigator === 'undefined' ? undefined : navigator.userAgent,
@@ -89,7 +112,7 @@ export function FeedbackAskDialog({
   // Escape closes the docked panel too. Radix gives the expanded dialog this
   // for free; docked, there is no overlay listening, so it is wired by hand.
   useEffect(() => {
-    if (!open || expanded) return;
+    if (!panelOpen || expanded) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -105,9 +128,31 @@ export function FeedbackAskDialog({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `close` is stable for this dialog's lifetime
-  }, [expanded, open]);
+  }, [expanded, panelOpen]);
 
-  if (!open) return null;
+  const title = askedByChange ? 'Help us improve' : 'Send feedback';
+  const description = askedByChange
+    ? 'Tell us why you made this change.'
+    : 'Tell us what is working, or what is not.';
+
+  if (!panelOpen) {
+    return (
+      <button
+        type="button"
+        aria-label="Send feedback"
+        title="Send feedback"
+        className={cn(
+          'fixed bottom-4 right-4 z-40 grid size-11 cursor-pointer place-items-center rounded-xl',
+          'bg-primary text-primary-foreground shadow-lg hover:bg-primary/90',
+          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'motion-safe:transition-colors motion-safe:duration-100'
+        )}
+        onClick={() => setOpenedFromBubble(true)}
+      >
+        <Sparkles aria-hidden="true" className="size-5" strokeWidth={2} />
+      </button>
+    );
+  }
 
   const controls = (
     <div className="flex shrink-0 items-center gap-0.5">
@@ -209,8 +254,8 @@ export function FeedbackAskDialog({
               </span>
               {controls}
             </div>
-            <DialogTitle>Help us improve</DialogTitle>
-            <DialogDescription>Tell us why you made this change.</DialogDescription>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
           {form}
@@ -229,7 +274,7 @@ export function FeedbackAskDialog({
     */
     <div
       role="dialog"
-      aria-label="Help us improve"
+      aria-label={title}
       className={cn(
         'fixed bottom-4 right-4 z-50 w-[19.5rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3.5 text-popover-foreground shadow-lg',
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-200'
@@ -244,10 +289,8 @@ export function FeedbackAskDialog({
             <Sparkles className="size-3.5" strokeWidth={2} />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Help us improve</p>
-            <p className="text-xs leading-snug text-muted-foreground">
-              Tell us why you made this change.
-            </p>
+            <p className="truncate text-sm font-semibold">{title}</p>
+            <p className="text-xs leading-snug text-muted-foreground">{description}</p>
           </div>
         </div>
         {controls}

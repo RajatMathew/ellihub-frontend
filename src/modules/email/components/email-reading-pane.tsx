@@ -885,6 +885,7 @@ export function EmailReadingPane({
       <FeedbackAskDialog
         open={feedbackAskOpen}
         context={`Additional details changed on “${email?.subject ?? 'a thread'}”`}
+        idleContext={`Feedback from the mailbox — “${email?.subject ?? 'a thread'}”`}
         onOpenChange={setFeedbackAskOpen}
       />
     </section>
