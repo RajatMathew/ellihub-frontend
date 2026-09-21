@@ -11,6 +11,15 @@ export const mainSidebarMenu: MenuConfig = [
   },
   {
     type: 'menu',
+    /* `access` declared rather than left to the sidebar's path allow-list,
+       which ends in `return false` — an entry whose path it does not
+       recognise is silently hidden rather than shown to everyone. */
+    children: [
+      { title: 'Feedback', path: '../feedback', access: { resource: 'feedback', action: 'read' } },
+    ],
+  },
+  {
+    type: 'menu',
     children: [{ title: 'Projects', path: '../projects' }],
   },
   {
@@ -115,7 +124,6 @@ export const mainSidebarMenu: MenuConfig = [
       { title: 'Lookups', path: '../lookup', adminOrDevOnly: true },
     ],
   },
-
 ];
 
 export const projectSidebarMenu: MenuConfig = [

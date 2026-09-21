@@ -63,6 +63,12 @@ import {
   latestThreadMessage,
   orderThreadNewestFirst,
 } from '@/modules/email/lib/email-thread-order';
+import { FeedbackAskDialog } from '@/modules/feedback/components/feedback-ask-dialog';
+import {
+  hasAskedForFeedbackThisSession,
+  markFeedbackAskShown,
+  shouldAskForFeedback,
+} from '@/modules/feedback/lib/feedback-ask';
 import {
   FilePreviewDialog,
   type FilePreviewItem,
@@ -353,17 +359,47 @@ export function EmailReadingPane({
           },
     [conversationKey, email]
   );
+  /**
+   * The details panel is the one place a thread is deliberately reshaped —
+   * reassigned, handed over, linked to a record — so it is where asking why is
+   * worth something (elli-ui#1050). The ask follows the save rather than the
+   * click: a change the server refused is not a change to explain.
+   *
+   * `detailsEditsRef` counts within this mount and the session flag survives
+   * between them, because the pane unmounts on every thread the reader opens.
+   */
+  const [feedbackAskOpen, setFeedbackAskOpen] = useState(false);
+  const detailsEditsRef = useRef(0);
   const saveReferenceMarkerState = useCallback(
     (nextState: EmailReferenceMarkerState) => {
       if (!accountId || !conversationKey) return;
-      saveClassificationMutation.mutate({
-        accountId,
-        conversationKey,
-        threadId: nextState.threadId ?? email?.threadId ?? null,
-        status: nextState.status,
-        assignedToId: nextState.assignedTo?.id ?? null,
-        references: nextState.references,
-      });
+      saveClassificationMutation.mutate(
+        {
+          accountId,
+          conversationKey,
+          threadId: nextState.threadId ?? email?.threadId ?? null,
+          status: nextState.status,
+          assignedToId: nextState.assignedTo?.id ?? null,
+          references: nextState.references,
+        },
+        {
+          onSuccess: () => {
+            detailsEditsRef.current += 1;
+            if (
+              !shouldAskForFeedback({
+                askedThisSession: hasAskedForFeedbackThisSession(),
+                edits: detailsEditsRef.current,
+              })
+            ) {
+              return;
+            }
+            // Marked as shown the moment it opens, not when it is answered:
+            // dismissing is an answer, and closing it should not re-arm it.
+            markFeedbackAskShown();
+            setFeedbackAskOpen(true);
+          },
+        }
+      );
     },
     [accountId, conversationKey, email?.threadId, saveClassificationMutation]
   );
@@ -844,6 +880,12 @@ export function EmailReadingPane({
         }}
         onSubmit={handleSubmitThreadTask}
         onDelete={handleDeleteThreadTask}
+      />
+
+      <FeedbackAskDialog
+        open={feedbackAskOpen}
+        context={`Additional details changed on “${email?.subject ?? 'a thread'}”`}
+        onOpenChange={setFeedbackAskOpen}
       />
     </section>
   );
