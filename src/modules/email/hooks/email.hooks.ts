@@ -502,10 +502,26 @@ export const useEmailThreadAssigneesQuery = (enabled = true) =>
     refetchOnReconnect: false,
   });
 
+const EMAIL_CLASSIFICATION_MUTATION_KEY = [...emailKeys.all, 'thread-classification'] as const;
+
 export const useSaveEmailThreadClassificationMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: EMAIL_CLASSIFICATION_MUTATION_KEY,
+    /**
+     * One save at a time (elli-ui#973).
+     *
+     * Every save sends the thread's whole reference set, so two of them in
+     * flight together is last-write-wins over a list both built from their own
+     * snapshot. Linking two records quickly is enough to do it: the second
+     * request was prepared before the first came back, and whichever landed
+     * last decided what the thread ended up with. A shared scope makes the
+     * second wait, by which point the optimistic update below has already put
+     * the first record into the cache the payload is read from, so the sets
+     * accumulate instead of overwriting each other.
+     */
+    scope: { id: 'email-thread-classification' },
     mutationFn: (payload: SaveEmailThreadClassificationPayload) =>
       emailApi.saveThreadClassification(payload),
     onMutate: async (payload): Promise<EmailThreadClassificationSnapshot> => {
@@ -599,9 +615,28 @@ export const useSaveEmailThreadClassificationMutation = () => {
       toastApiError(error, 'Unable to save email references.');
     },
     onSettled: (_result, _error, payload) => {
+      /**
+       * Refetch only once the queue has drained.
+       *
+       * `onSuccess` has already written the server's own answer into the
+       * cache, so this refetch exists to pick up anything else that moved with
+       * it. Running it per save meant a request that left before a later save
+       * landed could answer after it and redraw the panel from older server
+       * state — the linked record you just added blinking out and back as each
+       * refetch overtook the next save. While more are queued there is nothing
+       * to reconcile against yet, so it waits for the last one.
+       */
+      const isLastClassificationSave =
+        queryClient.isMutating({
+          mutationKey: EMAIL_CLASSIFICATION_MUTATION_KEY,
+          predicate: (mutation) =>
+            (mutation.state.variables as SaveEmailThreadClassificationPayload | undefined)
+              ?.accountId === payload.accountId,
+        }) <= 1;
+
       void queryClient.invalidateQueries({
         queryKey: emailKeys.messagesRoot(payload.accountId),
-        refetchType: 'active',
+        refetchType: isLastClassificationSave ? 'active' : 'none',
       });
     },
   });
