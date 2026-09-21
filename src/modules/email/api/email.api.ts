@@ -536,8 +536,14 @@ export const emailApi = {
     return z.array(emailReferenceOptionSchema).parse(unwrapData(res.data));
   },
 
-  async listReferenceProjects(accountId: string): Promise<EmailReferenceProject[]> {
-    const res = await api.get(`${BASE}/accounts/${accountId}/reference-projects`);
+  async listReferenceProjects(
+    accountId: string,
+    // The counts are per folder, because the list they label is (elli-ui#1117).
+    folder?: { key?: EmailFolderKey; id?: string }
+  ): Promise<EmailReferenceProject[]> {
+    const res = await api.get(`${BASE}/accounts/${accountId}/reference-projects`, {
+      params: { folderKey: folder?.key, folderId: folder?.id },
+    });
     return z.array(emailReferenceProjectSchema).parse(unwrapData(res.data));
   },
 
