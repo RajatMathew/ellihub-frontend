@@ -50,6 +50,10 @@ export const feedbackApi = {
       formData.append('title', input.title.trim());
     }
 
+    if (input.submitterName?.trim()) {
+      formData.append('submitterName', input.submitterName.trim());
+    }
+
     formData.append('message', input.message.trim());
 
     if (input.currentUrl) {

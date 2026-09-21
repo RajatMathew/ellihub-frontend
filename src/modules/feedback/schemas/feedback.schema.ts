@@ -11,6 +11,12 @@ function isFile(value: unknown): value is File {
 
 export const feedbackFormSchema = z.object({
   title: z.string().trim().max(120, 'Title must be 120 characters or fewer.').optional(),
+  /**
+   * Who is giving the feedback. Prefilled from the session, and editable:
+   * the signed-in account is not always the person — shared logins and
+   * reporting on a colleague's behalf both make it the wrong answer.
+   */
+  submitterName: z.string().trim().max(120, 'Name must be 120 characters or fewer.').optional(),
   message: z
     .string()
     .trim()
