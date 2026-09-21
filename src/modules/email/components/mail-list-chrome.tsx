@@ -183,7 +183,7 @@ export function MailListChrome({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-[7px] py-[3px] text-left text-lg font-semibold tracking-[-0.02em] text-mail-ink hover:bg-mail-chip focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+              className="flex min-w-0 cursor-pointer items-center gap-1.5 rounded-lg px-[7px] py-[3px] text-left text-lg font-semibold tracking-[-0.02em] text-mail-ink hover:bg-mail-chip focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100"
               disabled={!onSelectFolder}
               aria-label={`Folder: ${selectedFolderLabel}. Change folder`}
             >
@@ -256,7 +256,7 @@ export function MailListChrome({
         {onRefresh && (
           <button
             type="button"
-            className="ms-auto flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-muted hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default motion-safe:transition-colors motion-safe:duration-100"
+            className="ms-auto flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-mail-muted hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper disabled:cursor-default motion-safe:transition-colors motion-safe:duration-100"
             disabled={isRefreshing}
             aria-busy={isRefreshing}
             aria-label="Sync this mailbox"
@@ -275,7 +275,7 @@ export function MailListChrome({
             type="button"
             className={cn(
               'flex h-[29px] shrink-0 cursor-pointer items-center gap-1 rounded-[7px] bg-mail-accent py-0 pe-2.5 ps-2 text-xs font-semibold text-mail-accent-foreground',
-              'hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-45',
+              'hover:bg-mail-accent-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper disabled:opacity-45',
               !onRefresh && 'ms-auto'
             )}
             disabled={composeDisabled}
@@ -327,7 +327,7 @@ export function MailListChrome({
           {search && (
             <button
               type="button"
-              className="flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-mail-search-clear text-mail-mid hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+              className="flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-mail-search-clear text-mail-mid hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100"
               aria-label="Clear search"
               // Clearing unmounts this button, so a mouse click that moved
               // focus onto it would drop focus to <body> when it goes — and the
@@ -506,7 +506,7 @@ function MailFilterPills({
             aria-pressed={Boolean(selectedProject)}
             className={cn(
               'mail-pill flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] py-2 pe-[11px] ps-[13px] text-xs font-semibold',
-              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100',
               // Resting, this is not a filter — it is the label for the view
               // you are already in, and a filled navy pill announced it as the
               // loudest control on the screen (elli-ui#996). It now takes the
@@ -523,7 +523,7 @@ function MailFilterPills({
           >
             {selectedProject ? (
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="shrink-0 font-mono tracking-[-0.02em]">
+                <span className="shrink-0 tabular-nums">
                   {selectedProject.jobNumber ?? selectedProject.label}
                 </span>
                 {selectedProject.jobNumber && (
@@ -598,7 +598,7 @@ function MailFilterPills({
                 : 'Filter conversations'
             }
             className={cn(
-              'mail-pill flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100',
+              'mail-pill flex shrink-0 cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-medium focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100',
               isFiltered
                 ? 'bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover'
                 : 'bg-mail-chip text-mail-mid hover:bg-mail-chip-hover hover:text-mail-ink'
