@@ -104,7 +104,7 @@ export function TaskBoardColumn({
         // strength so the edges stop drawing themselves, and a shadow to give
         // the whole thing a lift. At full-strength borders and a fainter fill it
         // read as ruled graph paper.
-        'flex h-full min-h-0 flex-col rounded-lg border border-border/50 bg-muted/50 p-3 shadow-sm transition-colors',
+        'flex h-full min-h-0 flex-col rounded-lg border border-mail-line bg-mail-pane p-3 shadow-xs transition-colors',
         // A card wide enough to read, with the next column showing at the edge.
         'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:shrink',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
@@ -154,7 +154,7 @@ export function TaskBoardColumn({
 
           {/* Fades rather than appears. The last card out of a column is still
               on screen finishing its exit when this mounts, so a hard cut would
-              put a "column clear" under a card that is plainly still there. */}
+              put "Nothing here" under a card that is plainly still there. */}
           {tasks.length === 0 ? (
             <motion.p
               layout="position"
@@ -162,7 +162,7 @@ export function TaskBoardColumn({
               animate={{ opacity: 1 }}
               className="py-6 text-center text-xs text-muted-foreground"
             >
-              column clear
+              Nothing here
             </motion.p>
           ) : null}
         </KanbanColumnContent>

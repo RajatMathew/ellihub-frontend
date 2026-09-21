@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { orderThreadTasks } from '../src/modules/tasks/lib/thread-task-order';
+import {
+  orderThreadTasks,
+  splitThreadTasks,
+  THREAD_TASK_VISIBLE_LIMIT,
+} from '../src/modules/tasks/lib/thread-task-order';
 import type { Task, TaskPriority, TaskStatus } from '../src/modules/tasks/schemas/task.schema';
 
 let seq = 0;
@@ -91,5 +95,44 @@ describe('orderThreadTasks (elli-ui#1057)', () => {
     const list = [task({ id: 'p3', priority: 'P3' }), task({ id: 'p1', priority: 'P1' })];
     orderThreadTasks(list);
     expect(ids(list)).toEqual(['p3', 'p1']);
+  });
+});
+
+describe('how many of a thread’s tasks the panel shows (elli-ui#1078)', () => {
+  const many = Array.from({ length: 14 }, (_, index) => `task-${index}`);
+
+  test('a short list is shown whole, with nothing to unfold', () => {
+    const list = ['a', 'b', 'c'];
+    expect(splitThreadTasks(list, false)).toEqual({ visible: list, hiddenCount: 0 });
+  });
+
+  test('a list exactly at the limit does not offer a show-more', () => {
+    // The off-by-one that would render "Show 0 more".
+    const list = many.slice(0, THREAD_TASK_VISIBLE_LIMIT);
+    expect(splitThreadTasks(list, false).hiddenCount).toBe(0);
+  });
+
+  test('a long list is cut, and says how many are hiding', () => {
+    // The panel is sticky, so an uncapped list of fourteen made it taller than
+    // the pane and the mail behind it hard to reach.
+    const { visible, hiddenCount } = splitThreadTasks(many, false);
+    expect(visible).toHaveLength(THREAD_TASK_VISIBLE_LIMIT);
+    expect(hiddenCount).toBe(many.length - THREAD_TASK_VISIBLE_LIMIT);
+    expect(visible[0]).toBe('task-0');
+  });
+
+  test('expanding shows every one of them', () => {
+    expect(splitThreadTasks(many, true)).toEqual({ visible: many, hiddenCount: 0 });
+  });
+
+  test('keeps the order it was given — the worst stay at the top', () => {
+    // It slices rather than re-sorts, so the five on show are the five
+    // orderThreadTasks put first, not an arbitrary five.
+    expect(splitThreadTasks(many, false).visible).toEqual(many.slice(0, 5));
+  });
+
+  test('does not hand back the array it was given', () => {
+    const list = ['a', 'b'];
+    expect(splitThreadTasks(list, false).visible).not.toBe(list);
   });
 });
