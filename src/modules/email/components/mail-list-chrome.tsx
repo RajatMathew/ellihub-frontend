@@ -564,7 +564,14 @@ function MailFilterPills({
                       identifier, not a column of figures to be scanned. */}
                   <span className="flex min-w-0 flex-1 items-baseline gap-2">
                     {project.jobNumber && (
-                      <span className="shrink-0 text-xs font-medium text-mail-ink">
+                      /* A floor under the number so the names start on one
+                         line (elli-ui#1081). Job numbers run from five
+                         characters to nine — "30000" against "28100-25" — and
+                         with the column sized to each one the names stepped in
+                         and out down the menu. `tabular-nums` holds the digits
+                         to one width so the same number of characters is
+                         always the same length. */
+                      <span className="w-[4.75rem] shrink-0 text-xs font-medium tabular-nums text-mail-ink">
                         {project.jobNumber}
                       </span>
                     )}

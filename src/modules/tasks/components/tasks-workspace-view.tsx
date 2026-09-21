@@ -121,7 +121,13 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
         // Inside the mailbox the parent already supplies one; the standalone
         // route has to take it from the viewport.
         inWorkspace
-          ? 'min-h-0 flex-1 overflow-hidden bg-muted p-4 lg:p-6'
+          ? // The mail workspace's own paper (elli-ui#1104). Tasks is a tab
+            // beside Mail and Calendar, so switching to it should not change the
+            // colour of the page under the tabs; `bg-muted` made it a different
+            // room. The columns take the reading pane's surface, which is what
+            // lifts them off it — against `bg-muted/50` on `bg-muted` they were
+            // outlines around nothing.
+            'min-h-0 flex-1 overflow-hidden bg-mail-paper p-4 lg:p-6'
           : 'h-[calc(100dvh_-_5rem)] p-4 lg:p-6'
       )}
     >

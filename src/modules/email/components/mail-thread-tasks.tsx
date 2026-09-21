@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { SPRING_CHECK_STRIKE_LAG_MS, SpringCheck } from '@/app/components/ui/spring-check';
 import { cn } from '@/app/lib/utils';
 import {
@@ -5,9 +7,9 @@ import {
   mailThreadTaskDueLabel,
 } from '@/modules/email/lib/mail-thread-task-due';
 import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-meter';
-import { orderThreadTasks } from '@/modules/tasks/lib/thread-task-order';
+import { orderThreadTasks, splitThreadTasks } from '@/modules/tasks/lib/thread-task-order';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
-import { Clock } from 'lucide-react';
+import { ChevronDown, Clock } from 'lucide-react';
 
 /**
  * The tasks raised from the open thread.
@@ -40,16 +42,22 @@ export function MailThreadTasks({
   onToggleComplete?: (task: Task, completed: boolean) => void;
   onEdit?: (task: Task) => void;
 }) {
+  // Opens the rest in place. Deliberately not remembered: the panel is sticky
+  // and the next thread starts from the same short list rather than inheriting
+  // however far the last one was unfolded.
+  const [expanded, setExpanded] = useState(false);
+
   if (tasks.length === 0) {
     return <p className="pb-1 text-[12.5px] text-mail-muted">No tasks raised from this thread.</p>;
   }
 
   // Worst first, and stable between refetches — see orderThreadTasks.
   const ordered = orderThreadTasks(tasks);
+  const { visible, hiddenCount } = splitThreadTasks(ordered, expanded);
 
   return (
     <ul className="min-w-0 space-y-0.5 pb-1">
-      {ordered.map((task) => {
+      {visible.map((task) => {
         const isDone = task.status === 'COMPLETED';
 
         return (
@@ -105,6 +113,19 @@ export function MailThreadTasks({
           </li>
         );
       })}
+
+      {hiddenCount > 0 && (
+        <li>
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1 py-1 text-xs text-link hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => setExpanded(true)}
+          >
+            <ChevronDown aria-hidden="true" className="size-3.5" />
+            Show {hiddenCount} more
+          </button>
+        </li>
+      )}
     </ul>
   );
 }
