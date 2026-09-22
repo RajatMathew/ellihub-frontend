@@ -468,6 +468,18 @@ function MailFilterPills({
 }: MailFilterPillsProps) {
   const stripRef = useRef<HTMLDivElement>(null);
   const [fade, setFade] = useState<'' | 'l' | 'r' | 'lr'>('');
+  const [projectQuery, setProjectQuery] = useState('');
+  const trimmedProjectQuery = projectQuery.trim().toLowerCase();
+  // "All emails" isn't itself a search match, so it drops out with the rest
+  // of the resting list once a query narrows things down.
+  const showAllOption = !trimmedProjectQuery;
+  const visibleProjects = trimmedProjectQuery
+    ? projects.filter(
+        (project) =>
+          project.name.toLowerCase().includes(trimmedProjectQuery) ||
+          (project.jobNumber?.toLowerCase().includes(trimmedProjectQuery) ?? false)
+      )
+    : projects;
 
   // Only fade an edge that genuinely has more strip past it.
   useEffect(() => {
@@ -502,13 +514,19 @@ function MailFilterPills({
         '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
       )}
     >
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          // A stale query from last time would have to be noticed and
+          // cleared by hand before the full project list was visible again.
+          if (!open) setProjectQuery('');
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             aria-pressed={Boolean(selectedProject)}
             className={cn(
-              'mail-pill flex max-w-52 shrink-0 cursor-pointer items-center gap-[7px] py-2 pe-[11px] ps-[13px] text-xs font-semibold',
+              'mail-pill flex cursor-pointer items-center gap-[7px] py-2 pe-[11px] ps-[13px] text-xs font-semibold',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100',
               // Resting, this is not a filter — it is the label for the view
               // you are already in, and a filled navy pill announced it as the
@@ -518,8 +536,19 @@ function MailFilterPills({
               // project *is* selected and something really is filtered — the
               // same two-state rule `Filters` follows below.
               selectedProject
-                ? 'bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover'
-                : 'bg-mail-chip text-mail-mid hover:bg-mail-chip-hover hover:text-mail-ink',
+                ? // A project name can run long, and truncating it at the same
+                  // fixed width as the resting "All project emails" label cut
+                  // it off far earlier than it had to be. Sized to its own
+                  // content (no `flex-1`, which grew the pill unconditionally
+                  // even for a short name like "PS 515X") but capped at the
+                  // strip's available width, so it only claims more than it
+                  // needs once its own label is genuinely that long.
+                  // `min-w-0` is load-bearing: a flex item's default
+                  // `min-width: auto` blocks it from shrinking below its
+                  // content's own width, so without it the pill would push
+                  // the pills after it out of the strip (elli-ui#1139).
+                  'min-w-0 max-w-full bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover'
+                : 'max-w-52 shrink-0 bg-mail-chip text-mail-mid hover:bg-mail-chip-hover hover:text-mail-ink',
               !onProjectChange && 'pointer-events-none opacity-45'
             )}
             title={selectedProject ? selectedProject.label : 'Filter by project'}
@@ -541,24 +570,63 @@ function MailFilterPills({
               // thing the menu does.
               <span>All project emails</span>
             )}
-            <ChevronDown aria-hidden="true" className="size-[13px] shrink-0 opacity-70" />
+            {/* `ms-auto`: once the pill grows past its label's own width
+                (elli-ui#1139), the chevron has to be pinned to the pill's
+                own right edge — sitting right after the label left a gap
+                of unclaimed pill between the two. */}
+            <ChevronDown aria-hidden="true" className="ms-auto size-[13px] shrink-0 opacity-70" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-h-80 w-80 overflow-y-auto">
+        <DropdownMenuContent align="start" className="max-h-80 w-104 overflow-y-auto">
+          {projects.length > 0 && (
+            // No horizontal padding of its own — the content's own `p-2`
+            // already insets it, and adding a second layer of padding here
+            // pushed the search box in further than the rows below it, so
+            // the two edges no longer lined up.
+            //
+            // The bottom spacing lives on this outer element rather than on
+            // the `relative` one below, which the icon centers against —
+            // with `pb-1.5` on that element too, `top-1/2` centered against
+            // the padded box instead of the input itself, and sat a couple
+            // of pixels high.
+            <div className="pb-1.5">
+              <div className="relative">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute start-2 top-1/2 size-3.5 -translate-y-1/2 text-mail-muted"
+                />
+                <Input
+                  value={projectQuery}
+                  onChange={(event) => setProjectQuery(event.target.value)}
+                  placeholder="Search projects"
+                  aria-label="Search projects"
+                  className="h-8 rounded-md ps-7 text-xs"
+                  // The list re-typing on every keystroke stole focus back to
+                  // the trigger without this — the menu treats an ArrowDown
+                  // as "move to the next item" by default, which an input
+                  // needs for cursor movement instead (elli-ui#1136).
+                  onKeyDown={(event) => event.stopPropagation()}
+                />
+              </div>
+            </div>
+          )}
           <DropdownMenuRadioGroup
             value={selectedProject?.entityId ?? 'all'}
             onValueChange={(value) => onProjectChange?.(value === 'all' ? null : value)}
           >
-            <DropdownMenuLabel className="text-[11px] text-mail-muted">
-              Filter by project
-            </DropdownMenuLabel>
-            <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>
-            {projects.length > 0 && <DropdownMenuSeparator />}
-            {projects.length === 0 ? (
-              <DropdownMenuItem disabled>No project mail yet</DropdownMenuItem>
+            {showAllOption && <DropdownMenuRadioItem value="all">All emails</DropdownMenuRadioItem>}
+            {projects.length > 0 && showAllOption && <DropdownMenuSeparator />}
+            {visibleProjects.length === 0 ? (
+              <DropdownMenuItem disabled>
+                {projects.length === 0 ? 'No project mail yet' : 'No projects match your search'}
+              </DropdownMenuItem>
             ) : (
-              projects.map((project) => (
-                <DropdownMenuRadioItem key={project.entityId} value={project.entityId}>
+              visibleProjects.map((project) => (
+                <DropdownMenuRadioItem
+                  key={project.entityId}
+                  value={project.entityId}
+                  className="ps-5"
+                >
                   {/* The number and the name are one label, so they share a row
                       that owns the gap between them rather than relying on the
                       menu item's own spacing, which left them touching —
