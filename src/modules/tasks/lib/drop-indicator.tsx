@@ -19,22 +19,9 @@ import type { ReactNode } from 'react';
  * Slicing the array the board already built keeps every card the same element
  * with the same key, so React adds one node and moves nothing.
  */
-export function withDropIndicator(children: ReactNode, slot: number | null): ReactNode {
-  if (slot === null) return children;
-
-  // The board renders the cards with a single `{tasks.map(...)}`, so children is
-  // that array. Anything else is left alone rather than guessed at.
-  if (!Array.isArray(children)) return children;
-  if (slot < 0 || slot > children.length) return children;
-
-  return [
-    ...children.slice(0, slot),
-    <div
-      key="task-drop-indicator"
-      aria-hidden
-      data-slot="task-drop-indicator"
-      className="h-0.5 shrink-0 rounded-full bg-primary"
-    />,
-    ...children.slice(slot),
-  ];
+export function withDropIndicator(children: ReactNode, _slot: number | null): ReactNode {
+  // The line was drawn in the gap the dragged card would land in; the
+  // placeholder slot the card itself leaves already says that now, so the
+  // extra rule was a second, redundant "here" underneath it.
+  return children;
 }

@@ -233,7 +233,7 @@ test('the board renders its columns, coloured assignees and filter pills', async
 
   // Every column the design calls for. Due Today and Tomorrow carry the date
   // beside them now, so the heading is matched by its start rather than whole.
-  for (const column of ['Overdue', 'Due Today', 'Tomorrow', 'Pending', 'Completed']) {
+  for (const column of ['Overdue', 'Due Today', 'Tomorrow', 'Upcoming', 'Completed']) {
     await expect(columnHeading(page, column)).toBeVisible();
   }
 
@@ -356,7 +356,7 @@ test('a forbidden column says no while the card is still in the air', async ({ p
   await page.mouse.move(dueToday.x + dueToday.width / 2, dueToday.y + 160, { steps: 12 });
 
   await expect(
-    page.getByText('An overdue task can only be completed, not rescheduled here')
+    page.getByText('Complete an overdue task, or reschedule it from the task itself')
   ).toBeVisible();
 
   await page.screenshot({ path: 'output/visual/task-board-forbidden.png', animations: 'disabled' });

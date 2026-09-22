@@ -11,7 +11,6 @@ import {
 import { TaskAssigneeAvatar } from '@/modules/tasks/components/task-assignee-avatar';
 import { useTaskAssigneeOptions } from '@/modules/tasks/hooks/use-task-assignee-options';
 import type { Task } from '@/modules/tasks/schemas/task.schema';
-import { ChevronDown } from 'lucide-react';
 
 /**
  * The card's assignee chip: coloured initials plus a chevron that reassigns in
@@ -43,17 +42,25 @@ export function TaskAssigneeMenu({
           // card. Keeping the event to ourselves lets the menu open, at the cost
           // of not being able to start a drag from the chip itself.
           onPointerDown={(event) => event.stopPropagation()}
-          // The chip is 42x28 drawn, which is a comfortable click and a mean
-          // target for a thumb. The pseudo-element grows the touch area to 58x44
+          // The chip is the avatar alone, no chevron — the artifact's trigger
+          // is a bare circle that answers on hover with a ring rather than
+          // advertising itself with a second icon (elli-ui#1140). The
+          // pseudo-element grows the 24px circle's touch area to a 44px square
           // without moving a pixel of the layout — raising the padding instead
           // would have pushed the whole card header taller on a phone. Nothing
           // sits within 8px of it: the completion circle is at the far end of
           // the row.
-          className="relative flex items-center gap-0.5 rounded-md p-0.5 before:absolute before:-inset-2 before:content-[''] hover:bg-surface-hover focus-visible:bg-surface-hover"
+          className="group/assignee relative inline-flex cursor-pointer rounded-full before:absolute before:-inset-2.5 before:content-['']"
           aria-label={name ? `Assigned to ${name}. Change assignee` : 'Unassigned. Choose assignee'}
         >
-          <TaskAssigneeAvatar name={name} />
-          <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
+          <TaskAssigneeAvatar
+            name={name}
+            // Named group: an unnamed one would have also matched the card's
+            // own hover state (also `group`, for the +1 day reveal), lighting
+            // the ring whenever the card was hovered anywhere rather than only
+            // when this chip itself was (elli-ui#1140).
+            className="transition-shadow group-hover/assignee:ring-3 group-hover/assignee:ring-info/25 group-focus-visible/assignee:ring-3 group-focus-visible/assignee:ring-info/25"
+          />
         </button>
       </DropdownMenuTrigger>
 

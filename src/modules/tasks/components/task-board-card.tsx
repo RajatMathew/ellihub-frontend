@@ -57,7 +57,7 @@ export const TaskBoardCard = memo(function TaskBoardCard({
               one following the cursor. The card is hidden, not removed, so
               the slot keeps its size and the drop animation has a box to
               return to. */}
-          <div className="touch-manipulation rounded-lg group-data-[dragging=true]/item:bg-muted group-data-[dragging=true]/item:[&>*]:invisible">
+          <div className="touch-manipulation rounded-xl group-data-[dragging=true]/item:border group-data-[dragging=true]/item:border-dashed group-data-[dragging=true]/item:border-border group-data-[dragging=true]/item:bg-muted group-data-[dragging=true]/item:[&>*]:invisible">
             <TaskCard
               task={task}
               now={now}

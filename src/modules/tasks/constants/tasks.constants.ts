@@ -24,11 +24,12 @@ export const TASK_COURT_OPTIONS: { value: TaskCourt; label: string; tone: string
 // How the card draws a priority: the meter's filled bars and its label share one
 // colour, so the level reads at a glance without the label being parsed. Their
 // own ramp rather than `destructive`/`warning` — see the note beside
-// `--priority-high` in the theme files.
+// `--priority-high` in the theme files. `bar` is a `fill-*` utility — the bars
+// are SVG rects, not filled divs.
 export const TASK_PRIORITY_TONES: Record<TaskPriority, { bar: string; text: string }> = {
-  P1: { bar: 'bg-priority-high', text: 'text-priority-high' },
-  P2: { bar: 'bg-priority-medium', text: 'text-priority-medium' },
-  P3: { bar: 'bg-priority-low', text: 'text-priority-low' },
+  P1: { bar: 'fill-priority-high', text: 'text-priority-high' },
+  P2: { bar: 'fill-priority-medium', text: 'text-priority-medium' },
+  P3: { bar: 'fill-priority-low', text: 'text-priority-low' },
 };
 
 // The card names the court in full — "Our court" reads on its own, where a

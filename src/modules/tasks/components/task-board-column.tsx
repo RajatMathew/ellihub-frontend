@@ -104,12 +104,12 @@ export function TaskBoardColumn({
         // strength so the edges stop drawing themselves, and a shadow to give
         // the whole thing a lift. At full-strength borders and a fainter fill it
         // read as ruled graph paper.
-        'flex h-full min-h-0 flex-col rounded-lg border border-mail-line bg-mail-pane p-2 shadow-xs transition-colors',
+        'flex h-full min-h-0 flex-col rounded-lg border border-mail-pane-line bg-mail-pane p-2 shadow-xs transition-colors',
         // On a phone, a card wide enough to read with the next column showing
         // at the edge. From md up the column has a floor it never shrinks
         // below: when five fit they share the spare width, when they do not
         // the board scrolls sideways rather than squeezing them.
-        'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:min-w-72 md:flex-1 md:snap-align-none',
+        'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:min-w-84 md:flex-1 md:snap-align-none',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
         isForbidden && 'bg-destructive/10 ring-2 ring-destructive/50'
       )}
@@ -138,7 +138,7 @@ export function TaskBoardColumn({
             className="absolute inset-x-0 top-0 z-10 flex items-start gap-1.5 rounded-md border border-destructive/40 bg-card p-2 text-xs font-medium text-destructive shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
           >
             <Ban aria-hidden className="mt-0.5 size-3 shrink-0" />
-            {verdict.reason}q
+            {verdict.reason}
           </p>
         ) : null}
         <div

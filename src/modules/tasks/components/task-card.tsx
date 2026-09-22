@@ -1,5 +1,4 @@
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { cn } from '@/app/lib/utils';
 import { TaskAssigneeMenu } from '@/modules/tasks/components/task-assignee-menu';
@@ -10,7 +9,7 @@ import { TaskPriorityMeter } from '@/modules/tasks/components/task-priority-mete
 import { TASK_ENTITY_LABELS } from '@/modules/tasks/constants/tasks.constants';
 import type { Task, TaskCourt, TaskPriority } from '@/modules/tasks/schemas/task.schema';
 import { differenceInCalendarDays, format } from 'date-fns';
-import { CalendarPlus, Check, Clock } from 'lucide-react';
+import { Check, Clock } from 'lucide-react';
 
 function prefersReducedMotion() {
   return (
@@ -77,19 +76,18 @@ export function TaskCard({
     // time, so the layout never shifts, and it is revealed on focus too — a
     // control only a mouse can reach is a control a keyboard cannot.
     //
-    // Three bands, not seven rows. The card used to give the ring, the
-    // priority, the title, the court and the deadline a row each, so a
-    // one-word task was five stacked lines and mostly air. Now the ring and the
-    // title share the top line with the chip, the body sits under the title,
-    // and everything that is a fact about the task — priority, court, deadline
-    // — is one ruled-off line at the foot.
+    // Redrawn from the tasks-card-redesign artifact: priority now reads
+    // directly above the title rather than beside the court at the foot, so
+    // the two things that describe *what this task is* — how urgent, what it
+    // is called — sit together, and the foot is left to court and deadline,
+    // the two things that describe *where it stands*.
     <div
       // What useEqualCardHeights measures, and the minimum it hands back: every
-      // card on the board is as tall as the tallest, the footer pinned to the
-      // bottom edge so the spare height opens under the body.
+      // card on the board is as tall as the tallest, the tail block pinned to
+      // the bottom edge so the spare height opens above it.
       data-task-card
       className={cn(
-        'group flex min-h-(--task-card-height) flex-col gap-2 rounded-lg border border-border bg-card p-3',
+        'group flex min-h-(--task-card-height) flex-col rounded-xl border border-border bg-card px-4 pb-[13px] pt-[15px]',
         isDone && 'opacity-60',
         // Reduced motion gets the same ring, held plainly for as long as the
         // flag is set, rather than a fade. Deciding here rather than in CSS
@@ -98,11 +96,10 @@ export function TaskCard({
         justLanded && (prefersReducedMotion() ? 'ring-2 ring-success' : 'animate-task-landed')
       )}
     >
-      {/* The circle, the title and the owner on one line. The circle is the one
-          control that moves the card out of the board entirely, so it leads;
-          the title takes the width between it and the chip and wraps beneath
-          itself, never under the chip. */}
-      <div className="flex items-start gap-2">
+      {/* The circle and the card's ownership share the header. The circle is
+          the one control that moves the card out of the board entirely, so it
+          leads; the envelope and the assignee chip trail at the far edge. */}
+      <div className="mb-[9px] flex items-center justify-between">
         {/* A real checkbox rather than a button carrying a label: completion is
             a two-state fact about the task, so Radix's role and aria-checked say
             so and space toggles it. Only the shape is ours - the design draws a
@@ -116,7 +113,7 @@ export function TaskCard({
             onPointerDown={(event) => event.stopPropagation()}
             aria-label={isDone ? `Reopen ${task.title}` : `Complete ${task.title}`}
             className={cn(
-              'size-6 shrink-0 rounded-full border-2 [&_svg]:size-3.5',
+              'size-5 shrink-0 cursor-pointer rounded-full border-2 [&_svg]:size-3',
               isDone &&
                 'border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground',
               // While open the border is transparent: TaskCompletionRing below
@@ -136,7 +133,7 @@ export function TaskCard({
           {!isDone ? (
             <Check
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 m-auto size-3.5 text-success opacity-0 transition-opacity peer-hover:opacity-50 peer-focus-visible:opacity-50"
+              className="pointer-events-none absolute inset-0 m-auto size-3 text-success opacity-0 transition-opacity peer-hover:opacity-50 peer-focus-visible:opacity-50"
             />
           ) : null}
 
@@ -149,18 +146,31 @@ export function TaskCard({
           ) : null}
         </span>
 
-        {/* Raw rather than `Button`: the title wraps to three lines at this column
-            width, and Button is a fixed-height, nowrap, centred control - undoing
-            all of that leaves nothing of the primitive behind. `min-w-0` so a
-            long unbroken word truncates the button rather than pushing the chip
-            out of the card. The top padding sets the first line's centre on the
-            circle's. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <TaskCardEmailSources references={task.emailReferences} />
+          <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
+        </div>
+      </div>
+
+      {/* Priority sits right above the title it describes, rather than beside
+          the court down at the foot — the two together are "what this task
+          is", read before anything else on the card. */}
+      <div className="mb-2">
+        <TaskPriorityMeter
+          priority={task.priority}
+          disabled={isBusy}
+          onChange={onPriorityChange ? (next) => onPriorityChange(next) : undefined}
+        />
+
+        {/* Raw rather than `Button`: the title wraps to three lines at this
+            column width, and Button is a fixed-height, nowrap, centred control
+            - undoing all of that leaves nothing of the primitive behind. */}
         <button
           type="button"
           onClick={() => onOpen(task)}
           onPointerDown={(event) => event.stopPropagation()}
           title={task.title}
-          className="min-w-0 flex-1 pt-0.5 text-start font-serif text-base font-bold leading-snug text-foreground hover:underline"
+          className="mt-1.5 block w-full cursor-pointer text-start font-serif text-[17px] font-semibold leading-[1.3] tracking-[-0.005em] text-foreground hover:underline"
         >
           {/* Three lines, then an ellipsis. Cards share the tallest card's
               height, so an unbounded title would set the whole board's. The
@@ -169,63 +179,37 @@ export function TaskCard({
             {task.title}
           </span>
         </button>
-
-        {/* Provenance and ownership share the corner, as the design draws it:
-            the envelope opens the emails the task was raised from, the chip
-            says whose it is. Pulled up a touch so the chip's own padding does
-            not push the row taller than the circle. */}
-        <div className="-my-0.5 flex shrink-0 items-center gap-1">
-          <TaskCardEmailSources references={task.emailReferences} />
-          <TaskAssigneeMenu task={task} disabled={isBusy} onReassign={onReassign} />
-        </div>
       </div>
 
-      {/* The body hangs under the title, not under the circle: it continues the
-          title, and a line that started flush with the ring read as a separate
-          item. */}
-      {task.description || task.entityLinks.length > 0 ? (
-        <div className="flex flex-col gap-1.5 ps-8">
-          {task.description ? (
-            <p className="line-clamp-2 text-sm leading-snug break-words text-muted-foreground">
-              {task.description}
-            </p>
-          ) : null}
+      {task.description ? (
+        <p className="mb-3 line-clamp-2 text-[13px] leading-[1.45] break-words text-muted-foreground">
+          {task.description}
+        </p>
+      ) : null}
 
-          {task.entityLinks.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {task.entityLinks.map((link) => (
-                <Badge
-                  key={`${link.entityType}-${link.entityId}`}
-                  variant="secondary"
-                  appearance="light"
-                  size="sm"
-                  className="rounded-sm uppercase tracking-wide"
-                >
-                  {TASK_ENTITY_LABELS[link.entityType]} · {link.entityId}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
+      {task.entityLinks.length > 0 ? (
+        <div className="mb-3 flex flex-wrap gap-1">
+          {task.entityLinks.map((link) => (
+            <Badge
+              key={`${link.entityType}-${link.entityId}`}
+              variant="secondary"
+              appearance="light"
+              size="sm"
+              className="rounded-sm uppercase tracking-wide"
+            >
+              {TASK_ENTITY_LABELS[link.entityType]} · {link.entityId}
+            </Badge>
+          ))}
         </div>
       ) : null}
 
-      {/* Everything that is a fact about the task on one line, ruled off from
-          its content by a faint line — half the theme's hairline, so it
-          separates rather than divides. Priority and court sit together at the
-          start; the deadline and its nudge at the end.
-
-          Sized to fit the narrowest column: everything is text-xs, and the
-          nudge is an icon rather than the words "+1 day", which with the
-          deadline beside it pushed the row onto two lines in every card. The
-          row still wraps rather than clips, as a last resort for the longest
-          labels at the minimum width. */}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/50 pt-2">
-        <div className="flex items-center gap-3">
-          <TaskPriorityMeter
-            priority={task.priority}
-            disabled={isBusy}
-            onChange={onPriorityChange ? (next) => onPriorityChange(next) : undefined}
-          />
+      {/* Court and deadline: what stage the task is at now, pinned to the
+          card's bottom edge so every card in a row lines its foot up with the
+          next regardless of how much body sits above. Only the deadline row
+          is ruled off — the court is a fact about the task, the deadline (and
+          its nudge) is the one line that is also a countdown. */}
+      <div className="mt-auto flex flex-col">
+        <div className="mb-3">
           <TaskCourtToggle
             court={task.court}
             disabled={isBusy}
@@ -234,31 +218,28 @@ export function TaskCard({
         </div>
 
         {due ? (
-          <div className="flex items-center gap-1.5">
-            <span className={cn('inline-flex items-center gap-1 text-xs font-medium', due.tone)}>
-              <Clock className="size-3.5" aria-hidden />
+          <div className="flex items-center gap-2 border-t border-border/50 pt-[11px]">
+            <span
+              className={cn('inline-flex items-center gap-1 text-[12.5px] font-semibold', due.tone)}
+            >
+              <Clock className="size-3" aria-hidden />
               {due.text}
             </span>
 
             {!isDone ? (
-              <Button
+              <button
                 type="button"
-                variant="inverse"
-                size="icon"
                 disabled={isBusy}
                 onClick={() => onShiftDueDate(task, 1)}
                 onPointerDown={(event) => event.stopPropagation()}
-                // The name is what the beat spec and a screen reader find it by;
-                // the title is what a pointer finds.
                 aria-label="+1 day"
-                title="+1 day"
                 // Hidden until the card is hovered or something inside it is
                 // focused, as the design has it - but never hidden from a
                 // keyboard, and always shown on touch, where there is no hover.
-                className="size-5 text-info opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+                className="shrink-0 cursor-pointer text-xs font-bold text-info opacity-0 transition-opacity hover:underline focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
               >
-                <CalendarPlus aria-hidden className="size-3.5" />
-              </Button>
+                +1 day
+              </button>
             ) : null}
           </div>
         ) : null}

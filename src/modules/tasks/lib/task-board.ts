@@ -21,7 +21,7 @@ export const TASK_COLUMN_LABELS: Record<TaskColumnId, string> = {
   OVERDUE: 'Overdue',
   DUE_TODAY: 'Due Today',
   TOMORROW: 'Tomorrow',
-  PENDING: 'Pending',
+  PENDING: 'Upcoming',
   COMPLETED: 'Completed',
 };
 
@@ -317,7 +317,7 @@ export function canMoveTask(
   if (to === 'OVERDUE') {
     return {
       allowed: false,
-      reason: 'A task becomes overdue by its due date passing, not by hand',
+      reason: 'Tasks become overdue on their own, not by dragging them here',
     };
   }
 
@@ -328,7 +328,7 @@ export function canMoveTask(
   if (from === 'OVERDUE' && to !== 'COMPLETED') {
     return {
       allowed: false,
-      reason: 'An overdue task can only be completed, not rescheduled here',
+      reason: 'Complete an overdue task, or reschedule it from the task itself',
     };
   }
 

@@ -53,13 +53,17 @@
      is ever drawn on - `--card` and `--mail-chip`, the fill of a selected
      priority chip. The original gold and olive measured 3.10:1 and 3.78:1 on
      the chip (elli-ui#994); these are the same hues stepped down in lightness
-     until they clear it. Measured on `--mail-chip`: 5.45 / 5.11 / 5.02.
-     `tests/theme-contrast.test.ts` holds them to it. */
-  --priority-high: #a64439;
-  --priority-medium: #8a5f22;
-  --priority-low: #6b6b41;
-  --court-ours: #435a87;
-  --court-theirs: #a64439;
+     until they clear it. Re-tuned to the tasks-card-redesign artifact's own
+     red/gold/olive hues (elli-ui#1140) - `--priority-high` is the artifact's
+     value verbatim, `--priority-medium` and `--priority-low` are that same
+     hue stepped down, because the artifact's own values measured 3.63:1 and
+     4.47:1 on `--mail-chip` and neither clears AA. Measured on `--mail-chip`:
+     4.96 / 4.98 / 4.93. `tests/theme-contrast.test.ts` holds them to it. */
+  --priority-high: #b33b33;
+  --priority-medium: #8a5b17;
+  --priority-low: #68683b;
+  --court-ours: #3c5b8a;
+  --court-theirs: #b33b33;
   --caution: var(--color-orange-500);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-950);
