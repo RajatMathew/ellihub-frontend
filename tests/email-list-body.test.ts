@@ -24,6 +24,12 @@ describe('deciding whether a list row is the whole mail', () => {
     expect(listRowIsWholeThread(row({ attachmentCount: 1 }))).toBe(false);
   });
 
+  test('a mail flagged as having a file still needs fetching before its count is known', () => {
+    // A shared-mailbox row raises the flag from the sync and learns the count
+    // only once elli-core lists the files; the chips are still not on the row.
+    expect(listRowIsWholeThread(row({ hasAttachments: true }))).toBe(false);
+  });
+
   test('a row whose body did not fit the page budget still needs fetching', () => {
     expect(listRowIsWholeThread(row({ body: undefined }))).toBe(false);
     expect(listRowIsWholeThread(row({ body: [] }))).toBe(false);
