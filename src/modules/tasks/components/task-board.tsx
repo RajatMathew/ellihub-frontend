@@ -232,16 +232,21 @@ export function TaskBoard({
         },
       }}
     >
-      {/* Five columns do not fit a phone, and stacking them loses the board. Below
-          md it becomes a snap-scrolling row instead — one column at a time, the
-          next peeking so it is obvious you can swipe.
+      {/* The board is a horizontal scroller at every width. Five columns squeezed
+          into a grid meant each one got whatever was left over, and below xl
+          the grid wrapped them onto a second row and the board was gone. Now a
+          column has a floor width (set on the column itself), grows into spare
+          room when the five fit, and the row scrolls sideways when they do not.
+
+          Below md the columns take the phone's width and the row snaps — one
+          column at a time, the next peeking so it is obvious you can swipe.
 
           gap-2 between the panels. Each one already draws its own border and
           fill, so the gutter only has to keep two edges apart — 12px of it was
           board-wide dead space in a view that is short of width, not long on
           it. The phone row keeps a wider gap, where the space is what separates
           one swiped column from the next rather than a border. */}
-      <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:snap-none md:grid-cols-3 md:gap-2 md:overflow-x-visible xl:grid-cols-5">
+      <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain md:snap-none md:gap-2">
         {/* Columns are deliberately not `disabled`: useSortable's disabled turns
             off the droppable as well as the draggable, which would make an empty
             column refuse drops. Column drags are harmless here — onValueChange

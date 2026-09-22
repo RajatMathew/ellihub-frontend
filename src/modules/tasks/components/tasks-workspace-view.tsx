@@ -165,12 +165,17 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           to "No tasks yet" with nothing loaded. No data is no data. */}
       {boardQuery.isPending ? (
         <div
-          className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5"
+          // The same row the board draws, so the columns land where the
+          // skeletons were rather than reflowing from a grid into a scroller.
+          className="flex min-h-0 flex-1 gap-3 overflow-hidden md:gap-2"
           role="status"
           aria-label="Loading tasks"
         >
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-48 rounded-lg" />
+          {TASK_COLUMNS.map((columnId) => (
+            <Skeleton
+              key={columnId}
+              className="h-48 w-[85vw] shrink-0 rounded-lg sm:w-[60vw] md:w-auto md:min-w-72 md:flex-1"
+            />
           ))}
         </div>
       ) : boardQuery.isError ? (
