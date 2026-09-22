@@ -125,7 +125,10 @@
   /* A half-step lighter than `mid`, so a row's participants and its preview
      are two tones rather than one — the same split the design draws. */
   --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
-  --mail-row-hover: var(--surface-hover);
+  /* Diluted toward the paper rather than the raw --surface-hover the rest
+     of the app uses — a row list is denser than a button, and the full
+     token read too heavy skimming forty of them in a row. */
+  --mail-row-hover: color-mix(in oklab, var(--surface-hover) 75%, var(--mail-paper));
   --mail-row-edge: var(--card-border);
   /* The open conversation's edge. A shade firmer than --mail-row-edge:
      that one is drawn against the paper, this one against the white card

@@ -122,12 +122,11 @@ export type EmailThreadMessage = {
 };
 
 /**
- * Fades an element out where the quick-action cluster takes its slot —
- * the avatar and the timestamp both hide this way, so the icons underneath
- * read clearly instead of stacking on top of them.
+ * The `+2` others-count and `(3)` thread-count chips beside the name.
+ * `-ms-0.5` pulls each in from the row's own `gap-1.5` so it reads as part
+ * of the name, not as its own item on the line.
  */
-const FADES_FOR_QUICK_ACTIONS =
-  'max-lg:opacity-0 lg:group-hover:opacity-0 lg:group-focus-within:opacity-0';
+const NAME_COUNT_CHIP_CLASSES = '-ms-0.5 shrink-0 text-[11.5px] tabular-nums text-mail-muted';
 
 /** Escapes regex metacharacters so a search query can be used as a literal match. */
 function escapeRegExp(value: string) {
@@ -268,7 +267,7 @@ export function EmailRowCard({
         className={cn(
           'flex w-full cursor-pointer gap-[11px] rounded-[10px] px-2.5 py-[13px] text-left',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-          'motion-safe:transition-[background-color,box-shadow] motion-safe:duration-100',
+          'motion-safe:transition-[background-color,box-shadow] motion-safe:duration-200',
           ...emailRowSurfaceClasses({ isSelected, isChecked })
         )}
         aria-current={isSelected ? 'true' : undefined}
@@ -298,7 +297,14 @@ export function EmailRowCard({
               // Read conversations sit back a step, so the column has rhythm.
               !email.unread && 'saturate-50 brightness-[1.03]',
               'motion-safe:transition-opacity motion-safe:duration-100',
-              showCheckbox && 'opacity-0'
+              showCheckbox && 'opacity-0',
+              // Fades on the same trigger as the checkbox circle it swaps
+              // for below — otherwise the two could disagree about whether
+              // hover counted and briefly show through each other. Hover
+              // only, not focus-within: the tick is a mouse affordance, and
+              // keyboard focus landing anywhere in the row (a quick action,
+              // the subject link) shouldn't swap the avatar out from under it.
+              isCheckable && 'group-hover:opacity-0'
             )}
           />
         ) : (
@@ -332,6 +338,14 @@ export function EmailRowCard({
           <span className="mb-0.5 flex min-w-0 items-center gap-1.5">
             <span
               className={cn(
+                // No `max-w-*` guess and no `flex-1`: default flex sizing
+                // (`shrink: 1`, `grow: 0`) already truncates this exactly
+                // when the row's total content — name plus whatever the
+                // quick-action cluster takes on hover — exceeds the column
+                // width, on any column width, without a pixel guess. A
+                // `flex-1` here stretched the name's own box to fill leftover
+                // room, opening a gap before the next chip even when the
+                // name was short (elli-ui#1091 follow-up).
                 'min-w-0 truncate text-[12.5px]',
                 email.unread ? 'font-semibold text-mail-ink' : 'font-medium text-mail-mid'
               )}
@@ -346,7 +360,7 @@ export function EmailRowCard({
             </span>
             {correspondent.othersCount > 0 && (
               <span
-                className="shrink-0 text-[11.5px] tabular-nums text-mail-muted"
+                className={NAME_COUNT_CHIP_CLASSES}
                 title={`${correspondent.othersCount + 1} recipients`}
               >
                 +{correspondent.othersCount}
@@ -354,7 +368,7 @@ export function EmailRowCard({
             )}
             {threadCount > 1 && (
               <span
-                className="shrink-0 text-[11.5px] tabular-nums text-mail-muted"
+                className={NAME_COUNT_CHIP_CLASSES}
                 title={`${threadCount} messages in this thread`}
               >
                 ({threadCount})
@@ -385,31 +399,41 @@ export function EmailRowCard({
                   className={cn(
                     'size-5 text-[10px]',
                     'motion-safe:transition-opacity motion-safe:duration-100',
-                    hasQuickActions && FADES_FOR_QUICK_ACTIONS
+                    // Fades out once the quick-action cluster is showing, so
+                    // it doesn't compete for attention right beside the
+                    // icons. The cluster shows on hover wherever there is a
+                    // mouse, and always on a touch screen, which has no
+                    // hover to reveal it.
+                    hasQuickActions &&
+                      'pointer-coarse:opacity-0 group-hover:opacity-0 group-focus-within:opacity-0'
                   )}
                 />
               )}
             </span>
             {/*
-              The quick actions take the timestamp's own slot rather than
-              floating over the subject and preview below (elli-ui#1091). The
-              timestamp stays mounted and merely fades out, so this span's
-              width and the row's height never change between the two states
-              — nothing downstream has to reserve space or reflow for it.
+              The quick actions replace the timestamp in the flex row rather
+              than floating over it (elli-ui#1091 follow-up): only one of the
+              two is ever in flow, so the sibling `flex-1` name above always
+              knows the real amount of room it has and shrinks to exactly
+              fit — no overlap, on any column width, without guessing a
+              pixel value. The trade-off this reopens is the one #1091 was
+              written to avoid: the row's own content briefly reflows the
+              instant hover starts. The negative margin below still keeps
+              the taller buttons from growing the row's height.
             */}
-            <span className="relative shrink-0">
+            <span className="shrink-0">
               <span
                 className={cn(
                   'block whitespace-nowrap text-[11px] tabular-nums text-mail-muted',
-                  'motion-safe:transition-opacity motion-safe:duration-100',
-                  hasQuickActions && FADES_FOR_QUICK_ACTIONS
+                  hasQuickActions &&
+                    'pointer-coarse:hidden group-hover:hidden group-focus-within:hidden'
                 )}
                 title={email.receivedAt}
               >
                 {formatEmailListDate(email.receivedAt)}
               </span>
               {hasQuickActions && (
-                <div className="absolute right-0 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+                <div className="-my-1 hidden items-center gap-0.5 pointer-coarse:flex group-hover:flex group-focus-within:flex">
                   {onToggleFlag && (
                     <QuickAction
                       label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
@@ -581,7 +605,15 @@ export function EmailRowCard({
             'motion-safe:transition-opacity motion-safe:duration-100',
             showCheckbox
               ? 'opacity-100'
-              : 'bg-mail-paper opacity-0 hover:opacity-100 focus-within:opacity-100'
+              : // `group-hover` (the row), not this span's own `hover` (its
+                // 36px circle only) — the two used to fire on different
+                // triggers, so there was a window where the avatar
+                // underneath was still visible while this was fading in.
+                // No backdrop fill: the avatar it swaps for fades out on the
+                // same trigger (above), so there's nothing left to cover.
+                // Hover only — see the avatar's own comment for why
+                // focus-within doesn't also show it.
+                'opacity-0 group-hover:opacity-100'
           )}
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => {
@@ -590,7 +622,8 @@ export function EmailRowCard({
           }}
         >
           <Checkbox
-            className="size-5 cursor-pointer rounded-md"
+            size="lg"
+            className="cursor-pointer rounded-md"
             checked={isChecked}
             onCheckedChange={(next) => {
               onCheckedChange?.(next === true, { range: shiftClickRef.current });
@@ -624,7 +657,12 @@ function QuickAction({
   children: React.ReactNode;
 }) {
   return (
-    <Tooltip>
+    // These four sit right under the cursor the instant the row is hovered,
+    // so the shared tooltip's instant-open default (`delayDuration={0}`,
+    // `src/app/components/ui/tooltip.tsx`) fired one for every icon the
+    // pointer crossed on the way to the one actually meant. A short delay
+    // means only a deliberate pause gets a tooltip.
+    <Tooltip delayDuration={400}>
       <TooltipTrigger asChild>
         <button
           type="button"
@@ -645,7 +683,7 @@ function QuickAction({
           {children}
         </button>
       </TooltipTrigger>
-      <TooltipContent variant="light" side="bottom" sideOffset={6}>
+      <TooltipContent variant="light" side="top" sideOffset={6}>
         {title}
       </TooltipContent>
     </Tooltip>
