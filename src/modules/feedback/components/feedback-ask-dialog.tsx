@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { useSession } from '@/app/api/auth-client';
 import { Button } from '@/app/components/ui/button';
 import {
   Dialog,
@@ -10,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog';
-import { Input } from '@/app/components/ui/input';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils';
 import { FeedbackFileDropZone } from '@/modules/feedback/components/feedback-file-drop-zone';
@@ -51,6 +49,15 @@ import {
  * Expanding it is a deliberate second step for anyone who actually wants to
  * write something, and only then does it take the middle of the screen.
  *
+ * **It does not ask who you are.** The panel briefly carried a name field,
+ * prefilled from the session and editable, on the theory that a shared login
+ * or someone reporting for a colleague makes the account the wrong answer.
+ * In an app nobody reaches without signing in, that is a box almost everyone
+ * retypes their own name into — a second question in front of a one-line
+ * answer, on the ask that exists precisely because it is cheap to answer
+ * (elli-ui#1050). Feedback is now filed against the signed-in account, which
+ * is also what lets the board group it by person at all.
+ *
  * **And when it is not asking, it waits as a bubble.** The ask fires once a
  * session, which is the right frequency for an interruption and the wrong one
  * for a door: someone who dismissed it, or who thought of something an hour
@@ -78,10 +85,8 @@ export function FeedbackAskDialog({
   idleContext?: string;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: session } = useSession();
   const submitFeedback = useSubmitFeedbackMutation();
   const [message, setMessage] = useState('');
-  const [name, setName] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [showAttach, setShowAttach] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -108,7 +113,6 @@ export function FeedbackAskDialog({
   const send = async () => {
     await submitFeedback.mutateAsync({
       title: clampFeedbackTitle(askedByChange ? context : idleContext),
-      submitterName: name.trim() || session?.user?.name || '',
       message: message.trim() || `No detail given — ${askedByChange ? context : idleContext}`,
       files,
       currentUrl: typeof window === 'undefined' ? undefined : window.location.href,
@@ -189,21 +193,6 @@ export function FeedbackAskDialog({
         className={cn('resize-none', expanded ? 'min-h-24' : 'min-h-20 text-[13px]')}
         disabled={submitFeedback.isPending}
         autoFocus={expanded}
-      />
-
-      {/* In both sizes. It was dropped from the docked panel to keep that
-          panel short, which quietly made the two states disagree about what
-          the form is: expanding to say who you are, and finding the field
-          you came for was only ever in the big one, is worse than the three
-          lines it saved. */}
-      <Input
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        placeholder={session?.user?.name ? `Your name (${session.user.name})` : 'Your name'}
-        className={cn(!expanded && 'h-9 text-[13px]')}
-        maxLength={120}
-        disabled={submitFeedback.isPending}
-        aria-label="Your name"
       />
 
       {showAttach ? (
