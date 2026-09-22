@@ -31,7 +31,7 @@ export function TaskCourtToggle({
       <span className={cn('size-2 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
       <span
         className={cn(
-          'text-sm font-semibold underline-offset-4',
+          'text-xs font-semibold underline-offset-4',
           // Underlined on hover rather than tinted behind, as the design draws
           // it - the label is the control, so the line belongs on the words and
           // in their own colour. Driven from the button so pointing anywhere on
@@ -46,7 +46,7 @@ export function TaskCourtToggle({
   );
 
   if (!onChange) {
-    return <span className="flex items-center gap-2">{body}</span>;
+    return <span className="flex items-center gap-1.5">{body}</span>;
   }
 
   const next: TaskCourt = court === 'OURS' ? 'THEIRS' : 'OURS';
@@ -61,7 +61,7 @@ export function TaskCourtToggle({
       // See TaskPriorityMeter: the whole card is a drag handle.
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={`${tone.label}. Hand over to ${TASK_COURT_TONES[next].label.toLowerCase()}`}
-      className="group/court -mx-1 h-auto w-fit gap-2 px-1 py-1 hover:bg-transparent"
+      className="group/court -mx-1 h-auto w-fit gap-1.5 px-1 py-1 hover:bg-transparent"
     >
       {body}
     </Button>
