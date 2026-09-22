@@ -293,12 +293,15 @@ export function MailListChrome({
         </label>
         <div
           className={cn(
-            // Focus lifts the field onto the card surface and nothing more. The
-            // ring it used to draw — a hairline plus a 4px halo — was the
-            // heaviest thing in the column, and it fired on every click into
-            // search.
-            'flex items-center gap-1.5 rounded-[10px] py-2 pe-2.5 ps-3 motion-safe:transition-colors motion-safe:duration-100',
-            searchFocused ? 'bg-mail-card' : 'bg-mail-search'
+            // Focus lifts the field onto the card surface and draws its edge —
+            // resting, the field stays a flat tint with no boundary, so the
+            // border does not fire on every click into search. A field the
+            // user typed into gets the same lift even once it loses focus,
+            // so a query left in place still reads as active, not idle.
+            'flex items-center gap-1.5 rounded-[10px] border py-2 pe-2.5 ps-3 motion-safe:transition-colors motion-safe:duration-100',
+            searchFocused || search
+              ? 'border-mail-line bg-mail-card'
+              : 'border-transparent bg-mail-search'
           )}
         >
           <Search
@@ -327,7 +330,7 @@ export function MailListChrome({
           {search && (
             <button
               type="button"
-              className="flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-mail-search-clear text-mail-mid hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100"
+              className="flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-mail-search-clear/60 text-mail-mid hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-mail-paper motion-safe:transition-colors motion-safe:duration-100"
               aria-label="Clear search"
               // Clearing unmounts this button, so a mouse click that moved
               // focus onto it would drop focus to <body> when it goes — and the
