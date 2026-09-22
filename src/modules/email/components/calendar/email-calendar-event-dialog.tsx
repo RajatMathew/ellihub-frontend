@@ -333,11 +333,11 @@ export function EmailCalendarEventDialog({
               />
             </div>
 
-            <FieldRow icon={Clock}>
+            <FieldRow icon={Clock} align="start">
               <div className="flex flex-wrap items-center gap-1">
                 <DatePickerButton value={date} onChange={setDate} className={CHIP_FIELD} />
                 {!allDay && (
-                  <>
+                  <div className="flex items-center gap-1 max-sm:order-last max-sm:basis-full">
                     <TimePickerButton
                       aria-label="Start time"
                       value={startTime}
@@ -370,7 +370,7 @@ export function EmailCalendarEventDialog({
                     >
                       <Globe aria-hidden="true" className="size-4" />
                     </button>
-                  </>
+                  </div>
                 )}
                 <label
                   htmlFor="calendar-event-allday"
@@ -388,7 +388,7 @@ export function EmailCalendarEventDialog({
                     onValueChange={(value) => value && setTimeZone(value)}
                     placeholder="Time zone"
                     searchPlaceholder="Search time zones…"
-                    className="h-8 w-72 text-xs"
+                    className="h-8 w-full text-xs sm:w-72"
                   />
                 </div>
               )}

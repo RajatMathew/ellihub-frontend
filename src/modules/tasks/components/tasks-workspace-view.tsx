@@ -131,14 +131,14 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           : 'h-[calc(100dvh_-_5rem)] p-4 lg:p-6'
       )}
     >
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <header className="flex items-start justify-between gap-3 sm:items-end">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-foreground">Tasks</h1>
           <p className="text-sm text-muted-foreground">
             Worst first — every count below is computed live from the board.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 flex-col-reverse items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
           {board ? (
             <span className="text-sm text-muted-foreground">
               {/* A board cut at the server's cap says so, rather than passing

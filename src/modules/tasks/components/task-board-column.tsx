@@ -105,8 +105,11 @@ export function TaskBoardColumn({
         // the whole thing a lift. At full-strength borders and a fainter fill it
         // read as ruled graph paper.
         'flex h-full min-h-0 flex-col rounded-lg border border-mail-line bg-mail-pane p-2 shadow-xs transition-colors',
-        // A card wide enough to read, with the next column showing at the edge.
-        'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:shrink',
+        // On a phone, a card wide enough to read with the next column showing
+        // at the edge. From md up the column has a floor it never shrinks
+        // below: when five fit they share the spare width, when they do not
+        // the board scrolls sideways rather than squeezing them.
+        'w-[85vw] shrink-0 snap-center sm:w-[60vw] md:w-auto md:min-w-72 md:flex-1 md:snap-align-none',
         isWelcome && 'bg-primary/5 ring-2 ring-primary/40',
         isForbidden && 'bg-destructive/10 ring-2 ring-destructive/50'
       )}
