@@ -32,16 +32,21 @@ export const taskTitleFieldClassName = (density: TaskFormDensity = 'comfortable'
       : // An input cannot wrap, so on a phone the size decides how much of a
         // long email subject you can read at once. `2xl` showed about twenty
         // characters of it before clipping.
-        'pb-3 text-lg sm:text-2xl'
+        'pb-2 text-lg sm:text-2xl'
   }`;
 
 /** A field's own label. Quieter in the popover, where the title is smaller too. */
 export const fieldLabelClassName = (density: TaskFormDensity = 'comfortable') =>
   density === 'comfortable' ? 'text-base' : 'text-sm';
 
-/** The gap between one field and the next — the whole of the airiness, really. */
+/**
+ * The gap between one field and the next — the whole of the airiness, really.
+ *
+ * Compact is 16px. It was 20px, which with each field's own label gap on top
+ * made the dialog read as a list of islands rather than one form.
+ */
 export const fieldStackClassName = (density: TaskFormDensity = 'comfortable') =>
-  density === 'comfortable' ? 'space-y-7' : 'space-y-5';
+  density === 'comfortable' ? 'space-y-7' : 'space-y-4';
 
 /** The track a segmented control sits in: the unchosen options read as one field. */
 export const segmentedTrackClassName = (density: TaskFormDensity = 'comfortable') =>
