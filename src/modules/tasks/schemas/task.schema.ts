@@ -185,7 +185,8 @@ export type TaskBatchResponse = z.infer<typeof taskBatchResponseSchema>;
 export type TaskBoardParams = {
   tz: string;
   today: string;
-  assigneeId?: string;
+  /** Show only these people's tasks; empty or absent shows everyone's. */
+  assigneeIds?: string[];
   limit?: number;
 };
 export type TaskFormData = z.infer<typeof taskFormSchema>;

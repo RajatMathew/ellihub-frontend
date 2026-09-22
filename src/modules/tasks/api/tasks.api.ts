@@ -49,7 +49,9 @@ export const tasksApi = {
     const res = await api.get(`${BASE}/board`, {
       params: {
         tz: params.tz,
-        ...(params.assigneeId && { assigneeId: params.assigneeId }),
+        // Several people travel as one comma-separated param, which is the
+        // shape the server's `TaskBoardQuerySchema` splits.
+        ...(params.assigneeIds?.length && { assigneeIds: params.assigneeIds.join(',') }),
         ...(params.limit && { limit: params.limit }),
       },
     });

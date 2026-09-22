@@ -32,7 +32,7 @@ import { Plus } from 'lucide-react';
 export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: boolean }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
-  const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>(null);
+  const [assigneeFilter, setAssigneeFilter] = useState<TaskAssigneeFilter>([]);
 
   // The board comes grouped and ordered from the server, cut on this
   // browser's day. The clock is part of the request, so a board left open
@@ -42,7 +42,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
   const boardQuery = useTaskBoardQuery({
     tz: clock.tz,
     today: clock.today,
-    ...(assigneeFilter && { assigneeId: assigneeFilter }),
+    ...(assigneeFilter.length > 0 && { assigneeIds: assigneeFilter }),
   });
   const createTask = useCreateTaskMutation();
   const updateTask = useUpdateTaskMutation();
@@ -187,62 +187,72 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
           </Button>
         </div>
       ) : (
-        <TaskBoard
-          columns={columns}
-          now={clock.now}
-          busyTaskId={busyTaskId}
-          justLandedTaskId={justLandedId}
-          onOpenTask={openEdit}
-          onCompleteTask={(task) => {
-            // The same landing ring +1 day gets: the card has moved columns, so
-            // say where it went rather than leaving it to be found.
-            markLanded(task.id);
-            dispatch({
-              type: 'complete',
-              id: task.id,
-              completed: task.status !== 'COMPLETED',
-              completedAt: new Date().toISOString(),
-            });
-          }}
-          onShiftDueDate={(task, days) => {
-            markLanded(task.id);
-            dispatch({ type: 'shiftDueDate', id: task.id, days });
-          }}
-          // Dragging a card to a spot. The placement is already clamped to the
-          // card's priority block by the board, and the server refuses it again
-          // - see PATCH /task/reorder. A card leaving Completed is reopened
-          // first: two ops, in that order, and the batch keeps the order.
-          onReorder={(task, { reopen, ...placement }) => {
-            if (reopen) {
+        // While a new filter loads, the previous board stays up (see
+        // useTaskBoardQuery) and fades a little so it reads as on its way out.
+        <div
+          aria-busy={boardQuery.isPlaceholderData}
+          className={cn(
+            'motion-safe:transition-opacity',
+            boardQuery.isPlaceholderData && 'opacity-60'
+          )}
+        >
+          <TaskBoard
+            columns={columns}
+            now={clock.now}
+            busyTaskId={busyTaskId}
+            justLandedTaskId={justLandedId}
+            onOpenTask={openEdit}
+            onCompleteTask={(task) => {
+              // The same landing ring +1 day gets: the card has moved columns, so
+              // say where it went rather than leaving it to be found.
               markLanded(task.id);
               dispatch({
                 type: 'complete',
                 id: task.id,
-                completed: false,
+                completed: task.status !== 'COMPLETED',
                 completedAt: new Date().toISOString(),
               });
+            }}
+            onShiftDueDate={(task, days) => {
+              markLanded(task.id);
+              dispatch({ type: 'shiftDueDate', id: task.id, days });
+            }}
+            // Dragging a card to a spot. The placement is already clamped to the
+            // card's priority block by the board, and the server refuses it again
+            // - see PATCH /task/reorder. A card leaving Completed is reopened
+            // first: two ops, in that order, and the batch keeps the order.
+            onReorder={(task, { reopen, ...placement }) => {
+              if (reopen) {
+                markLanded(task.id);
+                dispatch({
+                  type: 'complete',
+                  id: task.id,
+                  completed: false,
+                  completedAt: new Date().toISOString(),
+                });
+              }
+              dispatch({ type: 'reorder', id: task.id, ...placement });
+            }}
+            onReassign={(task, assigneeId) =>
+              dispatch({
+                type: 'update',
+                id: task.id,
+                fields: { assigneeId },
+                // The id alone cannot draw a name; the board's people list can.
+                assignee: assigneeId ? (people.find((p) => p.id === assigneeId) ?? null) : null,
+              })
             }
-            dispatch({ type: 'reorder', id: task.id, ...placement });
-          }}
-          onReassign={(task, assigneeId) =>
-            dispatch({
-              type: 'update',
-              id: task.id,
-              fields: { assigneeId },
-              // The id alone cannot draw a name; the board's people list can.
-              assignee: assigneeId ? (people.find((p) => p.id === assigneeId) ?? null) : null,
-            })
-          }
-          // Priority and court are ordinary fields; the op carries just the
-          // one that changed. A priority change drops the card's hand-placed
-          // position, so it re-enters its new block by age.
-          onPriorityChange={(task, priority) =>
-            dispatch({ type: 'update', id: task.id, fields: { priority } })
-          }
-          onCourtChange={(task, court) =>
-            dispatch({ type: 'update', id: task.id, fields: { court } })
-          }
-        />
+            // Priority and court are ordinary fields; the op carries just the
+            // one that changed. A priority change drops the card's hand-placed
+            // position, so it re-enters its new block by age.
+            onPriorityChange={(task, priority) =>
+              dispatch({ type: 'update', id: task.id, fields: { priority } })
+            }
+            onCourtChange={(task, court) =>
+              dispatch({ type: 'update', id: task.id, fields: { court } })
+            }
+          />
+        </div>
       )}
 
       <TaskFormDialog
