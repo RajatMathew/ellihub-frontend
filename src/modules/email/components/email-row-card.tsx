@@ -17,6 +17,7 @@ import {
   MEETING_RESPONSE_ICONS,
 } from '@/modules/email/lib/email-meeting-response';
 import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
+import { emailRowCorrespondent } from '@/modules/email/lib/email-row-correspondent';
 import { emailRowSurfaceClasses } from '@/modules/email/lib/email-row-surface';
 import { Archive, Flag, Paperclip, Pin, PinOff, Trash2 } from 'lucide-react';
 
@@ -28,11 +29,16 @@ export type EmailListItem = {
   conversationKey?: string;
   senderName: string;
   senderEmail: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientCount?: number;
   subject: string;
   preview: string;
   receivedAt: string;
   folderId?: string | null;
   folder: string;
+  /** The server's well-known folder key; `folder` may hold the folder id. */
+  folderKey?: string;
   mailbox: string;
   unread: boolean;
   flagged?: boolean;
@@ -208,6 +214,8 @@ export function EmailRowCard({
   );
   const isPinned = Boolean(email.classification?.pinnedAt);
   const hasQuickActions = Boolean(onArchive || onDelete || onToggleFlag || onTogglePin);
+  // Sender in the Inbox, `To: …` in Sent and Drafts — see the helper.
+  const correspondent = emailRowCorrespondent(email);
   const threadState = email.classification?.status ?? 'open';
   const projectReferences = (email.classification?.references ?? []).filter(
     (reference) => reference.type === 'project'
@@ -258,7 +266,7 @@ export function EmailRowCard({
           ...emailRowSurfaceClasses({ isSelected, isChecked })
         )}
         aria-current={isSelected ? 'true' : undefined}
-        aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
+        aria-label={`${correspondent.label}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
           email.attachmentCount
             ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
             : ''
@@ -274,8 +282,8 @@ export function EmailRowCard({
       >
         {showAvatars ? (
           <SenderAvatar
-            name={email.senderName}
-            email={email.senderEmail}
+            name={correspondent.name}
+            email={correspondent.email}
             accountId={accountId}
             className={cn(
               'mt-px size-9 text-xs',
@@ -303,9 +311,7 @@ export function EmailRowCard({
                   shiftClickRef.current = false;
                 }}
                 aria-label={
-                  isChecked
-                    ? `Deselect email from ${email.senderName}`
-                    : `Select email from ${email.senderName}`
+                  isChecked ? `Deselect ${correspondent.label}` : `Select ${correspondent.label}`
                 }
               />
             </span>
@@ -320,11 +326,13 @@ export function EmailRowCard({
                 email.unread ? 'font-semibold text-mail-ink' : 'font-medium text-mail-mid'
               )}
             >
-              {/* The sender is as likely to be what was searched for as the
+              {/* The name is as likely to be what was searched for as the
                   subject or the body — searching a company name and seeing the
                   match lit in the preview but not in the name it came from
                   reads as the wrong row matching (elli-ui#1022). */}
-              {highlightQuery ? highlightText(email.senderName, highlightQuery) : email.senderName}
+              {highlightQuery
+                ? highlightText(correspondent.label, highlightQuery)
+                : correspondent.label}
             </span>
             {threadCount > 1 && (
               <span
@@ -571,9 +579,7 @@ export function EmailRowCard({
               shiftClickRef.current = false;
             }}
             aria-label={
-              isChecked
-                ? `Deselect email from ${email.senderName}`
-                : `Select email from ${email.senderName}`
+              isChecked ? `Deselect ${correspondent.label}` : `Select ${correspondent.label}`
             }
           />
         </span>
