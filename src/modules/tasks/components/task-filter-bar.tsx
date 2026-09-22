@@ -37,7 +37,7 @@ export function TaskFilterBar({
           is one choice between four. It is the same segmented control the app
           already uses for Mail / Tasks / Calendar: everything sits in a single
           muted track and the chosen one lifts out of it. */}
-      <div className="flex flex-wrap items-center gap-0.5 rounded-full border border-input bg-muted p-0.5">
+      <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-input bg-muted p-1.5 scrollbar-none">
         <FilterPill active={value === null} onClick={() => onChange(null)}>
           Everyone
         </FilterPill>
