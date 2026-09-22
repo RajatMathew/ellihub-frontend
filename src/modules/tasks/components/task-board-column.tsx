@@ -131,48 +131,46 @@ export function TaskBoardColumn({
         <span className="text-xs text-muted-foreground">{tasks.length}</span>
       </div>
 
-      {/* The reason, not just a red border — colour alone is not a message. */}
-      {isForbidden && verdict.reason ? (
-        <p
-          role="status"
-          className="mb-2 flex shrink-0 items-start gap-1.5 rounded-md bg-destructive/15 p-2 text-xs font-medium text-destructive"
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {isForbidden && verdict.reason ? (
+          <p
+            role="status"
+            className="absolute inset-x-0 top-0 z-10 flex items-start gap-1.5 rounded-md border border-destructive/40 bg-card p-2 text-xs font-medium text-destructive shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+          >
+            <Ban aria-hidden className="mt-0.5 size-3 shrink-0" />
+            {verdict.reason}q
+          </p>
+        ) : null}
+        <div
+          ref={scrollRef}
+          {...scrollEdgeProps}
+          className="scroll-fade scrollbar-on-hover min-h-0 flex-1 overflow-y-auto"
         >
-          <Ban aria-hidden className="mt-0.5 size-3 shrink-0" />
-          {verdict.reason}
-        </p>
-      ) : null}
-
-      {/* The scroller is this wrapper rather than the sortable list inside it, so
-          the mask and the scrollbar belong to us and the list stays a plain
-          flex column. min-h-0 is what lets it shrink inside the flex column
-          instead of pushing it taller; without it nothing ever scrolls. */}
-      <div
-        ref={scrollRef}
-        {...scrollEdgeProps}
-        className="scroll-fade scrollbar-on-hover min-h-0 flex-1 overflow-y-auto"
-      >
-        <KanbanColumnContent value={columnId} className="gap-2">
-          {/* A card that leaves this column has to stay on screen long enough to
+          <KanbanColumnContent value={columnId} className="gap-2">
+            {/* A card that leaves this column has to stay on screen long enough to
               be seen leaving. Without this it unmounts on the frame its status
               changes and the tick reads as the card being deleted rather than
               completed — the cards below still slide up, but after something
               that was never there. See TaskBoardCardSlot for the motion itself. */}
-          <AnimatePresence initial={false}>{withDropIndicator(children, dropSlot)}</AnimatePresence>
+            <AnimatePresence initial={false}>
+              {withDropIndicator(children, dropSlot)}
+            </AnimatePresence>
 
-          {/* Fades rather than appears. The last card out of a column is still
+            {/* Fades rather than appears. The last card out of a column is still
               on screen finishing its exit when this mounts, so a hard cut would
               put "Nothing here" under a card that is plainly still there. */}
-          {tasks.length === 0 ? (
-            <motion.p
-              layout="position"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-6 text-center text-xs text-muted-foreground"
-            >
-              Nothing here
-            </motion.p>
-          ) : null}
-        </KanbanColumnContent>
+            {tasks.length === 0 ? (
+              <motion.p
+                layout="position"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-6 text-center text-xs text-muted-foreground"
+              >
+                Nothing here
+              </motion.p>
+            ) : null}
+          </KanbanColumnContent>
+        </div>
       </div>
     </KanbanColumn>
   );
