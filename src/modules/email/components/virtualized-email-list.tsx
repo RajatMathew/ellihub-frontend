@@ -390,7 +390,11 @@ function MonthGroupSection({
       </h2>
       <div id={contentId} role="region" aria-labelledby={triggerId} hidden={collapsed}>
         {!collapsed && (
-          <div role="list" aria-label={`${group.label} emails`}>
+          // `pt-1`: the group's first row sat flush against the sticky
+          // header's bottom edge, so the selected row's own top border and
+          // shadow had no clearance to render in and read as clipped flat
+          // instead of rounded.
+          <div role="list" aria-label={`${group.label} emails`} className="pt-1">
             {group.emails.map((email) => (
               <div key={email.id} role="listitem">
                 <EmailListRow

@@ -1,4 +1,3 @@
-import { useSession } from '@/app/api/auth-client';
 import { Button } from '@/app/components/ui/button';
 import {
   Form,
@@ -38,15 +37,11 @@ function getUserAgent(): string | undefined {
 }
 
 export function FeedbackEntryForm({ onCancel, onSubmitted }: FeedbackEntryFormProps) {
-  const { data: session } = useSession();
   const submitFeedback = useSubmitFeedbackMutation();
   const form = useForm<FeedbackFormData>({
     resolver: zodResolver(feedbackFormSchema),
     defaultValues: {
       title: '',
-      // Prefilled, not fixed: see the schema — the account is not always the
-      // person, and a blank box here would ask everyone to retype their name.
-      submitterName: session?.user?.name ?? '',
       message: '',
       files: [],
     },
@@ -86,20 +81,6 @@ export function FeedbackEntryForm({ onCancel, onSubmitted }: FeedbackEntryFormPr
               New feedback lands in Feedback first.
             </p>
           </div>
-
-          <FormField
-            control={form.control}
-            name="submitterName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-semibold">Your name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Who is sending this" maxLength={120} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={form.control}

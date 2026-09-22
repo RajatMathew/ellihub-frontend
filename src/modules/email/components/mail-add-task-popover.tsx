@@ -62,6 +62,19 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
         whenever the panel was near the bottom of the pane and flipped back on
         scroll — so the same control opened in two different places depending
         on where the page happened to be.
+
+        Staying below only works if it also fits below. It did not: the form is
+        around 500px and the trigger sits near the foot of the details panel, so
+        the sheet ran off the bottom of the screen with the footer — and the
+        `Add task` button in it — past the edge, and no way to reach it but
+        zooming the browser out (elli-ui#1100).
+
+        So the height is capped to the room Radix measured. `size()` publishes
+        that as `--radix-popover-content-available-height` whether or not
+        collision avoidance is on (it is a separate middleware from `flip` and
+        `shift`), and it already accounts for `collisionPadding`. The content is
+        a flex column so the fields take the squeeze and scroll, while the
+        footer stays pinned and visible at every height.
       */}
       <PopoverContent
         align="end"
@@ -69,7 +82,7 @@ export function MailAddTaskPopover({ email }: { email: MailTaskEmailContext }) {
         avoidCollisions={false}
         sideOffset={8}
         collisionPadding={12}
-        className="w-[21.5rem] overflow-hidden rounded-xl border-mail-line p-0"
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-[21.5rem] flex-col overflow-hidden rounded-xl border-mail-line p-0"
       >
         {/* Keyed by open so each visit starts clean without a reset effect. */}
         {open ? <AddTaskForm key="open" email={email} onDone={() => setOpen(false)} /> : null}
@@ -118,7 +131,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
 
   return (
     <form
-      className="flex flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -133,7 +146,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
           version read as a wall of text where nothing announced what it was —
           the chips and the date sat loose in the sheet with no heading to hang
           them on. */}
-      <div className="flex flex-col gap-3 p-3.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-3.5">
         <label className="sr-only" htmlFor="mail-add-task-text">
           Task
         </label>
@@ -252,7 +265,7 @@ function AddTaskForm({ email, onDone }: { email: MailTaskEmailContext; onDone: (
         </FieldGroup>
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3.5 py-2.5">
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-mail-hair bg-mail-paper px-3.5 py-2.5">
         <span className="me-auto text-[11.5px] text-mail-muted">&#8984;/Ctrl + Enter to add</span>
         <button
           type="submit"

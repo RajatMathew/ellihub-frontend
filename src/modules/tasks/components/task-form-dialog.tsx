@@ -97,7 +97,9 @@ function TaskFormDialogContent({
 
   return (
     <>
-      <DialogHeader>
+      {/* Ruled off from the form by the title field's own underline, so the
+          header keeps a step less than the primitive's default below it. */}
+      <DialogHeader className="mb-4">
         <DialogTitle>{isEdit ? 'Edit Task' : 'New Task'}</DialogTitle>
         <DialogDescription>
           {isEdit
@@ -124,7 +126,7 @@ function TaskFormDialogContent({
               // resolves it, and nothing is required: a board task need cite no
               // email at all.
               afterTitle={
-                <FormItem className="space-y-1.5">
+                <FormItem className="gap-1.5">
                   <FormLabel className="text-sm">Linked emails</FormLabel>
                   <TaskEmailReferences value={references} onChange={setReferences} />
                 </FormItem>
@@ -142,7 +144,7 @@ function TaskFormDialogContent({
               content-width buttons at three different widths. Both overrides are
               therefore mobile-only: a real gap, and `items-center` deferred to `sm`
               so the column falls back to `stretch` and the buttons share one width. */}
-          <DialogFooter className="gap-2 sm:items-center sm:gap-0">
+          <DialogFooter className="gap-2 pt-4 sm:items-center sm:gap-0">
             {/* The only way to delete a task, by product decision — the board's
                 cards deliberately carry no delete, so removing one is always a
                 deliberate trip through the task you are removing.

@@ -17,7 +17,6 @@ import {
   MEETING_RESPONSE_ICONS,
 } from '@/modules/email/lib/email-meeting-response';
 import { cleanEmailPreview } from '@/modules/email/lib/email-preview-text';
-import { emailRowQuickActionReserve } from '@/modules/email/lib/email-row-quick-actions';
 import { emailRowSurfaceClasses } from '@/modules/email/lib/email-row-surface';
 import { Archive, Flag, Paperclip, Pin, PinOff, Trash2 } from 'lucide-react';
 
@@ -113,6 +112,14 @@ export type EmailThreadMessage = {
   preview?: string;
   attachments?: EmailAttachment[];
 };
+
+/**
+ * Fades an element out where the quick-action cluster takes its slot —
+ * the avatar and the timestamp both hide this way, so the icons underneath
+ * read clearly instead of stacking on top of them.
+ */
+const FADES_FOR_QUICK_ACTIONS =
+  'max-lg:opacity-0 lg:group-hover:opacity-0 lg:group-focus-within:opacity-0';
 
 /** Escapes regex metacharacters so a search query can be used as a literal match. */
 function escapeRegExp(value: string) {
@@ -240,7 +247,7 @@ export function EmailRowCard({
     <article
       ref={cardRef}
       aria-selected={isSelected}
-      className="group relative mx-3 mb-1 overflow-hidden rounded-[10px]"
+      className="group relative mx-3 mb-1 rounded-[10px]"
     >
       <button
         type="button"
@@ -336,47 +343,112 @@ export function EmailRowCard({
               per-conversation fact on the row, and the footer is left to
               status.
             */}
-            {email.classification?.assignedTo && (
-              <EmailAssigneeAvatar
-                accountId={accountId}
-                assignee={email.classification.assignedTo}
-                className="ms-auto size-5 text-[10px]"
-              />
-            )}
-            <span
-              className={cn(
-                'shrink-0 whitespace-nowrap text-[11px] tabular-nums text-mail-muted',
-                !email.classification?.assignedTo && 'ms-auto'
+            {/*
+              A fixed-size slot, always in the DOM, so assigning or
+              unassigning the thread never changes the row's width — only
+              what is painted inside the slot changes (elli-ui#1091). Mounting
+              and unmounting the avatar itself was the shift: the flex row's
+              content width — and so the `ms-auto` gap before it — jumped the
+              moment the picker resolved.
+            */}
+            <span className="ms-auto flex size-5 shrink-0 items-center justify-center">
+              {email.classification?.assignedTo && (
+                <EmailAssigneeAvatar
+                  accountId={accountId}
+                  assignee={email.classification.assignedTo}
+                  className={cn(
+                    'size-5 text-[10px]',
+                    'motion-safe:transition-opacity motion-safe:duration-100',
+                    hasQuickActions && FADES_FOR_QUICK_ACTIONS
+                  )}
+                />
               )}
-              title={email.receivedAt}
-            >
-              {formatEmailListDate(email.receivedAt)}
+            </span>
+            {/*
+              The quick actions take the timestamp's own slot rather than
+              floating over the subject and preview below (elli-ui#1091). The
+              timestamp stays mounted and merely fades out, so this span's
+              width and the row's height never change between the two states
+              — nothing downstream has to reserve space or reflow for it.
+            */}
+            <span className="relative shrink-0">
+              <span
+                className={cn(
+                  'block whitespace-nowrap text-[11px] tabular-nums text-mail-muted',
+                  'motion-safe:transition-opacity motion-safe:duration-100',
+                  hasQuickActions && FADES_FOR_QUICK_ACTIONS
+                )}
+                title={email.receivedAt}
+              >
+                {formatEmailListDate(email.receivedAt)}
+              </span>
+              {hasQuickActions && (
+                <div className="absolute right-0 top-1/2 z-10 flex -translate-y-1/2 items-center gap-0.5 opacity-100 lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
+                  {onToggleFlag && (
+                    <QuickAction
+                      label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
+                      title={email.flagged ? 'Unflag' : 'Flag'}
+                      pressed={email.flagged ?? false}
+                      tone="destructive"
+                      onActivate={onToggleFlag}
+                    >
+                      <Flag
+                        aria-hidden="true"
+                        className={cn(
+                          'size-3.5',
+                          email.flagged && 'fill-destructive text-destructive'
+                        )}
+                      />
+                    </QuickAction>
+                  )}
+                  {onTogglePin && (
+                    <QuickAction
+                      label={isPinned ? `Unpin ${email.subject}` : `Pin ${email.subject}`}
+                      title={isPinned ? 'Unpin' : 'Pin to top'}
+                      pressed={isPinned}
+                      onActivate={onTogglePin}
+                    >
+                      {isPinned ? (
+                        <PinOff aria-hidden="true" className="size-3.5 -rotate-45" />
+                      ) : (
+                        <Pin aria-hidden="true" className="size-3.5 -rotate-45" />
+                      )}
+                    </QuickAction>
+                  )}
+                  {onArchive && (
+                    <QuickAction
+                      label={`Archive ${email.subject}`}
+                      title="Archive"
+                      onActivate={onArchive}
+                    >
+                      <Archive aria-hidden="true" className="size-3.5" />
+                    </QuickAction>
+                  )}
+                  {onDelete && (
+                    <QuickAction
+                      label={`Delete ${email.subject}`}
+                      title="Delete"
+                      tone="destructive"
+                      onActivate={onDelete}
+                    >
+                      <Trash2 aria-hidden="true" className="size-3.5" />
+                    </QuickAction>
+                  )}
+                </div>
+              )}
             </span>
           </span>
 
           <span
             className={cn(
               'block truncate text-sm leading-[1.35] tracking-[-0.008em]',
-              email.unread ? 'font-bold text-mail-unread' : 'font-medium text-mail-ink',
-              // The quick actions now sit on this line rather than in a box
-              // above it, so the subject gives up the width they need while
-              // they are showing and takes it back when they go (elli-ui#991).
-              emailRowQuickActionReserve(hasQuickActions)
+              email.unread ? 'font-bold text-mail-unread' : 'font-medium text-mail-ink'
             )}
           >
             {highlightQuery ? highlightText(email.subject, highlightQuery) : email.subject}
           </span>
 
-          {/* The cluster is two lines tall and covers this one as well as the
-              subject, and these icons carry no fill of their own — so without
-              the same reservation the preview simply ran on underneath them
-              (elli-ui#995). */}
-          <span
-            className={cn(
-              'mt-0.5 block truncate text-[12.5px] leading-[1.45] text-mail-muted',
-              emailRowQuickActionReserve(hasQuickActions)
-            )}
-          >
+          <span className="mt-0.5 block truncate text-[12.5px] leading-[1.45] text-mail-muted">
             {meetingResponse && MeetingResponseIcon ? (
               <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 align-bottom">
                 <MeetingResponseIcon
@@ -506,61 +578,6 @@ export function EmailRowCard({
           />
         </span>
       )}
-
-      {hasQuickActions && (
-        // On its own surface, not inline on the row's. Dropping the box in
-        // elli-ui#991 saved the width of its padding, but these icons carry no
-        // fill of their own: the subject and preview lines under them reserve
-        // `pe-24` and the cluster is wider than that, so whatever did not fit
-        // showed *through* the glyphs instead of ending behind them. The card
-        // background is what makes the cluster opaque, and the border and lift
-        // are what keep it reading as a control rather than as clipped text.
-        <div className="absolute right-2.5 top-8 z-10 flex items-center gap-0.5 rounded-lg border border-mail-line bg-mail-card p-0.5 opacity-100 shadow-xs lg:opacity-0 lg:focus-within:opacity-100 lg:group-hover:opacity-100 motion-safe:transition-opacity motion-safe:duration-100">
-          {onToggleFlag && (
-            <QuickAction
-              label={email.flagged ? `Unflag ${email.subject}` : `Flag ${email.subject}`}
-              title={email.flagged ? 'Unflag' : 'Flag'}
-              pressed={email.flagged ?? false}
-              tone="destructive"
-              onActivate={onToggleFlag}
-            >
-              <Flag
-                aria-hidden="true"
-                className={cn('size-3.5', email.flagged && 'fill-destructive text-destructive')}
-              />
-            </QuickAction>
-          )}
-          {onTogglePin && (
-            <QuickAction
-              label={isPinned ? `Unpin ${email.subject}` : `Pin ${email.subject}`}
-              title={isPinned ? 'Unpin' : 'Pin to top'}
-              pressed={isPinned}
-              onActivate={onTogglePin}
-            >
-              {isPinned ? (
-                <PinOff aria-hidden="true" className="size-3.5 -rotate-45" />
-              ) : (
-                <Pin aria-hidden="true" className="size-3.5 -rotate-45" />
-              )}
-            </QuickAction>
-          )}
-          {onArchive && (
-            <QuickAction label={`Archive ${email.subject}`} title="Archive" onActivate={onArchive}>
-              <Archive aria-hidden="true" className="size-3.5" />
-            </QuickAction>
-          )}
-          {onDelete && (
-            <QuickAction
-              label={`Delete ${email.subject}`}
-              title="Delete"
-              tone="destructive"
-              onActivate={onDelete}
-            >
-              <Trash2 aria-hidden="true" className="size-3.5" />
-            </QuickAction>
-          )}
-        </div>
-      )}
     </article>
   );
 }
@@ -581,24 +598,30 @@ function QuickAction({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      className={cn(
-        'flex size-7 cursor-pointer items-center justify-center rounded-md text-mail-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px motion-safe:transition-colors motion-safe:duration-100',
-        tone === 'destructive'
-          ? 'hover:bg-destructive/10 hover:text-destructive'
-          : 'hover:bg-mail-accent-soft hover:text-mail-accent'
-      )}
-      aria-label={label}
-      aria-pressed={pressed}
-      title={title}
-      onClick={(event) => {
-        // Release focus so group-focus-within doesn't pin the hover cluster open.
-        event.currentTarget.blur();
-        onActivate();
-      }}
-    >
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'flex size-7 cursor-pointer items-center justify-center rounded-md text-mail-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:translate-y-px motion-safe:transition-colors motion-safe:duration-100',
+            tone === 'destructive'
+              ? 'hover:bg-destructive/10 hover:text-destructive'
+              : 'hover:bg-mail-accent-soft hover:text-mail-accent'
+          )}
+          aria-label={label}
+          aria-pressed={pressed}
+          onClick={(event) => {
+            // Release focus so group-focus-within doesn't pin the hover cluster open.
+            event.currentTarget.blur();
+            onActivate();
+          }}
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent variant="light" side="bottom" sideOffset={6}>
+        {title}
+      </TooltipContent>
+    </Tooltip>
   );
 }

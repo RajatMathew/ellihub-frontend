@@ -1202,16 +1202,17 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     (email: EmailListItem) => requestArchive(email.latestMessageId ?? email.id),
     [requestArchive]
   );
+  // Asks, like every other way of deleting one email does. This was the one
+  // path that mutated straight from the row: the hover trash on a list row
+  // moved the mail to Deleted Items on a single click, with only a toast after
+  // the fact, while the identical trash in the reading pane toolbar, the `d`
+  // shortcut and the bulk bar all went through the dialog first (elli-ui#1070).
+  // Routing it through `requestDelete` also picks up the selection clearing in
+  // `confirmDelete`, so deleting the open email from the list no longer leaves
+  // the reading pane showing it.
   const handleDeleteEmail = useCallback(
-    (email: EmailListItem) => {
-      if (!connectedAccount) return;
-      deleteMessageMutation.mutate({
-        accountId: connectedAccount.id,
-        messageId: email.latestMessageId ?? email.id,
-        targetFolderId: deletedFolderId,
-      });
-    },
-    [connectedAccount, deleteMessageMutation, deletedFolderId]
+    (email: EmailListItem) => requestDelete(email.latestMessageId ?? email.id),
+    [requestDelete]
   );
   const handleToggleFlagEmail = useCallback(
     (email: EmailListItem) => {

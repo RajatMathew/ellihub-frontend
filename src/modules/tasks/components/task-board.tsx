@@ -3,14 +3,13 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   Kanban,
   KanbanBoard,
-  KanbanItem,
-  KanbanItemHandle,
   KanbanOverlay,
   type KanbanMoveEvent,
 } from '@/app/components/ui/kanban';
-import { TaskBoardCardSlot } from '@/modules/tasks/components/task-board-card-slot';
+import { TaskBoardCard } from '@/modules/tasks/components/task-board-card';
 import { TaskBoardColumn } from '@/modules/tasks/components/task-board-column';
 import { TaskCard } from '@/modules/tasks/components/task-card';
+import { useEqualCardHeights } from '@/modules/tasks/hooks/use-equal-card-heights';
 import {
   boardArrangementSignature,
   canMoveTask,
@@ -128,6 +127,11 @@ export function TaskBoard({
    */
   const restoreArrangement = useCallback(() => setColumns(groupedIds), [groupedIds]);
 
+  // Every card the height of the tallest, re-measured whenever the server's
+  // board changes. Keyed on `served` rather than the local arrangement: a drag
+  // moves cards about but does not change what any of them says.
+  const boardRef = useEqualCardHeights<HTMLDivElement>(served);
+
   // Ids back to the cards they name, dropping any the server has since removed.
   const cardsIn = (columnId: TaskColumnId) =>
     columns[columnId].map((id) => byId.get(id)).filter((task): task is Task => Boolean(task));
@@ -202,109 +206,122 @@ export function TaskBoard({
   };
 
   return (
-    <Kanban
-      // Kanban renders a plain div around the board; without a height it grows to
-      // the tallest column and nothing below it can ever scroll.
-      className="flex min-h-0 flex-1 flex-col"
-      value={columns}
-      // The reflow while hovering. What lands here is provisional: the mutation
-      // fired on drop comes back through the query and replaces it.
-      onValueChange={setColumns}
-      // Asked before each reflow, so a refused target never opens a gap.
-      canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
-      getItemValue={(id: string) => id}
-      onMove={handleMove}
-      // A refused drop, a release over nothing, or Escape: the hover reflow has
-      // already moved the card and only this puts it back.
-      onDragDiscarded={restoreArrangement}
-      accessibility={{
-        announcements: {
-          onDragStart: ({ active }) => `Picked up ${byId.get(String(active.id))?.title ?? 'task'}.`,
-          onDragOver: ({ over }) =>
-            over
-              ? `Over ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
-              : 'Not over a column.',
-          onDragEnd: ({ over }) =>
-            over
-              ? `Dropped on ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
-              : 'Drop cancelled.',
-          onDragCancel: () => 'Drag cancelled.',
-        },
-      }}
-    >
-      {/* Five columns do not fit a phone, and stacking them loses the board. Below
-          md it becomes a snap-scrolling row instead — one column at a time, the
-          next peeking so it is obvious you can swipe.
+    // Kanban does not take a ref, so the measuring root is a wrapper of the
+    // same shape around it.
+    <div ref={boardRef} className="flex min-h-0 flex-1 flex-col">
+      <Kanban
+        // Kanban renders a plain div around the board; without a height it grows to
+        // the tallest column and nothing below it can ever scroll.
+        //
+        // While a card is in the air the whole board shows the grabbing hand and
+        // refuses text selection. The overlay lets the pointer through, so the
+        // cursor was whatever sat under it — an arrow over a column, a pointing
+        // hand over a button — and a mouse drag across the board left card text
+        // highlighted in its wake.
+        className="flex min-h-0 flex-1 flex-col data-[dragging=true]:select-none data-[dragging=true]:cursor-grabbing data-[dragging=true]:**:cursor-grabbing"
+        value={columns}
+        // The reflow while hovering. What lands here is provisional: the mutation
+        // fired on drop comes back through the query and replaces it.
+        onValueChange={setColumns}
+        // Asked before each reflow, so a refused target never opens a gap.
+        canMove={(from, to) => canMoveTask(from as TaskColumnId, to as TaskColumnId).allowed}
+        getItemValue={(id: string) => id}
+        onMove={handleMove}
+        // A refused drop, a release over nothing, or Escape: the hover reflow has
+        // already moved the card and only this puts it back.
+        onDragDiscarded={restoreArrangement}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) =>
+              `Picked up ${byId.get(String(active.id))?.title ?? 'task'}.`,
+            onDragOver: ({ over }) =>
+              over
+                ? `Over ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
+                : 'Not over a column.',
+            onDragEnd: ({ over }) =>
+              over
+                ? `Dropped on ${TASK_COLUMN_LABELS[over.id as TaskColumnId] ?? over.id}.`
+                : 'Drop cancelled.',
+            onDragCancel: () => 'Drag cancelled.',
+          },
+        }}
+      >
+        {/* The board is a horizontal scroller at every width. Five columns squeezed
+          into a grid meant each one got whatever was left over, and below xl
+          the grid wrapped them onto a second row and the board was gone. Now a
+          column has a floor width (set on the column itself), grows into spare
+          room when the five fit, and the row scrolls sideways when they do not.
+
+          Below md the columns take the phone's width and the row snaps — one
+          column at a time, the next peeking so it is obvious you can swipe.
 
           gap-2 between the panels. Each one already draws its own border and
           fill, so the gutter only has to keep two edges apart — 12px of it was
           board-wide dead space in a view that is short of width, not long on
           it. The phone row keeps a wider gap, where the space is what separates
           one swiped column from the next rather than a border. */}
-      <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:snap-none md:grid-cols-3 md:gap-2 md:overflow-x-visible xl:grid-cols-5">
-        {/* Columns are deliberately not `disabled`: useSortable's disabled turns
+        <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain md:snap-none md:gap-2">
+          {/* Columns are deliberately not `disabled`: useSortable's disabled turns
             off the droppable as well as the draggable, which would make an empty
             column refuse drops. Column drags are harmless here — onValueChange
             applies nothing, so reordering columns is a no-op. */}
-        {TASK_COLUMNS.map((columnId) => (
-          <TaskBoardColumn
-            key={columnId}
-            columnId={columnId}
-            tasks={cardsIn(columnId)}
-            byId={byId}
-            homeOf={homeOf}
-            now={now}
-          >
-            {cardsIn(columnId).map((task) => (
-              <TaskBoardCardSlot key={task.id}>
-                <KanbanItem value={task.id}>
-                  {/* KanbanItem keeps the drag listeners in context rather than
-                    spreading them, so a card only becomes draggable once it
-                    contains a handle. The whole card is the handle; the sensor's
-                    10px activation distance leaves the buttons inside clickable. */}
-                  <KanbanItemHandle asChild>
-                    <div>
-                      <TaskCard
-                        task={task}
-                        now={now}
-                        isBusy={busyTaskId === task.id}
-                        justLanded={justLandedTaskId === task.id}
-                        onOpen={onOpenTask}
-                        onComplete={onCompleteTask}
-                        onShiftDueDate={onShiftDueDate}
-                        onReassign={(assigneeId) => onReassign(task, assigneeId)}
-                        onPriorityChange={(priority) => onPriorityChange(task, priority)}
-                        onCourtChange={(court) => onCourtChange(task, court)}
-                      />
-                    </div>
-                  </KanbanItemHandle>
-                </KanbanItem>
-              </TaskBoardCardSlot>
-            ))}
-          </TaskBoardColumn>
-        ))}
-      </KanbanBoard>
+          {TASK_COLUMNS.map((columnId) => {
+            const cards = cardsIn(columnId);
+            return (
+              <TaskBoardColumn
+                key={columnId}
+                columnId={columnId}
+                tasks={cards}
+                byId={byId}
+                homeOf={homeOf}
+                now={now}
+              >
+                {cards.map((task) => (
+                  <TaskBoardCard
+                    key={task.id}
+                    task={task}
+                    now={now}
+                    isBusy={busyTaskId === task.id}
+                    justLanded={justLandedTaskId === task.id}
+                    onOpen={onOpenTask}
+                    onComplete={onCompleteTask}
+                    onShiftDueDate={onShiftDueDate}
+                    onReassign={onReassign}
+                    onPriorityChange={onPriorityChange}
+                    onCourtChange={onCourtChange}
+                  />
+                ))}
+              </TaskBoardColumn>
+            );
+          })}
+        </KanbanBoard>
 
-      {/* Without children the overlay renders an empty box, so a dragged card
+        {/* Without children the overlay renders an empty box, so a dragged card
           vanished into a faded outline. Render the real card instead, so it
-          follows the cursor and stays legible the whole way across. */}
-      <KanbanOverlay className="rounded-lg shadow-lg shadow-black/10">
-        {({ value, variant }) => {
-          if (variant === 'column') return null;
-          const task = byId.get(String(value));
-          if (!task) return null;
-          return (
-            <TaskCard
-              task={task}
-              now={now}
-              onOpen={() => undefined}
-              onComplete={() => undefined}
-              onShiftDueDate={() => undefined}
-              onReassign={() => undefined}
-            />
-          );
-        }}
-      </KanbanOverlay>
-    </Kanban>
+          follows the cursor and stays legible the whole way across.
+
+          Lifted, not just floating: a touch larger, tilted a degree, and with
+          a deeper shadow than the cards on the board, so the one in the hand
+          is unmistakably off the surface. Transform-only, so it costs the
+          compositor nothing per frame. */}
+        <KanbanOverlay className="rotate-1 scale-102 rounded-lg shadow-xl shadow-black/15 will-change-transform">
+          {({ value, variant }) => {
+            if (variant === 'column') return null;
+            const task = byId.get(String(value));
+            if (!task) return null;
+            return (
+              <TaskCard
+                task={task}
+                now={now}
+                onOpen={() => undefined}
+                onComplete={() => undefined}
+                onShiftDueDate={() => undefined}
+                onReassign={() => undefined}
+              />
+            );
+          }}
+        </KanbanOverlay>
+      </Kanban>
+    </div>
   );
 }

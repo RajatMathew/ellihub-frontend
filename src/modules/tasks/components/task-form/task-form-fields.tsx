@@ -99,7 +99,7 @@ export function TaskFormFields({
         control={form.control}
         name="title"
         render={({ field }) => (
-          <FormItem className="space-y-1.5">
+          <FormItem className="gap-1.5">
             <FormLabel className="sr-only">Title</FormLabel>
             <FormControl>
               <Input
@@ -126,12 +126,12 @@ export function TaskFormFields({
           />
           Add description
         </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3">
+        <CollapsibleContent className="pt-2">
           <FormField
             control={form.control}
             name="description"
             render={({ field }) => (
-              <FormItem className="space-y-1.5">
+              <FormItem className="gap-1.5">
                 <FormLabel className="sr-only">Description</FormLabel>
                 <FormControl>
                   <Textarea
@@ -147,12 +147,12 @@ export function TaskFormFields({
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField
           control={form.control}
           name="priority"
           render={({ field }) => (
-            <FormItem className="space-y-1.5">
+            <FormItem className="gap-1.5">
               <FormLabel className={labelClassName}>Priority</FormLabel>
               <TaskToggleField
                 label="Priority"
@@ -174,7 +174,7 @@ export function TaskFormFields({
           control={form.control}
           name="court"
           render={({ field }) => (
-            <FormItem className="space-y-1.5">
+            <FormItem className="gap-1.5">
               <FormLabel className={labelClassName}>Ball in court</FormLabel>
               <TaskToggleField
                 label="Ball in court"
@@ -204,7 +204,7 @@ export function TaskFormFields({
             control={form.control}
             name="dueDate"
             render={({ field }) => (
-              <FormItem className="space-y-1.5">
+              <FormItem className="gap-1.5">
                 <FormLabel className="sr-only">Due date</FormLabel>
                 <FormControl>
                   <DatePickerButton
@@ -223,7 +223,7 @@ export function TaskFormFields({
             control={form.control}
             name="dueTime"
             render={({ field }) => (
-              <FormItem className="space-y-1.5">
+              <FormItem className="gap-1.5">
                 <FormLabel className="sr-only">Due time</FormLabel>
                 <FormControl>
                   <TimePickerButton
@@ -248,7 +248,7 @@ export function TaskFormFields({
         control={form.control}
         name="assigneeId"
         render={({ field }) => (
-          <FormItem className="space-y-1.5">
+          <FormItem className="gap-1.5">
             <FormLabel className={labelClassName}>Assignee</FormLabel>
             <FormControl>
               <InfiniteSearchSelect
