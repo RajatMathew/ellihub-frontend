@@ -579,17 +579,12 @@ function MailFilterPills({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-80 w-104 overflow-y-auto">
           {projects.length > 0 && (
-            // No horizontal padding of its own — the content's own `p-2`
-            // already insets it, and adding a second layer of padding here
-            // pushed the search box in further than the rows below it, so
-            // the two edges no longer lined up.
-            //
-            // The bottom spacing lives on this outer element rather than on
-            // the `relative` one below, which the icon centers against —
-            // with `pb-1.5` on that element too, `top-1/2` centered against
-            // the padded box instead of the input itself, and sat a couple
-            // of pixels high.
-            <div className="pb-1.5">
+            // `sticky top-0` pins the search box while the rows beneath it
+            // scroll past — `-mx-2 -mt-2 px-2 pt-2` bleeds it out to the
+            // content's own edges (its `p-2`) so it reaches the very top and
+            // sides rather than floating inset, and `bg-popover` keeps a
+            // scrolled-under row from showing through it.
+            <div className="sticky top-0 z-10 -mx-2 -mt-2 rounded-t-md bg-popover px-2 pb-1.5 pt-1">
               <div className="relative">
                 <Search
                   aria-hidden="true"
@@ -611,6 +606,11 @@ function MailFilterPills({
             </div>
           )}
           <DropdownMenuRadioGroup
+            // `mt-3`: the first row sat flush against the sticky search box
+            // above it, so its own rounded top edge had no clearance to
+            // render in and read as clipped flat under the search box's `z-10`
+            // (the same class of bug as elli-ui#1091's sticky-header case).
+            className="mt-3"
             value={selectedProject?.entityId ?? 'all'}
             onValueChange={(value) => onProjectChange?.(value === 'all' ? null : value)}
           >
