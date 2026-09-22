@@ -22,33 +22,28 @@ export interface EmailRowSurfaceState {
 }
 
 /**
- * A drawn edge and a real lift, not a hairline. The 1px ring this started with
- * read as "slightly paler paper"; the open conversation is the reader's place
- * in a long list and has to be findable without hunting (elli-ui#992). The ring
- * is a shade darker than `--mail-row-edge` so it holds against the white card,
- * and the shadow is deep enough to sit the row above the page rather than
- * merely beside it.
+ * A drawn edge and a real lift, not a hairline. A plain `border` (rather than
+ * folding the edge into the box-shadow ring) so it reads as a border, not as
+ * a glow — the open conversation is the reader's place in a long list and has
+ * to be findable without hunting (elli-ui#992). `--mail-row-edge` rather than
+ * the firmer `--mail-row-selected-edge` — the lift shadow is what carries the
+ * "this one is open" signal, so the edge itself only needs to be a light,
+ * legible line against the white card, not a second heavy marker.
  */
 export const EMAIL_ROW_SELECTED_SURFACE =
-  'bg-mail-card shadow-[0_0_0_1.5px_var(--mail-row-selected-edge),0_2px_4px_rgba(26,28,31,0.08),0_10px_24px_-6px_rgba(26,28,31,0.20)]';
+  'bg-mail-card border border-mail-row-edge shadow-[0_1px_2px_rgba(26,28,31,0.04),0_4px_10px_-6px_rgba(26,28,31,0.10)]';
 
 /**
- * A resting row is a card too (elli-ui#1080).
- *
- * The redesign had rows sit straight on the paper with no edge of their own,
- * on the reasoning that forty bordered boxes read as forty things to deal
- * with. In practice the list lost its grain: with nothing but a hover tint
- * separating one conversation from the next, the four lines of a row ran into
- * the four lines below it.
- *
- * The edge is a hairline and the lift is barely there — enough to tell two
- * rows apart, not enough to compete with the open one, which still owns the
- * heavier ring and shadow above. Both are drawn as box-shadows rather than a
- * border so the row's box does not change size and the list does not reflow
- * when a row becomes the selected one.
+ * Only the open conversation is a card. A resting row sits directly on the
+ * mail paper with no shadow of its own — a list of bordered boxes reads as
+ * forty things to deal with, not a list with your place kept in it
+ * (elli-ui#921). It still carries a transparent 1px border, matching the
+ * selected row's, so opening a conversation never adds or removes a border
+ * from the box model — only its color changes, which costs no layout
+ * (elli-ui#1103).
  */
 export const EMAIL_ROW_RESTING_SURFACE =
-  'bg-mail-card shadow-[0_0_0_1px_var(--mail-row-edge),0_1px_2px_rgba(26,28,31,0.04)] hover:bg-mail-row-hover';
+  'bg-mail-paper border border-transparent hover:bg-mail-row-hover';
 
 export const EMAIL_ROW_CHECKED_SURFACE = 'bg-mail-accent-soft';
 
