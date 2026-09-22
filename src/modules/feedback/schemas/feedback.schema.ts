@@ -9,14 +9,13 @@ function isFile(value: unknown): value is File {
   return typeof File !== 'undefined' && value instanceof File;
 }
 
+/**
+ * What the sender types. Not who they are: the server files feedback against
+ * the signed-in account, which is the only attribution that can be trusted
+ * and the only one the board can group by (elli-ui#1050).
+ */
 export const feedbackFormSchema = z.object({
   title: z.string().trim().max(120, 'Title must be 120 characters or fewer.').optional(),
-  /**
-   * Who is giving the feedback. Prefilled from the session, and editable:
-   * the signed-in account is not always the person — shared logins and
-   * reporting on a colleague's behalf both make it the wrong answer.
-   */
-  submitterName: z.string().trim().max(120, 'Name must be 120 characters or fewer.').optional(),
   message: z
     .string()
     .trim()
