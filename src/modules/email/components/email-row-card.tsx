@@ -44,6 +44,8 @@ export type EmailListItem = {
   meetingResponse?: EmailMeetingResponse;
   meetingEvent?: EmailMeetingEvent;
   selected?: boolean;
+  /** The row has a file even when `attachmentCount` is not known yet. */
+  hasAttachments?: boolean;
   attachmentCount?: number;
   category?: string;
   body?: string[];
@@ -220,8 +222,12 @@ export function EmailRowCard({
     ? MEETING_RESPONSE_ICONS[meetingResponse.status]
     : null;
   const threadCount = email.threadMessageCount ?? 0;
+  // A shared-mailbox row can know it has a file before it knows how many
+  // (elli-core lists them after the sync that raised the flag). Draw the clip
+  // from the flag and the number only once there is one.
+  const hasAttachments = Boolean(email.attachmentCount || email.hasAttachments);
   const hasFooter = Boolean(
-    email.attachmentCount ||
+    hasAttachments ||
     email.flagged ||
     isPinned ||
     isOtherClassified ||
@@ -254,7 +260,9 @@ export function EmailRowCard({
         aria-label={`${email.senderName}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
           email.attachmentCount
             ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
-            : ''
+            : hasAttachments
+              ? ', has attachments'
+              : ''
         }`}
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button === 0) onSelect?.();
@@ -461,14 +469,14 @@ export function EmailRowCard({
                   strokeWidth={1.8}
                 />
               )}
-              {Boolean(email.attachmentCount) && (
+              {hasAttachments && (
                 <span
                   className={cn(
                     'ms-auto inline-flex shrink-0 items-center gap-[3px] text-[11px] tabular-nums text-mail-muted'
                   )}
                 >
                   <Paperclip className="size-[11px]" strokeWidth={1.7} />
-                  {email.attachmentCount}
+                  {email.attachmentCount ? email.attachmentCount : null}
                 </span>
               )}
             </span>

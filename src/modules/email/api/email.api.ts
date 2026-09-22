@@ -221,6 +221,9 @@ export const emailListItemSchema = z.object({
   tags: z.array(z.string()).optional(),
   meetingResponse: emailMeetingResponseSchema.optional(),
   meetingEvent: emailMeetingEventSchema.optional(),
+  // Known before the count is: a shared-mailbox row can raise the flag while
+  // `attachmentCount` is still 0, until elli-core lists its files.
+  hasAttachments: z.boolean().optional(),
   attachmentCount: z.number().optional(),
   threadMessageCount: z.number().optional(),
   body: z.array(z.string()).optional(),

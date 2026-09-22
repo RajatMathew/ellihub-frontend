@@ -1,6 +1,7 @@
 /** What the reading pane needs from a list row to render without asking for more. */
 export type MailListRowContent = {
   threadMessageCount?: number;
+  hasAttachments?: boolean;
   attachmentCount?: number;
   body?: string[];
 };
@@ -16,11 +17,12 @@ export type MailListRowContent = {
  *
  * Three conditions, and the third is the one that is easy to forget: the row
  * carries an `attachmentCount` but not the attachments themselves, so a mail
- * with a file on it still needs the conversation to draw its chips.
+ * with a file on it still needs the conversation to draw its chips. The count
+ * can lag the flag on a shared-mailbox row, so the flag counts too.
  */
 export function listRowIsWholeThread(row: MailListRowContent | null | undefined): boolean {
   if (!row) return false;
   if ((row.threadMessageCount ?? 0) > 1) return false;
-  if ((row.attachmentCount ?? 0) > 0) return false;
+  if ((row.attachmentCount ?? 0) > 0 || row.hasAttachments) return false;
   return Boolean(row.body?.some((part) => part.trim().length > 0));
 }
