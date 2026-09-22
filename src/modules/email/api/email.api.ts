@@ -204,6 +204,17 @@ export const emailListItemSchema = z.object({
   conversationKey: z.string().optional(),
   senderName: z.string(),
   senderEmail: z.string(),
+  /**
+   * The primary recipient, which is what labels a Sent or Drafts row — there
+   * the sender is the account holder on every line (elli-ui#1115).
+   *
+   * Optional because the two repos deploy separately: a client that ships
+   * ahead of the API would otherwise throw on every row rather than fall back
+   * to the sender. `emailRowCorrespondent` handles them being absent.
+   */
+  recipientName: z.string().optional(),
+  recipientEmail: z.string().optional(),
+  recipientCount: z.number().int().nonnegative().optional(),
   subject: z.string(),
   preview: z.string(),
   receivedAt: z.string(),

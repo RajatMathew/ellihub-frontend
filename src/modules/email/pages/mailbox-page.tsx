@@ -276,6 +276,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
         conversations.set(key, {
           ...email,
           mailbox: connectedAccount?.id ?? 'connected',
+          // Kept before `folder` is repurposed below as this list's folder id:
+          // the row still needs to know it is looking at Sent or Drafts, where
+          // it is labelled by recipient rather than sender (elli-ui#1115).
+          folderKey: email.folder,
           folder: email.folderId ?? selectedFolder,
           latestMessageId: email.id,
         });
@@ -363,6 +367,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     const pinned: EmailListItem[] = (pinnedThreadsQuery.data ?? []).map((email) => ({
       ...email,
       mailbox: connectedAccount?.id ?? 'connected',
+      folderKey: email.folder,
       folder: email.folderId ?? selectedFolder,
       latestMessageId: email.id,
     }));
