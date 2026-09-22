@@ -260,7 +260,12 @@ export function TaskBoard({
           board-wide dead space in a view that is short of width, not long on
           it. The phone row keeps a wider gap, where the space is what separates
           one swiped column from the next rather than a border. */}
-        <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain md:snap-none md:gap-2">
+        {/* `py-1`: the columns are `h-full` inside this `overflow-y-hidden`
+            strip, so with zero clearance their own top and bottom edges sat
+            flush against the clip boundary — the rounded corner and the
+            `shadow-xs` a column draws itself had no room to render and read
+            as cut off flat (elli-ui#1140). */}
+        <KanbanBoard className="scrollbar-on-hover flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain py-1 md:snap-none md:gap-2">
           {/* Columns are deliberately not `disabled`: useSortable's disabled turns
             off the droppable as well as the draggable, which would make an empty
             column refuse drops. Column drags are harmless here — onValueChange
@@ -304,7 +309,8 @@ export function TaskBoard({
           a deeper shadow than the cards on the board, so the one in the hand
           is unmistakably off the surface. Transform-only, so it costs the
           compositor nothing per frame. */}
-        <KanbanOverlay className="rotate-1 scale-102 rounded-lg shadow-xl shadow-black/15 will-change-transform">
+        {/* shadow-[0_1px_4px_rgba(0,0,0,0.14)] off */}
+        <KanbanOverlay className="rotate-1 scale-102 rounded-xl will-change-transform">
           {({ value, variant }) => {
             if (variant === 'column') return null;
             const task = byId.get(String(value));

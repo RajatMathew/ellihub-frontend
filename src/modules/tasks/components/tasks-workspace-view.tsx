@@ -133,10 +133,7 @@ export function TasksWorkspaceView({ inWorkspace = false }: { inWorkspace?: bool
     >
       <header className="flex items-start justify-between gap-3 sm:items-end">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-foreground">Tasks</h1>
-          <p className="text-sm text-muted-foreground">
-            Worst first — every count below is computed live from the board.
-          </p>
+          <h1 className="text-2xl font-semibold text-foreground">Tasks</h1>
         </div>
         <div className="flex shrink-0 flex-col-reverse items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
           {board ? (

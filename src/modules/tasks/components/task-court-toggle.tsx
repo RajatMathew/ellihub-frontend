@@ -28,10 +28,10 @@ export function TaskCourtToggle({
 
   const body = (
     <>
-      <span className={cn('size-2 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
+      <span className={cn('size-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden="true" />
       <span
         className={cn(
-          'text-xs font-semibold underline-offset-4',
+          'text-xs font-bold underline-offset-4',
           // Underlined on hover rather than tinted behind, as the design draws
           // it - the label is the control, so the line belongs on the words and
           // in their own colour. Driven from the button so pointing anywhere on
