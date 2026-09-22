@@ -17,9 +17,22 @@
 const OUTGOING_FOLDERS = new Set(['sent', 'drafts']);
 
 export type EmailRowCorrespondent = {
-  /** What to render, `To: …` prefix included where there is one. */
+  /**
+   * What to render in the row's truncating name slot — the `To:` prefix and
+   * the one name, and deliberately NOT the `+N`.
+   *
+   * The name is the part that may be cut; the count is not. Concatenating them
+   * put `+2` at the end of a truncating span, so the row that most needed it
+   * ("this went to three people") was exactly the row long enough to lose it:
+   * `To: Sebastian Woskolej +2` rendered as `To: Sebastian Woskolej …`. The
+   * count is rendered beside this, unshrinking, the way the thread count is.
+   */
   label: string;
-  /** The bare name, without the prefix or the `+N`. Drives the avatar. */
+  /** Recipients after the first, for that separate span. 0 renders nothing. */
+  othersCount: number;
+  /** The whole thing in one string, for aria-labels and tooltips. */
+  fullLabel: string;
+  /** The bare name, without the prefix or the count. Drives the avatar. */
   name: string;
   /** The address behind that name, for the avatar's photo lookup. */
   email: string;
@@ -55,6 +68,8 @@ export function emailRowCorrespondent(email: EmailRowCorrespondentInput): EmailR
   if (!isOutgoingEmailFolder(email.folderKey ?? email.folder)) {
     return {
       label: senderName,
+      othersCount: 0,
+      fullLabel: senderName,
       name: senderName,
       email: email.senderEmail?.trim() || '',
       outgoing: false,
@@ -69,10 +84,12 @@ export function emailRowCorrespondent(email: EmailRowCorrespondentInput): EmailR
   // Everyone after the first, the way a mail client counts them. The count is
   // the total, so one recipient adds nothing.
   const others = Math.max(0, (email.recipientCount ?? 0) - 1);
-  const counted = others > 0 ? `${named} +${others}` : named;
+  const label = `To: ${named}`;
 
   return {
-    label: `To: ${counted}`,
+    label,
+    othersCount: others,
+    fullLabel: others > 0 ? `${label} +${others}` : label,
     // The avatar gets the one person, not the tally: initials of
     // "Aaryan Narayani +2" would be "A+".
     name: named,

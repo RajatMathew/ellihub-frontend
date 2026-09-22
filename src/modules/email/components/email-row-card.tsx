@@ -266,7 +266,7 @@ export function EmailRowCard({
           ...emailRowSurfaceClasses({ isSelected, isChecked })
         )}
         aria-current={isSelected ? 'true' : undefined}
-        aria-label={`${correspondent.label}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
+        aria-label={`${correspondent.fullLabel}: ${email.subject}, ${email.unread ? 'unread' : 'read'}${
           email.attachmentCount
             ? `, ${email.attachmentCount} ${email.attachmentCount === 1 ? 'attachment' : 'attachments'}`
             : ''
@@ -311,7 +311,9 @@ export function EmailRowCard({
                   shiftClickRef.current = false;
                 }}
                 aria-label={
-                  isChecked ? `Deselect ${correspondent.label}` : `Select ${correspondent.label}`
+                  isChecked
+                    ? `Deselect ${correspondent.fullLabel}`
+                    : `Select ${correspondent.fullLabel}`
                 }
               />
             </span>
@@ -334,6 +336,14 @@ export function EmailRowCard({
                 ? highlightText(correspondent.label, highlightQuery)
                 : correspondent.label}
             </span>
+            {correspondent.othersCount > 0 && (
+              <span
+                className="shrink-0 text-[11.5px] tabular-nums text-mail-muted"
+                title={`${correspondent.othersCount + 1} recipients`}
+              >
+                +{correspondent.othersCount}
+              </span>
+            )}
             {threadCount > 1 && (
               <span
                 className="shrink-0 text-[11.5px] tabular-nums text-mail-muted"
@@ -579,7 +589,9 @@ export function EmailRowCard({
               shiftClickRef.current = false;
             }}
             aria-label={
-              isChecked ? `Deselect ${correspondent.label}` : `Select ${correspondent.label}`
+              isChecked
+                ? `Deselect ${correspondent.fullLabel}`
+                : `Select ${correspondent.fullLabel}`
             }
           />
         </span>

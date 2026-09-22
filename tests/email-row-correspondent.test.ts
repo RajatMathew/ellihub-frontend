@@ -81,17 +81,44 @@ describe('a sent row names the recipient', () => {
   });
 
   test('counting everyone after the first', () => {
-    expect(emailRowCorrespondent(sent({ recipientCount: 3 })).label).toBe('To: Aaryan Narayani +2');
+    expect(emailRowCorrespondent(sent({ recipientCount: 3 }))).toMatchObject({
+      othersCount: 2,
+      fullLabel: 'To: Aaryan Narayani +2',
+    });
   });
 
   test('but saying nothing when there is only one', () => {
-    expect(emailRowCorrespondent(sent({ recipientCount: 1 })).label).toBe('To: Aaryan Narayani');
+    expect(emailRowCorrespondent(sent({ recipientCount: 1 }))).toMatchObject({
+      othersCount: 0,
+      fullLabel: 'To: Aaryan Narayani',
+    });
+  });
+
+  test('the count is kept out of the label, which is the part that truncates', () => {
+    // Concatenated, `+2` sat at the end of a truncating span, so the rows that
+    // most needed it were exactly the long ones that lost it — seen live on
+    // estimating@ellicorp.com: "To: Sebastian Woskolej +2" rendered as
+    // "To: Sebastian Woskolej …" while the thread count beside it survived,
+    // because that count has an unshrinking span of its own. So does this now.
+    const many = emailRowCorrespondent(
+      sent({ recipientName: 'Sebastian Woskolej', recipientCount: 3 })
+    );
+
+    expect(many.label).toBe('To: Sebastian Woskolej');
+    expect(many.label).not.toContain('+');
+    expect(many.othersCount).toBe(2);
   });
 
   test('falling back to the address when the recipient has no name', () => {
     expect(emailRowCorrespondent(sent({ recipientName: '' })).label).toBe(
       'To: aaryan@ellicorp.com'
     );
+  });
+
+  test('an inbox row never carries a count', () => {
+    expect(
+      emailRowCorrespondent({ folder: 'inbox', senderName: 'Test In', recipientCount: 4 })
+    ).toMatchObject({ othersCount: 0, fullLabel: 'Test In' });
   });
 
   test('a draft with no recipient yet says so, rather than naming you', () => {
