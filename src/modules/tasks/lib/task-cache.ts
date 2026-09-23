@@ -1,4 +1,4 @@
-import type { Task, TaskBoard, TaskColumnId } from '../schemas/task.schema';
+import type { Task, TaskBoard, TaskBoardParams, TaskColumnId } from '../schemas/task.schema';
 import { columnForTask, compareForBoard, TASK_COLUMNS } from './task-board';
 
 /**
@@ -130,4 +130,22 @@ function withColumn(
   value: TaskBoard['columns'][TaskColumnId]
 ): TaskBoard {
   return { ...board, columns: { ...board.columns, [column]: value } };
+}
+
+/**
+ * Whether a board fetched with these params would have included this task.
+ *
+ * A board is filtered to a set of people, or to nobody in particular. A task
+ * written into the cache goes onto every board that would show it and comes
+ * off every board that would not - so a card handed to somebody outside the
+ * filter leaves the filtered board rather than lingering on it. An unassigned
+ * task is on nobody's filtered board.
+ */
+export function boardWantsTask(
+  params: Pick<TaskBoardParams, 'assigneeIds'> | undefined,
+  task: Pick<Task, 'assigneeId'>
+): boolean {
+  const wanted = params?.assigneeIds ?? [];
+  if (wanted.length === 0) return true;
+  return task.assigneeId != null && wanted.includes(task.assigneeId);
 }

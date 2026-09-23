@@ -2,6 +2,7 @@ import { toastApiError } from '@/app/lib/toast-api-error';
 import { tasksApi } from '@/modules/tasks/api/tasks.api';
 import { taskKeys } from '@/modules/tasks/constants/tasks.keys';
 import {
+  boardWantsTask,
   patchTaskInBoard,
   removeTaskFromBoard,
   upsertTaskInBoard,
@@ -14,7 +15,13 @@ import type {
   TaskBoardParams,
   UpdateTaskInput,
 } from '@/modules/tasks/schemas/task.schema';
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 /**
@@ -31,11 +38,18 @@ import { toast } from 'sonner';
  * Which column a written card lands in is decided against the clock at the
  * moment of the write; the board's own clock only differs from that across
  * midnight, when the key changes and the board is fetched afresh anyway.
+ *
+ * A change of filter is a new key, and without `placeholderData` a new key
+ * has no data until the server answers. The view drew that gap as a
+ * skeleton and unmounted the filter bar - taking the people picker down in
+ * the middle of somebody ticking their third name. The last board stays up
+ * until the next one lands.
  */
 export const useTaskBoardQuery = (params: TaskBoardParams) =>
   useQuery({
     queryKey: taskKeys.board(params),
     queryFn: () => tasksApi.board(params),
+    placeholderData: keepPreviousData,
   });
 
 export const useTaskDetailQuery = (id: string) =>
@@ -92,7 +106,7 @@ export function writeTask(queryClient: QueryClient, task: Task) {
   for (const [key, board] of cachedBoards(queryClient)) {
     if (!board) continue;
     const params = paramsOf(key);
-    const belongs = !params?.assigneeId || task.assigneeId === params.assigneeId;
+    const belongs = boardWantsTask(params, task);
     queryClient.setQueryData<TaskBoard>(
       key,
       belongs ? upsertTaskInBoard(board, task, now) : removeTaskFromBoard(board, task.id)
