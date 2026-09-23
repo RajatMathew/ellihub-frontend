@@ -14,6 +14,7 @@ import {
   DEFAULT_EMAIL_NOTIFICATION_SCOPE,
   type EmailNotificationScope,
 } from '@/modules/email/lib/email-realtime-scope';
+import { statusFilterAdmitsNewMail } from '@/modules/email/lib/email-status-filter';
 import { emailSyncedActions } from '@/modules/email/lib/email-synced-actions';
 import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -208,8 +209,9 @@ function insertRealtimeMessage(
     if (!data || data.pages.length === 0) continue;
 
     const key = queryKey as readonly unknown[];
-    const [folder, , search, projectId, classification] = key.slice(3);
+    const [folder, , search, projectId, classification, , , , status] = key.slice(3);
     if (folder !== 'inbox' || search || projectId || classification) continue;
+    if (!statusFilterAdmitsNewMail(status)) continue;
 
     const alreadyPresent = data.pages.some((page) =>
       page.records.some(

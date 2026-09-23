@@ -1,4 +1,5 @@
 import api from '@/app/api';
+import type { EmailThreadStatusFilter } from '@/modules/email/constants/email-filters';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import type { EmailProvider } from '@/modules/email/constants/email-providers';
 import { getDraftSaveTarget } from '@/modules/email/lib/email-draft-save-target';
@@ -667,6 +668,10 @@ export const emailApi = {
     unread?: boolean;
     flagged?: boolean;
     hasAttachments?: boolean;
+    // Thread status, answered server-side for the same reason: filtering the
+    // loaded pages in the browser paged through a whole shared mailbox to
+    // find the first "Our court" thread.
+    status?: EmailThreadStatusFilter;
     signal?: AbortSignal;
   }): Promise<EmailMessagePage> {
     const res = await api.get(`${BASE}/accounts/${params.accountId}/messages`, {
@@ -681,6 +686,7 @@ export const emailApi = {
         unread: params.unread || undefined,
         flagged: params.flagged || undefined,
         hasAttachments: params.hasAttachments || undefined,
+        status: params.status,
       },
       signal: params.signal,
     });

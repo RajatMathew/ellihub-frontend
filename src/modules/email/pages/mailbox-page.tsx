@@ -82,6 +82,7 @@ import { groupEmailsByMonth } from '@/modules/email/lib/email-month-groups';
 import { buildMailPath, getEmailConversationId } from '@/modules/email/lib/email-paths';
 import { richTextToEmailHtml } from '@/modules/email/lib/email-rich-text';
 import { resolveMailShortcut } from '@/modules/email/lib/email-shortcut-keys';
+import { toThreadStatusFilter } from '@/modules/email/lib/email-status-filter';
 import { isThreadBodyPending } from '@/modules/email/lib/email-thread-body-pending';
 import { MAILBOX_FILTER_RESET } from '@/modules/email/lib/mailbox-url-state';
 import { getEmailAccountSlug } from '@/modules/email/utils/email-account-slug';
@@ -224,6 +225,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
       unread: mailFilter === 'unread' ? true : undefined,
       flagged: mailFilter === 'flagged' ? true : undefined,
       hasAttachments: mailFilter === 'attachments' ? true : undefined,
+      status: toThreadStatusFilter(mailStatusFilter),
     },
     canLoadConnectedMailbox
   );
@@ -306,40 +308,19 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
     );
   }, [emailsForActiveSearch, mailFilter, tagsQuery.data]);
   const folderEmails = useMemo(() => {
-    // unread/flagged/attachments are answered server-side (elli-ui#859);
-    // only "other" category tag still needs a client-side pass here.
-    let list = emailsForActiveSearch;
-    if (mailFilter === 'other' && selectedCategoryTagId) {
-      const selectedTag = availableOtherCategoryTags.find(
-        (tag) => tag.id === selectedCategoryTagId
-      );
-      if (selectedTag) {
-        const tagName = selectedTag.name.toLowerCase();
-        list = list.filter((email) =>
-          (email.tags ?? []).some((tag) => tag.toLowerCase() === tagName)
-        );
-      }
-    }
+    // unread/flagged/attachments (elli-ui#859) and thread status are answered
+    // server-side; only the "other" category tag still needs a client-side
+    // pass here.
+    if (mailFilter !== 'other' || !selectedCategoryTagId) return emailsForActiveSearch;
 
-    // Step 2 — narrow by thread status. Unclassified threads default to "open"
-    // (matches the pill on the row card), so the "open" filter includes them.
-    if (mailStatusFilter !== 'all') {
-      list = list.filter((email) => {
-        const status = email.classification?.status ?? 'open';
-        if (mailStatusFilter === 'open') return status !== 'closed'; // every open variant
-        if (mailStatusFilter === 'closed') return status === 'closed';
-        return status === mailStatusFilter; // open_our_court / open_their_court, exact match
-      });
-    }
+    const selectedTag = availableOtherCategoryTags.find((tag) => tag.id === selectedCategoryTagId);
+    if (!selectedTag) return emailsForActiveSearch;
 
-    return list;
-  }, [
-    availableOtherCategoryTags,
-    emailsForActiveSearch,
-    mailFilter,
-    mailStatusFilter,
-    selectedCategoryTagId,
-  ]);
+    const tagName = selectedTag.name.toLowerCase();
+    return emailsForActiveSearch.filter((email) =>
+      (email.tags ?? []).some((tag) => tag.toLowerCase() === tagName)
+    );
+  }, [availableOtherCategoryTags, emailsForActiveSearch, mailFilter, selectedCategoryTagId]);
   /**
    * Pinned threads, lifted to the top of this folder (elli-ui#1034).
    *
@@ -1641,8 +1622,10 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   isLoadingMore={messagesQuery.isFetchingNextPage}
                   loadMoreError={messagesQuery.isFetchNextPageError}
                   onLoadMore={messagesQuery.fetchNextPage}
-                  // Keep auto-paging until a filtered match appears or pages run out.
-                  autoFetchWhileEmpty={mailFilter !== 'all' || mailStatusFilter !== 'all'}
+                  // Keep auto-paging until a filtered match appears or pages
+                  // run out. Only the "other" category tag is still filtered
+                  // in the browser; everything else is answered server-side.
+                  autoFetchWhileEmpty={mailFilter === 'other'}
                   groupByMonth={
                     isConnected && (selectedFolderKey === 'inbox' || selectedFolderKey === 'sent')
                   }

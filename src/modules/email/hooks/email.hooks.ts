@@ -20,6 +20,7 @@ import {
   type StartEmailAuthInput,
   type UpdateEmailAccountNicknameInput,
 } from '@/modules/email/api';
+import type { EmailThreadStatusFilter } from '@/modules/email/constants/email-filters';
 import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
 import {
   isEmailReconnectRequiredError,
@@ -59,7 +60,8 @@ export const emailKeys = {
     classification?: 'other',
     unread?: boolean,
     flagged?: boolean,
-    hasAttachments?: boolean
+    hasAttachments?: boolean,
+    status?: EmailThreadStatusFilter
   ) =>
     [
       ...emailKeys.messagesRoot(accountId),
@@ -71,6 +73,7 @@ export const emailKeys = {
       unread ?? null,
       flagged ?? null,
       hasAttachments ?? null,
+      status ?? null,
     ] as const,
   messageRoot: (accountId?: string) => [...emailKeys.all, 'message', accountId] as const,
   message: (accountId?: string, messageId?: string | null) =>
@@ -155,6 +158,7 @@ export const useEmailMessagesQuery = (
     unread?: boolean;
     flagged?: boolean;
     hasAttachments?: boolean;
+    status?: EmailThreadStatusFilter;
   },
   enabled = true
 ) => {
@@ -167,7 +171,8 @@ export const useEmailMessagesQuery = (
     pagination?.classification,
     pagination?.unread,
     pagination?.flagged,
-    pagination?.hasAttachments
+    pagination?.hasAttachments,
+    pagination?.status
   );
 
   return useInfiniteQuery({
@@ -185,6 +190,7 @@ export const useEmailMessagesQuery = (
         unread: pagination?.unread,
         flagged: pagination?.flagged,
         hasAttachments: pagination?.hasAttachments,
+        status: pagination?.status,
         signal,
       }),
     initialPageParam: null as string | null,
@@ -194,7 +200,7 @@ export const useEmailMessagesQuery = (
     gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
     // Keep the previous list on smooth transitions (search debounce, page-size
     // changes) but clear immediately on hard context switches (account, folder,
-    // project filter, classification). Prevents the "ghost mailbox" flash when
+    // project filter, classification, thread status). Prevents the "ghost mailbox" flash when
     // a user picks a different inbox in the sidebar.
     placeholderData: (previousData, previousQuery) => {
       if (!previousData || !previousQuery) return undefined;
@@ -203,7 +209,8 @@ export const useEmailMessagesQuery = (
       const sameFolder = previousKey[3] === currentKey[3];
       const sameProject = previousKey[6] === currentKey[6];
       const sameClassification = previousKey[7] === currentKey[7];
-      return sameAccount && sameFolder && sameProject && sameClassification
+      const sameStatus = previousKey[11] === currentKey[11];
+      return sameAccount && sameFolder && sameProject && sameClassification && sameStatus
         ? previousData
         : undefined;
     },
