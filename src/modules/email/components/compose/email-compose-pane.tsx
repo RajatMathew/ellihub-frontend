@@ -11,6 +11,7 @@ interface EmailComposePaneProps {
   compose: EmailComposeController;
   mailboxAddress: string;
   accountId?: string;
+  onOpenAgent?: () => void;
 }
 
 /**
@@ -19,7 +20,12 @@ interface EmailComposePaneProps {
  * every field from `EmailComposeFields`, and the chrome from
  * `EmailComposeSurface` — the same three a reply renders (elli-ui#1008).
  */
-export function EmailComposePane({ compose, mailboxAddress, accountId }: EmailComposePaneProps) {
+export function EmailComposePane({
+  compose,
+  mailboxAddress,
+  accountId,
+  onOpenAgent,
+}: EmailComposePaneProps) {
   const { fieldIds, form, isBusy, isPreparingAttachments } = compose;
 
   return (
@@ -34,6 +40,7 @@ export function EmailComposePane({ compose, mailboxAddress, accountId }: EmailCo
         bodyFieldId: fieldIds.body,
       }}
       busy={isBusy}
+      onOpenAgent={onOpenAgent}
       onCollapse={() => void compose.requestClose()}
       onClose={() => void compose.discard()}
       onEscape={() => void compose.requestClose()}

@@ -129,6 +129,8 @@ interface EmailReadingPaneProps {
   ) => Promise<EmailThreadMessage | null | void> | EmailThreadMessage | null | void;
   onComposeTo?: (address: string) => void;
   onSearchSender?: (address: string) => void;
+  /** The full-page compose pane is open and covers the feedback bubble's corner. */
+  hideFeedbackBubble?: boolean;
   isRespondingToMeeting?: boolean;
   isUpdatingMeeting?: boolean;
   isCancellingMeeting?: boolean;
@@ -173,6 +175,7 @@ export function EmailReadingPane({
   onForward,
   onComposeTo,
   onSearchSender,
+  hideFeedbackBubble = false,
   isRespondingToMeeting = false,
   isUpdatingMeeting = false,
   isCancellingMeeting = false,
@@ -887,6 +890,7 @@ export function EmailReadingPane({
         context={`Additional details changed on “${email?.subject ?? 'a thread'}”`}
         idleContext={`Feedback from the mailbox — “${email?.subject ?? 'a thread'}”`}
         onOpenChange={setFeedbackAskOpen}
+        hideBubble={hideFeedbackBubble}
       />
     </section>
   );

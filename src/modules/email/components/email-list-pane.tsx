@@ -242,7 +242,7 @@ export function EmailListPane({
         />
         <div
           ref={setScrollContainer}
-          className="mail-rows kt-scrollable-y-auto scrollbar-hover h-full pb-8 pt-0.5"
+          className="mail-rows bg-mail-pane kt-scrollable-y-auto scrollbar-hover h-full pb-8 pt-0.5"
         >
           {isLoading && <EmailListSkeleton />}
 

@@ -1566,7 +1566,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   // The divider belongs to the whole column, not to the rows.
                   // On the list pane it started below the folder picker and the
                   // search box, so the line began a third of the way down.
-                  'flex h-full min-h-0 w-full shrink-0 flex-col border-e border-mail-line bg-mail-paper',
+                  'flex h-full min-h-0 w-full shrink-0 flex-col bxorder-e bosrder-mail-line bg-mail-pane',
                   'lg:w-(--mail-list-width)',
                   mobilePane === 'reading' && 'hidden lg:flex'
                 )}
@@ -1726,6 +1726,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                   previousEmail ? () => selectEmail(previousEmail.id, { replace: true }) : undefined
                 }
                 onNext={nextEmail ? () => selectEmail(nextEmail.id, { replace: true }) : undefined}
+                hideFeedbackBubble={composeOpen || agentOpen}
                 onBack={() => {
                   clearRouteSelection();
                   setMobilePane('list');
@@ -1919,6 +1920,7 @@ export function MailboxPage({ accountSlug, folder, conversationId }: MailboxPage
                     compose={compose}
                     mailboxAddress={address}
                     accountId={connectedAccount?.id}
+                    onOpenAgent={() => setAgentOpen(true)}
                   />
                 </Suspense>
               )}

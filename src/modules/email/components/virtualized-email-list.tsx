@@ -358,12 +358,12 @@ function MonthGroupSection({
         whole group, so the header holds the top until its last row leaves
         (elli-ui#1001).
       */}
-      <h2 className="sticky top-0 z-20 m-0 bg-mail-paper">
+      <h2 className="sticky top-0 z-20 m-0 bg-mail-pane">
         <button
           id={triggerId}
           type="button"
           className={cn(
-            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-paper px-4 pb-[7px] pt-2 text-left',
+            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-pane px-4 pb-[7px] pt-2 text-left',
             'font-public-sans text-xs font-semibold tracking-[0.01em] text-mail-mid',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
           )}
