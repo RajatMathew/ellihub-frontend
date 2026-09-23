@@ -128,7 +128,7 @@
   /* Diluted toward the paper rather than the raw --surface-hover the rest
      of the app uses — a row list is denser than a button, and the full
      token read too heavy skimming forty of them in a row. */
-  --mail-row-hover: color-mix(in oklab, var(--surface-hover) 75%, var(--mail-paper));
+  --mail-row-hover: color-mix(in oklab, var(--mail-card) 70%, var(--mail-pane));
   --mail-row-edge: var(--card-border);
   /* The open conversation's edge. A shade firmer than --mail-row-edge:
      that one is drawn against the paper, this one against the white card
@@ -138,6 +138,10 @@
   --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
   --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
   --mail-search: var(--muted);
+  /* The group header's own band — the button alone. The clearance beneath
+     it and its bleed layer stay on the list's surface, so the band is only
+     as tall as the control it paints. */
+  --mail-group-header: color-mix(in oklab, var(--mail-search) 60%, var(--mail-pane));
   --mail-search-clear: var(--card-border);
   --mail-accent: var(--primary);
   --mail-accent-hover: var(--primary-hover);

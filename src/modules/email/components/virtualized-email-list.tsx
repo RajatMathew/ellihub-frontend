@@ -358,12 +358,12 @@ function MonthGroupSection({
         whole group, so the header holds the top until its last row leaves
         (elli-ui#1001).
       */}
-      <h2 className="sticky top-0 z-20 m-0 bg-mail-pane">
+      <h2 className="sticky top-0 z-20 m-0 bg-mail-pane pb-1">
         <button
           id={triggerId}
           type="button"
           className={cn(
-            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-pane px-4 pb-[7px] pt-2 text-left',
+            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-group-header px-4 pb-[7px] pt-2 text-left',
             'font-public-sans text-xs font-semibold tracking-[0.01em] text-mail-mid',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
           )}
@@ -390,11 +390,12 @@ function MonthGroupSection({
       </h2>
       <div id={contentId} role="region" aria-labelledby={triggerId} hidden={collapsed}>
         {!collapsed && (
-          // `pt-1`: the group's first row sat flush against the sticky
-          // header's bottom edge, so the selected row's own top border and
-          // shadow had no clearance to render in and read as clipped flat
-          // instead of rounded.
-          <div role="list" aria-label={`${group.label} emails`} className="pt-1">
+          // The clearance the first row needs — its own top border and shadow
+          // have to render somewhere, or a selected first row reads as clipped
+          // flat instead of rounded — is `pb-1` on the header above rather
+          // than padding here. Same 4px, but painted in the header's colour:
+          // as the list's own, it drew a pale line under every group heading.
+          <div role="list" aria-label={`${group.label} emails`}>
             {group.emails.map((email) => (
               <div key={email.id} role="listitem">
                 <EmailListRow

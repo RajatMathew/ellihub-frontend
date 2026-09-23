@@ -35,12 +35,25 @@ export const EMAIL_ROW_SELECTED_SURFACE =
 
 /**
  * Only the open conversation is a card. A resting row sits directly on the
- * mail paper with no shadow of its own — a list of bordered boxes reads as
- * forty things to deal with, not a list with your place kept in it
- * (elli-ui#921). It still carries a transparent 1px border, matching the
- * selected row's, so opening a conversation never adds or removes a border
- * from the box model — only its color changes, which costs no layout
- * (elli-ui#1103).
+ * list's own surface with no shadow of its own — a list of bordered boxes
+ * reads as forty things to deal with, not a list with your place kept in it
+ * (elli-ui#921).
+ *
+ * `mail-pane`, which is the colour the scroller behind it is already painted,
+ * rather than the lighter `mail-paper`: one step off its own background is
+ * still a slab, and forty of them turned the list back into the row of cards
+ * this was meant to end. Now a resting row paints nothing you can see, and the
+ * white card is the open conversation alone.
+ *
+ * It still carries a transparent 1px border, matching the selected row's, so
+ * opening a conversation never adds or removes a border from the box model —
+ * only its color changes, which costs no layout (elli-ui#1103).
+ *
+ * Hover reaches most of the way to that card rather than tinting grey: the
+ * row you are pointing at is the one about to become the white one, so the
+ * two states belong on the same ramp — `--mail-row-hover` is the card colour
+ * at 70% over the pane, which reads in the dark themes too, where "white" is
+ * whatever `--mail-card` is.
  *
  * `group-hover` rather than this element's own `hover`: the row's checkbox
  * sits in an absolutely-positioned sibling on top of part of it, and the
@@ -50,7 +63,7 @@ export const EMAIL_ROW_SELECTED_SURFACE =
  * which the checkbox is still inside.
  */
 export const EMAIL_ROW_RESTING_SURFACE =
-  'bg-mail-paper border border-transparent group-hover:bg-mail-row-hover';
+  'bg-mail-pane border border-transparent group-hover:bg-mail-row-hover';
 
 export const EMAIL_ROW_CHECKED_SURFACE = 'bg-mail-accent-soft';
 

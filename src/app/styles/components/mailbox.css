@@ -62,13 +62,18 @@
 
 /* Date headers stay put while their own group scrolls under them. The pseudo
    element bleeds a couple of pixels past the header's box so a sub-pixel
-   scroll position can never leave a sliver of the row behind it showing. */
+   scroll position can never leave a sliver of the row behind it showing.
+
+   It paints the list's surface, not the paper, and not the header's own
+   band: it bleeds past the button on every side, so painting it the band
+   colour would grow the band by three pixels, and painting it paper drew a
+   pale line along the top and bottom of every group. */
 .mail-group-header::before {
   content: '';
   position: absolute;
   z-index: -1;
   inset: -3px -4px;
-  background: var(--mail-paper);
+  background: var(--mail-pane);
 }
 
 .mail-rows::-webkit-scrollbar {
