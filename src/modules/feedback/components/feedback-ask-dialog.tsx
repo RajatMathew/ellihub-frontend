@@ -70,6 +70,7 @@ export function FeedbackAskDialog({
   context,
   idleContext = 'Feedback from the mailbox',
   onOpenChange,
+  hideBubble = false,
 }: {
   /** The ask fired: open the panel and title the feedback after the change. */
   open: boolean;
@@ -84,6 +85,8 @@ export function FeedbackAskDialog({
    */
   idleContext?: string;
   onOpenChange: (open: boolean) => void;
+  /** Hides the idle bubble — for a full-page surface (compose) sitting over its corner. */
+  hideBubble?: boolean;
 }) {
   const submitFeedback = useSubmitFeedbackMutation();
   const [message, setMessage] = useState('');
@@ -148,6 +151,7 @@ export function FeedbackAskDialog({
     : 'Tell us what is working, or what is not.';
 
   if (!panelOpen) {
+    if (hideBubble) return null;
     return (
       <button
         type="button"

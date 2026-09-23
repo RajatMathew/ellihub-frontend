@@ -183,7 +183,7 @@ export function MailAccountBar({
       </button>
 
       <nav
-        className="flex shrink-0 items-center gap-0.5 rounded-[9px] border border-mail-line bg-mail-paper p-[3px]"
+        className="flex shrink-0 items-center gap-0.5 rounded-[9px] border border-mail-line bg-mail-pane p-[3px]"
         aria-label="Mailbox views"
       >
         {WORKSPACE_TABS.map((tab) => (

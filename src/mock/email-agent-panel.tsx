@@ -33,6 +33,7 @@ import {
   useUpdateEmailMessageStatusMutation,
   useUpdateEmailMessageTagsMutation,
 } from '@/modules/email/hooks';
+import { isElliotAgentDisabled } from '@/modules/email/lib/email-agent-availability';
 import { filesApi } from '@/modules/files/api/files.api';
 import { useUploadManager } from '@/modules/files/uploads/upload-manager-context';
 import {
@@ -241,6 +242,7 @@ const QUICK_COMMANDS = [
   { command: '/summarize', label: 'Summarize this thread' },
   { command: '/draft', label: 'Draft a reply' },
 ] as const;
+
 
 function getMessageId(email: EmailListItem) {
   return email.latestMessageId ?? email.id;
@@ -462,8 +464,16 @@ export function EmailAgentPanel({
   const suggestions = useMemo(
     () =>
       email
-        ? ['Draft a concise reply', 'Summarise this thread', 'Archive this email']
-        : ['Find recent key emails', 'Summarise unread messages', 'Show emails with attachments'],
+        ? [
+            { label: 'Draft a concise reply', icon: Pencil },
+            { label: 'Summarise this thread', icon: FileText },
+            { label: 'Archive this email', icon: Archive },
+          ]
+        : [
+            { label: 'Find recent key emails', icon: Search },
+            { label: 'Summarise unread messages', icon: FileText },
+            { label: 'Show emails with attachments', icon: Paperclip },
+          ],
     [email]
   );
   const contextIdsForAgent = useMemo(
@@ -1539,7 +1549,7 @@ export function EmailAgentPanel({
   return (
     <aside
       className={cn(
-        'absolute right-0 z-30 flex min-h-0 flex-col overflow-hidden border border-border bg-background text-foreground',
+        'absolute right-0 z-30 flex min-h-0 flex-col overflow-hidden border border-border bg-card text-foreground',
         pushesContent ? 'inset-y-0 border-y-0 border-r-0 shadow-none' : 'rounded-md shadow-xl',
         !isResizing &&
           'motion-safe:transition-[width,top,bottom,box-shadow] motion-safe:duration-150',
@@ -1577,17 +1587,21 @@ export function EmailAgentPanel({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {messages.length > 0 ? (
-            <IconButton label="Start a new chat" onClick={handleNewConversation}>
-              <PenNewRoundIcon className="size-[18px]" aria-hidden />
-            </IconButton>
-          ) : null}
-          <IconButton
-            label="Show Elliot chat history"
-            onClick={() => setHistoryOpen((value) => !value)}
-          >
-            <Clock3 className="size-4" />
-          </IconButton>
+          {!isElliotAgentDisabled && (
+            <>
+              {messages.length > 0 && (
+                <IconButton label="Start a new chat" onClick={handleNewConversation}>
+                  <PenNewRoundIcon className="size-[18px]" aria-hidden />
+                </IconButton>
+              )}
+              <IconButton
+                label="Show Elliot chat history"
+                onClick={() => setHistoryOpen((value) => !value)}
+              >
+                <Clock3 className="size-4" />
+              </IconButton>
+            </>
+          )}
           <IconButton
             label={pushesContent ? 'Use overlay width' : 'Expand Elliot Agent workspace'}
             onClick={handleWorkspaceToggle}
@@ -1604,296 +1618,343 @@ export function EmailAgentPanel({
         </div>
       </header>
 
-      {historyOpen && (
-        <div className="absolute right-3 top-12 z-50 w-[min(360px,calc(100%-24px))] rounded-lg border border-border bg-background p-3 shadow-xl">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold">Previous chats</p>
-            <button
-              type="button"
-              className="text-xs font-medium text-primary hover:underline"
-              onClick={handleNewConversation}
-            >
-              New chat
-            </button>
-          </div>
-          <label className="relative block">
-            <span className="sr-only">Search previous chats</span>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              type="search"
-              value={historySearch}
-              onChange={(event) => setHistorySearch(event.target.value)}
-              placeholder="Search chats"
-              className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </label>
-          <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
-            {historyLoading ? (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                Loading history…
-              </p>
-            ) : null}
-            {!historyLoading && filteredHistory.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No saved chats yet.
-              </p>
-            ) : null}
-            {filteredHistory.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="block w-full rounded-md px-2 py-2 text-left hover:bg-accent disabled:opacity-50"
-                disabled={loadingConversationId === item.id}
-                onClick={() => void handleLoadConversation(item.id)}
-              >
-                <span className="block truncate text-xs font-medium">{item.title}</span>
-                <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                  {item.summary ?? 'No summary yet'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="relative flex min-w-0 items-center gap-1.5 border-b border-border px-3 py-2">
-          <div
-            className={cn(
-              'relative flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap',
-              hasScrollableContext
-                ? 'pb-1 [scrollbar-color:hsl(var(--muted-foreground)/.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent'
-                : '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-            )}
+      {isElliotAgentDisabled ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <span
+            aria-hidden="true"
+            className="grid size-11 place-items-center rounded-full bg-primary/10 text-primary"
           >
-            {includeActiveContext && email ? (
-              <ContextChip email={email} current onRemove={() => setIncludeActiveContext(false)} />
-            ) : null}
-            {selectedContextEmails.map((item) => (
-              <ContextChip
-                key={item.id}
-                email={item}
-                onRemove={() => removeContextEmail(item.id)}
-              />
-            ))}
-            {!includeActiveContext && selectedContextEmails.length === 0 ? (
-              <span className="px-1 text-xs text-muted-foreground">No context attached</span>
-            ) : null}
-            <IconButton
-              label="Add thread context"
-              onClick={() => setContextOpen((value) => !value)}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-            </IconButton>
-          </div>
-          {hasScrollableContext ? (
-            <span className="pointer-events-none absolute bottom-2 right-12 inline-flex items-center gap-0.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-border/70">
-              <span>Scroll</span>
-              <ArrowRight className="size-3" aria-hidden="true" />
-            </span>
-          ) : null}
-        </div>
-
-        {contextOpen && (
-          <div className="absolute left-3 right-3 top-14 z-40 rounded-lg border border-border bg-background p-3 shadow-xl">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-medium">Add inbox threads</p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setIncludeActiveContext(false);
-                    setSelectedContextIds([]);
-                  }}
-                >
-                  Clear all
-                </button>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline"
-                  onClick={() => setContextOpen(false)}
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-            <label className="relative block">
-              <span className="sr-only">Search inbox threads</span>
-              <Search
-                className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={contextSearch}
-                onChange={(event) => setContextSearch(event.target.value)}
-                placeholder="Search subject or sender"
-                className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </label>
-            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
-              {contextEmails.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No other loaded threads are available.
-                </p>
-              ) : (
-                contextEmails
-                  .filter((item) => item.id !== email?.id)
-                  .filter((item) =>
-                    `${item.subject} ${item.senderName} ${item.senderEmail} ${item.preview}`
-                      .toLowerCase()
-                      .includes(contextSearch.trim().toLowerCase())
-                  )
-                  .map((item) => (
-                    <label
-                      key={item.id}
-                      className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent"
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 size-4 accent-primary"
-                        checked={selectedContextIds.includes(item.id)}
-                        onChange={(event) =>
-                          setSelectedContextIds((current) =>
-                            event.target.checked
-                              ? [...current, item.id]
-                              : current.filter((id) => id !== item.id)
-                          )
-                        }
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{item.subject}</span>
-                        <span className="block truncate text-muted-foreground">
-                          {item.senderName}
-                        </span>
-                      </span>
-                    </label>
-                  ))
-              )}
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              You can attach multiple threads to this chat. Elliot will use all selected references.
-            </p>
-          </div>
-        )}
-
-        <Conversation className="mock-agent-conversation min-h-0 flex-1">
-          <ConversationContent className="min-h-full gap-5 px-4 py-4 pr-10">
-            {messages.length === 0 ? (
-              <div className="flex min-h-full flex-col justify-center gap-5 py-6">
-                <div className="space-y-2 text-center">
-                  <p className="text-xl font-semibold">What should Elliot help with?</p>
-                  <p className="mx-auto max-w-80 text-sm leading-6 text-muted-foreground">
-                    Elliot can draft replies and prepare mailbox actions. You approve every change.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      className="min-h-20 rounded-md border border-border bg-background p-3 text-left text-xs font-medium shadow-sm hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => void sendMessage({ text: suggestion })}
-                    >
-                      <Sparkles className="mb-3 size-4 text-primary" aria-hidden="true" />
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <p className="text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Quick commands
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {QUICK_COMMANDS.map(({ command, label }) => (
-                      <button
-                        key={command}
-                        type="button"
-                        className="rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground"
-                        onClick={() => void sendMessage({ text: command })}
-                      >
-                        <span className="font-mono text-primary">{command}</span>
-                        <span className="ml-1">{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-5" aria-live="polite">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    ref={(element) => {
-                      messageRefs.current[message.id] = element;
-                    }}
-                  >
-                    <AgentMessage
-                      message={message}
-                      mentionLabels={mentionLabels}
-                      drafts={drafts}
-                      scheduleDrafts={scheduleDrafts}
-                      pendingApproval={pendingApproval}
-                      pendingDeferredAction={pendingDeferredAction}
-                      onDraftChange={(id, draft) =>
-                        setDrafts((current) => ({ ...current, [id]: draft }))
-                      }
-                      onScheduleDraftChange={(id, draft) =>
-                        setScheduleDrafts((current) => ({ ...current, [id]: draft }))
-                      }
-                      onQuoteDraftChange={(id, draft) =>
-                        setQuoteDrafts((current) => ({ ...current, [id]: draft }))
-                      }
-                      onApprove={handleApproval}
-                      onScheduleApprove={handleScheduleApproval}
-                      onQuoteApprove={handleRfqActionApproval}
-                      onScheduleUploadFile={uploadLocalFileForSchedule}
-                      onQuoteUploadFile={uploadLocalFileForQuote}
-                      quoteDrafts={quoteDrafts}
-                    />
-                  </div>
-                ))}
-                {shouldShowThinkingIndicator({ status, messages }) ? (
-                  <ThinkingIndicator
-                    label={getCurrentActivityLabel(messages[messages.length - 1])}
-                  />
-                ) : null}
-              </div>
-            )}
-            {error ? (
-              <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-                Elliot could not complete that request. Check the agent configuration and try again.
-              </div>
-            ) : null}
-          </ConversationContent>
-          {messages.length >= 4 ? (
-            <ConversationRail
-              messages={messages}
-              messageRefs={messageRefs}
-              activeTurnId={activeTurnId ?? messages[0]?.id ?? null}
-              onActiveChange={setActiveTurnId}
-              onSelect={setActiveTurnId}
-            />
-          ) : null}
-        </Conversation>
-
-        <div className="border-t border-border p-3">
-          <PromptComposer
-            status={status}
-            onSubmit={handleSubmit}
-            onStop={stop}
-            mentionItems={contextEmails.filter((item) => item.id !== email?.id)}
-            onMentionSelect={handleMentionSelect}
-          />
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            Connected to {mailboxAddress}
+            <Sparkles className="size-5" aria-hidden="true" />
+          </span>
+          <p className="text-base font-semibold tracking-tight">Elliot Agent is warming up</p>
+          <p className="max-w-64 text-sm leading-6 text-muted-foreground">
+            We’re sharpening Elliot’s instincts behind the scenes. Check back soon.
           </p>
         </div>
-      </div>
+      ) : (
+        <>
+          {historyOpen && (
+            <div className="absolute right-3 top-12 z-50 w-[min(360px,calc(100%-24px))] rounded-lg border border-border bg-background p-3 shadow-xl">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">Previous chats</p>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={handleNewConversation}
+                >
+                  New chat
+                </button>
+              </div>
+              <label className="relative block">
+                <span className="sr-only">Search previous chats</span>
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="Search chats"
+                  className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
+              <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                {historyLoading ? (
+                  <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                    Loading history…
+                  </p>
+                ) : null}
+                {!historyLoading && filteredHistory.length === 0 ? (
+                  <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+                    No saved chats yet.
+                  </p>
+                ) : null}
+                {filteredHistory.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="block w-full rounded-md px-2 py-2 text-left hover:bg-accent disabled:opacity-50"
+                    disabled={loadingConversationId === item.id}
+                    onClick={() => void handleLoadConversation(item.id)}
+                  >
+                    <span className="block truncate text-xs font-medium">{item.title}</span>
+                    <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                      {item.summary ?? 'No summary yet'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="relative flex min-w-0 items-center gap-1.5 border-b border-border px-3 py-2">
+              <div
+                className={cn(
+                  'relative flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto whitespace-nowrap',
+                  hasScrollableContext
+                    ? 'pb-1 [scrollbar-color:hsl(var(--muted-foreground)/.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent'
+                    : '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                )}
+              >
+                {includeActiveContext && email ? (
+                  <ContextChip
+                    email={email}
+                    current
+                    onRemove={() => setIncludeActiveContext(false)}
+                  />
+                ) : null}
+                {selectedContextEmails.map((item) => (
+                  <ContextChip
+                    key={item.id}
+                    email={item}
+                    onRemove={() => removeContextEmail(item.id)}
+                  />
+                ))}
+                {!includeActiveContext && selectedContextEmails.length === 0 ? (
+                  <span className="px-1 text-xs text-muted-foreground">No context attached</span>
+                ) : null}
+                <IconButton
+                  label="Add thread context"
+                  onClick={() => setContextOpen((value) => !value)}
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                </IconButton>
+              </div>
+              {hasScrollableContext ? (
+                <span className="pointer-events-none absolute bottom-2 right-12 inline-flex items-center gap-0.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm ring-1 ring-border/70">
+                  <span>Scroll</span>
+                  <ArrowRight className="size-3" aria-hidden="true" />
+                </span>
+              ) : null}
+            </div>
+
+            {contextOpen && (
+              <div className="absolute left-3 right-3 top-14 z-40 rounded-lg border border-border bg-background p-3 shadow-xl">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium">Add inbox threads</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setIncludeActiveContext(false);
+                        setSelectedContextIds([]);
+                      }}
+                    >
+                      Clear all
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setContextOpen(false)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+                <label className="relative block">
+                  <span className="sr-only">Search inbox threads</span>
+                  <Search
+                    className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={contextSearch}
+                    onChange={(event) => setContextSearch(event.target.value)}
+                    placeholder="Search subject or sender"
+                    className="h-8 w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </label>
+                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto">
+                  {contextEmails.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No other loaded threads are available.
+                    </p>
+                  ) : (
+                    contextEmails
+                      .filter((item) => item.id !== email?.id)
+                      .filter((item) =>
+                        `${item.subject} ${item.senderName} ${item.senderEmail} ${item.preview}`
+                          .toLowerCase()
+                          .includes(contextSearch.trim().toLowerCase())
+                      )
+                      .map((item) => (
+                        <label
+                          key={item.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 size-4 accent-primary"
+                            checked={selectedContextIds.includes(item.id)}
+                            onChange={(event) =>
+                              setSelectedContextIds((current) =>
+                                event.target.checked
+                                  ? [...current, item.id]
+                                  : current.filter((id) => id !== item.id)
+                              )
+                            }
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{item.subject}</span>
+                            <span className="block truncate text-muted-foreground">
+                              {item.senderName}
+                            </span>
+                          </span>
+                        </label>
+                      ))
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  You can attach multiple threads to this chat. Elliot will use all selected
+                  references.
+                </p>
+              </div>
+            )}
+
+            <Conversation className="mock-agent-conversation min-h-0 flex-1">
+              <ConversationContent className="min-h-full gap-5 px-4 py-4 pr-10">
+                {messages.length === 0 ? (
+                  <div className="flex min-h-full flex-col justify-center gap-8 py-6">
+                    <div className="space-y-2.5 text-center">
+                      <span
+                        aria-hidden="true"
+                        className="mx-auto grid size-11 place-items-center rounded-full bg-primary/10 text-primary"
+                      >
+                        <Sparkles className="size-5" aria-hidden="true" />
+                      </span>
+                      <p className="text-lg font-semibold tracking-tight">
+                        What should Elliot help with?
+                      </p>
+                      <p className="mx-auto max-w-72 text-sm leading-6 text-muted-foreground">
+                        Elliot can draft replies and prepare mailbox actions. You approve every
+                        change.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      {suggestions.map(({ label, icon: Icon }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className="group flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-accent/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => void sendMessage({ text: label })}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="grid size-6 shrink-0 place-items-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary/15"
+                          >
+                            <Icon className="size-3.5" aria-hidden="true" />
+                          </span>
+                          <span className="text-xs font-medium leading-5 text-foreground">
+                            {label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                        <p className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Quick commands
+                        </p>
+                        <span aria-hidden="true" className="h-px flex-1 bg-border" />
+                      </div>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {QUICK_COMMANDS.map(({ command, label }) => (
+                          <button
+                            key={command}
+                            type="button"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-1.5 pl-1.5 pr-3 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:bg-accent hover:text-foreground"
+                            onClick={() => void sendMessage({ text: command })}
+                          >
+                            <span className="rounded-full bg-background px-1.5 py-0.5 font-mono text-primary">
+                              {command}
+                            </span>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-5" aria-live="polite">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        ref={(element) => {
+                          messageRefs.current[message.id] = element;
+                        }}
+                      >
+                        <AgentMessage
+                          message={message}
+                          mentionLabels={mentionLabels}
+                          drafts={drafts}
+                          scheduleDrafts={scheduleDrafts}
+                          pendingApproval={pendingApproval}
+                          pendingDeferredAction={pendingDeferredAction}
+                          onDraftChange={(id, draft) =>
+                            setDrafts((current) => ({ ...current, [id]: draft }))
+                          }
+                          onScheduleDraftChange={(id, draft) =>
+                            setScheduleDrafts((current) => ({ ...current, [id]: draft }))
+                          }
+                          onQuoteDraftChange={(id, draft) =>
+                            setQuoteDrafts((current) => ({ ...current, [id]: draft }))
+                          }
+                          onApprove={handleApproval}
+                          onScheduleApprove={handleScheduleApproval}
+                          onQuoteApprove={handleRfqActionApproval}
+                          onScheduleUploadFile={uploadLocalFileForSchedule}
+                          onQuoteUploadFile={uploadLocalFileForQuote}
+                          quoteDrafts={quoteDrafts}
+                        />
+                      </div>
+                    ))}
+                    {shouldShowThinkingIndicator({ status, messages }) ? (
+                      <ThinkingIndicator
+                        label={getCurrentActivityLabel(messages[messages.length - 1])}
+                      />
+                    ) : null}
+                  </div>
+                )}
+                {error ? (
+                  <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                    Elliot could not complete that request. Check the agent configuration and try
+                    again.
+                  </div>
+                ) : null}
+              </ConversationContent>
+              {messages.length >= 4 ? (
+                <ConversationRail
+                  messages={messages}
+                  messageRefs={messageRefs}
+                  activeTurnId={activeTurnId ?? messages[0]?.id ?? null}
+                  onActiveChange={setActiveTurnId}
+                  onSelect={setActiveTurnId}
+                />
+              ) : null}
+            </Conversation>
+
+            <div className="p-3">
+              <PromptComposer
+                status={status}
+                onSubmit={handleSubmit}
+                onStop={stop}
+                mentionItems={contextEmails.filter((item) => item.id !== email?.id)}
+                onMentionSelect={handleMentionSelect}
+              />
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Connected to {mailboxAddress}
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }

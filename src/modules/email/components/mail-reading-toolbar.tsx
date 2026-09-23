@@ -88,14 +88,9 @@ export function MailReadingToolbar({
           type="button"
           className={cn(
             'relative grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-[9px]',
-            // The app's own accent, flat — the same navy the "New" button and
-            // an active filter pill wear. It used to be a blue→violet gradient
-            // of its own, which is the one colour in the mailbox that belonged
-            // to no theme token and read as a sticker dropped on the toolbar
-            // (elli-ui#1003).
-            'bg-mail-accent text-mail-accent-foreground hover:bg-mail-accent-hover',
+            'hover:bg-accent',
             'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-            'motion-safe:transition-[transform,background-color] motion-safe:duration-150 motion-safe:hover:-translate-y-px'
+            'motion-safe:transition-colors motion-safe:duration-150'
           )}
           aria-label="Open or close Elliot Agent"
           title="Open or close Elliot Agent (Shift + E)"

@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type ComponentProps, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ComponentProps, type ReactNode, type Ref } from 'react';
 
 import { Button } from '@/app/components/ui/button';
+import { cn } from '@/app/lib/utils';
 import { resolveComposeAutoFocusField } from '@/modules/email/lib/email-compose-focus';
 import { Minimize2, X } from 'lucide-react';
 
@@ -28,6 +29,9 @@ interface EmailComposeSurfaceProps {
   /** Steps out of the editor while keeping the message — the draft or the thread. */
   onCollapse?: () => void;
   collapseLabel?: string;
+  /** Opens Elliot alongside the draft. Sits just left of Collapse. */
+  onOpenAgent?: () => void;
+  agentTriggerRef?: Ref<HTMLButtonElement>;
   onClose: () => void;
   closeLabel?: string;
   /** Escape leaves the editor the way the ✕ does. Nested popovers stop the event first. */
@@ -56,6 +60,8 @@ export function EmailComposeSurface({
   busy = false,
   onCollapse,
   collapseLabel = 'Collapse',
+  onOpenAgent,
+  agentTriggerRef,
   onClose,
   closeLabel = 'Discard and close',
   onEscape,
@@ -119,6 +125,29 @@ export function EmailComposeSurface({
             )}
             <div className="ms-auto flex shrink-0 items-center gap-1.5">
               {status}
+              {onOpenAgent && (
+                <button
+                  ref={agentTriggerRef}
+                  type="button"
+                  className={cn(
+                    'relative grid size-[30px] shrink-0 cursor-pointer place-items-center rounded-[9px]',
+                    'hover:bg-accent',
+                    'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                    'motion-safe:transition-colors motion-safe:duration-150'
+                  )}
+                  aria-label="Open or close Elliot Agent"
+                  title="Open or close Elliot Agent (Shift + E)"
+                  disabled={busy}
+                  onClick={onOpenAgent}
+                >
+                  <img
+                    src="/favicon/apple-touch-icon.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="size-5 rounded-[5px] object-contain"
+                  />
+                </button>
+              )}
               {onCollapse && (
                 <Button
                   type="button"
