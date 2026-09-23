@@ -38,7 +38,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/too
 import { useDebouncedValue } from '@/app/hooks/use-debounced-value';
 import { cn } from '@/app/lib/utils';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Info, Loader2, Plus, X } from 'lucide-react';
+import { Check, Info, Loader2, Plus, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 
 /**
@@ -52,6 +52,14 @@ import { motion, useReducedMotion } from 'motion/react';
  */
 const OPTION_LIST_CLASSNAME =
   'max-h-none min-h-0 flex-1 [&_[cmdk-list-sizer]]:flex [&_[cmdk-list-sizer]]:flex-col [&_[cmdk-list-sizer]]:gap-1';
+
+/**
+ * Pill-shaped, filled search field (cream, no border) rather than the default
+ * underlined `CommandInput` — targets cmdk's own wrapper attribute since the
+ * primitive doesn't expose that div's className.
+ */
+const SEARCH_INPUT_WRAPPER_CLASSNAME =
+  '[&_[cmdk-input-wrapper]]:mt-1.5 [&_[cmdk-input-wrapper]]:mb-2 [&_[cmdk-input-wrapper]]:rounded-md [&_[cmdk-input-wrapper]]:border [&_[cmdk-input-wrapper]]:border-border [&_[cmdk-input-wrapper]]:px-3.5 [&_[cmdk-input-wrapper]]:transition-colors [&_[cmdk-input-wrapper]]:has-[:focus]:border-primary';
 
 const MotionCommandItem = motion.create(CommandItem);
 
@@ -70,6 +78,24 @@ function ReferenceOptionItem(props: React.ComponentProps<typeof MotionCommandIte
   );
 }
 
+/** Filled checkmark for a selected row, empty outline square otherwise — matches the checkbox
+ * list treatment used across the app rather than a bare check glyph. */
+function ReferenceOptionCheckbox({ selected }: { selected: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-5 shrink-0 items-center justify-center rounded-sm border transition-colors',
+        selected
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-card'
+      )}
+    >
+      {selected && <Check className="size-3.5" strokeWidth={2.75} />}
+    </span>
+  );
+}
+
 export type EntityReferenceFilterType = 'all' | EntityReferenceType;
 
 /** Reserve for the "+N more" toggle so it never has to squeeze in after the fact. */
@@ -82,7 +108,7 @@ const CHIP_GAP = 6;
  * rather than two (elli-ui#984, #988).
  */
 const REFERENCE_TAB_CLASS =
-  'h-7 rounded-md px-3 text-[13px] font-medium text-mail-mid hover:bg-mail-chip/60 hover:text-mail-ink data-[state=active]:bg-mail-chip data-[state=active]:font-semibold data-[state=active]:text-mail-ink';
+  'h-6 rounded-md px-2.5 text-xs font-medium text-mail-mid hover:bg-mail-chip/60 hover:text-mail-ink data-[state=active]:bg-mail-chip data-[state=active]:font-semibold data-[state=active]:text-mail-ink';
 
 export function CategorySegmentedControl({
   value,
@@ -319,6 +345,7 @@ export function ReferencePickerPopover({
   api,
   categories,
   align,
+  side = 'bottom',
   selectedType,
   selectedProjectIds,
   selectedReferences,
@@ -331,6 +358,7 @@ export function ReferencePickerPopover({
   api: EntityReferenceApi;
   categories: EntityReferenceCategory[];
   align: 'start' | 'end';
+  side?: 'top' | 'right' | 'bottom' | 'left';
   selectedType: EntityReferenceFilterType;
   selectedProjectIds: string[];
   selectedReferences: EntityReference[];
@@ -342,11 +370,11 @@ export function ReferencePickerPopover({
   return (
     <PopoverContent
       align={align}
-      side="bottom"
+      side={side}
       avoidCollisions={false}
       sideOffset={8}
       collisionPadding={12}
-      className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] flex-col overflow-hidden rounded-lg p-0"
+      className="flex max-h-[min(32rem,var(--radix-popover-content-available-height))] w-[min(28rem,calc(100vw-1.5rem),var(--radix-popover-content-available-width))] flex-col overflow-hidden rounded-lg border-mail-hair p-0 shadow-md"
     >
       <Tabs
         value={selectedType}
@@ -363,7 +391,7 @@ export function ReferencePickerPopover({
         <TabsList
           variant="button"
           size="sm"
-          className="w-full flex-nowrap justify-start gap-1 overflow-x-auto border-b border-mail-hair px-2 py-1.5"
+          className="w-full flex-nowrap justify-start gap-0.5 overflow-x-auto px-2 pt-2 pb-1.5"
           aria-label="Reference type"
         >
           <TabsTrigger
@@ -386,11 +414,11 @@ export function ReferencePickerPopover({
         </TabsList>
       </Tabs>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-2 pb-2">
         {projectRequired && selectedType === 'project' && (
-          <div className="flex shrink-0 items-center gap-2 rounded-md border border-info/15 bg-info-soft/50 px-3 py-2 text-xs text-info-soft-foreground">
+          <div className="mx-1 mt-1 flex shrink-0 items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm font-semibold text-warning-soft-foreground">
             <Info aria-hidden="true" className="size-3.5 shrink-0" />
-            <span>You need to select project first.</span>
+            <span>Select at least one project first.</span>
           </div>
         )}
         <ReferencePicker
@@ -460,19 +488,19 @@ function ReferencePicker({
   }
 
   if (type === 'other') {
+    const isOtherSelected = selectedReferences.some((reference) => reference.type === 'other');
     return (
       <button
         type="button"
         className={cn(
-          'flex min-h-10 w-full cursor-pointer items-center justify-between rounded-sm px-2 text-left text-sm hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-          selectedReferences.some((reference) => reference.type === 'other') &&
-            'bg-primary/10 text-primary'
+          'flex min-h-10 w-full cursor-pointer items-center justify-between rounded-md px-2 text-left text-sm hover:bg-mail-chip focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+          isOtherSelected && 'bg-mail-chip font-medium text-mail-ink'
         )}
         onClick={() => onAdd({ type: 'other', entityType: null, entityId: null, label: 'Other' })}
       >
         <span>Mark as Other</span>
-        {selectedReferences.some((reference) => reference.type === 'other') ? (
-          <CommandCheck aria-hidden="true" />
+        {isOtherSelected ? (
+          <CommandCheck aria-hidden="true" className="text-brand-clay" />
         ) : (
           <Plus aria-hidden="true" className="size-4 text-muted-foreground" />
         )}
@@ -574,8 +602,8 @@ function AllReferencePicker({
   const showLoading = optionsQuery.isPending;
 
   return (
-    <Command shouldFilter={false} className="min-h-0 flex-1">
-      <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
+    <Command shouldFilter={false} className={cn('min-h-0 flex-1', SEARCH_INPUT_WRAPPER_CLASSNAME)}>
+      <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} className="h-9 py-0" />
       <CommandList className={OPTION_LIST_CLASSNAME}>
         {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
@@ -592,33 +620,16 @@ function AllReferencePicker({
               key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.groupLabel} ${option.label} ${option.meta ?? ''}`}
               className={cn(
-                'min-h-10 cursor-pointer',
-                selected && 'bg-primary/10 text-primary data-[selected=true]:bg-primary/15'
+                'min-h-9 cursor-pointer rounded-md px-2 data-[selected=true]:bg-mail-chip',
+                selected && 'bg-mail-chip font-medium text-mail-ink'
               )}
               onSelect={() => onAdd(optionToReference(option))}
             >
-              <span
-                className={cn(
-                  'mr-2 inline-flex h-6 w-16 shrink-0 items-center justify-center rounded-sm border border-border bg-muted/35 text-[0.6875rem] font-semibold uppercase text-muted-foreground',
-                  selected && 'border-primary/25 bg-primary/10 text-primary'
-                )}
-              >
-                {option.groupLabel}
-              </span>
+              <ReferenceOptionCheckbox selected={selected} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{option.label}</span>
-                {option.meta && (
-                  <span
-                    className={cn(
-                      'block truncate text-xs text-muted-foreground',
-                      selected && 'text-primary/80'
-                    )}
-                  >
-                    {option.meta}
-                  </span>
-                )}
+                <span className="block truncate">{getOptionDisplayLabel(option)}</span>
+                <span className="block truncate text-xs text-mail-mid">{option.groupLabel}</span>
               </span>
-              {selected && <CommandCheck aria-hidden="true" />}
             </ReferenceOptionItem>
           );
         })}
@@ -696,8 +707,8 @@ function SearchReferencePicker({
   const canCreateReference = createLabel.length > 0 && !hasExactMatch && !showLoading;
 
   return (
-    <Command shouldFilter={false} className="min-h-0 flex-1">
-      <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} />
+    <Command shouldFilter={false} className={cn('min-h-0 flex-1', SEARCH_INPUT_WRAPPER_CLASSNAME)}>
+      <CommandInput value={search} placeholder={placeholder} onValueChange={setSearch} className="h-9 py-0" />
       <CommandList className={OPTION_LIST_CLASSNAME}>
         {showLoading ? (
           <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
@@ -714,32 +725,25 @@ function SearchReferencePicker({
               key={`${option.type}:${option.entityType}:${option.entityId ?? option.label}`}
               value={`${option.label} ${option.meta ?? ''}`}
               className={cn(
-                'min-h-10 cursor-pointer',
-                selected && 'bg-primary/10 text-primary data-[selected=true]:bg-primary/15'
+                'min-h-10 cursor-pointer rounded-md px-2 data-[selected=true]:bg-mail-chip',
+                selected && 'bg-mail-chip font-medium text-mail-ink'
               )}
               onSelect={() => onAdd(optionToReference(option))}
             >
+              <ReferenceOptionCheckbox selected={selected} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{option.label}</span>
+                <span className="block truncate">{getOptionDisplayLabel(option)}</span>
                 {option.meta && (
-                  <span
-                    className={cn(
-                      'block truncate text-xs text-muted-foreground',
-                      selected && 'text-primary/80'
-                    )}
-                  >
-                    {option.meta}
-                  </span>
+                  <span className="block truncate text-xs text-mail-mid">{option.meta}</span>
                 )}
               </span>
-              {selected && <CommandCheck aria-hidden="true" />}
             </ReferenceOptionItem>
           );
         })}
         {canCreateReference && (
           <CommandItem
             value={`create ${createLabel}`}
-            className="min-h-10 cursor-pointer border-t border-border"
+            className="mt-1 min-h-9 cursor-pointer rounded-md border-t border-mail-hair px-2 pt-2 data-[selected=true]:bg-mail-chip"
             onSelect={() =>
               onAdd({
                 type,
@@ -749,10 +753,10 @@ function SearchReferencePicker({
               })
             }
           >
-            <Plus aria-hidden="true" className="mr-2 size-3.5 text-primary" />
+            <Plus aria-hidden="true" className="mr-2 size-3.5 text-mail-mid" />
             <span className="min-w-0 flex-1">
               <span className="block truncate">Create {getReferenceTypeLabel(type)} reference</span>
-              <span className="block truncate text-xs text-muted-foreground">{createLabel}</span>
+              <span className="block truncate text-xs text-mail-mid">{createLabel}</span>
             </span>
           </CommandItem>
         )}
@@ -804,12 +808,24 @@ function ManualReferencePicker({
   );
 }
 
+/**
+ * PO/CO/RFQ/RFI/invoice labels arrive from the server as `"PO-25321 - Please
+ * advise minimum 1 day before delivery..."` — the record's number followed by
+ * its free-text description. Only the number belongs in a picker row; strip
+ * everything after the first " - " for the non-project types.
+ */
+function getOptionDisplayLabel(option: EntityReferenceOption): string {
+  if (option.type === 'project' || option.type === 'other') return option.label;
+  const separatorIndex = option.label.indexOf(' - ');
+  return separatorIndex === -1 ? option.label : option.label.slice(0, separatorIndex);
+}
+
 function optionToReference(option: EntityReferenceOption): EntityReference {
   return {
     type: option.type,
     entityType: option.entityType,
     entityId: option.entityId,
-    label: option.label,
+    label: getOptionDisplayLabel(option),
   };
 }
 

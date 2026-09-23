@@ -223,7 +223,8 @@ export function useEntityReferenceMarker({
         scopeId={scopeId}
         api={api}
         categories={categories}
-        align="end"
+        align="start"
+        side="left"
         selectedType={effectiveSelectedType}
         selectedProjectIds={selectedProjectIds}
         selectedReferences={references}

@@ -168,6 +168,8 @@
   --color-file-format-amber: var(--file-format-amber);
   --color-file-format-navy: var(--file-format-navy);
   --color-file-format-slate: var(--file-format-slate);
+  --color-notice-orange: var(--notice-orange);
+  --color-notice-orange-soft: var(--notice-orange-soft);
 
   /** Public Sans, loaded in index.html, as a utility (elli-ui#1001). **/
   --font-public-sans: var(--public-sans);

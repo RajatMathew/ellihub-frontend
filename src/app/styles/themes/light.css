@@ -191,6 +191,8 @@
   --file-format-violet: #5b3fd1;
   --file-format-amber: #a25c06;
   --file-format-navy: #27365e;
+  --notice-orange: #ea580c;
+  --notice-orange-soft: #fff2e8;
   --file-format-slate: #4b5563;
 
   --input-border: var(--color-zinc-300);

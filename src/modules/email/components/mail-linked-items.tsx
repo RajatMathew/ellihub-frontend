@@ -15,7 +15,7 @@ const TYPE_ORDER: Array<{ type: EntityReferenceType; label: string; dot: string 
   { type: 'rfq', label: 'RFQ', dot: 'bg-warning' },
   { type: 'rfi', label: 'RFI', dot: 'bg-caution' },
   { type: 'purchaseOrder', label: 'PO', dot: 'bg-primary' },
-  { type: 'changeOrder', label: 'CO', dot: 'bg-priority-low' },
+  { type: 'changeOrder', label: 'SCO', dot: 'bg-priority-low' },
   { type: 'invoice', label: 'INVOICE', dot: 'bg-foreground' },
 ];
 

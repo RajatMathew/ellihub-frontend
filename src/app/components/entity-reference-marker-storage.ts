@@ -54,7 +54,7 @@ export const ENTITY_REFERENCE_CATEGORIES: EntityReferenceCategory[] = [
   { type: 'rfq', label: 'RFQ', placeholder: 'Search RFQs' },
   { type: 'rfi', label: 'RFI', placeholder: 'RFI-112', manualEntry: true },
   { type: 'purchaseOrder', label: 'PO', placeholder: 'Search purchase orders' },
-  { type: 'changeOrder', label: 'CO', placeholder: 'Search change orders' },
+  { type: 'changeOrder', label: 'SCO', placeholder: 'Search change orders' },
   { type: 'invoice', label: 'Invoice', placeholder: 'Search invoices' },
 ];
 
