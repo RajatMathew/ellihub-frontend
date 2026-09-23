@@ -55,7 +55,7 @@ export function EmailBodyClamp({ children }: { children: ReactNode }) {
   const toggle = (
     <button
       type="button"
-      className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-mail-line bg-mail-card px-3 py-1.5 text-xs font-semibold text-mail-mid shadow-xs hover:bg-mail-chip hover:text-mail-ink focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
+      className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-transparent bg-sidebar-bg px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-sidebar-bg/25 hover:bg-sidebar-bg/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-safe:transition-colors motion-safe:duration-100"
       aria-expanded={expanded}
       onClick={() => setExpanded((current) => !current)}
     >
@@ -70,30 +70,12 @@ export function EmailBodyClamp({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative">
-      {/*
-        Expanded, the control follows you down the message (elli-ui#1093).
-
-        It used to be a plain row above the body, so "Show less" scrolled away
-        with the first screen and folding a message back up meant scrolling
-        past all of it to reach the copy at the end. `sticky` keeps it at the
-        top of whatever part of this message you are looking at, and stops at
-        the message's own bottom edge — it never floats over the next one.
-
-        This is why the message `<article>` is `overflow-clip` rather than
-        `overflow-hidden`: both clip to the rounded corners, but `hidden`
-        makes the article a scroll container, and a sticky child then pins
-        itself to a box that never scrolls, which looks exactly like
-        `position: static`.
-      */}
-      {expanded && overflows && (
-        <div className="pointer-events-none sticky top-2 z-10 flex justify-center pb-3">
-          {toggle}
-        </div>
-      )}
-
       <div
-        className={cn(clamped && 'overflow-hidden')}
-        style={clamped ? { maxHeight: CLAMP_HEIGHT } : undefined}
+        className={cn(
+          overflows &&
+            'overflow-hidden motion-safe:transition-[max-height] motion-safe:duration-300'
+        )}
+        style={overflows ? { maxHeight: clamped ? CLAMP_HEIGHT : contentHeight } : undefined}
       >
         {/*
           The observed element wraps the body and is never itself clamped —
@@ -116,12 +98,23 @@ export function EmailBodyClamp({ children }: { children: ReactNode }) {
       {/*
         Folded, the control sits over the fold at the end of the visible part —
         which is where the eye already is when it runs out of text.
-        Expanded, there is no copy here: the sticky one above is on screen the
-        whole way down, and two "Show less" buttons visible at once is one of
-        them asking to be ignored.
       */}
       {clamped && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+          {toggle}
+        </div>
+      )}
+
+      {/*
+        Expanded, the control follows you down the message and stays pinned to
+        its bottom edge — it never floats over the next message. This is why
+        the message `<article>` is `overflow-clip` rather than
+        `overflow-hidden`: both clip to the rounded corners, but `hidden` makes
+        the article a scroll container, and a sticky child then pins itself to
+        a box that never scrolls, which looks exactly like `position: static`.
+      */}
+      {expanded && overflows && (
+        <div className="pointer-events-none sticky bottom-7 z-10 mt-3 flex justify-center">
           {toggle}
         </div>
       )}
