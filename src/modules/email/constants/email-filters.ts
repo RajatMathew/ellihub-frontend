@@ -16,3 +16,6 @@ export type EmailListFilter = 'all' | 'unread' | 'flagged' | 'attachments' | 'ot
  * the same two states `EmailThreadState` carries elsewhere.
  */
 export type EmailStatusFilter = 'all' | 'open' | 'open_our_court' | 'open_their_court' | 'closed';
+
+/** The status filter as the API takes it: `all` is simply not sent. */
+export type EmailThreadStatusFilter = Exclude<EmailStatusFilter, 'all'>;
