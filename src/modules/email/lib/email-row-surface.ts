@@ -41,9 +41,16 @@ export const EMAIL_ROW_SELECTED_SURFACE =
  * selected row's, so opening a conversation never adds or removes a border
  * from the box model — only its color changes, which costs no layout
  * (elli-ui#1103).
+ *
+ * `group-hover` rather than this element's own `hover`: the row's checkbox
+ * sits in an absolutely-positioned sibling on top of part of it, and the
+ * cursor moving onto that sibling isn't "hovering this element" anymore, so
+ * a plain `hover:` dropped the tint the moment the pointer reached the
+ * checkbox. `group-hover` reads off the row's outer `<article>` instead,
+ * which the checkbox is still inside.
  */
 export const EMAIL_ROW_RESTING_SURFACE =
-  'bg-mail-paper border border-transparent hover:bg-mail-row-hover';
+  'bg-mail-paper border border-transparent group-hover:bg-mail-row-hover';
 
 export const EMAIL_ROW_CHECKED_SURFACE = 'bg-mail-accent-soft';
 

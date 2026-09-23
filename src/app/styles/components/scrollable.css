@@ -37,14 +37,27 @@
     overflow: scroll;
   }
 
+  /*
+   * A "y" variant only ever set `overflow-y` here, leaving `overflow-x` at
+   * the browser default (`visible`) — so a vertical-only list (the mail
+   * list, the sidebar, the reading pane, all three consumers of
+   * `.kt-scrollable-y-auto`) could still be panned sideways on a trackpad or
+   * touchscreen, rubber-banding past its own edge into whatever content sits
+   * beyond it. `overflow-x: hidden` and `touch-action: pan-y` close that off
+   * without touching the vertical scroll these classes exist for.
+   */
   .kt-scrollable-y,
   .kt-scrollable-y-hover {
+    overflow-x: hidden;
     overflow-y: scroll;
+    touch-action: pan-y;
   }
 
   .kt-scrollable-x,
   .kt-scrollable-x-hover {
     overflow-x: scroll;
+    overflow-y: hidden;
+    touch-action: pan-x;
   }
 
   .kt-scrollable-auto {
@@ -52,11 +65,15 @@
   }
 
   .kt-scrollable-y-auto {
+    overflow-x: hidden;
     overflow-y: auto;
+    touch-action: pan-y;
   }
 
   .kt-scrollable-x-auto {
     overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
   }
 
   /* Scrollbar visibility and color */
