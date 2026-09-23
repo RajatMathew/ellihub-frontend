@@ -126,7 +126,7 @@ export function MailDetailsPanel({
         <div className="flex items-center gap-[11px] bg-linear-[115deg] from-mail-ai-from via-mail-ai-mid to-mail-ai-to px-4 pb-6 pt-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200">
           <AiGlyph />
           <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-mail-accent-foreground">
-            {ai.suggestion.rationale ?? 'AI Suggestion'}
+            AI suggestion
           </span>
           <div className="flex shrink-0 gap-2">
             <AiBannerAction label="Looks right" onClick={ai.resolve}>
