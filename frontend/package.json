@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@faker-js/faker": "^10.4.0",
+    "@faker-js/faker": "^10.5.0",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@playwright/test": "^1.60.0",
     "@react-grab/mcp": "^0.1.26",
