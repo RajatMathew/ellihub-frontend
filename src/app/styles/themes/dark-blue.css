@@ -1,0 +1,261 @@
+/* Dark Blue Theme - navy-tinted dark mode */
+.dark-blue {
+  color-scheme: dark;
+
+  /** Base surfaces **/
+  --background: #0a0f1a;
+  --foreground: #f1f5f9;
+  --card: #0f1624;
+  --card-foreground: #f1f5f9;
+  --page-header: #0f1624;
+  --page-header-border: #1e293b;
+  --popover: #0f1624;
+  --popover-foreground: #f1f5f9;
+  --surface-hover: #162033;
+
+  /** Brand and interactive colors **/
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-foreground: #0a0f1a;
+  --primary-soft: rgba(96, 165, 250, 0.12);
+  --primary-alpha: rgba(96, 165, 250, 0.25);
+  --primary-soft-foreground: #93c5fd;
+  --secondary: #162033;
+  --secondary-foreground: #e2e8f0;
+  --accent: #162033;
+  --accent-foreground: #e2e8f0;
+  --outline-button-background: transparent;
+  --outline-button-foreground: var(--accent-foreground);
+  --outline-button-border: var(--input-border);
+  --outline-button-hover-background: var(--accent);
+  --outline-button-hover-foreground: var(--accent-foreground);
+  --outline-button-hover-border: var(--input-border);
+  --muted: #162033;
+  --muted-foreground: #94a3b8;
+  --brand-gold: #fbbf24;
+  --brand-clay: #f97316;
+
+  /** Feedback colors **/
+  --success: #4ade80;
+  --success-foreground: #0a0f1a;
+  --success-soft: rgba(74, 222, 128, 0.14);
+  --success-alpha: rgba(74, 222, 128, 0.28);
+  --success-accent: #86efac;
+  --success-soft-foreground: var(--success-accent);
+  /* The middle step of the red -> orange -> gold priority ramp. */
+  /* The task card's own scale - a priority meter reading as three steps of one
+     ramp, and the two courts. Taken from the #799 design, which is drawn on a
+     warm paper ground; deliberately muted rather than the alarm-red and amber
+     of `destructive` and `warning`, because a dozen sit on screen at once and a
+     card is a resting state, not a warning. */
+  --priority-high: #e08b80;
+  --priority-medium: #d9a441;
+  --priority-low: #a8a86a;
+  --court-ours: #8ba6d9;
+  --court-theirs: #e08b80;
+  /* The task card's own palette (elli-ui#1479), derived from this theme's
+     surfaces so the email stack still reads as deepening sheets. */
+  --task-card: var(--card);
+  --task-card-line: var(--border);
+  --task-card-rule: color-mix(in srgb, var(--border) 70%, var(--card));
+  --task-chip: var(--muted);
+  --task-ink-soft: color-mix(in srgb, var(--foreground) 80%, var(--card));
+  --task-ink-faint: var(--muted-foreground);
+  --task-ring: color-mix(in srgb, var(--muted-foreground) 60%, var(--card));
+  --task-mail: color-mix(in srgb, var(--muted) 70%, var(--card));
+  --task-mail-line: var(--border);
+  --task-mail-back: color-mix(in srgb, var(--muted) 45%, var(--card));
+  --task-mail-back-line: color-mix(in srgb, var(--border) 80%, var(--card));
+  --task-mail-hover: var(--muted);
+  --task-mail-hover-line: color-mix(in srgb, var(--muted-foreground) 40%, var(--card));
+  --task-mail-icon: var(--card);
+  --court-ours-soft: color-mix(in srgb, var(--court-ours) 18%, var(--card));
+  --court-theirs-soft: color-mix(in srgb, var(--court-theirs) 18%, var(--card));
+  --caution: #fb923c;
+  --warning: #fbbf24;
+  --warning-foreground: #0a0f1a;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --warning-alpha: rgba(251, 191, 36, 0.3);
+  --warning-accent: #fcd34d;
+  --warning-soft-foreground: var(--warning-accent);
+  --info: #06b6d4;
+  --info-foreground: #0a0f1a;
+  --info-soft: rgba(34, 211, 238, 0.14);
+  --info-alpha: rgba(34, 211, 238, 0.28);
+  --info-accent: #67e8f9;
+  --info-soft-foreground: var(--info-accent);
+
+  /**
+   * Links.
+   *
+   * Its own token rather than `--info` or `--primary`. `--info` means
+   * "informational status" and is read by alerts and badges; `--primary` is the
+   * brand and is what a filled button is painted with. A link that borrowed
+   * either would change colour the next time that meaning was retuned.
+   *
+   * The value is deliberately lighter than `--primary` so an identifier reads as
+   * actionable against body text, while still clearing WCAG AA (4.5:1) on both
+   * `--card` and `--background` — table identifiers are small text, so 3:1 is not
+   * enough. Measured 10.01:1 on card. Hover lightens rather than darkens.
+   */
+  --link: #22d3ee;
+  --link-hover: #67e8f9;
+  --destructive: #f87171;
+  --destructive-foreground: #0a0f1a;
+  --destructive-soft: rgba(248, 113, 113, 0.14);
+  --destructive-alpha: rgba(248, 113, 113, 0.28);
+  --destructive-soft-foreground: #fca5a5;
+
+  /** Charts **/
+  --chart-1: #60a5fa;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f87171;
+  --chart-5: #c084fc;
+
+  /** Borders, inputs, and elevation **/
+  --border: #1e293b;
+
+  /** Mailbox surfaces (elli-ui#921)
+      Almost all of these point at a token the rest of the app already uses, so
+      the mailbox reads as part of ElliHub rather than a second product wearing
+      its colours. Only the four the app has no equivalent for are real values:
+      the reading pane's half-step off the page background, the unread blue,
+      the scrollbar thumb, and the AI gradient. **/
+  --mail-paper: var(--background);
+  --mail-card: var(--card);
+  --mail-line: var(--border);
+  --mail-hair: var(--rule-strong);
+  --mail-pane-line: var(--card-border);
+  --mail-ink: var(--foreground);
+  /* Links inside a message body: blue-400, the dark-ground twin of #2563eb. */
+  --mail-link: #60a5fa;
+  /* Spreadsheet preview: cells stay on Excel's white canvas (see light.css);
+     the header strip steps down so the paper reads as a page on dark ground. */
+  --sheet-canvas: #ffffff;
+  --sheet-ink: #000000;
+  /* Word preview: the ground its pages sit on — Chrome's PDF viewer gray, so a
+     .docx and a .pdf open on the same backdrop, in every theme. */
+  --document-canvas: #282828;
+  --sheet-gridline: #e2e2e2;
+  --sheet-header: #d4d4d8;
+  --sheet-header-foreground: #3f3f46;
+  --mail-mid: var(--muted-foreground);
+  /* A half-step lighter than `mid`, so a row's participants and its preview
+     are two tones rather than one — the same split the design draws. */
+  --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
+  /* Diluted toward the paper rather than the raw --surface-hover the rest
+     of the app uses — a row list is denser than a button, and the full
+     token read too heavy skimming forty of them in a row. */
+  --mail-row-hover: color-mix(in oklab, var(--mail-card) 70%, var(--mail-pane));
+  --mail-row-edge: var(--card-border);
+  /* The open conversation's edge. A shade firmer than --mail-row-edge:
+     that one is drawn against the paper, this one against the white card
+     it rings, where the same value disappears (elli-ui#992). */
+  --mail-row-selected-edge: color-mix(in oklab, var(--card-border) 72%, var(--foreground));
+  --mail-chip: var(--muted);
+  --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
+  --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
+  --mail-search: var(--muted);
+  /* The group header's own band — the button alone. The clearance beneath
+     it and its bleed layer stay on the list's surface, so the band is only
+     as tall as the control it paints. */
+  --mail-group-header: color-mix(in oklab, var(--mail-search) 60%, var(--mail-pane));
+  --mail-search-clear: var(--card-border);
+  --mail-accent: var(--primary);
+  --mail-accent-hover: var(--primary-hover);
+  --mail-accent-foreground: var(--primary-foreground);
+  --mail-accent-soft: var(--accent);
+  --mail-accent-edge: var(--primary-alpha);
+  /* The reading pane sits a half-step off the page so the two columns read as
+     two surfaces without a heavier border between them. */
+  --mail-pane: #0d1422;
+  /* An unread subject is the one place in the mailbox that earns its own
+     colour; `primary` is already spent on the controls around it. */
+  --mail-unread: #7dd3fc;
+  --mail-scrollbar-thumb: #2b3a52;
+  --mail-ai-from: #2f57b4;
+  --mail-ai-mid: #4570cf;
+  --mail-ai-to: #6a93e2;
+  /** See light.css. Lifted a step above the navy page for the same reason
+      dark.css lifts above black. **/
+  --mail-bulk-bar: #1c2740;
+  --mail-bulk-bar-foreground: #f8fafc;
+  --mail-bulk-bar-muted: rgba(248, 250, 252, 0.64);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.1);
+  --mail-bulk-bar-danger: #fca5a5;
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /** File-format badge (elli-ui#1042)
+      A PDF is the same red in every theme — a file-type colour identifies the
+      format, not the surface it is drawn on, so these are the one block here
+      that is deliberately identical across all four theme files. Every value
+      clears AA against `--file-format-foreground` for the badge's bold 9px
+      label. `getFileFormatTone` in `src/app/lib/file-format.ts` decides which
+      one a given file gets, and hashes onto this same list for a format
+      nothing recognises. **/
+  --file-format-foreground: #ffffff;
+  --file-format-red: #c0392b;
+  --file-format-green: #1b7f4c;
+  --file-format-blue: #1d4fa3;
+  --file-format-cyan: #0b7a96;
+  --file-format-violet: #5b3fd1;
+  --file-format-amber: #a25c06;
+  --file-format-navy: #27365e;
+  --notice-orange: #ea580c;
+  --notice-orange-soft: color-mix(in oklab, #ea580c 18%, var(--card));
+  --file-format-slate: #4b5563;
+
+  --input-border: #334155;
+  --ring: #60a5fa;
+  --radius: 0.5rem;
+  --separator: #1e293b;
+  --card-border: #1e293b;
+  --card-border-hover: #334155;
+  --card-header: #162033;
+  --card-header-foreground: #f1f5f9;
+  --table-card-header-foreground: var(--card-header-foreground);
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.5), -1px 0 4px rgba(0, 0, 0, 0.4);
+
+  /** App-specific accents **/
+  --project-tabs-background: #0a0f1a;
+  --header-action-hover-background: rgba(96, 165, 250, 0.14);
+  --table-card-tab-accent: var(--primary);
+  --label-light: #60a5fa;
+  --label-lighter: #c084fc;
+  --rule-strong: #334155;
+
+  /** Fieldwire status colors **/
+  --fieldwire-status-draft: #fbbf24;
+  --fieldwire-status-neutral: #64748b;
+  --fieldwire-status-pending: #60a5fa;
+  --fieldwire-status-approved: #4ade80;
+  --fieldwire-status-rejected: #f87171;
+
+  /** Sidebar **/
+  --sidebar-bg: #070c14;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+  --sidebar-border: #162033;
+  --sidebar-hover-foreground: #f97316;
+  --sidebar-item-hover: rgba(226, 232, 240, 0.08);
+  --sidebar-item-active: #162033;
+  --sidebar-popover-bg: #0f1624;
+  --sidebar-popover-foreground: #f1f5f9;
+  --sidebar-popover-muted: #94a3b8;
+  --sidebar-popover-border: #334155;
+  --sidebar-popover-hover: #162033;
+  --sidebar-popover-active: #162033;
+
+  /** PDF editor canvas -- see the note beside these in `themes/light.css`. **/
+  --slot-selection: var(--primary);
+  --slot-highlight: color-mix(in srgb, var(--primary) 9%, transparent);
+  --slot-highlight-strong: color-mix(in srgb, var(--primary) 16%, transparent);
+  --slot-highlight-edge: color-mix(in srgb, var(--primary) 55%, transparent);
+  --slot-placeholder: color-mix(in srgb, var(--primary) 38%, transparent);
+  --canvas: #060a12;
+  --ruler: #0f1624;
+  --ruler-tick: #64748b;
+  --ruler-text: #94a3b8;
+  --ruler-highlight: #1e3a5f;
+}

@@ -1,0 +1,44 @@
+/* react-simple-wysiwyg — the two rules of its stylesheet that reach us
+   (elli-ui#929).
+
+   The package injects its own stylesheet at import time, full of light-mode
+   literals: #ddd borders, an #f5f5f5 toolbar, #222 buttons, #eaeaea hover.
+   None of it is wanted here, and almost none of it applies — those rules are
+   keyed to `rsw-editor`, `rsw-toolbar`, `rsw-btn` and `rsw-separator`, and the
+   composer renders none of those elements. Only `ContentEditable` is used from
+   the package, and the toolbar and its buttons are ours, in Tailwind tokens
+   (email-rich-text-toolbar.tsx), so there is no palette to re-state.
+
+   That leaves `rsw-ce`, which `ContentEditable` hard-codes on the writing
+   surface: a padding, a focus ring and a placeholder, all three of which the
+   composer supplies itself. */
+
+/* The class is doubled to raise specificity above the library's own
+   `.rsw-ce { padding: .5rem }`. The injected sheet is UNLAYERED, so it beats
+   any Tailwind utility — which sits in a layer — however the classes are
+   ordered; a single class here would tie on specificity and be decided by
+   whichever stylesheet happened to load last. The composer's real padding is
+   on the wrapper around this element, so zeroing it here competes with
+   nothing. */
+.rsw-ce.rsw-ce {
+  padding: 0;
+  /* The library also grows this element with `flex: 1 1 auto`, which stretches
+     it to fill the writing pane even on a short message — shoving whatever
+     renders after it (the quoted-text toggle) down to the pane's bottom edge
+     instead of right under the text. Doubled for the same specificity reason
+     as the padding above. */
+  flex: 0 1 auto;
+}
+
+.rsw-ce:focus,
+.rsw-ce:focus-visible {
+  /* The pane already shows focus; a second ring inside it reads as an error. */
+  outline: none;
+}
+
+/* The library draws a placeholder from an attribute on an :empty element. A
+   contenteditable is never really empty — it keeps a <br> or a <div><br></div>
+   — so the composer draws its own, and this one must not double up. */
+.rsw-ce[contentEditable='true']:empty:not(:focus)::before {
+  content: '';
+}

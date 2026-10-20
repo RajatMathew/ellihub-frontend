@@ -1,0 +1,153 @@
+import { RowActions } from '@/app/components/data-table';
+import { ImportedBadge } from '@/app/components/import-source';
+import { StatusBadge } from '@/app/components/status-badge';
+import { Badge } from '@/app/components/ui/badge';
+import {
+  ListingIdentifierLink,
+  ListingIdentifierText,
+} from '@/app/components/ui/listing-identifier';
+import { useProjectDetailQuery } from '@/modules/project/hooks';
+import type { SCOListItem } from '@/modules/project/schemas/sub-change-order';
+import { useParams } from 'react-router-dom';
+
+import {
+  formatOptionalSubChangeOrderCurrency,
+  formatOptionalSubChangeOrderDate,
+  getSubChangeOrderNegotiatedDiscount,
+  getSubChangeOrderPurchaseOrderLabel,
+  getSubChangeOrderShippingHandlingFee,
+  getSubChangeOrderSubtotal,
+  getSubChangeOrderTaxAmount,
+  getSubChangeOrderTaxLabel,
+  getSubChangeOrderTotalAmount,
+  getSubChangeOrderTypeLabel,
+} from './sub-change-order-list-utils';
+
+export function SubChangeOrderNumberCell({ sco }: { sco: SCOListItem }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <ListingIdentifierLink to={`${sco.id}`} value={sco.scoNumber} className="text-sm" />
+        <ImportedBadge source={sco.importSource} />
+      </div>
+      <span className="line-clamp-1 text-2sm text-muted-foreground">
+        {sco.title ?? sco.description ?? '-'}
+      </span>
+    </div>
+  );
+}
+
+export function SubChangeOrderPurchaseOrderCell({
+  sco,
+  projectId,
+}: {
+  sco: SCOListItem;
+  projectId: string;
+}) {
+  const purchaseOrderLabel = getSubChangeOrderPurchaseOrderLabel(sco);
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {sco.purchaseOrder?.id ? (
+        <ListingIdentifierLink
+          crossRecord
+          to={`/app/project/${projectId}/purchase-orders/${sco.purchaseOrder.id}`}
+          value={purchaseOrderLabel}
+          className="text-sm"
+        />
+      ) : (
+        <ListingIdentifierText value={purchaseOrderLabel} className="text-sm" />
+      )}
+      {sco.purchaseOrder?.status && (
+        <span className="text-2sm text-muted-foreground">PO {sco.purchaseOrder.status}</span>
+      )}
+    </div>
+  );
+}
+
+export function SubChangeOrderTypeCell({ sco, fallback }: { sco: SCOListItem; fallback?: string }) {
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Badge variant="primary" appearance="outline" size="sm">
+        {getSubChangeOrderTypeLabel(sco, fallback)}
+      </Badge>
+    </div>
+  );
+}
+
+export function SubChangeOrderAmountCell({ sco }: { sco: SCOListItem }) {
+  const subtotal = getSubChangeOrderSubtotal(sco);
+  const negotiatedDiscount = getSubChangeOrderNegotiatedDiscount(sco);
+  const shippingHandlingFee = getSubChangeOrderShippingHandlingFee(sco);
+  const taxAmount = getSubChangeOrderTaxAmount(sco);
+  const total = getSubChangeOrderTotalAmount(sco);
+
+  return (
+    <div className="flex flex-col gap-0.5 text-right">
+      <span className="text-sm font-medium text-foreground">
+        {formatOptionalSubChangeOrderCurrency(total)}
+      </span>
+      {(negotiatedDiscount !== 0 || shippingHandlingFee !== 0 || taxAmount !== 0) && (
+        <>
+          <span className="text-2sm text-muted-foreground">
+            Subtotal {formatOptionalSubChangeOrderCurrency(subtotal)}
+          </span>
+          {negotiatedDiscount !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              Discount -{formatOptionalSubChangeOrderCurrency(negotiatedDiscount)}
+            </span>
+          )}
+          {shippingHandlingFee !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              Shipping and Handling Fee {formatOptionalSubChangeOrderCurrency(shippingHandlingFee)}
+            </span>
+          )}
+          {taxAmount !== 0 && (
+            <span className="text-2sm text-muted-foreground">
+              {getSubChangeOrderTaxLabel(sco)} {formatOptionalSubChangeOrderCurrency(taxAmount)}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function SubChangeOrderStatusCell({ sco }: { sco: SCOListItem }) {
+  return <StatusBadge status={sco.status} />;
+}
+
+export function SubChangeOrderDateCell({ sco }: { sco: SCOListItem }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-sm text-foreground">{formatOptionalSubChangeOrderDate(sco.date)}</span>
+    </div>
+  );
+}
+
+export function SubChangeOrderCreatedAtCell({ sco }: { sco: SCOListItem }) {
+  return (
+    <span className="text-sm text-foreground">
+      {formatOptionalSubChangeOrderDate(sco.createdAt)}
+    </span>
+  );
+}
+
+export function SubChangeOrderActionsCell({ sco }: { sco: SCOListItem }) {
+  // Stays a component because the available actions come from a query.
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { data: project } = useProjectDetailQuery(projectId);
+
+  return (
+    <RowActions
+      label={sco.scoNumber ?? 'change order'}
+      items={[
+        { label: 'View', to: `${sco.id}` },
+        project?.capabilities?.actions?.subChangeOrder?.update === true && {
+          label: 'Edit',
+          to: `${sco.id}/edit`,
+        },
+      ]}
+    />
+  );
+}

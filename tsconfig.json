@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+  // Mirrors the aliases in tsconfig.app.json. This file is the one `bun test`
+  // reads, and without them a module under test can only reach another module
+  // through a relative climb — so the aliases decided what was testable.
+  // No baseUrl: TypeScript 6 deprecates it, and `./`-prefixed paths resolve
+  // against this file without one.
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "@core/*": ["./src/core/*"],
+      "@modules/*": ["./src/modules/*"]
+    }
+  }
+}

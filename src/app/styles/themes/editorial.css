@@ -1,0 +1,701 @@
+/* Editorial Theme - Navy accent + cream paper (matches client's V6.2 palette) */
+.editorial {
+  color-scheme: light;
+
+  /** Base surfaces **/
+  --background: #faf9f5;
+  --foreground: #1a1410;
+  --card: #ffffff;
+  --card-foreground: #1a1410;
+  --page-header: #ffffff;
+  --page-header-border: #e2ddd4;
+  --popover: #ffffff;
+  --popover-foreground: #1a1410;
+  --surface-hover: #f1ece2;
+
+  /** Brand and interactive colors **/
+  --primary: #1a3a5f;
+  --primary-hover: #112b47;
+  --primary-foreground: #fdfbf6;
+  --primary-soft: #ebe7df;
+  --primary-alpha: #d5cfc0;
+  --primary-soft-foreground: #1a3a5f;
+  --secondary: #ebe7df;
+  --secondary-foreground: #112b47;
+  --accent: #ebeef3;
+  --accent-foreground: #1a3a5f;
+  --outline-button-background: transparent;
+  --outline-button-foreground: #2f2a24;
+  --outline-button-border: #d8d0c5;
+  --outline-button-hover-background: #f3f1ed;
+  --outline-button-hover-foreground: #1a1410;
+  --outline-button-hover-border: #cfc6ba;
+  --muted: #f1ece2;
+  --muted-foreground: #6b6359;
+  --brand-gold: #e0a94d;
+  --brand-clay: #c75e40;
+
+  /** Feedback colors **/
+  --success: var(--color-teal-600);
+  --success-foreground: #ffffff;
+  --success-soft: var(--color-teal-50);
+  --success-alpha: var(--color-teal-200);
+  --success-accent: var(--color-teal-700);
+  --success-soft-foreground: var(--success-accent);
+  /* The task card's own scale - a priority meter reading as three steps of one
+     ramp, and the two courts. Taken from the #799 design, which is drawn on a
+     warm paper ground; deliberately muted rather than the alarm-red and amber
+     of `destructive` and `warning`, because a dozen sit on screen at once and a
+     card is a resting state, not a warning.
+
+     Muted, but not washed out: the ramp is read as a P1/P2/P3 *label*, which is
+     small text, so each step has to clear WCAG AA (4.5:1) on the two grounds it
+     is ever drawn on - `--card` and `--mail-chip`, the fill of a selected
+     priority chip. This theme's chip is the warmest of the four (`#f1ece2`) and
+     so the worst case: the original gold and olive measured 3.10:1 and 3.78:1
+     on it (elli-ui#994). Re-tuned to the tasks-card-redesign artifact's own
+     red/gold/olive hues (elli-ui#1140) - `--priority-high` is the artifact's
+     value verbatim, `--priority-medium` and `--priority-low` are that same
+     hue stepped down, because the artifact's own values measured 3.63:1 and
+     4.47:1 on this chip and neither clears AA. Measured on `--mail-chip`:
+     4.96 / 4.98 / 4.93. `tests/theme-contrast.test.ts` holds them to it. */
+  --priority-high: #b33b33;
+  --priority-medium: #8a5b17;
+  --priority-low: #68683b;
+  --court-ours: #3c5b8a;
+  --court-theirs: #8a5a12;
+  /* The task card's own palette, from the TaskCard design (elli-ui#1479): a
+     warm paper card, cream chips, and the email stack drawn as sheets of
+     deepening cream so the pile reads at a glance. */
+  --task-card: #ffffff;
+  --task-card-line: #e9e3d7;
+  --task-card-rule: #f0ebe1;
+  --task-chip: #f1ece2;
+  --task-ink-soft: #4a463f;
+  --task-ink-faint: #777166;
+  --task-ring: #bdb5a5;
+  --task-mail: #f5f0e6;
+  --task-mail-line: #e6ddcc;
+  --task-mail-back: #f9f5ee;
+  --task-mail-back-line: #ebe4d7;
+  --task-mail-hover: #ece4d4;
+  --task-mail-hover-line: #ddd2bd;
+  --task-mail-icon: #ffffff;
+  --court-ours-soft: #e6ebf5;
+  --court-theirs-soft: #f6ebd6;
+  --caution: #e08d3c;
+  --warning: #b8860b;
+  --warning-foreground: #f7efd9;
+  --warning-soft: #f7efd9;
+  --warning-alpha: #ead7a5;
+  --warning-accent: var(--color-amber-800);
+  /* Reads on the #f7efd9 soft surface at 6.18:1, so it needs no darkening of
+     its own — the amber-800 accent is already well clear of AA. */
+  --warning-soft-foreground: var(--warning-accent);
+  --info: #0e7490;
+  --info-foreground: #fdfbf6;
+  --info-soft: var(--color-sky-50);
+  --info-alpha: var(--color-sky-200);
+  --info-accent: var(--color-sky-700);
+  --info-soft-foreground: var(--info-accent);
+
+  /**
+   * Links.
+   *
+   * Its own token rather than `--info` or `--primary`. `--info` means
+   * "informational status" and is read by alerts and badges; `--primary` is the
+   * brand and is what a filled button is painted with. A link that borrowed
+   * either would change colour the next time that meaning was retuned.
+   *
+   * The value is deliberately lighter than `--primary` so an identifier reads as
+   * actionable against body text, while still clearing WCAG AA (4.5:1) on both
+   * `--card` and `--background` — table identifiers are small text, so 3:1 is not
+   * enough. Measured 5.36:1 on card, 5.09:1 on page.
+   */
+  --link: #0e7490;
+  --link-hover: #155e75;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: #fbe8e8;
+  --destructive-alpha: #f3c2c2;
+  /* Darker than `--destructive` (#dc2626), which reads 4.1:1 on the #fbe8e8
+     soft surface — under AA for badge-sized text. Same red, 5.49:1. */
+  --destructive-soft-foreground: #b91c1c;
+
+  /** Charts **/
+  --chart-1: #1a3a5f;
+  --chart-2: #2d6a4f;
+  --chart-3: #b8860b;
+  --chart-4: #c75e40;
+  --chart-5: #6b6359;
+
+  /** Borders, inputs, and elevation **/
+  --border: #d5cfc0;
+
+  /** Mailbox surfaces (elli-ui#921)
+      Almost all of these point at a token the rest of the app already uses, so
+      the mailbox reads as part of ElliHub rather than a second product wearing
+      its colours. Only the four the app has no equivalent for are real values:
+      the reading pane's half-step off the page background, the unread blue,
+      the scrollbar thumb, and the AI gradient. **/
+  --mail-paper: var(--background);
+  --mail-card: var(--card);
+  --mail-line: var(--border);
+  --mail-hair: var(--rule-strong);
+  --mail-pane-line: var(--card-border);
+  --mail-ink: var(--foreground);
+  /* Links inside a message body (elli-ui#1293 follow-up). Plain link blue, which
+     readers recognise as a link at a glance; 5.17:1 on white. */
+  --mail-link: #2563eb;
+  /* Spreadsheet preview. A workbook's colors assume Excel's white canvas and
+     black "automatic" text, so the cells stay on paper in every theme; only the
+     row/column headers and the sheet tabs follow it. */
+  --sheet-canvas: #ffffff;
+  --sheet-ink: #000000;
+  /* Word preview: the ground its pages sit on — Chrome's PDF viewer gray, so a
+     .docx and a .pdf open on the same backdrop, in every theme. */
+  --document-canvas: #282828;
+  --sheet-gridline: #e2e2e2;
+  --sheet-header: #f3f3f3;
+  --sheet-header-foreground: #5f6368;
+  --mail-mid: var(--muted-foreground);
+  /* A half-step lighter than `mid`, so a row's participants and its preview
+     are two tones rather than one — the same split the design draws. */
+  --mail-muted: color-mix(in oklab, var(--muted-foreground) 78%, var(--card));
+  /* Diluted toward the paper rather than the raw --surface-hover the rest
+     of the app uses — a row list is denser than a button, and the full
+     token read too heavy skimming forty of them in a row. */
+  --mail-row-hover: color-mix(in oklab, var(--mail-card) 70%, var(--mail-pane));
+  --mail-row-edge: var(--card-border);
+  /* The open conversation's edge. A shade firmer than --mail-row-edge:
+     that one is drawn against the paper, this one against the white card
+     it rings, where the same value disappears (elli-ui#992). */
+  --mail-row-selected-edge: color-mix(in oklab, var(--card-border) 72%, var(--foreground));
+  --mail-chip: var(--muted);
+  --mail-chip-hover: color-mix(in oklab, var(--muted-foreground) 12%, var(--muted));
+  --mail-chip-count: color-mix(in oklab, var(--muted-foreground) 18%, var(--muted));
+  --mail-search: var(--muted);
+  /* The group header's own band — the button alone. The clearance beneath
+     it and its bleed layer stay on the list's surface, so the band is only
+     as tall as the control it paints. */
+  --mail-group-header: color-mix(in oklab, var(--mail-search) 60%, var(--mail-pane));
+  --mail-search-clear: var(--card-border);
+  --mail-accent: var(--primary);
+  --mail-accent-hover: var(--primary-hover);
+  --mail-accent-foreground: var(--primary-foreground);
+  --mail-accent-soft: var(--accent);
+  --mail-accent-edge: var(--primary-alpha);
+  /* The reading pane sits a half-step off the page so the two columns read as
+     two surfaces without a heavier border between them. */
+  --mail-pane: #f7f5f0;
+  /* An unread subject is the one place in the mailbox that earns its own
+     colour; `primary` is already spent on the controls around it. */
+  --mail-unread: #075985;
+  --mail-scrollbar-thumb: #dfd9cf;
+  --mail-ai-from: #3e6fe0;
+  --mail-ai-mid: #5c8aee;
+  --mail-ai-to: #82aef5;
+  /** See light.css. Editorial takes the navy its sidebar already uses, so the
+      floating bar reads as the same chrome rather than a second dark. **/
+  --mail-bulk-bar: #183450;
+  --mail-bulk-bar-foreground: #f8fafc;
+  --mail-bulk-bar-muted: rgba(248, 250, 252, 0.64);
+  --mail-bulk-bar-hover: rgba(255, 255, 255, 0.12);
+  --mail-bulk-bar-danger: #fca5a5;
+  --public-sans: 'Public Sans', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /** File-format badge (elli-ui#1042)
+      A PDF is the same red in every theme — a file-type colour identifies the
+      format, not the surface it is drawn on, so these are the one block here
+      that is deliberately identical across all four theme files. Every value
+      clears AA against `--file-format-foreground` for the badge's bold 9px
+      label. `getFileFormatTone` in `src/app/lib/file-format.ts` decides which
+      one a given file gets, and hashes onto this same list for a format
+      nothing recognises. **/
+  --file-format-foreground: #ffffff;
+  --file-format-red: #c0392b;
+  --file-format-green: #1b7f4c;
+  --file-format-blue: #1d4fa3;
+  --file-format-cyan: #0b7a96;
+  --file-format-violet: #5b3fd1;
+  --file-format-amber: #a25c06;
+  --file-format-navy: #27365e;
+  --notice-orange: #ea580c;
+  --notice-orange-soft: #fff2e8;
+  --file-format-slate: #4b5563;
+
+  --input-border: #d8d0c5;
+  --ring: #1a3a5f;
+  --radius: 0.5rem;
+  --separator: lab(96.1634 0.0993311 -0.364041);
+  --card-border: #d5cfc0;
+  --card-border-hover: #c5bfb0;
+  --card-header: var(--sidebar-bg);
+  --card-header-foreground: #fff;
+  --table-card-header-foreground: #fdfbf6;
+  --left-panel-shadow: -4px 0 16px rgba(0, 0, 0, 0.06), -1px 0 4px rgba(0, 0, 0, 0.04);
+
+  /** App-specific accents **/
+  --project-tabs-background: #ffffff;
+  --header-action-hover-background: #ebeef3;
+  --table-card-tab-accent: #e0a94d;
+  --label-light: lab(47.8878 1.65477 -5.77283);
+  --label-lighter: lab(35.1166 1.78212 -6.1173);
+  --rule-strong: #ddd7cc;
+
+  /** Fieldwire status colors **/
+  --fieldwire-status-draft: #b8860b;
+  --fieldwire-status-neutral: #9a9286;
+  --fieldwire-status-pending: #1a3a5f;
+  --fieldwire-status-approved: #2d6a4f;
+  --fieldwire-status-rejected: #dc2626;
+
+  /** Sidebar **/
+  --sidebar-bg: #183450;
+  --sidebar-foreground: #c2c9d2;
+  --sidebar-muted: #a7b2c0;
+  --sidebar-border: #405a77;
+  --sidebar-hover-foreground: #f1f3f5;
+  --sidebar-item-hover: #284562;
+  --sidebar-item-active: #284562;
+  --sidebar-item-selected: #2d4b6c;
+  --sidebar-card: #203b59;
+  --sidebar-card-hover: #274463;
+  --sidebar-card-selected: #2d4b6c;
+  --sidebar-card-open: #1b3551;
+  --sidebar-submenu-hover: #142b43;
+  --sidebar-nav-accent: #ffda8f;
+  --sidebar-paper: #faf9f5;
+  --sidebar-nav-link: #ffda8f;
+  --sidebar-nav-link-hover: #ffda8f;
+  --sidebar-popover-bg: var(--sidebar-bg);
+  --sidebar-popover-foreground: #ffffff;
+  --sidebar-popover-muted: rgba(255, 255, 255, 0.62);
+  --sidebar-popover-border: rgba(255, 255, 255, 0.12);
+  --sidebar-popover-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-popover-active: rgba(255, 255, 255, 0.14);
+
+  /** PDF editor canvas -- see the note beside these in `themes/light.css`. **/
+  --slot-selection: var(--primary);
+  --slot-highlight: color-mix(in srgb, var(--primary) 9%, transparent);
+  --slot-highlight-strong: color-mix(in srgb, var(--primary) 16%, transparent);
+  --slot-highlight-edge: color-mix(in srgb, var(--primary) 55%, transparent);
+  --slot-placeholder: color-mix(in srgb, var(--primary) 38%, transparent);
+  --canvas: #e8e4da;
+  --ruler: #f1ece2;
+  --ruler-tick: #8c8376;
+  --ruler-text: #6b6359;
+  --ruler-highlight: #cfd8e6;
+}
+
+.editorial body,
+.editorial {
+  font-family:
+    'Public Sans',
+    'IBM Plex Sans',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Helvetica Neue',
+    sans-serif;
+}
+
+.editorial body {
+  background-image: radial-gradient(circle at 1px 1px, rgba(26, 20, 16, 0.022) 1px, transparent 0);
+  background-size: 24px 24px;
+  background-attachment: fixed;
+}
+
+.editorial h1,
+.editorial h2,
+.editorial h3,
+.editorial h4,
+.editorial .font-serif {
+  font-family: 'Fraunces', 'Georgia', serif;
+  font-feature-settings: 'ss01' on;
+  letter-spacing: -0.01em;
+}
+
+.editorial .font-sans {
+  font-family: 'Public Sans', 'IBM Plex Sans', sans-serif;
+  letter-spacing: 0;
+}
+
+.editorial .font-mono {
+  font-family: 'DM Mono', 'IBM Plex Sans', monospace;
+}
+
+.editorial [data-slot='app-sidebar'] [data-slot='accordion-menu-sub-trigger'] {
+  font-family: 'Public Sans', 'IBM Plex Sans', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.editorial [data-slot='app-sidebar'] [data-slot='accordion-menu-link-item'] {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+/* Compact, flat navigation blocks matching the Editorial sidebar reference. */
+.editorial [data-slot='app-sidebar'] [data-sidebar-menu] {
+  padding-inline: 0.625rem;
+  text-shadow: none;
+}
+
+.editorial [data-slot='app-sidebar'] [data-slot='sidebar-footer'] {
+  display: none;
+}
+
+.editorial [data-slot='app-sidebar'] .text-brand-gold {
+  color: var(--sidebar-nav-link);
+}
+
+.editorial [data-slot='app-sidebar'] .sidebar-section-label {
+  font-family: 'IBM Plex Mono', 'DM Mono', monospace;
+  font-size: 0.6875rem;
+}
+
+/* The mailbox icons only — not the header's chevron or its manage button,
+   which stay muted the way Quick Shortcuts' are (elli-ui#1082). */
+.editorial
+  [data-slot='app-sidebar']
+  section[aria-label='Email']
+  svg:not([data-slot='sidebar-group-action'] svg, [data-slot='accordion-menu-sub-indicator']) {
+  color: var(--sidebar-nav-link);
+  opacity: 1;
+}
+
+/* The reference uses typography and chevrons as the navigation cues, without
+   a competing icon beside every route label. Only the route link's own icon:
+   an item with a create action holds that action as a second link, and its
+   "+" is the only thing it shows. */
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu]
+  [data-slot='accordion-menu-link-item']
+  > a[role='menuitem']
+  > svg:first-child {
+  display: none;
+}
+
+/* Card spacing comes from each block's own margin, not the container's space-y. */
+.editorial [data-slot='app-sidebar'] [data-sidebar-menu='primary'] > *,
+.editorial [data-slot='app-sidebar'] [data-sidebar-menu='primary'] [role='group'] > * {
+  margin-block: 0;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='primary']
+  [data-slot='accordion-menu-link-item'] {
+  height: auto;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 0.5rem;
+  background: var(--sidebar-card);
+  color: var(--sidebar-foreground);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+  padding: 0.5rem 0.875rem;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='primary']
+  [data-slot='accordion-menu-link-item']:hover {
+  background: var(--sidebar-card-hover);
+  color: var(--sidebar-hover-foreground);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='primary']
+  [data-slot='accordion-menu-link-item'][data-selected='true'] {
+  background: var(--sidebar-card-selected);
+  color: var(--sidebar-hover-foreground);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial
+    [data-slot='app-sidebar']
+    [data-sidebar-menu='primary']
+    [data-slot='accordion-menu-link-item'] {
+    transition: none;
+  }
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='primary']
+  [data-slot='accordion-menu-link-item']:focus-visible,
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-trigger']:focus-visible,
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item']:focus-visible {
+  outline: 2px solid var(--brand-clay);
+  outline-offset: -2px;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu]
+  [data-slot='accordion-menu-link-item']::before {
+  display: none;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  > [data-slot='accordion-menu-sub'] {
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 0.5rem;
+  background: var(--sidebar-card);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  > [data-slot='accordion-menu-sub'][data-state='open'] {
+  background: var(--sidebar-card-open);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-trigger'] {
+  height: auto;
+  gap: 0.5rem;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+  padding: 0.5rem 0.875rem;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-trigger']:hover {
+  background: var(--sidebar-card-hover);
+  color: var(--sidebar-hover-foreground);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-indicator'] {
+  display: none;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-indicator'] {
+  width: 0.875rem;
+  height: 0.875rem;
+  stroke-width: 1.75;
+  color: color-mix(in srgb, var(--sidebar-paper) 70%, transparent);
+  opacity: 1;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content'] {
+  border-top: 1px solid var(--sidebar-border);
+  padding: 0;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-wrapper'] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-top: 0;
+  padding: 0.25rem 0.375rem;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-wrapper']
+  > * {
+  margin-block: 0;
+}
+
+/* Expanded group items: flat gold links (Editorial reference). */
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item'] {
+  height: auto;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--sidebar-nav-link);
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.25rem;
+  padding: 0.375rem 0.875rem;
+  text-shadow: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item']:hover {
+  background: var(--sidebar-submenu-hover);
+  color: var(--sidebar-nav-link-hover);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item'][data-selected='true'] {
+  background: var(--sidebar-card-selected);
+  color: var(--sidebar-nav-link-hover);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action'] {
+  color: var(--sidebar-nav-link);
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action']:hover,
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='quick-shortcut-empty-action']:focus-visible {
+  background: var(--sidebar-card-hover);
+  color: var(--sidebar-nav-link-hover);
+}
+
+/* Non-color cue for the active route, since hover shares its colors. */
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item'][data-selected='true'] {
+  font-weight: 500;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='sidebar-external-indicator'] {
+  width: 0.875rem;
+  height: 0.875rem;
+  stroke-width: 1.75;
+  color: color-mix(in srgb, var(--sidebar-paper) 45%, transparent);
+  opacity: 1;
+  transition: color 150ms ease;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item']:hover
+  [data-slot='sidebar-external-indicator'],
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-sub-content']
+  [data-slot='accordion-menu-link-item'][data-selected='true']
+  [data-slot='sidebar-external-indicator'] {
+  color: color-mix(in srgb, var(--sidebar-paper) 75%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial
+    [data-slot='app-sidebar']
+    [data-sidebar-menu='group']
+    [data-slot='accordion-menu-sub-content']
+    [data-slot='accordion-menu-link-item'],
+  .editorial
+    [data-slot='app-sidebar']
+    [data-sidebar-menu='group']
+    [data-slot='accordion-menu-sub-content']
+    [data-slot='sidebar-external-indicator'] {
+    transition: none;
+  }
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu]
+  [data-slot='accordion-menu-link-item']
+  > span:first-of-type,
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu]
+  [data-slot='accordion-menu-link-item']
+  > a
+  > span:first-of-type {
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.editorial [data-slot='app-sidebar'] [data-sidebar-menu='group'] [data-slot='email-alias-label'] {
+  display: block;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0%;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorial
+  [data-slot='app-sidebar']
+  [data-sidebar-menu='group']
+  [data-slot='accordion-menu-link-item']
+  > [data-slot='email-alias-label']:first-of-type {
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorial [data-slot='app-sidebar'] [data-slot='separator'] {
+  display: none;
+}

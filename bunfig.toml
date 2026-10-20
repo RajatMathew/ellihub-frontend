@@ -1,0 +1,2 @@
+[test]
+preload = ["./tests/setup-time-zone.ts", "./tests/setup-dom.ts", "./tests/pdf-editor-setup.ts"]

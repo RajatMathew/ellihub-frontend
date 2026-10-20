@@ -1,0 +1,476 @@
+import { memo, useMemo, useState, useSyncExternalStore } from 'react';
+
+import { cn } from '@/app/lib/utils';
+import {
+  EmailRowCard,
+  type EmailAttachment,
+  type EmailListItem,
+} from '@/modules/email/components/email-row-card';
+import { groupEmailsByMonth, type EmailMonthGroup } from '@/modules/email/lib/email-month-groups';
+import {
+  getLeavingEmailRows,
+  isEmailRowLeaving,
+  subscribeLeavingEmailRows,
+} from '@/modules/email/lib/email-row-leaving';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { ChevronDown } from 'lucide-react';
+
+interface VirtualizedEmailListProps {
+  emails: EmailListItem[];
+  accountId?: string;
+  scrollElement: HTMLDivElement;
+  selectedEmailId?: string;
+  groupByMonth?: boolean;
+  /** Search term to highlight within each row's subject/preview text. */
+  highlightQuery?: string;
+  onSelectEmail?: (emailId: string) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onUnarchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
+  onOpenAttachment?: (email: EmailListItem, attachment: EmailAttachment) => void;
+  checkedIds?: Set<string>;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
+  bulkSelectActive?: boolean;
+}
+
+type EmailListRowProps = {
+  email: EmailListItem;
+  accountId?: string;
+  selected: boolean;
+  isChecked: boolean;
+  bulkSelectActive: boolean;
+  highlightQuery?: string;
+  onSelectEmail?: (emailId: string) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onUnarchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
+  onOpenAttachment?: (email: EmailListItem, attachment: EmailAttachment) => void;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
+};
+
+/**
+ * One row, re-rendered only when something about *that* row changed.
+ *
+ * The per-row arrow functions are created in here rather than at the call
+ * site, which is the whole point: created outside, every one of them is a new
+ * identity on every parent render and `memo` can never hit. Typing a character
+ * into search re-rendered all fifty rows — 70-226ms of synchronous work per
+ * keystroke, measured — because the list, the rows and the reading pane all
+ * sit under the same page state. With this boundary a keystroke re-renders the
+ * rows whose highlight actually changed and leaves the rest alone.
+ *
+ * The callbacks it takes are stable (`useCallback` in `mailbox-page`), so the
+ * default shallow comparison is enough — no custom comparator to go stale.
+ */
+const EmailListRow = memo(function EmailListRow({
+  email,
+  accountId,
+  selected,
+  isChecked,
+  bulkSelectActive,
+  highlightQuery,
+  onSelectEmail,
+  onArchiveEmail,
+  onUnarchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onTogglePinEmail,
+  onOpenAttachment,
+  onToggleChecked,
+}: EmailListRowProps) {
+  // A boolean snapshot, so only the rows that start or stop leaving re-render.
+  const leaving = useSyncExternalStore(subscribeLeavingEmailRows, () =>
+    isEmailRowLeaving(email, getLeavingEmailRows())
+  );
+
+  return (
+    // Fades and slides out before an archive takes the row away (elli-ui#651),
+    // rather than the row vanishing and the list jumping up under the reader.
+    <div
+      data-leaving={leaving || undefined}
+      className={cn(
+        'motion-safe:transition-[opacity,translate] motion-safe:duration-200 motion-safe:ease-out',
+        leaving && 'pointer-events-none translate-x-4 opacity-0'
+      )}
+    >
+      <EmailRowCard
+        accountId={accountId}
+        email={email}
+        selected={selected}
+        highlightQuery={highlightQuery}
+        onSelect={() => onSelectEmail?.(email.id)}
+        onArchive={onArchiveEmail ? () => onArchiveEmail(email) : undefined}
+        onUnarchive={onUnarchiveEmail ? () => onUnarchiveEmail(email) : undefined}
+        onDelete={onDeleteEmail ? () => onDeleteEmail(email) : undefined}
+        onToggleFlag={onToggleFlagEmail ? () => onToggleFlagEmail(email) : undefined}
+        onTogglePin={onTogglePinEmail ? () => onTogglePinEmail(email) : undefined}
+        onOpenAttachment={
+          onOpenAttachment ? (attachment) => onOpenAttachment(email, attachment) : undefined
+        }
+        isChecked={isChecked}
+        onCheckedChange={
+          onToggleChecked ? (next, options) => onToggleChecked(email, next, options) : undefined
+        }
+        bulkSelectActive={bulkSelectActive}
+      />
+    </div>
+  );
+});
+
+const ESTIMATED_EMAIL_ROW_HEIGHT = 154;
+const ESTIMATED_MONTH_HEADER_HEIGHT = 33;
+
+export function VirtualizedEmailList({
+  emails,
+  accountId,
+  scrollElement,
+  selectedEmailId,
+  groupByMonth = false,
+  highlightQuery,
+  onSelectEmail,
+  onArchiveEmail,
+  onUnarchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onTogglePinEmail,
+  onOpenAttachment,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
+}: VirtualizedEmailListProps) {
+  if (groupByMonth) {
+    return (
+      <VirtualizedMonthGroups
+        emails={emails}
+        accountId={accountId}
+        scrollElement={scrollElement}
+        selectedEmailId={selectedEmailId}
+        highlightQuery={highlightQuery}
+        onSelectEmail={onSelectEmail}
+        onArchiveEmail={onArchiveEmail}
+        onUnarchiveEmail={onUnarchiveEmail}
+        onDeleteEmail={onDeleteEmail}
+        onToggleFlagEmail={onToggleFlagEmail}
+        onTogglePinEmail={onTogglePinEmail}
+        onOpenAttachment={onOpenAttachment}
+        checkedIds={checkedIds}
+        onToggleChecked={onToggleChecked}
+        bulkSelectActive={bulkSelectActive}
+      />
+    );
+  }
+
+  return (
+    <VirtualizedFlatEmailList
+      emails={emails}
+      accountId={accountId}
+      scrollElement={scrollElement}
+      selectedEmailId={selectedEmailId}
+      highlightQuery={highlightQuery}
+      onSelectEmail={onSelectEmail}
+      onArchiveEmail={onArchiveEmail}
+      onUnarchiveEmail={onUnarchiveEmail}
+      onDeleteEmail={onDeleteEmail}
+      onToggleFlagEmail={onToggleFlagEmail}
+      onTogglePinEmail={onTogglePinEmail}
+      onOpenAttachment={onOpenAttachment}
+      checkedIds={checkedIds}
+      onToggleChecked={onToggleChecked}
+      bulkSelectActive={bulkSelectActive}
+    />
+  );
+}
+
+function VirtualizedFlatEmailList({
+  emails,
+  accountId,
+  scrollElement,
+  selectedEmailId,
+  highlightQuery,
+  onSelectEmail,
+  onArchiveEmail,
+  onUnarchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onTogglePinEmail,
+  onOpenAttachment,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
+}: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
+  // TanStack Virtual owns mutable measurement state; React Compiler must not memoize this hook.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: emails.length,
+    getScrollElement: () => scrollElement,
+    estimateSize: () => ESTIMATED_EMAIL_ROW_HEIGHT,
+    getItemKey: (index) => emails[index]?.id ?? index,
+    overscan: 6,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      role="list"
+      aria-label="Emails"
+      className="relative w-full"
+      style={{ height: virtualizer.getTotalSize() }}
+    >
+      {virtualRows.map((virtualRow) => {
+        const email = emails[virtualRow.index];
+        if (!email) return null;
+
+        return (
+          <div
+            key={virtualRow.key}
+            ref={virtualizer.measureElement}
+            data-index={virtualRow.index}
+            role="listitem"
+            className="absolute left-0 top-0 w-full"
+            style={{ transform: `translateY(${virtualRow.start}px)` }}
+          >
+            <EmailListRow
+              accountId={accountId}
+              email={email}
+              selected={email.id === selectedEmailId}
+              highlightQuery={highlightQuery}
+              isChecked={checkedIds?.has(email.id) ?? false}
+              bulkSelectActive={bulkSelectActive}
+              onSelectEmail={onSelectEmail}
+              onArchiveEmail={onArchiveEmail}
+              onUnarchiveEmail={onUnarchiveEmail}
+              onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
+              onTogglePinEmail={onTogglePinEmail}
+              onOpenAttachment={onOpenAttachment}
+              onToggleChecked={onToggleChecked}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function VirtualizedMonthGroups({
+  emails,
+  accountId,
+  scrollElement,
+  selectedEmailId,
+  highlightQuery,
+  onSelectEmail,
+  onArchiveEmail,
+  onUnarchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onTogglePinEmail,
+  onOpenAttachment,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
+}: Omit<VirtualizedEmailListProps, 'groupByMonth'>) {
+  const [collapsedMonthKeys, setCollapsedMonthKeys] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const monthGroups = useMemo(() => groupEmailsByMonth(emails), [emails]);
+
+  // TanStack Virtual owns mutable measurement state; React Compiler must not memoize this hook.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualizer = useVirtualizer({
+    count: monthGroups.length,
+    getScrollElement: () => scrollElement,
+    estimateSize: (index) => {
+      const group = monthGroups[index];
+      if (!group || collapsedMonthKeys.has(group.key)) return ESTIMATED_MONTH_HEADER_HEIGHT;
+      return ESTIMATED_MONTH_HEADER_HEIGHT + group.emails.length * ESTIMATED_EMAIL_ROW_HEIGHT;
+    },
+    getItemKey: (index) => monthGroups[index]?.key ?? index,
+    overscan: 2,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      aria-label="Emails grouped by date"
+      className="relative w-full"
+      style={{ height: virtualizer.getTotalSize() }}
+    >
+      {virtualRows.map((virtualRow) => {
+        const group = monthGroups[virtualRow.index];
+        if (!group) return null;
+
+        return (
+          <div
+            key={virtualRow.key}
+            ref={virtualizer.measureElement}
+            data-index={virtualRow.index}
+            // Positioned with `top`, deliberately, not `transform`. A
+            // transformed ancestor becomes the containing block for its sticky
+            // descendants, so the group header resolved its `top: 0` against
+            // this moving wrapper rather than the scrollport and rode the
+            // scroll instead of pinning (elli-ui#1001). Only the month groups
+            // are virtualised here — a handful of boxes, not the rows — so
+            // giving up the compositor fast path costs nothing measurable. The
+            // flat row list above keeps `transform` for exactly that reason.
+            className="absolute left-0 w-full"
+            style={{ top: virtualRow.start }}
+          >
+            <MonthGroupSection
+              accountId={accountId}
+              group={group}
+              collapsed={collapsedMonthKeys.has(group.key)}
+              selectedEmailId={selectedEmailId}
+              highlightQuery={highlightQuery}
+              onSelectEmail={onSelectEmail}
+              onArchiveEmail={onArchiveEmail}
+              onUnarchiveEmail={onUnarchiveEmail}
+              onDeleteEmail={onDeleteEmail}
+              onToggleFlagEmail={onToggleFlagEmail}
+              onTogglePinEmail={onTogglePinEmail}
+              onOpenAttachment={onOpenAttachment}
+              checkedIds={checkedIds}
+              onToggleChecked={onToggleChecked}
+              bulkSelectActive={bulkSelectActive}
+              onToggle={() =>
+                setCollapsedMonthKeys((current) => {
+                  const next = new Set(current);
+                  if (next.has(group.key)) {
+                    next.delete(group.key);
+                  } else {
+                    next.add(group.key);
+                  }
+                  return next;
+                })
+              }
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthGroupSection({
+  group,
+  accountId,
+  collapsed,
+  selectedEmailId,
+  highlightQuery,
+  onSelectEmail,
+  onArchiveEmail,
+  onUnarchiveEmail,
+  onDeleteEmail,
+  onToggleFlagEmail,
+  onTogglePinEmail,
+  onOpenAttachment,
+  checkedIds,
+  onToggleChecked,
+  bulkSelectActive = false,
+  onToggle,
+}: {
+  group: EmailMonthGroup;
+  accountId?: string;
+  collapsed: boolean;
+  selectedEmailId?: string;
+  highlightQuery?: string;
+  onSelectEmail?: (emailId: string) => void;
+  onArchiveEmail?: (email: EmailListItem) => void;
+  onUnarchiveEmail?: (email: EmailListItem) => void;
+  onDeleteEmail?: (email: EmailListItem) => void;
+  onToggleFlagEmail?: (email: EmailListItem) => void;
+  onTogglePinEmail?: (email: EmailListItem) => void;
+  onOpenAttachment?: (email: EmailListItem, attachment: EmailAttachment) => void;
+  checkedIds?: Set<string>;
+  onToggleChecked?: (email: EmailListItem, next: boolean, options?: { range?: boolean }) => void;
+  bulkSelectActive?: boolean;
+  onToggle: () => void;
+}) {
+  const emailCountLabel = `${group.emails.length} ${group.emails.length === 1 ? 'email' : 'emails'}`;
+  const triggerId = `email-month-trigger-${group.key}`;
+  const contentId = `email-month-content-${group.key}`;
+
+  return (
+    <section>
+      {/*
+        Sticky, and sitting on the mail paper rather than in a band of its own:
+        several of these share `position: sticky`, so the browser already slides
+        the next one up over the last as the list scrolls. The count is a bare
+        number — "Today 9" over nine rows needs no unit (elli-ui#921).
+      */}
+      {/*
+        The stick has to be on the `h2`, not on the button inside it. A sticky
+        box can never travel outside its own containing block, and the `h2`
+        hugs the button exactly — so with `sticky` on the button its travel was
+        zero and the header scrolled away with its rows like any static element.
+        On the `h2` the containing block is this `section`, which spans the
+        whole group, so the header holds the top until its last row leaves
+        (elli-ui#1001).
+      */}
+      <h2 className="sticky top-0 z-20 m-0 bg-mail-pane pb-1">
+        <button
+          id={triggerId}
+          type="button"
+          className={cn(
+            'mail-group-header flex w-full cursor-pointer items-center gap-2 bg-mail-group-header px-4 pb-[7px] pt-2 text-left',
+            'font-public-sans text-xs font-semibold tracking-[0.01em] text-mail-mid',
+            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+          )}
+          aria-expanded={!collapsed}
+          aria-controls={contentId}
+          onClick={onToggle}
+        >
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              'size-3.5 shrink-0 text-mail-muted opacity-60 motion-safe:transition-transform motion-safe:duration-150',
+              collapsed && '-rotate-90'
+            )}
+            strokeWidth={2}
+          />
+          <span className="min-w-0 flex-1 truncate">{group.label}</span>
+          <span
+            className="shrink-0 text-[11px] font-normal tabular-nums text-mail-muted"
+            aria-label={emailCountLabel}
+          >
+            {group.emails.length}
+          </span>
+        </button>
+      </h2>
+      <div id={contentId} role="region" aria-labelledby={triggerId} hidden={collapsed}>
+        {!collapsed && (
+          // The clearance the first row needs — its own top border and shadow
+          // have to render somewhere, or a selected first row reads as clipped
+          // flat instead of rounded — is `pb-1` on the header above rather
+          // than padding here. Same 4px, but painted in the header's colour:
+          // as the list's own, it drew a pale line under every group heading.
+          <div role="list" aria-label={`${group.label} emails`}>
+            {group.emails.map((email) => (
+              <div key={email.id} role="listitem">
+                <EmailListRow
+                  accountId={accountId}
+                  email={email}
+                  selected={email.id === selectedEmailId}
+                  highlightQuery={highlightQuery}
+                  isChecked={checkedIds?.has(email.id) ?? false}
+                  bulkSelectActive={bulkSelectActive}
+                  onSelectEmail={onSelectEmail}
+                  onArchiveEmail={onArchiveEmail}
+                  onUnarchiveEmail={onUnarchiveEmail}
+                  onDeleteEmail={onDeleteEmail}
+                  onToggleFlagEmail={onToggleFlagEmail}
+                  onTogglePinEmail={onTogglePinEmail}
+                  onOpenAttachment={onOpenAttachment}
+                  onToggleChecked={onToggleChecked}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

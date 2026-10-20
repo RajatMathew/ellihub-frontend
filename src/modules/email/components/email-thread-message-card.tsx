@@ -1,0 +1,597 @@
+import { useId, useState } from 'react';
+
+import { Button } from '@/app/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/app/components/ui/hover-card';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { cn } from '@/app/lib/utils';
+import { EmailBodyClamp } from '@/modules/email/components/email-body-clamp';
+import { EmailMeetingResponseStrip } from '@/modules/email/components/email-meeting-response-strip';
+import { EmailMessageAttachments } from '@/modules/email/components/email-message-attachments';
+import { EmailMessageAttachmentsSkeleton } from '@/modules/email/components/email-message-attachments-skeleton';
+import { EmailMessageBody } from '@/modules/email/components/email-message-body';
+import { EmailRecipientDetails } from '@/modules/email/components/email-recipient-details';
+import {
+  EmailReplyComposer,
+  type EmailComposerMode,
+  type EmailReplyDraft,
+} from '@/modules/email/components/email-reply-composer';
+import type {
+  EmailAttachment,
+  EmailThreadMessage,
+} from '@/modules/email/components/email-row-card';
+import { SenderAvatar } from '@/modules/email/components/email-sender-avatar';
+import { useEmailMessageBodyQuery } from '@/modules/email/hooks/email.hooks';
+import { useStickyMessageHeader } from '@/modules/email/hooks/use-email-sticky-header';
+import { isHiddenInlineEmailAttachment } from '@/modules/email/lib/email-attachments';
+import { hasVisibleEmailBodyContent } from '@/modules/email/lib/email-body';
+import { formatEmailMessageDate } from '@/modules/email/lib/email-date';
+import type { DateMentionClick } from '@/modules/email/lib/email-date-mentions';
+import { getMessagePreview } from '@/modules/email/lib/email-message-preview';
+import { isReplyableEmailMessage } from '@/modules/email/lib/email-reply-state';
+import type { SaveToFilesScope } from '@/modules/files/save-to-files';
+import { ChevronUp, Copy, Forward, Mail, Paperclip, Reply, Search } from 'lucide-react';
+import { toast } from 'sonner';
+
+/** Stable identities for the two "nothing here" cases, so renders that change
+ *  neither do not invalidate everything derived from them. */
+const NO_ATTACHMENTS: EmailAttachment[] = [];
+const EMPTY_BODY: string[] = [];
+
+interface EmailThreadMessageCardProps {
+  message: EmailThreadMessage;
+  /** Turns a date written in the message into an event (elli-ui#686). */
+  onDateMention?: (mention: DateMentionClick) => void;
+  accountId?: string;
+  inlineImageBaseUrl?: string | null;
+  singleMessage?: boolean;
+  /**
+   * The real body is still on its way, so what is on `message` is the list
+   * row's plain-text preview rather than the message. Renders a placeholder
+   * instead of it — see `getThreadMessages` (elli-ui#942).
+   */
+  isBodyPending?: boolean;
+  /**
+   * The message has files that have not arrived yet — the stand-in built from
+   * the list row, which knows the count but not the files. Draws that many
+   * placeholder cards where the attachments will be.
+   */
+  pendingAttachmentCount?: number;
+  latest?: boolean;
+  replyOpen?: boolean;
+  replyMode?: EmailComposerMode;
+  isSendingReply?: boolean;
+  onReply: (messageId: string) => void;
+  onForward?: (messageId: string) => void;
+  onComposeTo?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
+  onSendReply: (messageId: string, draft: EmailReplyDraft) => Promise<void> | void;
+  onCancelReply: () => void;
+  onOpenAttachment?: (attachment: EmailAttachment) => void;
+  onLoadAttachment?: (messageId: string, attachmentId: string) => Promise<Blob>;
+  /**
+   * Optional folder subtree that the "Save to Files" picker scopes to. When
+   * omitted the picker falls back to the org root (admin-only).
+   */
+  saveToFilesRootFolderId?: string;
+  saveToFilesRootLabel?: string;
+  saveToFilesProjects?: readonly SaveToFilesScope[];
+  /**
+   * Expand or collapse every message at once (the `E` shortcut). `null` leaves
+   * each card on its own choice; a boolean overrides every card that has not
+   * been touched since the shortcut was pressed.
+   */
+  expandAll?: boolean | null;
+}
+
+export function EmailThreadMessageCard({
+  message,
+  accountId,
+  inlineImageBaseUrl,
+  singleMessage = false,
+  isBodyPending = false,
+  pendingAttachmentCount = 0,
+  latest,
+  replyOpen,
+  replyMode = 'reply',
+  isSendingReply = false,
+  onReply,
+  onForward,
+  onComposeTo,
+  onSearchSender,
+  onSendReply,
+  onCancelReply,
+  onOpenAttachment,
+  onLoadAttachment,
+  saveToFilesRootFolderId,
+  saveToFilesRootLabel,
+  saveToFilesProjects,
+  expandAll = null,
+  onDateMention,
+}: EmailThreadMessageCardProps) {
+  // null = no manual choice yet; the default is then "expanded when this is the
+  // newest message in the thread", so every conversation opens with exactly one
+  // message readable — matching single-message threads, which are always open.
+  const [manuallyExpanded, setManuallyExpanded] = useState<boolean | null>(null);
+  // Every press of `E` is a new instruction, so it clears whatever this card
+  // decided last time. Derived from the incoming value rather than stored,
+  // which is what lets a card be reopened by hand straight afterwards.
+  const [expandAllHandled, setExpandAllHandled] = useState<boolean | null>(null);
+  const expandAllApplies = expandAll !== null && expandAll !== expandAllHandled;
+  // A shared constant rather than a fresh `[]`, so a message with no
+  // attachments keeps the same identity across renders. `EmailHtmlBody` already
+  // defends itself against the churn by keying on attachment content, so this is
+  // not load-bearing — it just stops the derivations below being recomputed for
+  // nothing.
+  const attachments = message.attachments ?? NO_ATTACHMENTS;
+  // Attachments must not lock a thread card open: every message in a
+  // conversation remains collapsible unless it is the only message displayed.
+  const isAlwaysExpanded = singleMessage;
+  const isExpanded =
+    isAlwaysExpanded ||
+    Boolean(replyOpen) ||
+    (expandAllApplies ? expandAll === true : (manuallyExpanded ?? Boolean(latest)));
+  const canCollapse = !isAlwaysExpanded && !replyOpen;
+  // A conversation too large to send whole leaves the older messages' bodies
+  // behind; this is the fetch for the one the reader just opened. Collapsed
+  // cards ask for nothing, which is what keeps a 76-message thread at 0.57MB
+  // instead of 9.3MB.
+  const deferredBody = useEmailMessageBodyQuery(
+    accountId,
+    message.id,
+    isExpanded && message.bodyPending === true
+  );
+  const body = message.bodyPending ? (deferredBody.data ?? EMPTY_BODY) : message.body;
+  const isDeferredBodyPending = message.bodyPending === true && !deferredBody.data;
+  const visibleAttachments = attachments.filter(
+    (attachment) => !isHiddenInlineEmailAttachment(attachment)
+  );
+  const hasBodyContent = hasVisibleEmailBodyContent(body);
+  const isSingleAttachmentOnly =
+    visibleAttachments.length === 1 && !hasBodyContent && !replyOpen && !latest;
+  // Elli's own tags and the mailbox's own categories are different things, so
+  // they are drawn differently: the categories are read-only and say so.
+  const elliTags = message.tags ?? [];
+  const providerCategories = message.keywords ?? [];
+  const canReply = isReplyableEmailMessage(message);
+  // An in-flight/failed message shows its DeliveryStatus badge in the slot
+  // where the timestamp normally sits; its sentAt is only the 'Sending...'
+  // placeholder, so rendering both reads "Sending Sending...".
+  const showTimestamp = !message.deliveryStatus || message.deliveryStatus === 'sent';
+  const contentId = useId();
+  const stickyHeader = useStickyMessageHeader();
+  const handleReply = () => {
+    if (canReply) onReply(message.id);
+  };
+  const canForward = canReply && Boolean(onForward);
+  const handleForward = () => {
+    if (canForward) onForward?.(message.id);
+  };
+
+  if (!isExpanded) {
+    return (
+      <article className="overflow-clip rounded-xl border border-mail-pane-line bg-mail-card">
+        <button
+          type="button"
+          className="group flex min-h-20 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+          aria-expanded="false"
+          aria-controls={contentId}
+          aria-label={`Expand message from ${message.senderName}`}
+          onClick={() => {
+            setExpandAllHandled(expandAll);
+            setManuallyExpanded(true);
+          }}
+        >
+          <SenderAvatar
+            name={message.senderName}
+            email={message.senderEmail}
+            accountId={accountId}
+            className="size-9"
+          />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-baseline justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {message.senderName}
+                </span>
+                {visibleAttachments.length > 0 && (
+                  /* A count, not the cards — the files themselves are one click
+                     away in the open message, which is where they are used. */
+                  <span
+                    className="inline-flex shrink-0 items-center gap-[3px] text-[11px] tabular-nums text-mail-muted"
+                    aria-label={`${visibleAttachments.length} ${visibleAttachments.length === 1 ? 'attachment' : 'attachments'}`}
+                  >
+                    <Paperclip aria-hidden="true" className="size-[11px]" strokeWidth={1.7} />
+                    {visibleAttachments.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {message.deliveryStatus && (
+                  <DeliveryStatus status={message.deliveryStatus} compact />
+                )}
+                {showTimestamp && (
+                  <time
+                    className="whitespace-nowrap text-xs text-muted-foreground"
+                    dateTime={message.sentAt}
+                  >
+                    {formatEmailMessageDate(message.sentAt)}
+                  </time>
+                )}
+              </div>
+            </div>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {getMessagePreview(body, message.preview)}
+            </p>
+          </div>
+        </button>
+        {message.meetingResponse && (
+          <EmailMeetingResponseStrip response={message.meetingResponse} collapsed />
+        )}
+        <div id={contentId} hidden />
+      </article>
+    );
+  }
+
+  return (
+    <article className="overflow-clip rounded-xl border border-mail-pane-line bg-mail-card [overflow-clip-margin:border-box]">
+      {/*
+        The header pins to the top of the reading pane while its own message
+        scrolls past, the way the Show more control pins to the bottom
+        (elli-ui#1184): reading down a long message no longer loses who sent it
+        or the reply and forward actions. Its containing block is this article,
+        so it lets go when the message ends rather than covering the next one.
+        It needs its own background — scrolled, the body passes underneath it.
+        `top-0` is the scroller's content edge, which already clears the reading
+        toolbar the scroller pads for.
+
+        Pinned, it reads as the top of a fresh card: a gap in the pane's colour
+        under the toolbar, then a rounded, bordered top edge — the way two
+        cards stacked in the thread look. Three layers, all inside the header:
+
+        - `before:` is the gap. It fills the 54px above the header (the
+          scroller's `pt-[54px]`, across which the toolbar's backdrop fades
+          out, so the body used to show through) plus the first 12px of the
+          header, behind its rounded corners, and runs 1px wider on each side
+          to cover the article's own side borders.
+        - `after:` is the card's fill, rounded and bordered, drawn 1px out so
+          that unpinned it sits exactly on the article's top border and looks
+          like nothing changed.
+        - The header's content stays above both (they are `-z-*` inside the
+          header's stacking context, so the header carries no fill of its own).
+
+        Both reach outside the header, which is why they only show while
+        pinned: unpinned, `before:` lies above the article, and the article's
+        clip, moved out to its border box so the 1px overlap survives, cuts it
+        away. `z-10` keeps the whole header under the toolbar (`z-20`).
+
+        The display settings can turn the pinning off (elli-ui#1298); the header
+        then scrolls with its message, as it did before.
+      */}
+      <div
+        className={cn(
+          'flex items-start gap-3 border-b border-mail-pane-line px-4 py-3',
+          stickyHeader
+            ? 'sticky top-0 z-10 before:absolute before:-inset-x-px before:bottom-[calc(100%-12px)] before:-z-20 before:h-[66px] before:bg-mail-pane after:absolute after:-inset-x-px after:-top-px after:bottom-0 after:-z-10 after:rounded-t-xl after:border after:border-b-0 after:border-mail-pane-line after:bg-mail-card'
+            : 'relative'
+        )}
+      >
+        {canCollapse && (
+          <button
+            type="button"
+            className="absolute inset-0 z-0 cursor-pointer rounded-t-xl hover:bg-mail-pane active:bg-mail-pane focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors motion-safe:duration-100"
+            aria-expanded="true"
+            aria-controls={contentId}
+            aria-label={`Collapse message from ${message.senderName}`}
+            onClick={() => {
+              setExpandAllHandled(expandAll);
+              setManuallyExpanded(false);
+            }}
+          />
+        )}
+
+        <SenderProfileHoverCard
+          message={message}
+          accountId={accountId}
+          onCompose={onComposeTo}
+          onSearchSender={onSearchSender}
+        />
+
+        <div className={cn('relative z-10 min-w-0 flex-1', canCollapse && 'pointer-events-none')}>
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {message.senderName}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {message.senderEmail}
+                </span>
+              </div>
+            </div>
+            {/*
+              The 28px icon buttons would set this line's height and push the
+              recipients a step down from the sender (elli-ui#1299); pulled in
+              by 4px on each side, they sit on the sender's line without
+              making it taller.
+            */}
+            <div className="-my-1 flex shrink-0 items-center gap-0.5">
+              {message.deliveryStatus && <DeliveryStatus status={message.deliveryStatus} />}
+              {showTimestamp && (
+                <time className="mr-2 text-xs text-muted-foreground" dateTime={message.sentAt}>
+                  {formatEmailMessageDate(message.sentAt)}
+                </time>
+              )}
+              <MessageIconAction
+                label={`Reply to ${message.senderName}`}
+                icon={Reply}
+                disabled={!canReply}
+                onClick={handleReply}
+              />
+              <MessageIconAction
+                label={`Forward message from ${message.senderName}`}
+                icon={Forward}
+                disabled={!canForward}
+                onClick={handleForward}
+              />
+              {canCollapse && <ChevronUp aria-hidden="true" className="mx-2 size-3.5" />}
+            </div>
+          </div>
+
+          {/*
+            Recipients sit under the whole header rather than in the column
+            beside the timestamp and the action icons. Sharing that column left
+            them roughly 190px on a normal pane and "To: someone@outlook.com"
+            was cropped mid-domain with half the card empty next to it
+            (elli-ui#1004).
+          */}
+          <div className={cn('min-w-0', canCollapse && 'pointer-events-auto w-fit max-w-full')}>
+            <EmailRecipientDetails message={message} />
+          </div>
+          {(elliTags.length > 0 || providerCategories.length > 0) && (
+            <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+              {elliTags.map((tag) => (
+                <span
+                  key={`tag-${tag}`}
+                  className="max-w-36 truncate rounded-sm border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+              {providerCategories.map((category) => (
+                <span
+                  key={`category-${category}`}
+                  title="Mailbox category, set in Outlook or Gmail. Read-only in Elli."
+                  className="max-w-36 truncate rounded-sm border border-border border-dashed bg-muted/40 px-1.5 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  {category}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {message.meetingResponse && <EmailMeetingResponseStrip response={message.meetingResponse} />}
+
+      {/* No horizontal padding here — the HTML body needs the card's full
+          width (padding on top of a fixed-width email design was clipping
+          content at the right edge). Non-body children add their own px-4. */}
+      <div id={contentId} className={cn('space-y-4 py-4', isSingleAttachmentOnly && 'py-3')}>
+        {visibleAttachments.length > 0 && (
+          /*
+            Above the body, the way Outlook and Gmail place them (elli-ui#1043).
+            At the bottom they sat after however many screens of quoted chain
+            the message dragged along, so the one thing a reader opens a mail
+            with an attachment to find was the one thing they had to scroll
+            past the whole message for.
+          */
+          <EmailMessageAttachments
+            attachments={visibleAttachments}
+            messageId={message.id}
+            onLoadAttachment={onLoadAttachment}
+            onOpenAttachment={onOpenAttachment}
+            saveToFilesRootFolderId={saveToFilesRootFolderId}
+            saveToFilesRootLabel={saveToFilesRootLabel}
+            saveToFilesProjects={saveToFilesProjects}
+          />
+        )}
+        {visibleAttachments.length === 0 && pendingAttachmentCount > 0 && (
+          <EmailMessageAttachmentsSkeleton count={pendingAttachmentCount} />
+        )}
+
+        {isBodyPending || isDeferredBodyPending ? (
+          /* The preview is plain text — a flattened excerpt that still carries
+             the quoted chain's `-----Original Message-----` rules. Rendered as
+             a body it showed as a row of dashes for the split second before
+             the real HTML arrived (elli-ui#942). Lines of the right shape say
+             "loading" without pretending to be the message. */
+          <div className="space-y-2 px-4" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading this message</span>
+            <Skeleton className="h-3.5 w-[85%]" />
+            <Skeleton className="h-3.5 w-[92%]" />
+            <Skeleton className="h-3.5 w-[60%]" />
+          </div>
+        ) : (
+          hasBodyContent && (
+            <EmailBodyClamp>
+              <EmailMessageBody
+                body={body}
+                attachments={attachments}
+                inlineImageBaseUrl={inlineImageBaseUrl}
+                sentAt={message.sentAt}
+                onDateMention={onDateMention}
+              />
+            </EmailBodyClamp>
+          )
+        )}
+
+        {replyOpen && (
+          <div className="px-4">
+            <EmailReplyComposer
+              key={replyMode}
+              message={message}
+              mode={replyMode}
+              isSending={isSendingReply}
+              onSend={(draft) => onSendReply(message.id, draft)}
+              onCancel={onCancelReply}
+            />
+          </div>
+        )}
+
+        {latest && !replyOpen && (
+          <div className="flex flex-wrap gap-2 border-t border-mail-pane-line px-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canReply}
+              onClick={handleReply}
+            >
+              <Reply aria-hidden="true" className="size-3.5" />
+              Reply
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!canForward}
+              onClick={handleForward}
+            >
+              <Forward aria-hidden="true" className="size-3.5" />
+              Forward
+            </Button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function SenderProfileHoverCard({
+  message,
+  accountId,
+  onCompose,
+  onSearchSender,
+}: {
+  message: EmailThreadMessage;
+  accountId?: string;
+  onCompose?: (address: string) => void;
+  onSearchSender?: (address: string) => void;
+}) {
+  const address = message.senderEmail;
+
+  return (
+    <HoverCard openDelay={100} closeDelay={120}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          className="pointer-events-auto relative z-10 mt-0.5 shrink-0 cursor-pointer rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`View ${message.senderName} profile`}
+        >
+          <SenderAvatar
+            name={message.senderName}
+            email={address}
+            accountId={accountId}
+            className="size-9"
+          />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-80 p-0">
+        <div className="flex items-center gap-3 p-4">
+          <SenderAvatar
+            name={message.senderName}
+            email={address}
+            accountId={accountId}
+            className="size-12 text-base"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{message.senderName}</p>
+            <p className="mt-0.5 break-all text-xs text-muted-foreground">{address}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 border-t border-border px-2 py-2">
+          {onCompose && (
+            <button
+              type="button"
+              className="flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-muted/50 px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+              onClick={() => onCompose(address)}
+            >
+              <Mail aria-hidden="true" className="size-3.5" />
+              <span className="truncate">Send mail</span>
+            </button>
+          )}
+          {onSearchSender && (
+            <button
+              type="button"
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+              aria-label={`Find emails from ${message.senderName}`}
+              onClick={() => onSearchSender(address)}
+            >
+              <Search aria-hidden="true" className="size-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md bg-muted/50 text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:transition-colors motion-safe:duration-150"
+            aria-label={`Copy ${address}`}
+            onClick={() => {
+              void navigator.clipboard.writeText(address).then(
+                () => toast.success('Email address copied.'),
+                () => toast.error('Could not copy the address.')
+              );
+            }}
+          >
+            <Copy aria-hidden="true" className="size-3.5" />
+          </button>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
+function DeliveryStatus({
+  status,
+  compact = false,
+}: {
+  status: NonNullable<EmailThreadMessage['deliveryStatus']>;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground',
+        !compact && 'mr-2'
+      )}
+    >
+      {status === 'sending' ? 'Sending' : status === 'failed' ? 'Failed' : 'Sent'}
+    </span>
+  );
+}
+
+function MessageIconAction({
+  label,
+  icon: Icon,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  icon: typeof Reply;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      mode="icon"
+      size="icon"
+      className="pointer-events-auto size-7"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon aria-hidden="true" className="size-3.5" />
+    </Button>
+  );
+}

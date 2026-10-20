@@ -1,0 +1,126 @@
+import { MockDataButton } from '@/app/components/dev/mock-data-button';
+import { formPageContainerClassName } from '@/app/components/form-page-layout';
+import { FormPageShell } from '@/app/components/form-page-shell';
+import { FormPageHeader } from '@/app/components/page-header';
+import { QueryErrorState } from '@/app/components/query-error-state';
+import { useAccess } from '@/app/contexts/access-context';
+import { useBreadcrumbLabel } from '@/app/hooks/use-breadcrumb-label';
+import { onInvalidFormSubmit } from '@/app/lib/form-error-toast';
+import { GCFormContent } from '@/modules/directory/components/gc/form';
+import { QuickCreateContactDialog } from '@/modules/directory/components/quick-create-contact-dialog';
+import { QuickEditContactDialog } from '@/modules/directory/components/quick-edit-contact-dialog';
+import { DirectoryFormLoading } from '@/modules/directory/components/shared';
+import { GC_FORM_SECTIONS } from '@/modules/directory/constants/gc.constants';
+import { useGCFormState } from '@/modules/directory/hooks/gc/use-gc-form-state';
+import { useSaveGC } from '@/modules/directory/hooks/gc/use-save-gc';
+import { useNavigate, useParams } from 'react-router-dom';
+
+export function GCFormPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const state = useGCFormState(id);
+  const canEditContacts = useAccess().can('contact', 'update');
+  const { handleSubmit, control } = state.form;
+
+  useBreadcrumbLabel(
+    id ? `/app/directory/general-contractors/${id}` : undefined,
+    state.gcQuery.data?.name ?? 'General Contractor'
+  );
+
+  const { saveGC, isSubmitting } = useSaveGC({
+    id,
+    isEdit: state.isEdit,
+    contactLinks: state.contactLinks,
+    originalLinks: state.originalLinks,
+    onSaved: (createdId) => {
+      if (createdId) {
+        navigate(`../${createdId}`, { relative: 'path' });
+        return;
+      }
+      navigate('..', { relative: 'path' });
+    },
+  });
+
+  if (state.isEdit && state.gcQuery.isLoading) {
+    return <DirectoryFormLoading />;
+  }
+
+  if (state.isEdit && state.gcQuery.isError) {
+    return (
+      <div className={formPageContainerClassName}>
+        <QueryErrorState
+          title="Unable to load general contractor."
+          description="The general contractor details could not be loaded."
+          onRetry={() => void state.gcQuery.refetch()}
+        />
+      </div>
+    );
+  }
+
+  if (state.isEdit && !state.gcQuery.data) {
+    return (
+      <div className={formPageContainerClassName}>
+        <QueryErrorState
+          title="General contractor not found."
+          description="This general contractor may have been deleted or moved."
+          onRetry={() => void state.gcQuery.refetch()}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <FormPageShell
+        onSubmit={handleSubmit(saveGC, onInvalidFormSubmit)}
+        sections={GC_FORM_SECTIONS}
+        activeSection={state.activeSection}
+        onSectionChange={state.setActiveSection}
+        renderToolbar={(className) => (
+          <FormPageHeader
+            title={state.isEdit ? 'Edit General Contractor' : 'Add General Contractor'}
+            submitLabel={state.isEdit ? 'Save Changes' : 'Create GC'}
+            isSubmitting={isSubmitting}
+            leadingActions={
+              state.isEdit ? undefined : <MockDataButton onClick={state.fillRandom} />
+            }
+            className={className}
+          />
+        )}
+      >
+        <GCFormContent
+          control={control}
+          gcTypeOptions={state.gcTypeOptions}
+          contactLinks={state.contactLinks}
+          originalLinks={state.originalLinks}
+          contacts={state.contacts}
+          contactOptions={state.contactOptions}
+          contactSearch={state.contactSearch}
+          onContactSearchChange={state.setContactSearch}
+          isContactLoading={state.isContactLoading}
+          isContactFetchingNextPage={state.isContactFetchingNextPage}
+          hasMoreContacts={state.hasMoreContacts}
+          onFetchMoreContacts={state.fetchMoreContacts}
+          targetEntityId={id}
+          onContactLinksChange={state.setContactLinks}
+          onCreateContact={() => state.setContactDialogOpen(true)}
+          onContactSelected={state.handleContactSelected}
+          onEditContact={canEditContacts ? state.contactEditor.open : undefined}
+        />
+      </FormPageShell>
+
+      <QuickCreateContactDialog
+        open={state.contactDialogOpen}
+        onOpenChange={state.setContactDialogOpen}
+        onCreated={state.handleContactCreated}
+      />
+
+      <QuickEditContactDialog
+        open={state.contactEditor.isOpen}
+        contactId={state.contactEditor.contactId}
+        onOpenChange={state.contactEditor.setOpen}
+        onUpdated={state.contactEditor.handleUpdated}
+      />
+    </>
+  );
+}

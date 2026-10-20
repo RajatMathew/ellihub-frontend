@@ -1,0 +1,78 @@
+import {
+  FONT_CSS_FAMILY,
+  PDF_APPLIES_KERNING,
+  rgbToCss,
+  toScreenLength,
+  type FontMetrics,
+  type PositionedLine,
+  type Slot,
+  type Viewport,
+} from '@pdf-slot/core';
+
+/**
+ * Renders the layout engine's decision, one `PositionedLine` per
+ * absolutely-positioned `<span>`, with `white-space: pre`. This is what
+ * stops CSS re-wrapping text that `layoutText` (called by the caller, not
+ * here) has already broken into lines -- one span per line means there is
+ * never a run of text long enough, or a soft-wrap opportunity present, for
+ * the browser to re-break.
+ *
+ * `fontKerning` is set to match exactly how pdf-lib measures and draws
+ * text (see PDF_APPLIES_KERNING's doc comment in packages/core): pdf-lib
+ * ignores GPOS kerning, so the browser must too, or advance widths would
+ * disagree and preview would drift from download. GSUB substitution is the
+ * opposite case and is deliberately NOT disabled here: pdf-lib runs
+ * `font.layout()`, which applies the default feature set, so the exported
+ * page really does carry the substituted glyphs and the overlay has to show
+ * the same ones. For the sans face that means `calt` -- Inter has no `liga`,
+ * but it rewrites `->` to a single arrow -- and for the serif face `liga`.
+ * Both are on by default in CSS, so the rule is simply to add no reset:
+ * neither `font-variant-ligatures` nor `font-feature-settings` belongs here.
+ *
+ * `left`/`top` are offsets relative to the slot's own top-left corner
+ * (`slot.x`, `slot.y`) -- the caller (SlotOverlay) is expected to render
+ * this inside a container already positioned at that corner on screen.
+ */
+export function SlotLines({
+  slot,
+  lines,
+  viewport,
+  metrics,
+  color,
+  placeholder = false,
+}: {
+  slot: Slot;
+  lines: PositionedLine[];
+  viewport: Viewport;
+  metrics: FontMetrics;
+  /** CSS colour override -- the slot's own colour otherwise. The name placeholder uses it to read as a hint, not as text. */
+  color?: string;
+  /** Marks the spans as the placeholder (the slot's name), for tests and styling hooks. */
+  placeholder?: boolean;
+}) {
+  return (
+    <>
+      {lines.map((line, i) => (
+        <span
+          key={i}
+          data-slot-line
+          data-placeholder={placeholder ? true : undefined}
+          style={{
+            position: 'absolute',
+            left: toScreenLength(line.x - slot.x, viewport),
+            top: toScreenLength(slot.y - line.baselineY - metrics.ascender(slot.size), viewport),
+            fontFamily: FONT_CSS_FAMILY[slot.fontId],
+            fontSize: toScreenLength(slot.size, viewport),
+            whiteSpace: 'pre',
+            fontKerning: PDF_APPLIES_KERNING ? 'normal' : 'none',
+            color: color ?? rgbToCss(slot.color),
+            // Pointer events go to the box (and its textarea) below.
+            pointerEvents: 'none',
+          }}
+        >
+          {line.text}
+        </span>
+      ))}
+    </>
+  );
+}

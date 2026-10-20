@@ -1,0 +1,189 @@
+import {
+  Alert,
+  AlertContent,
+  AlertDescription,
+  AlertIcon,
+  AlertTitle,
+} from '@/app/components/ui/alert';
+import { Badge, BadgeDot } from '@/app/components/ui/badge';
+import { Button } from '@/app/components/ui/button';
+import { cn } from '@/app/lib/utils';
+import { PaymentConflictLineItemsComparison } from '@/modules/finance/payment-conflicts/components/payment-conflict-line-items-comparison';
+import {
+  formatConflictTimestamp,
+  formatDiffValue,
+  resolutionActionLabels,
+} from '@/modules/finance/payment-conflicts/lib/payment-conflicts.utils';
+import type {
+  PaymentConflict,
+  PaymentConflictItem,
+} from '@/modules/finance/payment-conflicts/schemas/payment-conflicts.schema';
+import { CheckCircle2, Clock3, ExternalLink, Loader2, TriangleAlert } from 'lucide-react';
+
+interface PaymentConflictItemRowProps {
+  conflict: PaymentConflict;
+  quickBooksTransactionUrl: string;
+  item: PaymentConflictItem;
+  canResolve: boolean;
+  isAccepting: boolean;
+  onAccept: (item: PaymentConflictItem) => void;
+}
+
+export function PaymentConflictItemRow({
+  conflict,
+  quickBooksTransactionUrl,
+  item,
+  canResolve,
+  isAccepting,
+  onAccept,
+}: PaymentConflictItemRowProps) {
+  const isActive = item.status === 'ACTIVE';
+  const blockedReason = item.acceptBlockedReasons[0];
+  const elliValue = formatDiffValue(conflict, item, 'elli');
+  const quickBooksValue = formatDiffValue(conflict, item, 'quickbooks');
+  const quickBooksChangedAt = item.quickBooksChangedAt ?? item.lastDetectedAt;
+  const resolvedDisplayTimestamp =
+    item.resolutionAction === 'AUTO_MATCHED_ELLI'
+      ? (item.quickBooksChangedAt ?? item.resolvedAt ?? item.lastDetectedAt)
+      : (item.resolvedAt ?? item.lastDetectedAt);
+  const blockedAlertTitle =
+    item.lineComparisonKind === 'CATEGORY_DETAILS'
+      ? 'Category Details cannot be accepted'
+      : item.lineComparisonKind === 'ITEM_DETAILS'
+        ? 'Item Details cannot be accepted'
+        : 'Cannot accept this QuickBooks change';
+
+  return (
+    <article className="rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
+      <header className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground">{item.label}</h3>
+        <Badge
+          variant={item.priority === 'HIGH' ? 'destructive' : 'warning'}
+          appearance="outline"
+          size="sm"
+          shape="circle"
+          className="font-normal"
+        >
+          <BadgeDot />
+          {item.priority === 'HIGH' ? 'High' : 'Review'}
+        </Badge>
+      </header>
+
+      {item.lineComparisonKind ? (
+        <PaymentConflictLineItemsComparison
+          conflict={conflict}
+          isActive={isActive}
+          kind={item.lineComparisonKind}
+        />
+      ) : (
+        <PaymentConflictValueComparison
+          elliValue={elliValue}
+          quickBooksValue={quickBooksValue}
+          isActive={isActive}
+        />
+      )}
+
+      {isActive ? (
+        <>
+          <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
+            <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Last changed in QB</span>
+            <time className="font-medium text-foreground" dateTime={quickBooksChangedAt}>
+              {formatConflictTimestamp(quickBooksChangedAt)}
+            </time>
+          </div>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="w-full sm:w-auto" title={blockedReason}>
+              <Button
+                size="md"
+                className="w-full sm:w-auto"
+                disabled={!canResolve || !item.canAcceptQuickBooks || isAccepting}
+                onClick={() => onAccept(item)}
+                aria-label={`Accept QuickBooks change for ${item.label}`}
+              >
+                {isAccepting ? <Loader2 className="animate-spin" /> : null}
+                Accept QB
+              </Button>
+            </span>
+            <Button variant="outline" size="md" className="w-full sm:w-auto" asChild>
+              <a
+                href={quickBooksTransactionUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open ${item.label} in QuickBooks`}
+              >
+                Open in QuickBooks <ExternalLink />
+              </a>
+            </Button>
+          </div>
+
+          {item.acceptBlockedReasons.length > 0 ? (
+            <Alert variant="warning" appearance="light" size="sm" className="mt-3">
+              <AlertIcon>
+                <TriangleAlert aria-hidden="true" />
+              </AlertIcon>
+              <AlertContent>
+                <AlertTitle>{blockedAlertTitle}</AlertTitle>
+                <AlertDescription>
+                  <div className="space-y-1">
+                    {item.acceptBlockedReasons.map((reason) => (
+                      <p key={reason}>{reason}</p>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </AlertContent>
+            </Alert>
+          ) : null}
+        </>
+      ) : (
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
+          <div>
+            <p className="font-medium text-foreground">
+              {item.resolutionAction ? resolutionActionLabels[item.resolutionAction] : 'Resolved'}
+            </p>
+            <p>
+              {item.resolvedBy ? `By ${item.resolvedBy.name} - ` : ''}
+              {formatConflictTimestamp(resolvedDisplayTimestamp)}
+            </p>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}
+function PaymentConflictValueComparison({
+  elliValue,
+  quickBooksValue,
+  isActive,
+}: {
+  elliValue: string;
+  quickBooksValue: string;
+  isActive: boolean;
+}) {
+  return (
+    <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-0">
+      <div className="min-w-0 sm:pr-4">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Elli</p>
+        <p
+          className={cn(
+            'mt-2 break-words text-sm',
+            isActive ? 'text-muted-foreground line-through decoration-border' : 'text-foreground'
+          )}
+          title={elliValue}
+        >
+          {elliValue}
+        </p>
+      </div>
+      <div className="min-w-0 border-t border-border pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          QuickBooks
+        </p>
+        <p className="mt-2 break-words text-sm font-medium text-primary" title={quickBooksValue}>
+          {quickBooksValue}
+        </p>
+      </div>
+    </div>
+  );
+}

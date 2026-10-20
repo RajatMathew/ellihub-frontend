@@ -1,0 +1,113 @@
+/* Mailbox workspace (elli-ui#921)
+   The handful of mail surfaces that need a real CSS rule rather than a utility:
+   masks, sticky-header bleed, and the two scrollbars that are drawn on the
+   mail paper rather than the app background. Colors all come from the
+   --mail-* tokens defined per theme in styles/themes/. */
+
+/* How wide the conversation list is. A measurement rather than a token, so it
+   lives with the layout it belongs to. It steps down twice: the mailbox shares
+   the window with the app's nav sidebar, so past a certain point every pixel
+   the list keeps is one the thread is read in. */
+.mail-workspace {
+  --mail-list-width: 336px;
+}
+
+@media (min-width: 1280px) {
+  .mail-workspace {
+    --mail-list-width: 372px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .mail-workspace {
+    --mail-list-width: 404px;
+  }
+}
+
+/* The filter and project pills.
+
+   A finite radius on purpose. `rounded-full` compiles to
+   `border-radius: calc(infinity * 1px)`, which Chrome resolves to 16777216px
+   and then has to scale back down to half the box every time it rasterises the
+   pill. On the small `Filters` pill that scaling intermittently collapsed to
+   ~0 and the pill painted as a hard-cornered rectangle — the "square" state in
+   elli-ui#1015. 9999px is past half of anything this strip will ever hold, so
+   the shape is identical and there is nothing left to underflow. */
+.mail-pill {
+  border-radius: 9999px;
+}
+
+/* The filter strip scrolls horizontally with no scrollbar; fade only the edge
+   that genuinely has more strip past it, so a fade always means "there's more". */
+.mail-pill-strip[data-fade='r'] {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 34px), transparent);
+}
+
+.mail-pill-strip[data-fade='l'] {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 34px);
+  mask-image: linear-gradient(90deg, transparent, #000 34px);
+}
+
+.mail-pill-strip[data-fade='lr'] {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 34px,
+    #000 calc(100% - 34px),
+    transparent
+  );
+  mask-image: linear-gradient(90deg, transparent, #000 34px, #000 calc(100% - 34px), transparent);
+}
+
+/* Date headers stay put while their own group scrolls under them. The pseudo
+   element bleeds a couple of pixels past the header's box so a sub-pixel
+   scroll position can never leave a sliver of the row behind it showing.
+
+   It paints the list's surface, not the paper, and not the header's own
+   band: it bleeds past the button on every side, so painting it the band
+   colour would grow the band by three pixels, and painting it paper drew a
+   pale line along the top and bottom of every group. */
+.mail-group-header::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -3px -4px;
+  background: var(--mail-pane);
+}
+
+.mail-rows::-webkit-scrollbar {
+  width: 10px;
+}
+
+.mail-rows::-webkit-scrollbar-thumb {
+  background: var(--mail-scrollbar-thumb);
+  border-radius: 10px;
+  border: 3.5px solid var(--mail-paper);
+}
+
+.mail-pane-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.mail-pane-scroll::-webkit-scrollbar-thumb {
+  background: var(--mail-scrollbar-thumb);
+  border-radius: 10px;
+  border: 3.5px solid var(--mail-pane);
+}
+
+/* The composer's signature block. Its markup carries inline font sizes from
+   whatever it was authored in, and an inline style beats any Tailwind
+   utility on the wrapper — `!important` is the only lever left. */
+.elli-signature,
+.elli-signature * {
+  font-size: 0.875rem !important;
+  line-height: 1.5rem !important;
+}
+
+/* The compact reply card hides its signature — see the comment on
+   `reply-compact-body` in email-reply-composer.tsx. It is still in the body
+   and still sent; only the small card's view of it is suppressed. */
+.reply-compact-body .elli-signature {
+  display: none;
+}

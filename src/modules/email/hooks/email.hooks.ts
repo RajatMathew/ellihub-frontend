@@ -1,0 +1,2068 @@
+import { useCallback } from 'react';
+
+import { activityLogKeys } from '@/app/hooks/activity-log.keys';
+import { toastApiError } from '@/app/lib/toast-api-error';
+import {
+  emailApi,
+  type ConnectedEmailFolder,
+  type ConnectedEmailListItem,
+  type ConnectedEmailTag,
+  type EmailAccount,
+  type EmailConfig,
+  type EmailDraftMessagePayload,
+  type EmailMeetingResponseAction,
+  type EmailMessagePage,
+  type EmailReferenceProject,
+  type EmailThreadAssignee,
+  type EmailThreadClassification,
+  type ForwardConnectedEmailPayload,
+  type ReplyConnectedEmailPayload,
+  type SaveEmailThreadClassificationPayload,
+  type SendConnectedEmailPayload,
+  type StartEmailAuthInput,
+  type UpdateEmailAccountNicknameInput,
+} from '@/modules/email/api';
+import type { EmailThreadStatusFilter } from '@/modules/email/constants/email-filters';
+import type { EmailFolderKey } from '@/modules/email/constants/email-folders';
+import { conversationScope, emailKeys } from '@/modules/email/constants/email.keys';
+import { hasQueuedClassificationSave } from '@/modules/email/lib/email-classification-save-queue';
+import {
+  isEmailReconnectRequiredError,
+  shouldRetryEmailRequest,
+} from '@/modules/email/lib/email-errors';
+import { applyEmailTagDelta, invertEmailTagDelta } from '@/modules/email/lib/email-message-tags';
+import {
+  findPinnedThread,
+  getPinnedThreadSnapshots,
+  moveMakesPinnedThreadsStale,
+  removeThreadFromPinnedLists,
+  type PinnedThreadSnapshots,
+} from '@/modules/email/lib/email-pinned-thread-cache';
+import { applySignaturePreference } from '@/modules/email/lib/email-signature';
+import { emailSyncInvalidation } from '@/modules/email/lib/email-sync-invalidation';
+import type {
+  EmailSignaturePreference,
+  EmailSignatures,
+} from '@/modules/email/schemas/email-signature.schema';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+const EMAIL_METADATA_STALE_TIME_MS = 5 * 60 * 1000;
+const EMAIL_MESSAGES_STALE_TIME_MS = 60 * 1000;
+const EMAIL_MESSAGES_CACHE_TIME_MS = 15 * 60 * 1000;
+
+// Defined in `constants/` so code outside the hooks can build the same keys;
+// re-exported here for the callers that already import it from the hooks.
+export { emailKeys };
+
+export const useEmailConfigQuery = () =>
+  useQuery<EmailConfig>({
+    queryKey: emailKeys.config(),
+    queryFn: emailApi.getConfig,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useEmailAccountsQuery = () =>
+  useQuery({
+    queryKey: emailKeys.accounts(),
+    queryFn: emailApi.listAccounts,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useEmailFoldersQuery = (accountId?: string, enabled = true) =>
+  useQuery({
+    queryKey: emailKeys.folders(accountId),
+    queryFn: () => emailApi.listFolders(accountId!),
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useEmailTagsQuery = (accountId?: string, enabled = true) =>
+  useQuery({
+    queryKey: emailKeys.tags(accountId),
+    queryFn: () => emailApi.listTags(accountId!),
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+/**
+ * The signatures a composer can add. Loaded with the mailbox, not when a
+ * composer opens, so a new message or a reply opens with its signature already
+ * in place instead of having it land a moment later. Changes only when an admin
+ * edits a template or the user changes their choice, so it is metadata-fresh.
+ */
+export const useEmailSignaturesQuery = (accountId?: string, enabled = true) =>
+  useQuery({
+    queryKey: emailKeys.signatures(accountId),
+    queryFn: () => emailApi.getSignatures(accountId!),
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+/**
+ * Saves the user's signature choice for a mailbox. Applied to the cache at once
+ * so the menu's checkboxes answer the click, and put back if the save fails.
+ */
+export const useSaveEmailSignaturePreferenceMutation = (accountId?: string) => {
+  const queryClient = useQueryClient();
+  const key = emailKeys.signatures(accountId);
+
+  return useMutation({
+    mutationFn: (preference: EmailSignaturePreference) =>
+      emailApi.saveSignaturePreference(accountId!, preference),
+    onMutate: async (preference) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<EmailSignatures>(key);
+      if (previous) {
+        queryClient.setQueryData<EmailSignatures>(
+          key,
+          applySignaturePreference(previous, preference)
+        );
+      }
+      return { previous };
+    },
+    onSuccess: (signatures) => queryClient.setQueryData(key, signatures),
+    onError: (error, _preference, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      toastApiError(error, 'Unable to save your signature settings.');
+    },
+  });
+};
+
+export const useEmailMessagesQuery = (
+  accountId: string | undefined,
+  folder: { key?: EmailFolderKey; id?: string },
+  pagination?: {
+    size?: number;
+    search?: string;
+    projectId?: string;
+    classification?: 'other';
+    unread?: boolean;
+    flagged?: boolean;
+    hasAttachments?: boolean;
+    status?: EmailThreadStatusFilter;
+    tagId?: string;
+    tagIds?: readonly string[];
+  },
+  enabled = true
+) => {
+  const currentKey = emailKeys.messages(
+    accountId,
+    folder.id ?? folder.key,
+    pagination?.size,
+    pagination?.search,
+    pagination?.projectId,
+    pagination?.classification,
+    pagination?.unread,
+    pagination?.flagged,
+    pagination?.hasAttachments,
+    pagination?.status,
+    pagination?.tagId,
+    pagination?.tagIds
+  );
+
+  return useInfiniteQuery({
+    queryKey: currentKey,
+    queryFn: ({ pageParam, signal }) =>
+      emailApi.listMessages({
+        accountId: accountId!,
+        folderKey: folder.key,
+        folderId: folder.id,
+        pageToken: pageParam ?? undefined,
+        size: pagination?.size,
+        search: pagination?.search,
+        projectId: pagination?.projectId,
+        classification: pagination?.classification,
+        unread: pagination?.unread,
+        flagged: pagination?.flagged,
+        hasAttachments: pagination?.hasAttachments,
+        status: pagination?.status,
+        tagId: pagination?.tagId,
+        tagIds: pagination?.tagIds,
+        signal,
+      }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    // Keep the previous list on smooth transitions (search debounce, page-size
+    // changes) but clear immediately on hard context switches (account, folder,
+    // project filter, classification, thread status). Prevents the "ghost mailbox" flash when
+    // a user picks a different inbox in the sidebar.
+    placeholderData: (previousData, previousQuery) => {
+      if (!previousData || !previousQuery) return undefined;
+      const previousKey = previousQuery.queryKey as readonly unknown[];
+      const sameAccount = previousKey[2] === currentKey[2];
+      const sameFolder = previousKey[3] === currentKey[3];
+      const sameProject = previousKey[6] === currentKey[6];
+      const sameClassification = previousKey[7] === currentKey[7];
+      const sameStatus = previousKey[11] === currentKey[11];
+      const sameTag = previousKey[12] === currentKey[12];
+      return sameAccount && sameFolder && sameProject && sameClassification && sameStatus && sameTag
+        ? previousData
+        : undefined;
+    },
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+  });
+};
+
+export const useEmailReferenceProjectsQuery = (
+  accountId?: string,
+  folder?: { key?: EmailFolderKey; id?: string },
+  enabled = true
+) =>
+  useQuery<EmailReferenceProject[]>({
+    queryKey: emailKeys.referenceProjects(accountId, folder),
+    queryFn: () => emailApi.listReferenceProjects(accountId!, folder),
+    enabled: enabled && Boolean(accountId),
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useRefreshEmailMessagesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    /**
+     * One sync, never a loop.
+     *
+     * A sync call advances the account by a fixed page budget, so finishing a
+     * backfill takes many of them. This drove that from the browser — up to a
+     * thousand sequential `POST /sync`, one every 750ms, twelve minutes of
+     * continuous provider traffic per mailbox opened, and nothing cancelled it
+     * when the user navigated away.
+     *
+     * It was also redundant. `drive-backfilling-email-accounts` steps every
+     * account still mid-backfill every two minutes, server-side, and resumes
+     * exactly where the last step stopped; the realtime socket announces what
+     * lands. Asking once is enough — the rest arrives on its own.
+     */
+    mutationFn: (payload: { accountId: string; daysWithin?: number }) =>
+      emailApi.syncAccount(payload.accountId, payload.daysWithin),
+    // A backfill still in progress is not news. The server keeps stepping the
+    // account on its own and the socket announces what lands, so there was
+    // never anything for the reader to do about it — and because the sync fires
+    // on opening a mailbox, the notice greeted them every time they went to
+    // read their mail. The list already says it is catching up through
+    // `freshness`; a toast over the top of that is just in the way.
+    onSuccess: (result, payload) => {
+      const stale = emailSyncInvalidation(result);
+      void Promise.allSettled([
+        ...(stale.messages
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.messagesRoot(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.folders
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.folders(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.tags
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.tags(payload.accountId),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+        ...(stale.accounts
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: emailKeys.accounts(),
+                refetchType: 'active' as const,
+              }),
+            ]
+          : []),
+      ]);
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Failed to refresh emails.');
+    },
+  });
+};
+
+export const useEmailConversationQuery = (
+  accountId: string | undefined,
+  threadId: string | null | undefined,
+  enabled = true,
+  conversationKey?: string | null
+) =>
+  useQuery({
+    queryKey: emailKeys.conversation(accountId, threadId, conversationKey),
+    queryFn: () =>
+      emailApi.listConversation(
+        accountId!,
+        threadId!,
+        conversationScope(threadId, conversationKey) ?? undefined
+      ),
+    enabled: enabled && Boolean(accountId && threadId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+export const useEmailMessageQuery = (
+  accountId: string | undefined,
+  messageId: string | null | undefined,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: emailKeys.message(accountId, messageId),
+    queryFn: () => emailApi.getMessage(accountId!, messageId!),
+    enabled: enabled && Boolean(accountId && messageId),
+    staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+/**
+ * The body of a message a large conversation deferred, fetched when the reader
+ * expands it.
+ *
+ * `enabled` is the expand: a collapsed card asks for nothing, which is the whole
+ * point — the thread this exists for is 76 messages and was 9.3MB sent whole.
+ * The body of a message that has already been delivered never changes, so it is
+ * held for the session rather than revalidated.
+ */
+export const useEmailMessageBodyQuery = (
+  accountId: string | undefined,
+  messageId: string | undefined,
+  enabled: boolean
+) =>
+  useQuery({
+    queryKey: emailKeys.messageBody(accountId, messageId),
+    queryFn: () => emailApi.getMessageBody(accountId!, messageId!),
+    enabled: enabled && Boolean(accountId && messageId),
+    staleTime: Infinity,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+type EmailThreadClassificationSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  message: ConnectedEmailListItem | undefined;
+  /** What the thread was linked to before this save, as comparable keys. */
+  previousReferenceKeys: string;
+};
+
+/**
+ * What a set of references *is*, order-independent, for deciding whether a save
+ * actually moved them.
+ */
+function referenceIdentityKey(references: EmailThreadClassification['references']): string {
+  return references
+    .map((reference) => `${reference.type}:${reference.entityId ?? reference.label.toLowerCase()}`)
+    .sort()
+    .join('|');
+}
+
+/** The classification a conversation carries right now, from whatever list holds it. */
+function findCachedClassification(
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>,
+  conversationKey: string
+): EmailThreadClassification | null {
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      for (const message of page.records) {
+        if (message.conversationKey === conversationKey && message.classification) {
+          return message.classification;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The assignee to show while the save is in flight.
+ *
+ * The payload carries an id, but the panel renders a name and an avatar, so an
+ * optimistic classification built from the id alone blanks the assignee for the
+ * length of the round trip. Reuse the one already on screen when the id has not
+ * changed, and otherwise resolve it from the assignee list the picker itself
+ * reads — the only two places the name can come from without asking the server.
+ */
+function resolveOptimisticAssignee(
+  queryClient: QueryClient,
+  payload: SaveEmailThreadClassificationPayload,
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>
+): EmailThreadAssignee | null {
+  if (!payload.assignedToId) return null;
+
+  const current = findCachedClassification(messages, payload.conversationKey)?.assignedTo;
+  if (current?.id === payload.assignedToId) return current;
+
+  const assignees = queryClient.getQueryData<EmailThreadAssignee[]>([
+    ...emailKeys.all,
+    'thread-assignees',
+  ]);
+  return assignees?.find((assignee) => assignee.id === payload.assignedToId) ?? null;
+}
+
+function applyClassificationToMessagePages(
+  data: EmailMessagePages | undefined,
+  conversationKey: string,
+  classification: EmailThreadClassification
+) {
+  if (!data) return data;
+
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      records: page.records.map((message) =>
+        message.conversationKey === conversationKey ? { ...message, classification } : message
+      ),
+    })),
+  };
+}
+
+function normalizeClassificationReferences(
+  references: EmailThreadClassification['references']
+): EmailThreadClassification['references'] {
+  const seenReferences = new Set<string>();
+  const uniqueReferences: EmailThreadClassification['references'] = [];
+
+  for (const reference of references) {
+    if (reference.type === 'other') return [{ ...reference, sortOrder: 0 }];
+    const valueKey = reference.entityId
+      ? `id:${reference.entityId}`
+      : `label:${reference.label.toLowerCase()}`;
+    const key = [reference.type, reference.entityType ?? '', valueKey].join('|');
+    if (seenReferences.has(key)) continue;
+    seenReferences.add(key);
+    uniqueReferences.push(reference);
+  }
+
+  return uniqueReferences.map((reference, index) => ({ ...reference, sortOrder: index }));
+}
+
+/**
+ * Search the mailbox for a message to reference.
+ *
+ * Debounced by the caller, not here — the delay belongs with the input that
+ * produces the term. Disabled on an empty term so opening the picker does not
+ * fire a search for everything.
+ */
+export const useEmailMessageSearchQuery = (
+  accountId: string | undefined,
+  term: string,
+  enabled = true
+) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'message-search', accountId, term] as const,
+    queryFn: ({ signal }) =>
+      emailApi.searchMessages({ accountId: accountId as string, q: term, signal }),
+    enabled: enabled && Boolean(accountId) && term.trim().length > 0,
+    // The provider is behind this, so results are worth holding while the
+    // picker is open and the user edits their term back and forth.
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previous) => previous,
+  });
+
+/**
+ * The same, across every mailbox at once. Enabled with an empty term too: that
+ * is the recent-mail list the picker opens on. Cache-backed on the server, so
+ * it is cheap to hold and cheap to refetch.
+ */
+export const useEmailMessagesAcrossAccountsQuery = (term: string, enabled = true) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'message-search', 'all-accounts', term.trim()] as const,
+    queryFn: ({ signal }) => emailApi.searchMessagesAcrossAccounts({ q: term.trim(), signal }),
+    enabled,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (previous) => previous,
+  });
+
+export const useEmailThreadAssigneesQuery = (enabled = true) =>
+  useQuery({
+    queryKey: [...emailKeys.all, 'thread-assignees'] as const,
+    queryFn: () => emailApi.listThreadAssignees(),
+    enabled,
+    staleTime: EMAIL_METADATA_STALE_TIME_MS,
+    gcTime: EMAIL_MESSAGES_CACHE_TIME_MS,
+    retry: shouldRetryEmailRequest,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+const EMAIL_CLASSIFICATION_MUTATION_KEY = [...emailKeys.all, 'thread-classification'] as const;
+
+export const useSaveEmailThreadClassificationMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: EMAIL_CLASSIFICATION_MUTATION_KEY,
+    /**
+     * One save at a time (elli-ui#973).
+     *
+     * Every save sends the thread's whole reference set, so two of them in
+     * flight together is last-write-wins over a list both built from their own
+     * snapshot. Linking two records quickly is enough to do it: the second
+     * request was prepared before the first came back, and whichever landed
+     * last decided what the thread ended up with. A shared scope makes the
+     * second wait, by which point the optimistic update below has already put
+     * the first record into the cache the payload is read from, so the sets
+     * accumulate instead of overwriting each other.
+     */
+    scope: { id: 'email-thread-classification' },
+    mutationFn: (payload: SaveEmailThreadClassificationPayload) =>
+      emailApi.saveThreadClassification(payload),
+    onMutate: async (payload): Promise<EmailThreadClassificationSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        // `message(accountId, undefined)` never matched a cached single message:
+        // the trailing `undefined` is part of the key, so it only ever cancelled
+        // a query nothing writes. The root prefix matches every one of them.
+        queryClient.cancelQueries({ queryKey: emailKeys.messageRoot(payload.accountId) }),
+      ]);
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const message = queryClient.getQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.threadId ?? null)
+      );
+      const previousReferenceKeys = referenceIdentityKey(
+        findCachedClassification(messages, payload.conversationKey)?.references ?? []
+      );
+      const optimisticClassification: EmailThreadClassification = {
+        id: null,
+        conversationKey: payload.conversationKey,
+        threadId: payload.threadId ?? null,
+        status: payload.status,
+        // Carried, not dropped. An optimistic update that omits a field the
+        // server would have returned makes the UI flicker — change the court on
+        // an assigned thread and the assignee blinked out until the save landed.
+        assignedTo: resolveOptimisticAssignee(queryClient, payload, messages),
+        // Carried for the same reason as the assignee: the classification save
+        // does not write the pin, so an optimistic value that omitted it would
+        // un-pin the thread on screen until the refetch landed.
+        pinnedAt: findCachedClassification(messages, payload.conversationKey)?.pinnedAt ?? null,
+        references: normalizeClassificationReferences(payload.references),
+      };
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          applyClassificationToMessagePages(
+            current,
+            payload.conversationKey,
+            optimisticClassification
+          )
+      );
+      // Scoped to the single-message caches. Against `emailKeys.all` this ran
+      // the updater over every email query there is — accounts, folders, tags,
+      // every list page, every conversation — to find the one or two entries
+      // that are a `ConnectedEmailListItem`, which is most of what made an
+      // optimistic court change take ~80ms to show on screen.
+      queryClient.setQueriesData<ConnectedEmailListItem>(
+        { queryKey: emailKeys.messageRoot(payload.accountId) },
+        (current) =>
+          current?.conversationKey === payload.conversationKey
+            ? { ...current, classification: optimisticClassification }
+            : current
+      );
+
+      return { messages, message, previousReferenceKeys };
+    },
+    onSuccess: (classification, payload, snapshot) => {
+      // A later save for this thread is queued and has already drawn its own
+      // optimistic value. This answer predates it, so writing it would take
+      // the later clicks off screen — and the next click would save without
+      // them. The last save in the queue writes the server's answer.
+      if (!hasQueuedClassificationSave(queryClient, EMAIL_CLASSIFICATION_MUTATION_KEY, payload)) {
+        queryClient.setQueriesData<EmailMessagePages>(
+          { queryKey: emailKeys.messagesRoot(payload.accountId) },
+          (current) =>
+            applyClassificationToMessagePages(current, payload.conversationKey, classification)
+        );
+        queryClient.setQueriesData<ConnectedEmailListItem>(
+          { queryKey: emailKeys.messageRoot(payload.accountId) },
+          (current) =>
+            current?.conversationKey === payload.conversationKey
+              ? { ...current, classification }
+              : current
+        );
+      }
+      // The project list is "projects this mailbox has mail for", so it only
+      // moves when the references themselves move. Refetching it on a court
+      // change or an assignment put a request on the wire for an answer that
+      // could not have changed.
+      if (referenceIdentityKey(classification.references) !== snapshot?.previousReferenceKeys) {
+        void queryClient.invalidateQueries({
+          queryKey: emailKeys.referenceProjectsRoot(payload.accountId),
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: activityLogKeys.all });
+    },
+    onError: (error, payload, snapshot) => {
+      // Same reason as `onSuccess`: the snapshot predates the saves queued
+      // behind this one. Each of those carries the whole set, so the next one
+      // retries this change anyway; restoring the snapshot would only drop
+      // them from the screen. The toast still says this one failed.
+      if (hasQueuedClassificationSave(queryClient, EMAIL_CLASSIFICATION_MUTATION_KEY, payload)) {
+        toastApiError(error, 'Unable to save email references.');
+        return;
+      }
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      if (snapshot?.message) {
+        queryClient.setQueryData(
+          emailKeys.message(payload.accountId, payload.threadId),
+          snapshot.message
+        );
+      }
+      toastApiError(error, 'Unable to save email references.');
+    },
+    onSettled: (_result, _error, payload) => {
+      /**
+       * Refetch only once the queue has drained.
+       *
+       * `onSuccess` has already written the server's own answer into the
+       * cache, so this refetch exists to pick up anything else that moved with
+       * it. Running it per save meant a request that left before a later save
+       * landed could answer after it and redraw the panel from older server
+       * state — the linked record you just added blinking out and back as each
+       * refetch overtook the next save. While more are queued there is nothing
+       * to reconcile against yet, so it waits for the last one.
+       */
+      const isLastClassificationSave =
+        queryClient.isMutating({
+          mutationKey: EMAIL_CLASSIFICATION_MUTATION_KEY,
+          predicate: (mutation) =>
+            (mutation.state.variables as SaveEmailThreadClassificationPayload | undefined)
+              ?.accountId === payload.accountId,
+        }) <= 1;
+
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: isLastClassificationSave ? 'active' : 'none',
+      });
+    },
+  });
+};
+
+/**
+ * Every pinned thread in a mailbox folder (elli-ui#1034).
+ *
+ * Its own query rather than a slice of the folder page: the pinned group has
+ * to hold a thread that has fallen ten pages down, which is exactly the thread
+ * somebody bothered to pin.
+ */
+export const usePinnedEmailThreadsQuery = (
+  accountId?: string,
+  folderId?: string | null,
+  enabled = true
+) =>
+  useQuery<ConnectedEmailListItem[]>({
+    queryKey: emailKeys.pinnedThreads(accountId, folderId),
+    queryFn: () => emailApi.listPinnedThreads({ accountId: accountId!, folderId }),
+    enabled: Boolean(accountId) && enabled,
+    // The group changes when somebody pins a thread or moves a pinned one out
+    // of the folder, and both of those invalidate it themselves.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+
+export interface SetEmailThreadPinnedPayload {
+  accountId: string;
+  conversationKey: string;
+  threadId?: string | null;
+  /** The folder whose pinned group is on screen, so it can be refetched. */
+  folderId?: string | null;
+  pinned: boolean;
+}
+
+/**
+ * Pin or unpin a thread.
+ *
+ * Optimistic on both the message pages and the single-message caches, so the
+ * pin on the row flips under the cursor rather than after a round trip — the
+ * same treatment the court and the assignee get. The pinned *group* is a
+ * separate query and is refetched rather than hand-patched: it is ordered by
+ * pin time on the server and rebuilding that order here would be a second
+ * implementation of it.
+ */
+export const useSetEmailThreadPinnedMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SetEmailThreadPinnedPayload) =>
+      emailApi.setThreadPinned({
+        accountId: payload.accountId,
+        conversationKey: payload.conversationKey,
+        threadId: payload.threadId,
+        pinned: payload.pinned,
+      }),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const current = findCachedClassification(messages, payload.conversationKey);
+      const optimistic: EmailThreadClassification = {
+        ...(current ?? {
+          id: null,
+          conversationKey: payload.conversationKey,
+          threadId: payload.threadId ?? null,
+          // Pinning says nothing about whose court the thread is in, so the
+          // row this invents for a thread with no classification must not
+          // claim one.
+          status: 'unset',
+          assignedTo: null,
+          references: [],
+        }),
+        pinnedAt: payload.pinned ? new Date().toISOString() : null,
+      };
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (data) => applyClassificationToMessagePages(data, payload.conversationKey, optimistic)
+      );
+      queryClient.setQueriesData<ConnectedEmailListItem>(
+        { queryKey: emailKeys.messageRoot(payload.accountId) },
+        (message) =>
+          message?.conversationKey === payload.conversationKey
+            ? { ...message, classification: optimistic }
+            : message
+      );
+
+      return { messages };
+    },
+    onError: (error, _payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      toastApiError(error, 'Unable to pin this email.');
+    },
+    onSuccess: (classification, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (data) => applyClassificationToMessagePages(data, payload.conversationKey, classification)
+      );
+    },
+    onSettled: (_result, _error, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.pinnedThreadsRoot(payload.accountId),
+      });
+    },
+  });
+};
+
+export const useStartEmailAuthMutation = () =>
+  useMutation({
+    mutationFn: (input: StartEmailAuthInput) => emailApi.startAuth(input),
+    onSuccess: ({ authorizationUrl }) => {
+      window.location.assign(authorizationUrl);
+    },
+    onError: (error) => toastApiError(error, 'Unable to start email account connection.'),
+  });
+
+export const useUpdateEmailAccountNicknameMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateEmailAccountNicknameInput) => emailApi.updateAccountNickname(input),
+    onSuccess: (updatedAccount) => {
+      queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), (accounts) =>
+        accounts?.map((account) => (account.id === updatedAccount.id ? updatedAccount : account))
+      );
+      toast.success('Email name saved.');
+    },
+    onError: (error) => toastApiError(error, 'Unable to save this email name.'),
+  });
+};
+
+type DisconnectAccountSnapshot = {
+  accounts: EmailAccount[] | undefined;
+};
+
+export const useDisconnectEmailAccountMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string }) => emailApi.disconnectAccount(payload.accountId),
+    onMutate: async (payload): Promise<DisconnectAccountSnapshot> => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.accounts() });
+
+      const accounts = queryClient.getQueryData<EmailAccount[]>(emailKeys.accounts());
+      const nextAccounts = accounts?.filter((account) => account.id !== payload.accountId);
+      const snapshot = { accounts };
+
+      if (nextAccounts) {
+        queryClient.setQueryData<EmailAccount[]>(emailKeys.accounts(), nextAccounts);
+      }
+
+      queryClient.removeQueries({ queryKey: emailKeys.folders(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.tags(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+      queryClient.removeQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) });
+      toast.success('Email account disconnected.');
+
+      return snapshot;
+    },
+    onError: (error, _payload, snapshot) => {
+      queryClient.setQueryData(emailKeys.accounts(), snapshot?.accounts);
+      toastApiError(error, 'Failed to disconnect email account.');
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: emailKeys.accounts() });
+    },
+  });
+};
+
+export const useSendConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SendConnectedEmailPayload) => emailApi.sendMessage(payload),
+    onSuccess: (_result, payload) => {
+      toast.success('Email sent.');
+
+      // Sending is complete once the provider accepts the message. Keep cache
+      // reconciliation in the background so a slow mailbox fetch cannot leave
+      // the composer stuck in its sending state.
+      void Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'none',
+        }),
+      ]).then(() =>
+        Promise.allSettled([
+          queryClient.refetchQueries({
+            queryKey: emailKeys.messagesRoot(payload.accountId),
+            type: 'active',
+          }),
+          queryClient.refetchQueries({
+            queryKey: emailKeys.folders(payload.accountId),
+            type: 'active',
+          }),
+        ])
+      );
+    },
+    onError: (error) => toastApiError(error, 'Failed to send email.'),
+  });
+};
+
+export const useOpenEmailDraftMutation = () =>
+  useMutation({
+    mutationFn: (payload: { accountId: string; messageId: string }) =>
+      emailApi.getDraft(payload.accountId, payload.messageId),
+    onError: (error) => toastApiError(error, 'Failed to open draft.'),
+  });
+
+type EmailMessagePages = InfiniteData<EmailMessagePage, string | null>;
+
+type SendDraftPayload = {
+  accountId: string;
+  draftId: string;
+  messageId?: string;
+  /**
+   * Suppresses the default "Email sent." toast. Used by the undo-send flow so
+   * its custom toast is the only source of feedback.
+   */
+  silent?: boolean;
+};
+
+type SendDraftSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  folders: ConnectedEmailFolder[] | undefined;
+};
+
+function isSentDraft(
+  message: ConnectedEmailListItem,
+  payload: Pick<SendDraftPayload, 'draftId' | 'messageId'>
+) {
+  return (
+    message.id === payload.messageId ||
+    message.providerId === payload.messageId ||
+    message.providerId === payload.draftId
+  );
+}
+
+export const useSaveEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: EmailDraftMessagePayload) => emailApi.saveDraft(payload),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.folders(payload.accountId),
+        refetchType: 'none',
+      });
+    },
+  });
+};
+
+export const useSendEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SendDraftPayload) => emailApi.sendDraft(payload),
+    onMutate: async (payload): Promise<SendDraftSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.cancelQueries({ queryKey: emailKeys.folders(payload.accountId) }),
+      ]);
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const folders = queryClient.getQueryData<ConnectedEmailFolder[]>(
+        emailKeys.folders(payload.accountId)
+      );
+      const hadCachedDraft = messages.some(([, data]) =>
+        data?.pages.some((page) => page.records.some((message) => isSentDraft(message, payload)))
+      );
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  records: page.records.filter((message) => !isSentDraft(message, payload)),
+                  totalCount:
+                    page.totalCount === null || page.totalCount === undefined || !hadCachedDraft
+                      ? page.totalCount
+                      : Math.max(0, page.totalCount - 1),
+                })),
+              }
+            : current
+      );
+
+      if (hadCachedDraft) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.key === 'drafts'
+                ? { ...folder, totalCount: Math.max(0, folder.totalCount - 1) }
+                : folder
+            )
+        );
+      }
+
+      return { messages, folders };
+    },
+    onSuccess: (_result, payload) => {
+      if (!payload.silent) toast.success('Email sent.');
+    },
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, messages] of snapshot?.messages ?? []) {
+        queryClient.setQueryData(queryKey, messages);
+      }
+      queryClient.setQueryData(emailKeys.folders(payload.accountId), snapshot?.folders);
+      if (!payload.silent) toastApiError(error, 'Failed to send email.');
+    },
+    onSettled: (_result, _error, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'active',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: 'active',
+        }),
+      ]);
+    },
+  });
+};
+
+export const useDeleteEmailDraftMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      accountId: string;
+      draftId: string;
+      messageId?: string;
+      silent?: boolean;
+    }) => emailApi.deleteDraft(payload.accountId, payload.draftId, payload.messageId),
+    onSuccess: (_result, payload) => {
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      });
+      void queryClient.invalidateQueries({
+        queryKey: emailKeys.folders(payload.accountId),
+        refetchType: 'none',
+      });
+      if (!payload.silent) toast.success('Draft discarded.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to discard draft.'),
+  });
+};
+
+export const useReplyConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ReplyConnectedEmailPayload & { silent?: boolean }) =>
+      emailApi.replyMessage(payload),
+    onSuccess: (_result, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      if (!payload.silent) toast.success('Reply sent.');
+    },
+    onError: (error, payload) => {
+      if (!payload.silent) toastApiError(error, 'Failed to send reply.');
+    },
+  });
+};
+
+export const useForwardConnectedEmailMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ForwardConnectedEmailPayload & { silent?: boolean }) =>
+      emailApi.forwardMessage(payload),
+    onSuccess: (_result, payload) => {
+      void Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.invalidateQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+      ]);
+      if (!payload.silent) toast.success('Message forwarded.');
+    },
+    onError: (error, payload) => {
+      if (!payload.silent) toastApiError(error, 'Failed to forward message.');
+    },
+  });
+};
+
+export const useCreateEmailFolderMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; name: string; parentId?: string }) =>
+      emailApi.createFolder(payload.accountId, { name: payload.name, parentId: payload.parentId }),
+    onSuccess: async (_folder: ConnectedEmailFolder, payload) => {
+      await queryClient.invalidateQueries({ queryKey: emailKeys.folders(payload.accountId) });
+      toast.success('Folder created.');
+    },
+    onError: (error) => toastApiError(error, 'Failed to create folder.'),
+  });
+};
+
+/** A tag change alters both the tag list and every message showing that tag. */
+const refreshEmailTagQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: emailKeys.tags(accountId) }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.messagesRoot(accountId),
+      refetchType: isLastEmailTagMutation(queryClient, accountId) ? 'active' : 'none',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.conversationRoot(accountId),
+      refetchType: isLastEmailTagMutation(queryClient, accountId) ? 'active' : 'none',
+    }),
+  ]);
+
+/**
+ * Every tag edit on a message — a toggle, or a create that applies the new tag
+ * — shares this key prefix and one scope (elli-ui mail-tag freezing).
+ *
+ * The row used to grey out while any tag request was in flight, so picking
+ * three tags meant three waits. It no longer does, which makes concurrent edits
+ * the normal case — and `updateMessageTags` in elli-core reads the message's
+ * tags and writes the whole set back, so two requests in flight together is
+ * last-write-wins: the second click's tag vanished once the first answered.
+ * The scope queues them. `onMutate` still runs at click time, before the
+ * queue, so each chip fills in immediately.
+ */
+const EMAIL_MESSAGE_TAGS_MUTATION_KEY = [...emailKeys.all, 'message-tags'] as const;
+const EMAIL_CREATE_TAG_MUTATION_KEY = [...EMAIL_MESSAGE_TAGS_MUTATION_KEY, 'create'] as const;
+const EMAIL_MESSAGE_TAGS_SCOPE = { id: 'email-message-tags' };
+
+/** True when the settling mutation is the only tag edit left for this mailbox. */
+function isLastEmailTagMutation(queryClient: ReturnType<typeof useQueryClient>, accountId: string) {
+  return (
+    queryClient.isMutating({
+      mutationKey: EMAIL_MESSAGE_TAGS_MUTATION_KEY,
+      predicate: (mutation) =>
+        (mutation.state.variables as { accountId?: string } | undefined)?.accountId === accountId,
+    }) <= 1
+  );
+}
+
+type CreateEmailTagPayload = {
+  accountId: string;
+  name: string;
+  color?: string;
+  messageId?: string;
+};
+
+export const useCreateEmailTagMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: EMAIL_CREATE_TAG_MUTATION_KEY,
+    scope: EMAIL_MESSAGE_TAGS_SCOPE,
+    // The apply is part of the mutation, not `onSuccess`, so the scope covers
+    // it: a create is a tag write on the message like any toggle.
+    mutationFn: async (payload: CreateEmailTagPayload) => {
+      const tag = await emailApi.createTag(payload.accountId, {
+        name: payload.name,
+        color: payload.color,
+      });
+      if (payload.messageId) {
+        await emailApi.updateMessageTags(payload.accountId, payload.messageId, {
+          add: [tag.id],
+          remove: [],
+        });
+      }
+      return tag;
+    },
+    onMutate: (payload) =>
+      payload.messageId
+        ? applyOptimisticEmailTags(queryClient, {
+            accountId: payload.accountId,
+            messageId: payload.messageId,
+            addNames: [payload.name],
+          })
+        : undefined,
+    onSuccess: (_tag: ConnectedEmailTag, payload) => {
+      toast.success(payload.messageId ? 'Tag created and applied.' : 'Tag created.');
+    },
+    onError: (error, payload) => {
+      if (payload.messageId) {
+        revertOptimisticEmailTags(queryClient, {
+          accountId: payload.accountId,
+          messageId: payload.messageId,
+          addNames: [payload.name],
+        });
+      }
+      toastApiError(error, 'Failed to create tag.');
+    },
+    onSettled: (_tag, _error, payload) => refreshEmailTagQueries(queryClient, payload.accountId),
+  });
+};
+
+/**
+ * Names of the tags still being created for this mailbox. A preset the mailbox
+ * has never used has no id until its create lands, so a second click on it
+ * would create it again — the chip holds still until then instead.
+ */
+export const usePendingEmailTagCreates = (accountId?: string) =>
+  useMutationState({
+    filters: {
+      mutationKey: EMAIL_CREATE_TAG_MUTATION_KEY,
+      status: 'pending',
+      predicate: (mutation) =>
+        (mutation.state.variables as CreateEmailTagPayload | undefined)?.accountId === accountId,
+    },
+    select: (mutation) => (mutation.state.variables as CreateEmailTagPayload).name,
+  });
+
+type EmailActionSnapshot = {
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>;
+  folders: ConnectedEmailFolder[] | undefined;
+  pinned: PinnedThreadSnapshots;
+  /** Whether the move touched a pinned thread, so the pinned groups need refetching. */
+  pinnedStale: boolean;
+};
+
+type OptimisticEmailActionPayload = {
+  accountId: string;
+  messageId: string;
+  targetFolderId?: string | null;
+};
+
+function getMessageQuerySnapshots(
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string
+) {
+  return queryClient.getQueriesData<EmailMessagePages>({
+    queryKey: emailKeys.messagesRoot(accountId),
+  });
+}
+
+function findCachedMessage(
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
+  messageId: string
+) {
+  for (const [, data] of snapshots) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => item.id === messageId);
+      if (message) return message;
+    }
+  }
+  return null;
+}
+
+/**
+ * A listed message as the cached lists hold it, or null when no loaded page
+ * does. Read before an archive moves it, so the undo can put it back in the
+ * folder it came from rather than in the Inbox (elli-ui#651).
+ */
+export const useCachedEmailMessageLookup = () => {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (accountId: string, messageId: string) =>
+      findCachedMessage(getMessageQuerySnapshots(queryClient, accountId), messageId),
+    [queryClient]
+  );
+};
+
+function removeMessageFromCachedLists(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
+  messageId: string
+) {
+  for (const [queryKey] of snapshots) {
+    queryClient.setQueryData<EmailMessagePages>(queryKey, (current) => {
+      if (!current) return current;
+      const containsMessage = current.pages.some((page) =>
+        page.records.some((message) => message.id === messageId)
+      );
+      if (!containsMessage) return current;
+
+      return {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.filter((message) => message.id !== messageId),
+          totalCount:
+            page.totalCount === null || page.totalCount === undefined
+              ? page.totalCount
+              : Math.max(0, page.totalCount - 1),
+        })),
+      };
+    });
+  }
+}
+
+function putMessageInCachedFolder(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshots: Array<[QueryKey, EmailMessagePages | undefined]>,
+  folderId: string | null | undefined,
+  message: ConnectedEmailListItem | null
+) {
+  if (!folderId || !message) return;
+  const movedMessage: ConnectedEmailListItem = { ...message, folderId, folder: folderId };
+  for (const [queryKey] of snapshots) {
+    // A tag view spans folders; a move does not decide whether it belongs there.
+    if (queryKey[3] !== folderId || queryKey[12] != null) continue;
+    queryClient.setQueryData<EmailMessagePages>(queryKey, (current) => {
+      if (
+        !current ||
+        current.pages.some((page) => page.records.some((item) => item.id === movedMessage.id))
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        pages: current.pages.map((page, index) => ({
+          ...page,
+          records: index === 0 ? [movedMessage, ...page.records] : page.records,
+          totalCount:
+            page.totalCount === null || page.totalCount === undefined
+              ? page.totalCount
+              : page.totalCount + 1,
+        })),
+      };
+    });
+  }
+}
+
+function updateFolderCounts(
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string,
+  sourceFolderId: string | null | undefined,
+  targetFolderId: string | null | undefined
+) {
+  if (!sourceFolderId && !targetFolderId) return;
+
+  queryClient.setQueryData<ConnectedEmailFolder[]>(emailKeys.folders(accountId), (folders) =>
+    folders?.map((folder) => {
+      if (folder.id === sourceFolderId && folder.id !== targetFolderId) {
+        return { ...folder, totalCount: Math.max(0, folder.totalCount - 1) };
+      }
+      if (folder.id === targetFolderId && folder.id !== sourceFolderId) {
+        return { ...folder, totalCount: folder.totalCount + 1 };
+      }
+      return folder;
+    })
+  );
+}
+
+async function applyOptimisticEmailMove(
+  queryClient: ReturnType<typeof useQueryClient>,
+  payload: OptimisticEmailActionPayload
+): Promise<EmailActionSnapshot> {
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+    queryClient.cancelQueries({ queryKey: emailKeys.folders(payload.accountId) }),
+    queryClient.cancelQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+  ]);
+
+  const messages = getMessageQuerySnapshots(queryClient, payload.accountId);
+  const folders = queryClient.getQueryData<ConnectedEmailFolder[]>(
+    emailKeys.folders(payload.accountId)
+  );
+  const pinned = getPinnedThreadSnapshots(queryClient, payload.accountId);
+  const listedMessage = findCachedMessage(messages, payload.messageId);
+  const movedThread = {
+    messageId: payload.messageId,
+    conversationKey: listedMessage?.conversationKey,
+    targetFolderId: payload.targetFolderId,
+  };
+  const pinnedThread = findPinnedThread(pinned, movedThread);
+  // A pinned thread that has fallen off the loaded pages is on screen only
+  // through the pinned group, so that is the one copy of it there is to move.
+  const movedMessage = listedMessage ?? pinnedThread;
+  const sourceFolderId = movedMessage?.folderId ?? null;
+  const pinnedStale = moveMakesPinnedThreadsStale(movedMessage, Boolean(pinnedThread));
+  // Only when settling will refetch it: a cancelled first load that nothing
+  // invalidates afterwards would leave the pinned group empty.
+  if (pinnedStale) {
+    await queryClient.cancelQueries({ queryKey: emailKeys.pinnedThreadsRoot(payload.accountId) });
+  }
+
+  removeMessageFromCachedLists(queryClient, messages, payload.messageId);
+  // Without this the page merges the thread straight back in from the pinned
+  // group, and the row the reader just archived never leaves.
+  removeThreadFromPinnedLists(queryClient, pinned, movedThread);
+  putMessageInCachedFolder(queryClient, messages, payload.targetFolderId, movedMessage);
+  updateFolderCounts(queryClient, payload.accountId, sourceFolderId, payload.targetFolderId);
+
+  return { messages, folders, pinned, pinnedStale };
+}
+
+function rollbackOptimisticEmailAction(
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string,
+  snapshot: EmailActionSnapshot | undefined
+) {
+  if (!snapshot) return;
+  for (const [queryKey, messages] of snapshot.messages) {
+    queryClient.setQueryData(queryKey, messages);
+  }
+  for (const [queryKey, pinned] of snapshot.pinned) {
+    queryClient.setQueryData(queryKey, pinned);
+  }
+  queryClient.setQueryData(emailKeys.folders(accountId), snapshot.folders);
+}
+
+async function refreshEmailActionQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string,
+  // Off only when the move is known not to have touched a pinned thread.
+  pinnedStale = true
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.messagesRoot(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.folders(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.conversationRoot(accountId),
+      refetchType: 'active',
+    }),
+    pinnedStale
+      ? queryClient.invalidateQueries({
+          queryKey: emailKeys.pinnedThreadsRoot(accountId),
+          refetchType: 'active',
+        })
+      : undefined,
+  ]);
+}
+
+export const useMoveEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      accountId: string;
+      messageId: string;
+      folderId: string;
+      /** No toasts: the caller reports the outcome itself. */
+      silent?: boolean;
+    }) => emailApi.moveMessage(payload.accountId, payload.messageId, payload.folderId),
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
+        accountId: payload.accountId,
+        messageId: payload.messageId,
+        targetFolderId: payload.folderId,
+      }),
+    onSuccess: (_result, payload) => {
+      if (!payload.silent) toast.success('Email moved.');
+    },
+    onError: (error, payload, snapshot) => {
+      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
+      if (!payload.silent) toastApiError(error, 'Failed to move email.');
+    },
+    onSettled: async (_result, _error, payload, snapshot) => {
+      await refreshEmailActionQueries(queryClient, payload.accountId, snapshot?.pinnedStale);
+    },
+  });
+};
+
+export const useArchiveEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      accountId: string;
+      messageId: string;
+      targetFolderId?: string | null;
+      /** No toasts: the caller reports the outcome itself. */
+      silent?: boolean;
+    }) => emailApi.archiveMessage(payload.accountId, payload.messageId),
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
+        accountId: payload.accountId,
+        messageId: payload.messageId,
+        targetFolderId: payload.targetFolderId,
+      }),
+    onSuccess: (_result, payload) => {
+      if (!payload.silent) toast.success('Email archived.');
+    },
+    onError: (error, payload, snapshot) => {
+      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
+      if (!payload.silent) toastApiError(error, 'Failed to archive email.');
+    },
+    onSettled: async (_result, _error, payload, snapshot) => {
+      await refreshEmailActionQueries(queryClient, payload.accountId, snapshot?.pinnedStale);
+    },
+  });
+};
+
+export const useUnarchiveEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      accountId: string;
+      messageId: string;
+      targetFolderId?: string | null;
+      /** No toasts: the caller reports the outcome itself. */
+      silent?: boolean;
+    }) => emailApi.unarchiveMessage(payload.accountId, payload.messageId),
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
+        accountId: payload.accountId,
+        messageId: payload.messageId,
+        targetFolderId: payload.targetFolderId,
+      }),
+    onSuccess: (_result, payload) => {
+      if (!payload.silent) toast.success('Email unarchived.');
+    },
+    onError: (error, payload, snapshot) => {
+      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
+      if (!payload.silent) toastApiError(error, 'Failed to unarchive email.');
+    },
+    onSettled: async (_result, _error, payload, snapshot) => {
+      await refreshEmailActionQueries(queryClient, payload.accountId, snapshot?.pinnedStale);
+    },
+  });
+};
+
+export const useDeleteEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: {
+      accountId: string;
+      messageId: string;
+      targetFolderId?: string | null;
+    }) => emailApi.deleteMessage(payload.accountId, payload.messageId),
+    onMutate: (payload) =>
+      applyOptimisticEmailMove(queryClient, {
+        accountId: payload.accountId,
+        messageId: payload.messageId,
+        targetFolderId: payload.targetFolderId,
+      }),
+    onSuccess: () => {
+      toast.success('Email moved to deleted items.');
+    },
+    onError: (error, payload, snapshot) => {
+      rollbackOptimisticEmailAction(queryClient, payload.accountId, snapshot);
+      toastApiError(error, 'Failed to delete email.');
+    },
+    onSettled: async (_result, _error, payload, snapshot) => {
+      await refreshEmailActionQueries(queryClient, payload.accountId, snapshot?.pinnedStale);
+    },
+  });
+};
+
+type EmailTagsSnapshot = Array<[QueryKey, EmailMessagePages | undefined]>;
+
+async function applyOptimisticEmailTags(
+  queryClient: ReturnType<typeof useQueryClient>,
+  payload: {
+    accountId: string;
+    messageId: string;
+    addNames?: string[];
+    removeNames?: string[];
+  }
+): Promise<EmailTagsSnapshot> {
+  await Promise.all([
+    queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+    queryClient.cancelQueries({ queryKey: emailKeys.conversationRoot(payload.accountId) }),
+  ]);
+
+  const snapshots = getMessageQuerySnapshots(queryClient, payload.accountId);
+  // The caller toggles Elli tags, which live on `tags`. `keywords` holds the
+  // mail provider's own categories and is read-only, so it is never touched.
+  queryClient.setQueriesData<EmailMessagePages>(
+    { queryKey: emailKeys.messagesRoot(payload.accountId) },
+    (current) =>
+      current
+        ? {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              records: page.records.map((message) => {
+                if (message.id !== payload.messageId && message.providerId !== payload.messageId) {
+                  return message;
+                }
+                return { ...message, tags: applyEmailTagDelta(message.tags, payload) };
+              }),
+            })),
+          }
+        : current
+  );
+  return snapshots;
+}
+
+export const usePermanentlyDeleteEmailMessageMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { accountId: string; messageId: string }) =>
+      emailApi.permanentlyDeleteMessage(payload.accountId, payload.messageId),
+    onSuccess: async (_result, payload) => {
+      toast.success('Email permanently deleted.');
+      await refreshEmailActionQueries(queryClient, payload.accountId);
+    },
+    onError: (error) => toastApiError(error, 'Failed to permanently delete email.'),
+  });
+};
+
+/**
+ * Undoes one edit's optimistic pass by applying its inverse. Not a snapshot
+ * restore: with tag edits queued behind one another, the snapshot a failed
+ * edit took predates the clicks after it, and restoring it would clear those
+ * chips too.
+ */
+function revertOptimisticEmailTags(
+  queryClient: ReturnType<typeof useQueryClient>,
+  payload: { accountId: string; messageId: string; addNames?: string[]; removeNames?: string[] }
+) {
+  void applyOptimisticEmailTags(queryClient, {
+    accountId: payload.accountId,
+    messageId: payload.messageId,
+    ...invertEmailTagDelta(payload),
+  });
+}
+
+export const useUpdateEmailMessageTagsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: EMAIL_MESSAGE_TAGS_MUTATION_KEY,
+    // See `EMAIL_MESSAGE_TAGS_MUTATION_KEY`: queued, so no edit overwrites another.
+    scope: EMAIL_MESSAGE_TAGS_SCOPE,
+    mutationFn: (payload: {
+      accountId: string;
+      messageId: string;
+      add?: string[];
+      remove?: string[];
+      // Display names for the optimistic pass; `add`/`remove` carry tag ids.
+      addNames?: string[];
+      removeNames?: string[];
+    }) =>
+      emailApi.updateMessageTags(payload.accountId, payload.messageId, {
+        add: payload.add,
+        remove: payload.remove,
+      }),
+    onMutate: (payload) => applyOptimisticEmailTags(queryClient, payload),
+    onSuccess: () => {
+      // One toast however many chips were clicked: a shared id replaces it.
+      toast.success('Tags updated.', { id: 'email-tags-updated' });
+    },
+    onError: (error, payload) => {
+      revertOptimisticEmailTags(queryClient, payload);
+      toastApiError(error, 'Failed to update tags.');
+    },
+    // Refetching after each edit let an answer from before a later click land
+    // after it and blink that chip off; wait until the queue has drained.
+    onSettled: (_result, _error, payload) => refreshEmailTagQueries(queryClient, payload.accountId),
+  });
+};
+
+type EmailStatusPayload = {
+  accountId: string;
+  messageId: string;
+  conversationKey?: string;
+  threadId?: string;
+  unread: boolean;
+};
+
+type EmailStatusSnapshot = {
+  messages: Array<{
+    queryKey: QueryKey;
+    items: Array<{ id: string; unread: boolean }>;
+  }>;
+  folderId?: string | null;
+  unreadDelta: number;
+  messageUnread?: boolean;
+};
+
+const EMAIL_STATUS_MUTATION_KEY = [...emailKeys.all, 'message-status'] as const;
+
+function isEmailStatusTarget(item: ConnectedEmailListItem, payload: EmailStatusPayload) {
+  return (
+    item.id === payload.messageId ||
+    Boolean(
+      payload.conversationKey &&
+      (item.conversationKey === payload.conversationKey ||
+        item.threadId === payload.conversationKey)
+    )
+  );
+}
+
+function findMessageInPages(
+  messages: Array<[QueryKey, EmailMessagePages | undefined]>,
+  payload: EmailStatusPayload
+) {
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => item.id === payload.messageId);
+      if (message) return message;
+    }
+  }
+
+  for (const [, data] of messages) {
+    for (const page of data?.pages ?? []) {
+      const message = page.records.find((item) => isEmailStatusTarget(item, payload));
+      if (message) return message;
+    }
+  }
+  return undefined;
+}
+
+function updateMessageStatusInPages(
+  current: EmailMessagePages | undefined,
+  payload: EmailStatusPayload
+) {
+  return current
+    ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.map((item) =>
+            isEmailStatusTarget(item, payload) ? { ...item, unread: payload.unread } : item
+          ),
+        })),
+      }
+    : current;
+}
+
+export const useUpdateEmailMessageStatusMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: EMAIL_STATUS_MUTATION_KEY,
+    mutationFn: async (payload: EmailStatusPayload) => {
+      if (!payload.unread && payload.threadId) {
+        await queryClient.ensureQueryData({
+          // The same entry the reading pane reads, so marking a conversation
+          // read never loads — or overwrites it with — a different one.
+          queryKey: emailKeys.conversation(
+            payload.accountId,
+            payload.threadId,
+            payload.conversationKey
+          ),
+          queryFn: () =>
+            emailApi.listConversation(
+              payload.accountId,
+              payload.threadId!,
+              conversationScope(payload.threadId, payload.conversationKey) ?? undefined
+            ),
+          staleTime: EMAIL_MESSAGES_STALE_TIME_MS,
+        });
+      }
+      return emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
+        unread: payload.unread,
+      });
+    },
+    onMutate: async (payload): Promise<EmailStatusSnapshot> => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) }),
+        queryClient.cancelQueries({ queryKey: emailKeys.folders(payload.accountId) }),
+        queryClient.cancelQueries({
+          queryKey: emailKeys.message(payload.accountId, payload.messageId),
+        }),
+      ]);
+
+      const messages = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      const message = queryClient.getQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId)
+      );
+      const cachedMessage = findMessageInPages(messages, payload) ?? message;
+      const unreadDelta =
+        cachedMessage && cachedMessage.unread !== payload.unread ? (payload.unread ? 1 : -1) : 0;
+      const messageSnapshots = messages.map(([queryKey, data]) => ({
+        queryKey,
+        items: (data?.pages ?? []).flatMap((page) =>
+          page.records
+            .filter((item) => isEmailStatusTarget(item, payload))
+            .map((item) => ({ id: item.id, unread: item.unread }))
+        ),
+      }));
+
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageStatusInPages(current, payload)
+      );
+
+      queryClient.setQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId),
+        (current) => (current ? { ...current, unread: payload.unread } : current)
+      );
+
+      if (cachedMessage?.folderId && unreadDelta !== 0) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.id === cachedMessage.folderId
+                ? {
+                    ...folder,
+                    unreadCount: Math.max(0, folder.unreadCount + unreadDelta),
+                  }
+                : folder
+            )
+        );
+      }
+
+      return {
+        messages: messageSnapshots,
+        folderId: cachedMessage?.folderId,
+        unreadDelta,
+        messageUnread: message?.unread,
+      };
+    },
+    onSuccess: (_result, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageStatusInPages(current, payload)
+      );
+      queryClient.setQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId),
+        (current) => (current ? { ...current, unread: payload.unread } : current)
+      );
+      if (payload.unread) toast.success('Email marked as unread.');
+    },
+    onError: (error, payload, snapshot) => {
+      for (const { queryKey, items } of snapshot?.messages ?? []) {
+        const unreadById = new Map(items.map((item) => [item.id, item.unread]));
+        queryClient.setQueryData<EmailMessagePages>(queryKey, (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  records: page.records.map((item) =>
+                    unreadById.has(item.id) ? { ...item, unread: unreadById.get(item.id)! } : item
+                  ),
+                })),
+              }
+            : current
+        );
+      }
+      if (snapshot?.folderId && snapshot.unreadDelta !== 0) {
+        queryClient.setQueryData<ConnectedEmailFolder[]>(
+          emailKeys.folders(payload.accountId),
+          (current) =>
+            current?.map((folder) =>
+              folder.id === snapshot.folderId
+                ? {
+                    ...folder,
+                    unreadCount: Math.max(0, folder.unreadCount - snapshot.unreadDelta),
+                  }
+                : folder
+            )
+        );
+      }
+      queryClient.setQueryData<ConnectedEmailListItem>(
+        emailKeys.message(payload.accountId, payload.messageId),
+        (current) =>
+          current && snapshot?.messageUnread !== undefined
+            ? { ...current, unread: snapshot.messageUnread }
+            : current
+      );
+      toastApiError(
+        error,
+        payload.unread ? 'Failed to mark email as unread.' : 'Failed to mark email as read.'
+      );
+    },
+    onSettled: async (_result, _error, payload) => {
+      const isLastAccountStatusMutation =
+        queryClient.isMutating({
+          mutationKey: EMAIL_STATUS_MUTATION_KEY,
+          predicate: (mutation) =>
+            (mutation.state.variables as EmailStatusPayload | undefined)?.accountId ===
+            payload.accountId,
+        }) <= 1;
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.messagesRoot(payload.accountId),
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: emailKeys.folders(payload.accountId),
+          refetchType: isLastAccountStatusMutation ? 'active' : 'none',
+        }),
+      ]);
+    },
+  });
+};
+
+type EmailFlagPayload = {
+  accountId: string;
+  messageId: string;
+  conversationKey?: string;
+  flagged: boolean;
+};
+
+function updateMessageFlagInPages(
+  current: EmailMessagePages | undefined,
+  payload: EmailFlagPayload
+) {
+  return current
+    ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          records: page.records.map((item) =>
+            item.id === payload.messageId ||
+            (payload.conversationKey &&
+              (item.conversationKey === payload.conversationKey ||
+                item.threadId === payload.conversationKey))
+              ? { ...item, flagged: payload.flagged }
+              : item
+          ),
+        })),
+      }
+    : current;
+}
+
+export const useToggleEmailFlagMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: EmailFlagPayload) =>
+      emailApi.updateMessageStatus(payload.accountId, payload.messageId, {
+        flagged: payload.flagged,
+      }),
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: emailKeys.messagesRoot(payload.accountId) });
+      const snapshot = queryClient.getQueriesData<EmailMessagePages>({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+      });
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageFlagInPages(current, payload)
+      );
+      return snapshot;
+    },
+    onSuccess: (_result, payload) => {
+      queryClient.setQueriesData<EmailMessagePages>(
+        { queryKey: emailKeys.messagesRoot(payload.accountId) },
+        (current) => updateMessageFlagInPages(current, payload)
+      );
+    },
+    onError: (error, payload, snapshot) => {
+      for (const [queryKey, data] of snapshot ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+      toastApiError(
+        error,
+        payload.flagged ? 'Failed to flag the email.' : 'Failed to remove the flag.'
+      );
+    },
+    onSettled: (_result, _error, payload) =>
+      queryClient.invalidateQueries({
+        queryKey: emailKeys.messagesRoot(payload.accountId),
+        refetchType: 'none',
+      }),
+  });
+};
+
+const invalidateMeetingQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  accountId: string
+) =>
+  Promise.allSettled([
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.conversationRoot(accountId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: emailKeys.messagesRoot(accountId),
+      refetchType: 'none',
+    }),
+  ]);
+
+export const useRespondToEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      accountId: string;
+      messageId: string;
+      response: EmailMeetingResponseAction;
+      comment?: string;
+      sendResponse?: boolean;
+    }) => emailApi.respondToMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success(
+        input.response === 'accepted'
+          ? 'Meeting accepted.'
+          : input.response === 'tentative'
+            ? 'Meeting marked tentative.'
+            : 'Meeting declined.'
+      );
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to update your meeting response.');
+    },
+  });
+};
+
+export const useUpdateEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: {
+      accountId: string;
+      messageId: string;
+      subject?: string;
+      startAt?: string;
+      endAt?: string;
+      location?: string;
+    }) => emailApi.updateMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success('Meeting updated.');
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to update this meeting.');
+    },
+  });
+};
+
+export const useCancelEmailMeetingMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { accountId: string; messageId: string; comment?: string }) =>
+      emailApi.cancelMeeting(input),
+    onSuccess: (_event, input) => {
+      void invalidateMeetingQueries(queryClient, input.accountId);
+      toast.success('Meeting cancelled.');
+    },
+    onError: (error) => {
+      if (isEmailReconnectRequiredError(error)) return;
+      toastApiError(error, 'Unable to cancel this meeting.');
+    },
+  });
+};

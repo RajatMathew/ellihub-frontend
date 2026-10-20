@@ -1,0 +1,38 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+
+# bun.lock is the only lockfile. A second one drifts out of step with it, and a
+# deploy that picks the wrong one installs versions nothing was tested against.
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+dist
+dev-dist
+dist-ssr
+output/
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# CLAUDE.md is the committed agent entry point — do not ignore it.
+# Personal, uncommitted agent notes go in CLAUDE.local.md.
+CLAUDE.local.md
+claude-docs/
+.deepsec
+.env

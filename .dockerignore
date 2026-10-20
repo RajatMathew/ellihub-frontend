@@ -1,0 +1,44 @@
+# Keep the build context to what the build actually needs.
+#
+# The entry that matters most is `.env`. `COPY . .` used to copy it, and Vite
+# loads `.env` from the project root, so a `docker build` run on a developer's
+# machine inlined that developer's local values into the production bundle —
+# including the three dev flags, all of which are `true` in a normal local
+# `.env`. The image is built from build args now (see the Dockerfile); this is
+# what stops the file coming back in through the side door.
+
+# Local environment — values come from build args, never from a copied file.
+.env
+.env.*
+!.env.example
+
+# Installed and built output. node_modules in particular is large and holds
+# host-platform binaries that must not be carried into a linux image.
+node_modules
+dist
+dev-dist
+output
+tmp
+
+# Version control and editor state
+.git
+.gitignore
+.vscode
+.idea
+
+# Logs and scratch
+*.log
+logs
+
+# Tests and their artifacts — the image serves the build, it does not run them
+tests
+playwright.config.ts
+.playwright-cli
+
+# Agent and documentation context, none of which the build reads
+.claude
+.agents
+docs
+z-fix-docs
+*.md
+!README.md

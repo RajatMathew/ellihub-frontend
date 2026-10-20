@@ -1,0 +1,428 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+
+import { Check, ChevronDown, Loader2, X } from 'lucide-react';
+
+import { Badge } from '@app/components/ui/badge';
+import { Button } from '@app/components/ui/button';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@app/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@app/components/ui/popover';
+import {
+  searchSelectTriggerSizes,
+  type SearchSelectSize,
+} from '@app/components/ui/search-select-size';
+import { useDebouncedCallback } from '@app/hooks/use-debounced-callback';
+import { useOptionCache } from '@app/hooks/use-option-cache';
+import { useResetOnChange } from '@app/hooks/use-reset-on-change';
+import { type SearchSelectOption } from '@app/lib/search-select-option-cache';
+import { cn } from '@app/lib/utils';
+
+export type InfiniteMultiSearchSelectOption = SearchSelectOption;
+
+type InfiniteMultiSearchSelectProps = {
+  options: InfiniteMultiSearchSelectOption[];
+  value: string[];
+  onValueChange: (value: string[]) => void;
+  onOptionsChange?: (options: InfiniteMultiSearchSelectOption[]) => void;
+  selectedOptions?: InfiniteMultiSearchSelectOption[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  isLoading?: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onFetchNextPage?: () => void;
+  disabled?: boolean;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyMessage?: string;
+  loadingMessage?: string;
+  searchDebounceMs?: number;
+  maxVisibleSelectedOptions?: number;
+  overflowLabel?: (count: number) => string;
+  size?: SearchSelectSize;
+  triggerClassName?: string;
+  contentClassName?: string;
+  testId?: string;
+};
+
+function HighlightMatch({ text, search }: { text: string; search: string }) {
+  const query = search.trim();
+  if (!query) return <>{text}</>;
+
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'i');
+  const splitRegex = new RegExp(`(${escapedQuery})`, 'gi');
+  const parts = text.split(splitRegex);
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        regex.test(part) ? (
+          <mark key={index} className="bg-primary/20 text-foreground font-medium rounded-xs px-0.5">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
+export function InfiniteMultiSearchSelect({
+  options,
+  value,
+  onValueChange,
+  onOptionsChange,
+  selectedOptions: selectedOptionsProp = [],
+  search,
+  onSearchChange,
+  isLoading = false,
+  isFetchingNextPage = false,
+  hasNextPage = false,
+  onFetchNextPage,
+  disabled,
+  placeholder = 'Select...',
+  searchPlaceholder = 'Search...',
+  emptyMessage = 'No results found.',
+  loadingMessage = 'Loading...',
+  searchDebounceMs = 300,
+  maxVisibleSelectedOptions = 1,
+  overflowLabel = (count) => `+${count} more`,
+  size = 'md',
+  triggerClassName,
+  contentClassName,
+  testId,
+}: InfiniteMultiSearchSelectProps) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number>(0);
+  const [localSearch, setLocalSearch] = useState(search);
+  const [cachedOptionByValue, rememberOption] = useOptionCache(options, selectedOptionsProp);
+
+  const optionByValue = useMemo(() => {
+    const map = new Map<string, InfiniteMultiSearchSelectOption>();
+    for (const option of options) {
+      map.set(option.value, option);
+    }
+    return map;
+  }, [options]);
+
+  const selectedPropOptionByValue = useMemo(() => {
+    const map = new Map<string, InfiniteMultiSearchSelectOption>();
+    for (const option of selectedOptionsProp) {
+      map.set(option.value, option);
+    }
+    return map;
+  }, [selectedOptionsProp]);
+
+  const resolveOption = useCallback(
+    (optionValue: string): InfiniteMultiSearchSelectOption => {
+      return (
+        selectedPropOptionByValue.get(optionValue) ??
+        optionByValue.get(optionValue) ??
+        cachedOptionByValue.get(optionValue) ?? {
+          value: optionValue,
+          label: 'Selected item',
+        }
+      );
+    },
+    [cachedOptionByValue, optionByValue, selectedPropOptionByValue]
+  );
+
+  const selectedOptions = useMemo(
+    () => value.map((selected) => resolveOption(selected)),
+    [resolveOption, value]
+  );
+
+  const renderedOptions = useMemo(() => {
+    const next = [...options];
+    const seen = new Set(next.map((option) => option.value));
+    for (const option of selectedOptions) {
+      if (!seen.has(option.value)) {
+        next.unshift(option);
+        seen.add(option.value);
+      }
+    }
+    return next;
+  }, [options, selectedOptions]);
+
+  const normalizedMaxVisibleSelectedOptions = Math.max(0, Math.trunc(maxVisibleSelectedOptions));
+  const visibleSelectedOptions = useMemo(
+    () => selectedOptions.slice(0, normalizedMaxVisibleSelectedOptions),
+    [normalizedMaxVisibleSelectedOptions, selectedOptions]
+  );
+  const hiddenSelectedOptions = useMemo(
+    () => selectedOptions.slice(normalizedMaxVisibleSelectedOptions),
+    [normalizedMaxVisibleSelectedOptions, selectedOptions]
+  );
+  const selectedSummary = useMemo(
+    () => selectedOptions.map((option) => option.label).join(', '),
+    [selectedOptions]
+  );
+
+  useResetOnChange(search, () => setLocalSearch(search));
+
+  const debouncedOnSearchChange = useDebouncedCallback(onSearchChange, searchDebounceMs);
+
+  const handleSearchChange = (nextSearch: string) => {
+    setLocalSearch(nextSearch);
+    debouncedOnSearchChange(nextSearch);
+  };
+
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      setTriggerWidth(triggerRef.current.offsetWidth);
+    }
+  }, [open]);
+
+  /**
+   * The selection each toggle builds on.
+   *
+   * Not `value` directly, because a toggle can happen before the previous one
+   * has been committed back as a prop: selecting two options in quick succession
+   * runs both handlers against the same empty selection, and the second write
+   * drops the first choice. The parent cannot fix this — it has not re-rendered
+   * either — so the pending selection is held here and updated the moment it is
+   * emitted, then re-synced from the prop on every commit, which stays
+   * authoritative.
+   */
+  const valueRef = useRef(value);
+
+  useLayoutEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  const emitValueChange = useCallback(
+    (nextValue: string[]) => {
+      // Before the callbacks, so a second toggle in the same batch builds on
+      // this selection rather than on the one this component was rendered with.
+      valueRef.current = nextValue;
+      onValueChange(nextValue);
+      onOptionsChange?.(nextValue.map((optionValue) => resolveOption(optionValue)));
+    },
+    [onOptionsChange, onValueChange, resolveOption]
+  );
+
+  const toggle = useCallback(
+    (option: InfiniteMultiSearchSelectOption) => {
+      if (option.disabled) return;
+
+      rememberOption(option);
+
+      const current = valueRef.current;
+
+      emitValueChange(
+        current.includes(option.value)
+          ? current.filter((item) => item !== option.value)
+          : [...current, option.value]
+      );
+    },
+    [emitValueChange, rememberOption]
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          ref={triggerRef}
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          data-testid={testId}
+          className={cn(
+            // Fixed height, never `min-h-*`: the overflow badge below keeps the
+            // selection to one row, so the trigger must not grow when a label is
+            // long — it sits in a card header, and growing it pushes the whole
+            // table down.
+            'flex w-full items-center justify-between rounded-md border border-input bg-background font-normal outline-none transition-shadow aria-expanded:border-ring aria-expanded:ring-[3px] aria-expanded:ring-ring/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
+            searchSelectTriggerSizes[size],
+            triggerClassName
+          )}
+        >
+          <span
+            className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+            title={selectedSummary || undefined}
+          >
+            {selectedOptions.length > 0 ? (
+              <>
+                {visibleSelectedOptions.map((option) => (
+                  <Badge key={option.value} variant="secondary" appearance="outline" size="sm">
+                    <span className="max-w-[180px] truncate">{option.label}</span>
+                    {option.badge && <span className="text-muted-foreground">{option.badge}</span>}
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Remove ${option.label}`}
+                      className="ml-1 inline-flex rounded-xs"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggle(option);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggle(option);
+                        }
+                      }}
+                    >
+                      <X className="size-3" />
+                    </span>
+                  </Badge>
+                ))}
+                {hiddenSelectedOptions.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    appearance="outline"
+                    size="sm"
+                    className="shrink-0 border-dashed text-muted-foreground"
+                    aria-label={hiddenSelectedOptions.map((option) => option.label).join(', ')}
+                  >
+                    {overflowLabel(hiddenSelectedOptions.length)}
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <span className="truncate text-muted-foreground">{placeholder}</span>
+            )}
+          </span>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 opacity-60 -me-0.5 transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className={cn('overflow-hidden p-0', contentClassName)}
+        align="start"
+        sideOffset={4}
+        style={triggerWidth > 0 ? { width: triggerWidth } : undefined}
+      >
+        <Command shouldFilter={false}>
+          <div className="relative">
+            <CommandInput
+              value={localSearch}
+              onValueChange={handleSearchChange}
+              placeholder={searchPlaceholder}
+            />
+            {localSearch && (
+              <button
+                type="button"
+                onClick={() => handleSearchChange('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xs p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground opacity-60 hover:opacity-100 transition-opacity"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <CommandList
+            onScroll={(event) => {
+              const target = event.currentTarget;
+              const isNearBottom =
+                target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+              if (isNearBottom && hasNextPage && !isFetchingNextPage) {
+                onFetchNextPage?.();
+              }
+            }}
+          >
+            {isLoading && options.length === 0 ? (
+              <div className="space-y-2.5 p-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col gap-1.5 px-2 py-1.5 animate-pulse">
+                    <div className="h-4.5 w-2/3 rounded bg-muted/80" />
+                    <div className="h-3 w-1/2 rounded bg-muted/40" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {isLoading && options.length > 0 && (
+                  <div className="flex items-center justify-center py-2 text-xs text-muted-foreground gap-1.5 border-b border-border bg-muted/10">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    <span>{loadingMessage}</span>
+                  </div>
+                )}
+                <CommandEmpty>{emptyMessage}</CommandEmpty>
+                <CommandGroup>
+                  {renderedOptions.map((option) => {
+                    const selected = value.includes(option.value);
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        keywords={[option.label, option.description ?? '']}
+                        disabled={option.disabled}
+                        className="min-h-10 gap-3 rounded-md px-2 py-2"
+                        onSelect={() => toggle(option)}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            'flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150',
+                            selected
+                              ? 'border-success bg-success text-success-foreground'
+                              : 'border-muted-foreground/40 bg-background text-transparent',
+                            option.disabled && 'opacity-60'
+                          )}
+                        >
+                          <Check className="size-3.5 stroke-[3]" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate">
+                              <HighlightMatch text={option.label} search={localSearch} />
+                            </span>
+                            {option.badge && (
+                              <Badge variant="secondary" size="sm" className="shrink-0">
+                                {option.badge}
+                              </Badge>
+                            )}
+                          </div>
+                          {option.description && (
+                            <span className="block truncate text-xs text-muted-foreground">
+                              <HighlightMatch text={option.description} search={localSearch} />
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
+                  {isFetchingNextPage && (
+                    <CommandItem value="loading-more" disabled>
+                      <Loader2 className="h-3 w-3 animate-spin me-2" />
+                      Loading more...
+                    </CommandItem>
+                  )}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+        {value.length > 0 && (
+          <div className="border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full"
+              onClick={() => emitValueChange([])}
+            >
+              Clear selection
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}

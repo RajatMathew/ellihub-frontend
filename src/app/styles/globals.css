@@ -1,0 +1,677 @@
+/* Tailwind Core */
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+@import './theme.css';
+
+/* Streamdown ships Tailwind classes in its bundle; let Tailwind see them. */
+@source '../../../node_modules/streamdown/dist/*.js';
+
+/** Dark Mode Variant **/
+@custom-variant dark (&:is(.dark *, .dark-blue *));
+
+/* Sidebar border overrides - ensure app navigation sidebar always uses dark borders */
+[data-slot='app-sidebar'] .border-border {
+  border-color: var(--sidebar-border) !important;
+}
+
+[data-slot='app-sidebar'] [class*='border-t'],
+[data-slot='app-sidebar'] [class*='border-b'],
+[data-slot='app-sidebar'] [class*='border-l'],
+[data-slot='app-sidebar'] [class*='border-r'] {
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Override Separator component inside sidebar */
+[data-slot='app-sidebar'] [data-slot='separator'],
+[data-slot='app-sidebar'] [data-slot='accordion-menu-separator'],
+[data-slot='app-sidebar'] .bg-border {
+  background-color: var(--sidebar-border) !important;
+}
+
+/* Override any horizontal/vertical separator lines in sidebar */
+[data-slot='app-sidebar'] .h-px,
+[data-slot='app-sidebar'] .w-px {
+  background-color: var(--sidebar-border) !important;
+}
+
+/** Theme Setup **/
+@theme inline {
+  /** Base Colors **/
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-page-header: var(--page-header);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-page-header-border: var(--page-header-border);
+  --color-project-tabs-background: var(--project-tabs-background);
+  --color-sidebar-hover-foreground: var(--sidebar-hover-foreground);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-item-hover: var(--sidebar-item-hover);
+  --color-sidebar-item-active: var(--sidebar-item-active);
+  --color-sidebar-popover-bg: var(--sidebar-popover-bg);
+  --color-sidebar-popover-foreground: var(--sidebar-popover-foreground);
+  --color-sidebar-popover-muted: var(--sidebar-popover-muted);
+  --color-sidebar-popover-border: var(--sidebar-popover-border);
+  --color-sidebar-popover-hover: var(--sidebar-popover-hover);
+  --color-sidebar-popover-active: var(--sidebar-popover-active);
+  --color-card-border: var(--card-border);
+  --color-card-border-hover: var(--card-border-hover);
+  --color-rule-strong: var(--rule-strong);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-clay: var(--brand-clay);
+  --color-surface-hover: var(--surface-hover);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-alpha: var(--primary-alpha);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-alpha: var(--success-alpha);
+  --color-success-accent: var(--success-accent);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-caution: var(--caution);
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+  --color-court-ours: var(--court-ours);
+  --color-court-theirs: var(--court-theirs);
+  --color-court-ours-soft: var(--court-ours-soft);
+  --color-court-theirs-soft: var(--court-theirs-soft);
+  --color-task-card: var(--task-card);
+  --color-task-card-line: var(--task-card-line);
+  --color-task-card-rule: var(--task-card-rule);
+  --color-task-chip: var(--task-chip);
+  --color-task-ink-soft: var(--task-ink-soft);
+  --color-task-ink-faint: var(--task-ink-faint);
+  --color-task-ring: var(--task-ring);
+  --color-task-mail: var(--task-mail);
+  --color-task-mail-line: var(--task-mail-line);
+  --color-task-mail-back: var(--task-mail-back);
+  --color-task-mail-back-line: var(--task-mail-back-line);
+  --color-task-mail-hover: var(--task-mail-hover);
+  --color-task-mail-hover-line: var(--task-mail-hover-line);
+  --color-task-mail-icon: var(--task-mail-icon);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-alpha: var(--warning-alpha);
+  --color-warning-accent: var(--warning-accent);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-alpha: var(--destructive-alpha);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-card-header: var(--card-header);
+  --color-card-header-foreground: var(--card-header-foreground);
+  --color-table-card-header-foreground: var(--table-card-header-foreground);
+  --color-table-card-tab-accent: var(--table-card-tab-accent);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-info-alpha: var(--info-alpha);
+  --color-info-accent: var(--info-accent);
+  --color-info-soft-foreground: var(--info-soft-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-fieldwire-status-draft: var(--fieldwire-status-draft);
+  --color-fieldwire-status-neutral: var(--fieldwire-status-neutral);
+  --color-fieldwire-status-pending: var(--fieldwire-status-pending);
+  --color-fieldwire-status-approved: var(--fieldwire-status-approved);
+  --color-fieldwire-status-rejected: var(--fieldwire-status-rejected);
+  --color-label-light: var(--label-light);
+  --color-label-lighter: var(--label-lighter);
+  --color-separator: var(--separator);
+
+  /** Spreadsheet preview — the paper a workbook is drawn on, in every theme. **/
+  --color-sheet-canvas: var(--sheet-canvas);
+  --color-sheet-ink: var(--sheet-ink);
+  /** Word preview — the ground behind the pages, matching the PDF viewer. **/
+  --color-document-canvas: var(--document-canvas);
+  --color-sheet-gridline: var(--sheet-gridline);
+  --color-sheet-header: var(--sheet-header);
+  --color-sheet-header-foreground: var(--sheet-header-foreground);
+
+  /** Mailbox surfaces (elli-ui#921)
+      The mail workspace is a full-bleed surface with its own paper/ink ramp,
+      drawn one step warmer than the app's generic card/background pair so the
+      list, the reading pane and the details card read as three layers rather
+      than one flat sheet. Every theme defines the whole set. **/
+  --color-mail-paper: var(--mail-paper);
+  --color-mail-pane: var(--mail-pane);
+  --color-mail-card: var(--mail-card);
+  --color-mail-line: var(--mail-line);
+  --color-mail-hair: var(--mail-hair);
+  --color-mail-pane-line: var(--mail-pane-line);
+  --color-mail-ink: var(--mail-ink);
+  --color-mail-mid: var(--mail-mid);
+  --color-mail-muted: var(--mail-muted);
+  --color-mail-row-hover: var(--mail-row-hover);
+  --color-mail-group-header: var(--mail-group-header);
+  --color-mail-row-edge: var(--mail-row-edge);
+  --color-mail-row-selected-edge: var(--mail-row-selected-edge);
+  --color-mail-chip: var(--mail-chip);
+  --color-mail-chip-hover: var(--mail-chip-hover);
+  --color-mail-chip-count: var(--mail-chip-count);
+  --color-mail-search: var(--mail-search);
+  --color-mail-search-clear: var(--mail-search-clear);
+  --color-mail-unread: var(--mail-unread);
+  --color-mail-accent: var(--mail-accent);
+  --color-mail-accent-hover: var(--mail-accent-hover);
+  --color-mail-accent-foreground: var(--mail-accent-foreground);
+  --color-mail-accent-soft: var(--mail-accent-soft);
+  --color-mail-accent-edge: var(--mail-accent-edge);
+  --color-mail-ai-from: var(--mail-ai-from);
+  --color-mail-ai-mid: var(--mail-ai-mid);
+  --color-mail-ai-to: var(--mail-ai-to);
+  --color-mail-bulk-bar: var(--mail-bulk-bar);
+  --color-mail-bulk-bar-foreground: var(--mail-bulk-bar-foreground);
+  --color-mail-bulk-bar-muted: var(--mail-bulk-bar-muted);
+  --color-mail-bulk-bar-hover: var(--mail-bulk-bar-hover);
+  --color-mail-bulk-bar-danger: var(--mail-bulk-bar-danger);
+
+  /** File-format badge tones (elli-ui#1042). Same values in every theme — see
+      the note beside them in `themes/light.css`. **/
+  --color-file-format-foreground: var(--file-format-foreground);
+  --color-file-format-red: var(--file-format-red);
+  --color-file-format-green: var(--file-format-green);
+  --color-file-format-blue: var(--file-format-blue);
+  --color-file-format-cyan: var(--file-format-cyan);
+  --color-file-format-violet: var(--file-format-violet);
+  --color-file-format-amber: var(--file-format-amber);
+  --color-file-format-navy: var(--file-format-navy);
+  --color-file-format-slate: var(--file-format-slate);
+  --color-notice-orange: var(--notice-orange);
+  --color-notice-orange-soft: var(--notice-orange-soft);
+
+  /** The PDF editor's workspace and ruler strip, as utilities -- the only two
+      of its tokens a class needs. The rest are read through `var()`, or
+      resolved and painted into a <canvas>. **/
+  --color-canvas: var(--canvas);
+  --color-ruler: var(--ruler);
+
+  /** Public Sans, loaded in index.html, as a utility (elli-ui#1001). **/
+  --font-public-sans: var(--public-sans);
+
+  /** Base Styles **/
+  --color-border: var(--border);
+  --color-input: var(--input-border);
+  --color-ring: var(--ring);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --shadow-left-panel: var(--left-panel-shadow);
+  /* The task card and its email stack (elli-ui#1479). */
+  --shadow-task-card: 0 1px 0 rgb(31 29 26 / 0.03), 0 6px 18px -10px rgb(31 29 26 / 0.14);
+  --shadow-task-mail: 0 1px 1px rgb(70 52 24 / 0.04), 0 6px 14px -10px rgb(70 52 24 / 0.22);
+  --shadow-task-mail-back: 0 4px 10px -8px rgb(70 52 24 / 0.18);
+  --shadow-task-mail-row: 0 1px 2px rgb(31 29 26 / 0.04);
+  --shadow-task-pop: 0 10px 30px -12px rgb(31 29 26 / 0.28);
+
+  /** Animations **/
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+
+  /* A task card that has just changed column, so the eye can follow where it
+     went. Rings rather than fills, so the card's own colours are untouched.
+     Drawn in the same colour the completion circle fills with rather than
+     `primary`, which is dark enough here to read as a black outline rather than
+     a highlight - so the tick's green and the ring that follows it are one
+     gesture.
+     Someone who has asked for less motion gets the ring without the fade — see
+     useJustLandedTask, which decides which of the two applies. */
+  --animate-task-landed: task-landed 1.2s ease-out;
+
+  @keyframes task-landed {
+    from {
+      box-shadow: 0 0 0 2px var(--color-success);
+    }
+
+    to {
+      box-shadow: 0 0 0 2px transparent;
+    }
+  }
+
+  /* Elliot's in-progress labels ("Searching RFQs"): a highlight that sweeps
+     across the text while the step runs, the way a loading line reads in most
+     agent UIs. Drawn with background-clip text, so it costs no layout. The
+     element pairs it with motion-reduce:animate-none. */
+  --animate-agent-shimmer: agent-shimmer 2.2s linear infinite;
+
+  @keyframes agent-shimmer {
+    from {
+      background-position: 100% 0;
+    }
+
+    to {
+      background-position: -100% 0;
+    }
+  }
+
+  /* The dot-matrix loader (elli-ui#817): a dot flares and fades, then rests
+     dim for the rest of the cycle while the light moves on to the others.
+     Each dot's delay sets where in the pattern it lights; the duration is set
+     on the dot, so the loader owns its pace. */
+  --animate-dot-matrix: dot-matrix 1.4s ease-in-out infinite;
+
+  @keyframes dot-matrix {
+    0%,
+    45%,
+    100% {
+      opacity: 0.28;
+    }
+
+    15% {
+      opacity: 1;
+    }
+  }
+
+  /* Elliot's chat name arriving (elli-ui#1516): written in from left to right,
+     the way it reads, by sweeping a soft-edged mask across it. The mask is
+     2.2x the text, half opaque and half clear with a short feathered edge
+     between, so sliding it from 100% to 0% moves that edge from just before
+     the first letter to just past the last. The element pairs it with
+     motion-safe. */
+  --animate-title-write-in: title-write-in 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes title-write-in {
+    from {
+      mask-image: linear-gradient(to right, black 45%, transparent 55%);
+      mask-size: 220% 100%;
+      mask-repeat: no-repeat;
+      mask-position: 100% 0;
+    }
+
+    to {
+      mask-image: linear-gradient(to right, black 45%, transparent 55%);
+      mask-size: 220% 100%;
+      mask-repeat: no-repeat;
+      mask-position: 0 0;
+    }
+  }
+
+  /* The undo toast's countdown, drawn as a draining bar. Linear because it is
+     reporting a clock and any easing would misreport how much time is left, and
+     `forwards` so it holds at empty rather than snapping back full for the frame
+     before the toast leaves. The duration is set on the element, since the toast
+     owns how long it grants. */
+  --animate-undo-countdown: undo-countdown 1s linear forwards;
+
+  @keyframes undo-countdown {
+    from {
+      transform: scaleX(1);
+    }
+
+    to {
+      transform: scaleX(0);
+    }
+  }
+}
+
+/**
+ * Card-header control surface.
+ *
+ * A table card header paints its own background (`--card-header`), which is dark
+ * in three of the four themes. Controls placed inside it default to the page
+ * palette and therefore disappear, which is why every header control used to
+ * carry a hand-written `!important` override string.
+ *
+ * Rather than fight each control from outside, redefine what the palette *means*
+ * inside the header. `SelectTrigger`, `InputWrapper`, `Button` and the search
+ * pickers all read these tokens already, so they render correctly here without
+ * knowing where they are.
+ *
+ * See docs/table-consistency-plan.md, phase 1.
+ */
+[data-surface='card-header'] {
+  --background: var(--card-header);
+  --foreground: var(--table-card-header-foreground);
+  /* 45%, not 25%: a control here has the same background as the header, so the
+     border is the only thing defining it. Below 45% it fails WCAG 1.4.11's 3:1
+     minimum for a UI component boundary in at least one theme — light is the
+     tightest, at 3.17:1 here and 2.69:1 at 40%. */
+  --input-border: color-mix(in srgb, var(--table-card-header-foreground) 45%, transparent);
+  --ring: color-mix(in srgb, var(--table-card-header-foreground) 40%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--table-card-header-foreground) 75%, transparent);
+  --accent: color-mix(in srgb, var(--table-card-header-foreground) 12%, transparent);
+  --accent-foreground: var(--table-card-header-foreground);
+  --secondary-foreground: var(--table-card-header-foreground);
+  /* The neutral *surfaces*, not just their text. Remapping only the foreground
+     left a badge inside a header with the page's cream `--muted` behind the
+     header's near-white text — about 1:1, i.e. invisible. A neutral chip here is
+     a translucent tint of the header's own foreground, the same way the outline
+     controls are. */
+  --muted: color-mix(in srgb, var(--table-card-header-foreground) 15%, transparent);
+  --secondary: color-mix(in srgb, var(--table-card-header-foreground) 15%, transparent);
+  --outline-button-border: color-mix(in srgb, var(--table-card-header-foreground) 45%, transparent);
+  --outline-button-background: var(--card-header);
+  --outline-button-foreground: var(--table-card-header-foreground);
+  --outline-button-hover-border: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 65%,
+    transparent
+  );
+  --outline-button-hover-background: color-mix(
+    in srgb,
+    var(--table-card-header-foreground) 10%,
+    transparent
+  );
+  --outline-button-hover-foreground: var(--table-card-header-foreground);
+}
+
+/**
+ * Popovers, dropdowns and select menus portal to the body, so they escape the
+ * scope above and correctly keep the page palette. Anything rendered inline
+ * inside the header — a badge inside a multi-select trigger, say — does not, and
+ * that is intended.
+ */
+
+/** Global Styles **/
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* html {
+    overflow-x: hidden;
+  } */
+
+  body {
+    @apply bg-background text-foreground;
+    font-family:
+      'IBM Plex Sans',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'Roboto',
+      'Oxygen',
+      'Ubuntu',
+      'Cantarell',
+      'Fira Sans',
+      'Droid Sans',
+      'Helvetica Neue',
+      sans-serif;
+  }
+
+  *:focus-visible {
+    @apply outline-ring! rounded-xs! shadow-none! outline-2! outline-offset-3! transition-none!;
+  }
+
+  button:focus-visible,
+  [role='button']:focus-visible {
+    @apply outline-none!;
+  }
+
+  input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+}
+
+@layer components {
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] {
+    background: var(--popover) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--popover-foreground) !important;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 12%) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+    color: var(--muted-foreground) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-close-button] {
+    background: var(--popover) !important;
+    border-color: var(--border) !important;
+    color: var(--popover-foreground) !important;
+  }
+}
+
+/* Hide the scrollbar without disabling scrolling, so narrow panes (the email
+   list) give the full width to their content. Chromium always reserves layout
+   space for a styled scrollbar, so the only way to a full-bleed list is no
+   scrollbar at all — wheel/trackpad/keyboard scrolling is unaffected. */
+.scrollbar-hover {
+  scrollbar-width: none;
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/** Custom Scrollbar **/
+@layer base {
+  ::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-input);
+    border-radius: 5px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-input) transparent;
+  }
+}
+
+/** Smooth scroll **/
+.mock-agent-conversation,
+.mock-agent-conversation * {
+  scrollbar-width: none;
+}
+
+.mock-agent-conversation::-webkit-scrollbar,
+.mock-agent-conversation *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html {
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
+  scroll-behavior: smooth;
+}
+
+body,
+#root {
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/** Custom Containers **/
+@utility container {
+  @apply mx-auto max-w-none px-4 lg:px-5;
+
+  @media (width >=--theme(--breakpoint-xl)) {
+    @apply max-w-(--breakpoint-xl);
+  }
+}
+
+@utility container-fluid {
+  @apply w-full min-w-0 max-w-full mx-auto px-4 lg:px-5;
+}
+
+/* Registered so the two sizes can be transitioned; an unregistered custom
+   property is not interpolatable and the fade would snap. */
+@property --scroll-fade-start-size {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-end-size {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+/**
+ * scroll-fade — dissolve the edges of a scroll container so it is obvious there
+ * is more above or below.
+ *
+ * A mask rather than an overlay, so it works on any background without being
+ * told what colour to fade to.
+ *
+ * Which edges fade is driven by two data attributes rather than a scroll-driven
+ * CSS animation. The pure-CSS version was tried first and its timeline never
+ * advanced here — the mask stayed pinned at its at-rest values however far the
+ * container was scrolled — so the state is set explicitly instead. useScrollEdges
+ * writes the attributes; it is a handful of lines and it demonstrably works.
+ */
+@utility scroll-fade {
+  --scroll-fade-size: min(12%, 40px);
+  --scroll-fade-start-size: var(--scroll-fade-size);
+  --scroll-fade-end-size: var(--scroll-fade-size);
+  mask-image: var(
+    --scroll-fade-mask,
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      black var(--scroll-fade-start-size),
+      black calc(100% - var(--scroll-fade-end-size)),
+      transparent 100%
+    )
+  );
+  transition:
+    --scroll-fade-start-size 150ms ease,
+    --scroll-fade-end-size 150ms ease;
+
+  /* Nothing above, so nothing to hint at — and the same at the far end. */
+  &[data-scroll-at-start='true'] {
+    --scroll-fade-start-size: 0px;
+  }
+
+  &[data-scroll-at-end='true'] {
+    --scroll-fade-end-size: 0px;
+  }
+}
+
+@utility scroll-fade-x {
+  --scroll-fade-size: min(12%, 40px);
+  --scroll-fade-start-size: var(--scroll-fade-size);
+  --scroll-fade-end-size: var(--scroll-fade-size);
+  mask-image: var(
+    --scroll-fade-mask,
+    linear-gradient(
+      to right,
+      transparent 0,
+      black var(--scroll-fade-start-size),
+      black calc(100% - var(--scroll-fade-end-size)),
+      transparent 100%
+    )
+  );
+  transition:
+    --scroll-fade-start-size 150ms ease,
+    --scroll-fade-end-size 150ms ease;
+
+  &[data-scroll-at-start='true'] {
+    --scroll-fade-start-size: 0px;
+  }
+
+  &[data-scroll-at-end='true'] {
+    --scroll-fade-end-size: 0px;
+  }
+}
+
+@utility scroll-fade-none {
+  --scroll-fade-mask: none;
+}
+
+@utility scroll-fade-* {
+  --scroll-fade-size: --value([length], [percentage], --spacing-*);
+}
+
+/**
+ * A scrollbar that only appears while the pointer is in the container.
+ *
+ * The track keeps its width the whole time and only the thumb's colour changes,
+ * so revealing it cannot reflow the content beside it.
+ */
+@utility scrollbar-on-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+
+  &:hover,
+  &:focus-within {
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb,
+  &:focus-within::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+  }
+}
+
+/* Metronic Configs */
+@import './components/mailbox.css';
+@import './components/react-simple-wysiwyg.css';
+@import './config.metronic.css';
